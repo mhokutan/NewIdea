@@ -84,4 +84,12 @@ Step 1 done. Token is active, account id matches the zone, zone promovote.com is
 
 Done: Always Use HTTPS on, minimum TLS 1.2. Brotli was already on, SSL mode is Full.
 
-Waiting on founder: add the missing permissions (at least D1 Edit and Account Settings Read before the landing page), and answer the 3 questions in Step 2.
+Update: founder added the missing permissions. Re-check: D1, KV, Pages, Account Settings now work.
+Still failing, but NOT token problems:
+* Stream: "Cloudflare Stream not enabled" (paid add-on, not needed until video phase).
+* R2: R2 not enabled in dashboard yet (not needed for landing page).
+* workers.dev subdomain: none created yet. Not needed, site will use the custom domain.
+
+Created D1 database `promovote-waitlist` (id `05af65d5-9b4d-454e-8b70-ca4a15269396`). Empty, no tables yet.
+
+Waiting on founder: the 3 questions in Step 2 (scope, forwarding email, test price).
