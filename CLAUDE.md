@@ -5,10 +5,15 @@
 Name: **PromoVote**. Domain **promovote.com** owned (Cloudflare Registrar, registered 2026-10-02, expires 2027-10-02). promovote.app not bought yet. USPTO trademark search and filing (classes 35, 42) still to do. Old working names: OnlyAds / WatchAds.
 Vision: **"The social media of ads."** A platform where ads are the content, advertisers are creators with profiles and followers, and users are curators who discover, vote and rank.
 
-Status: idea and validation stage. No code yet.
+Status: validation stage. **promovote.com landing page is LIVE** (waitlist).
 
-## ▶ START HERE (next session)
-The previous session ended while setting up Cloudflare for promovote.com. **Read `docs/02-next-session-handoff.md` first and follow it step by step** (verify the Cloudflare token, ask the founder 3 questions, then build the landing page, email forwarding and zone settings). Delete this section once that work is done.
+## Live infrastructure (Cloudflare)
+* Landing page: `web/landing/` (Cloudflare Worker + static assets). Deploy: `cd web/landing && npx wrangler deploy`. Custom domains promovote.com and www (www 301 to apex).
+* Waitlist: D1 `promovote-waitlist`, table `waitlist` (email, role, link, country, created_at). Count: `npx wrangler d1 execute promovote-waitlist --remote --command "SELECT role, COUNT(*) FROM waitlist GROUP BY role"`.
+* Bot protection: Turnstile widget `promovote-waitlist`; secret stored as Worker secret `TURNSTILE_SECRET` (never commit it).
+* Email Routing: hello@ and support@promovote.com forward to the founder's Hotmail.
+* Zone: Always HTTPS, min TLS 1.2. Token comes from env `CLOUDFLARE_API_TOKEN` / `CLOUDFLARE_ACCOUNT_ID`. Never print it.
+* Privacy and Terms pages are drafts for lawyer review before launch.
 
 ## Founder context
 * Lives in the USA, already has a company (LLC), active Apple Developer and Google Play accounts.

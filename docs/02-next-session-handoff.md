@@ -37,6 +37,9 @@ Zone Resources: only promovote.com. No Billing, Members, API Tokens permissions 
 * All needed token permissions work: DNS, Zone Settings, SSL, Workers Scripts and Routes, D1, KV, Pages, Account Settings, Email Routing, Turnstile.
 * Not enabled (not token issues, not needed yet): Stream (paid add-on), R2 (enable in dashboard), workers.dev subdomain.
 * D1 database **promovote-waitlist** created (empty, tables come with the landing page).
+* Email Routing live: hello@ and support@ forward to founder (Hotmail, verified).
+* Turnstile widget created, landing page deployed to promovote.com (version b26cd0e3). Form API validated.
+* Step 1 is DONE. Step 3 items 1 to 3 DONE. Open: test report price (not on page yet), Stripe link later.
 * Step 1 is DONE. Next: Step 2 (founder questions), then Step 3.
 
 ## Step 1: Verify (do this first)
