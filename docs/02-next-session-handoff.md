@@ -63,3 +63,25 @@ If the env vars are still missing: the founder probably saved them to another en
 * Talk to the founder in Turkish, simple and clear. No em dashes or en dashes.
 * Never print or echo the token. Never ask the founder to paste secrets in chat.
 * Confirm before any destructive or hard-to-reverse Cloudflare change (deleting records, changing nameservers).
+
+## Session 2 progress (2026-10-02)
+
+Step 1 done. Token is active, account id matches the zone, zone promovote.com is active (NS: eoin, josephine). DNS has 0 records.
+
+| Permission | Result |
+|---|---|
+| DNS, Zone Settings, SSL, Workers Routes | works |
+| Email Routing Rules + Addresses | works (routing not enabled yet) |
+| Turnstile | works |
+| Workers Scripts | works |
+| D1 | MISSING |
+| Workers KV Storage | MISSING |
+| Pages | MISSING |
+| Workers R2 Storage | MISSING (R2 also needs dashboard Enable) |
+| Stream | MISSING |
+| Account Settings Read | MISSING (also blocks workers.dev subdomain read) |
+| Zone Analytics REST | sunset by Cloudflare, use GraphQL later. Not a token problem. |
+
+Done: Always Use HTTPS on, minimum TLS 1.2. Brotli was already on, SSL mode is Full.
+
+Waiting on founder: add the missing permissions (at least D1 Edit and Account Settings Read before the landing page), and answer the 3 questions in Step 2.
