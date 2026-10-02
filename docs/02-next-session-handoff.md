@@ -30,6 +30,15 @@ Template "Edit Cloudflare Workers" (Workers Scripts, Pages, KV, D1, R2, Tail, Ac
 
 Zone Resources: only promovote.com. No Billing, Members, API Tokens permissions on purpose.
 
+## Progress log
+
+* 2026-10-02: Token verified (active). Zone promovote.com active, no DNS records yet.
+* Always Use HTTPS on, minimum TLS 1.2, Brotli on, SSL mode Full.
+* All needed token permissions work: DNS, Zone Settings, SSL, Workers Scripts and Routes, D1, KV, Pages, Account Settings, Email Routing, Turnstile.
+* Not enabled (not token issues, not needed yet): Stream (paid add-on), R2 (enable in dashboard), workers.dev subdomain.
+* D1 database **promovote-waitlist** created (empty, tables come with the landing page).
+* Step 1 is DONE. Next: Step 2 (founder questions), then Step 3.
+
 ## Step 1: Verify (do this first)
 
 1. Check env vars exist WITHOUT printing their values.
