@@ -2,7 +2,7 @@
 
 ## Project
 
-Name: **PromoVote** (chosen by founder on 2026-10-02; promovote.com and promovote.app looked unregistered, buy at a registrar and do a USPTO/EUIPO trademark check). Old working names: OnlyAds / WatchAds.
+Name: **PromoVote**. Domain **promovote.com** owned (Cloudflare Registrar, registered 2026-10-02, expires 2027-10-02). promovote.app not bought yet. USPTO trademark search and filing (classes 35, 42) still to do. Old working names: OnlyAds / WatchAds.
 Vision: **"The social media of ads."** A platform where ads are the content, advertisers are creators with profiles and followers, and users are curators who discover, vote and rank.
 
 Status: idea and validation stage. No code yet.
