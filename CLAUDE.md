@@ -7,6 +7,9 @@ Vision: **"The social media of ads."** A platform where ads are the content, adv
 
 Status: idea and validation stage. No code yet.
 
+## ▶ START HERE (next session)
+The previous session ended while setting up Cloudflare for promovote.com. **Read `docs/02-next-session-handoff.md` first and follow it step by step** (verify the Cloudflare token, ask the founder 3 questions, then build the landing page, email forwarding and zone settings). Delete this section once that work is done.
+
 ## Founder context
 * Lives in the USA, already has a company (LLC), active Apple Developer and Google Play accounts.
 * Background: Salesforce developer. Builds with Claude, cost matters.
@@ -15,6 +18,7 @@ Status: idea and validation stage. No code yet.
 1. `docs/00-idea-brief.md`: original idea, ChatGPT model, founder's answers.
 2. `docs/01-team-verdict.md`: decisions of the 8-expert team. **This is the current source of truth.**
 3. `docs/debate/`: full round 1 and round 2 texts.
+4. `docs/02-next-session-handoff.md`: Cloudflare setup plan and current account state.
 
 ## Current decisions (short)
 * First niche: indie game trailers. Users: players who like discovering new games.
