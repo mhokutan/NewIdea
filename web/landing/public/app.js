@@ -60,6 +60,21 @@
     })
   );
 
+  let pending = false;
+  window.pvTurnstileDone = () => {
+    if (pending) {
+      pending = false;
+      form.requestSubmit();
+    }
+  };
+  window.pvTurnstileExpired = () => window.turnstile?.reset();
+  window.pvTurnstileError = () => {
+    pending = false;
+    btn.disabled = false;
+    btn.textContent = "Join the waitlist";
+    msg.textContent = "Human check could not load. Please refresh the page and try again.";
+  };
+
   const errors = {
     invalid_email: "Please enter a valid email address.",
     invalid_role: "Please choose who you are.",
@@ -77,7 +92,10 @@
     }
     const token = form.querySelector("[name='cf-turnstile-response']")?.value;
     if (!token) {
-      msg.textContent = "Please wait a second for the human check to finish.";
+      // Human check still running: wait for it, then submit automatically.
+      pending = true;
+      btn.disabled = true;
+      btn.textContent = "Verifying you're human...";
       return;
     }
 
