@@ -1,0 +1,12 @@
+{
+  "name": "promovote-landing",
+  "private": true,
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "db:migrate": "wrangler d1 execute promovote-waitlist --remote --file=schema.sql"
+  },
+  "devDependencies": {
+    "wrangler": "^4.147.0"
+  }
+}
