@@ -7,6 +7,20 @@ const SECURITY_HEADERS = {
   "X-Frame-Options": "DENY",
   "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
   "Strict-Transport-Security": "max-age=31536000; includeSubDomains",
+  "Content-Security-Policy": [
+    "default-src 'self'",
+    "script-src 'self' https://challenges.cloudflare.com https://static.cloudflareinsights.com",
+    "frame-src https://challenges.cloudflare.com",
+    "connect-src 'self' https://cloudflareinsights.com",
+    "style-src 'self' 'unsafe-inline'",
+    "img-src 'self' data:",
+    "font-src 'self'",
+    "object-src 'none'",
+    "base-uri 'self'",
+    "form-action 'self'",
+    "frame-ancestors 'none'",
+    "upgrade-insecure-requests",
+  ].join("; "),
 };
 
 function json(body, status = 200) {
