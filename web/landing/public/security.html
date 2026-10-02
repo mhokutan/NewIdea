@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Security and Responsible Disclosure | PromoVote</title>
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/styles.css">
+<style>.legal{padding:70px 0 100px}.legal h1{font-size:clamp(38px,6vw,56px);margin:0 0 10px}.legal h2{font-size:24px;margin:36px 0 10px}.legal p,.legal li{color:var(--muted)}.legal ul{padding-left:20px}.legal .upd{color:var(--dim);font-size:14px}</style>
+</head>
+<body>
+<header class="nav scrolled"><div class="wrap nav-inner"><a href="/" class="logo"><img src="/favicon.svg" width="30" height="30" alt=""><span>PromoVote</span></a><a href="/#join" class="btn btn-small">Get early access</a></div></header>
+<main class="wrap narrow legal">
+<h1>Security and Responsible Disclosure</h1>
+<p class="upd">Last updated: October 2, 2026</p>
+<p>Keeping PromoVote and the people who trust us safe matters to us. If you find a security vulnerability, please tell us privately so we can fix it. We welcome reports from the security community and will work with you in good faith.</p>
+
+<nav aria-label="Contents">
+<p><b>Contents</b></p>
+<ul>
+<li><a href="#report">1. How to report</a></li>
+<li><a href="#scope">2. Scope</a></li>
+<li><a href="#rules">3. Rules for testing</a></li>
+<li><a href="#harbor">4. Safe harbor</a></li>
+<li><a href="#process">5. What to expect from us</a></li>
+<li><a href="#bounty">6. Rewards</a></li>
+</ul>
+</nav>
+
+<h2 id="report">1. How to report</h2>
+<p>Email <a href="mailto:security@promovote.com">security@promovote.com</a> with:</p>
+<ul>
+<li>A description of the issue and the impact you think it has.</li>
+<li>The URL or component affected.</li>
+<li>Clear steps to reproduce, and a proof of concept if you have one.</li>
+<li>How you would like to be credited, if at all.</li>
+</ul>
+<p>Please write in English. Do not include personal data of other people in your report. Our security contact details are also published in our <a href="/.well-known/security.txt">security.txt</a> file.</p>
+
+<h2 id="scope">2. Scope</h2>
+<p><b>In scope:</b></p>
+<ul>
+<li>promovote.com and www.promovote.com</li>
+<li>The waitlist form and its API</li>
+</ul>
+<p><b>Out of scope:</b></p>
+<ul>
+<li>Third-party services we use, such as Cloudflare. Please report issues in those services directly to the provider.</li>
+<li>Denial of service or load testing.</li>
+<li>Social engineering, phishing, or physical attacks against our team or providers.</li>
+<li>Spam or automated sign ups to the waitlist.</li>
+<li>Reports from automated scanners without a demonstrated, real impact.</li>
+<li>Missing security headers or best practices with no clear security impact, clickjacking on pages with no sensitive actions, and self-XSS.</li>
+</ul>
+
+<h2 id="rules">3. Rules for testing</h2>
+<ul>
+<li>Only test against accounts or data you own. Do not access, change or delete other people's data. If you accidentally access personal data, stop, do not keep a copy, and tell us right away.</li>
+<li>Do not degrade or interrupt the service for others.</li>
+<li>Do not try to get around the bot check at scale or flood the waitlist.</li>
+<li>Give us reasonable time to fix the issue before sharing it publicly. We ask for 90 days, or less if we agree a fix is already live.</li>
+<li>Do not ask for payment in exchange for not disclosing a vulnerability.</li>
+</ul>
+
+<h2 id="harbor">4. Safe harbor</h2>
+<p>If you make a good faith effort to follow this policy, we will consider your research authorized, we will not take legal action against you or ask law enforcement to investigate you for it, and we will not pursue claims under laws such as the US Computer Fraud and Abuse Act or anti-circumvention rules for that research. If a third party takes legal action against you for research done under this policy, we will make it known that your actions were authorized by us. This safe harbor does not cover actions that harm users, violate privacy, disrupt the service, or break the law in other ways.</p>
+
+<h2 id="process">5. What to expect from us</h2>
+<ul>
+<li>We aim to confirm we received your report within 5 business days.</li>
+<li>We will keep you informed as we investigate and fix the issue.</li>
+<li>We will let you know when it is fixed and, if you want, credit you publicly.</li>
+</ul>
+<p>PromoVote is a small, early stage team, so response times may vary. We will always reply.</p>
+
+<h2 id="bounty">6. Rewards</h2>
+<p>We do not run a paid bug bounty program at this time. We are grateful for every valid report and are happy to give public credit.</p>
+</main>
+<footer class="footer"><div class="wrap"><p class="copy">© 2026 PromoVote · <a href="/privacy">Privacy</a> · <a href="/cookies">Cookies</a> · <a href="/terms">Terms</a> · <a href="/guidelines">Guidelines</a> · <a href="/copyright">Copyright</a> · <a href="/security">Security</a> · <a href="/accessibility">Accessibility</a> · <a href="mailto:hello@promovote.com">hello@promovote.com</a></p></div></footer>
+<!-- DRAFT: requires attorney review before launch -->
+</body>
+</html>

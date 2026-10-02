@@ -1,0 +1,5 @@
+Contact: mailto:security@promovote.com
+Expires: 2027-10-02T00:00:00.000Z
+Preferred-Languages: en
+Canonical: https://promovote.com/.well-known/security.txt
+Policy: https://promovote.com/security

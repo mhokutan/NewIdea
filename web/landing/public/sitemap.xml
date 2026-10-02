@@ -1,6 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-  <url><loc>https://promovote.com/</loc></url>
-  <url><loc>https://promovote.com/privacy</loc></url>
-  <url><loc>https://promovote.com/terms</loc></url>
+  <url><loc>https://promovote.com/</loc><lastmod>2026-10-02</lastmod></url>
+  <url><loc>https://promovote.com/privacy</loc><lastmod>2026-10-02</lastmod></url>
+  <url><loc>https://promovote.com/terms</loc><lastmod>2026-10-02</lastmod></url>
+  <url><loc>https://promovote.com/cookies</loc><lastmod>2026-10-02</lastmod></url>
+  <url><loc>https://promovote.com/guidelines</loc><lastmod>2026-10-02</lastmod></url>
+  <url><loc>https://promovote.com/copyright</loc><lastmod>2026-10-02</lastmod></url>
+  <url><loc>https://promovote.com/security</loc><lastmod>2026-10-02</lastmod></url>
+  <url><loc>https://promovote.com/accessibility</loc><lastmod>2026-10-02</lastmod></url>
 </urlset>
