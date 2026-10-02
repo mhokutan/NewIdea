@@ -1,4 +1,4 @@
-# OnlyAds (working name)
+# PromoVote
 
 > The social media of ads.
 

@@ -2,7 +2,7 @@
 
 ## Project
 
-Working name: **OnlyAds / WatchAds** (name NOT final, see `docs/01-team-verdict.md` section 9).
+Name: **PromoVote** (chosen by founder on 2026-10-02; promovote.com and promovote.app looked unregistered, buy at a registrar and do a USPTO/EUIPO trademark check). Old working names: OnlyAds / WatchAds.
 Vision: **"The social media of ads."** A platform where ads are the content, advertisers are creators with profiles and followers, and users are curators who discover, vote and rank.
 
 Status: idea and validation stage. No code yet.
@@ -14,6 +14,7 @@ Status: idea and validation stage. No code yet.
 
 ## Current decisions (short)
 * First niche: indie game trailers. Users: players who like discovering new games.
+* OPEN: founder wants to include new creators on YouTube, Instagram, TikTok, Kick, Twitch too (channel trailers). Never reward users for following/subscribing (platform ToS, fake engagement).
 * Paid product: "Trailer Test" report (creative test + real audience feedback), not cheap views.
 * Skip is free. Points = "Kaşif Puanı" (reputation, no cash value, not spent).
 * Advertiser offers (Steam keys, codes, beta) are optional and never tied to votes or reviews.
