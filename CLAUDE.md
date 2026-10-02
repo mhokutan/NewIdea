@@ -7,6 +7,10 @@ Vision: **"The social media of ads."** A platform where ads are the content, adv
 
 Status: idea and validation stage. No code yet.
 
+## Founder context
+* Lives in the USA, already has a company (LLC), active Apple Developer and Google Play accounts.
+* Background: Salesforce developer. Builds with Claude, cost matters.
+
 ## Read first
 1. `docs/00-idea-brief.md`: original idea, ChatGPT model, founder's answers.
 2. `docs/01-team-verdict.md`: decisions of the 8-expert team. **This is the current source of truth.**
