@@ -1,0 +1,7 @@
+# Keep the knowledge graph about PromoVote itself (graphify update .)
+design/references/
+media/
+node_modules/
+web/landing/public/media/
+web/landing/public/i18n.js
+.playwright-mcp/
