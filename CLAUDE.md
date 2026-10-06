@@ -39,7 +39,11 @@ Status: validation stage. **promovote.com landing page is LIVE** (waitlist).
 
 ## Team and skills
 * Agents: `.claude/agents/` (product-strategist, adtech-expert, consumer-growth-psychologist, marketplace-economist, trust-safety-legal, cto-architect, creator-economy-expert, skeptical-investor).
-* Skills: `team-debate`, `domain-check`, `ad-review`, `unit-economics` in `.claude/skills/`.
+* Project skills (`.claude/skills/`): `team-debate`, `domain-check`, `ad-review`, `unit-economics`, `design-references`, Taste (`design-taste-frontend`, `high-end-visual-design`, `redesign-existing-projects`, `image-to-code`), Vercel `web-design-guidelines`.
+* Plugins (`.claude/settings.json`): Cloudflare, Anthropic example-skills (frontend-design, webapp-testing), Impeccable, Addy Osmani web-quality-skills, Trail of Bits (insecure-defaults, sharp-edges, differential-review, supply-chain-risk-auditor, static-analysis).
+* Design references: `design/references/<brand>/DESIGN.md` (74 brands, MIT). Borrow patterns, never copy a brand.
+* Browser testing: Playwright MCP in `.mcp.json` (via `scripts/playwright-mcp.sh`).
+* For any UI work: use Taste + Impeccable for direction, then audit with web-design-guidelines and web-quality-skills, then verify in a real browser with Playwright.
 
 ## Writing style
 * Talk to the founder in Turkish, simple and clear.
