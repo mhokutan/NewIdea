@@ -67,54 +67,52 @@ Kural: **ihtiyacımız olmayan veriyi toplamayız.** Bu, gizlilik yasaları (GDP
 * Satın alınan Boost başka bir uygulamada veya web'de "açılamaz". Her şey uygulama içinde kalır.
 * İadeleri Apple ve Google yapar. İade bildirimi gelince Boost otomatik durur.
 
-## 6. Veritabanı (Supabase) durumu
+## 6. Altyapı: her şey Cloudflare'de (kurucu kararı 2026-10-06)
 
-* `03-profiles-spec.md` içinde tablo tasarımı **yazılı ama henüz kurulmadı.**
-* Supabase hesabında 2 proje var: `hauling-empire` ve `mhokutan's Project`. Ücretsiz planda aynı anda en fazla 2 aktif proje olabilir. PromoVote için 3 yol var:
-  * kullanılmayan projeyi durdurmak (pause)
-  * Pro plana geçmek (aylık 25 dolar)
-  * ayrı bir organizasyon açmak
-* Ödeme için eklenecek tablolar (Stripe alanlarının yerine):
+Supabase kullanılmaz. Kurucunun Supabase'teki projeleri (hauling-empire ve diğeri) **ayrı projelerdir, PromoVote onlara dokunmaz.**
 
-```sql
--- Ürün katalogu (App Store Connect ve Play Console'daki ürün kimlikleriyle aynı)
-create table iap_products (
-  id text primary key,                 -- örnek: boost_3d
-  kind text not null check (kind in ('boost', 'trailer_test', 'pro')),
-  boost_hours int,                     -- boost için süre
-  active boolean not null default true
-);
+| İhtiyaç | Cloudflare |
+|---|---|
+| Veritabanı | D1 `promovote-db` (canlı) |
+| API | Worker `promovote-api`, adres `https://api.promovote.com` (canlı), kod `services/api/` |
+| Giriş | Better Auth (email ile 6 haneli kod; Apple ve Google ile giriş anahtarlar gelince) |
+| Video | Stream (yükleme açılınca) |
+| Resim | R2 (yükleme açılınca) |
+| Email | Email Sending (kurucunun açması gerekiyor, aşağıya bak) |
+| Ödeme | RevenueCat webhook, `POST /v1/webhooks/revenuecat` |
 
--- Doğrulanmış satın almalar (RevenueCat webhook veya App Store Server Notifications / Google RTDN ile yazılır)
-create table purchases (
-  id uuid primary key default gen_random_uuid(),
-  profile_id uuid not null references profiles(id),
-  store text not null check (store in ('app_store', 'play_store')),
-  product_id text not null references iap_products(id),
-  store_transaction_id text not null unique,   -- tekrar kullanımı engeller
-  environment text not null check (environment in ('production', 'sandbox')),
-  status text not null default 'active' check (status in ('active', 'refunded', 'revoked')),
-  purchased_at timestamptz not null,
-  refunded_at timestamptz,
-  created_at timestamptz not null default now()
-);
+Tablolar `services/api/migrations/` içinde:
 
--- Boost kullanımı: bir satın alma bir videoyu belirli süre öne çıkarır
-create table boosts (
-  id uuid primary key default gen_random_uuid(),
-  purchase_id uuid not null unique references purchases(id),
-  promo_id uuid not null references promos(id),
-  starts_at timestamptz not null,
-  ends_at timestamptz not null,
-  status text not null default 'scheduled' check (status in ('scheduled', 'running', 'done', 'stopped_refund', 'stopped_moderation'))
-);
-```
+* `0001_auth.sql`: giriş tabloları
+* `0002_core.sql`: profiller, videolar, oylar, takip, izlenme, şikayet, hediye kodları, satın almalar, boost
+* `0003_seed_launch.sql`: kurucunun 3 firması ve 21 videosu
 
-Satın alma kullanıcıya bizim hesap kimliğimizle bağlanır: Apple'da `appAccountToken`, Google'da `obfuscatedAccountId`. Satın alma **sadece sunucuda** doğrulanınca geçerli olur, uygulamanın "aldım" demesine güvenilmez.
+**Kurucunun 3 firması 3 ayrı hesaptır:** Hauling Empire, Nicheable, Poleris. Sahipleri `founder+<handle>@promovote.com` adresli yer tutucu hesaplar, yönetimi Claude'da. Kurucu isterse ileride kendi emailine devredilir.
 
-## 7. Uygulama sırası
+Açık işler (kurucu):
 
-1. Supabase projesi + tablolar (auth, profiles, promos, follows, votes, purchases).
+1. **Email Sending'i aç.** Dashboard > Email > Email Sending > promovote.com. Ya da API token'a "Email Sending" izni ver. Açılana kadar giriş kodu emaili gitmez.
+2. **Workers sayfasını bir kez aç.** Dashboard > Workers & Pages. Bu, workers.dev alt alanını oluşturur. Günlük temizlik görevi (cron) bunu istiyor.
+
+## 7. Web sitesi uygulamalar onaylanınca
+
+* Ana akış ve Keşfet uygulamaya yönlendirir: "Uygulamada izle" ekranı, App Store ve Google Play butonları.
+* **Paylaşılan linkler çalışmaya devam eder.** `/@handle` ve tek video linki (`/?v=...`) web'de o videoyu ve profili gösterir, altında "Devamı uygulamada" butonu olur. Instagram ve TikTok da web'de paylaşılan tek videoyu gösterir, sonra uygulamaya çağırır. Sebep: WhatsApp veya Google'dan gelen yeni kişi linke tıklayıp boş sayfa görürse kaybolur.
+* Uygulama yüklüyse linkler direkt uygulamada açılır (iOS Universal Links, Android App Links).
+
+## 8. Para kazanan içerik üreticileri (ileride)
+
+Instagram ve TikTok gibi: ödeme bilgisi sadece para kazanma programına katılınca istenir. O zaman uygulama içinden:
+
+* vergi formu (W-9 veya W-8BEN)
+* kimlik doğrulama
+* banka bilgisi
+
+istenir. Bu bilgiler bizim veritabanımızda değil, ödeme sağlayıcısında (örnek Stripe Connect) tutulur. O güne kadar kimseden toplanmaz.
+
+## 9. Uygulama sırası
+
+1. ~~Veritabanı ve API~~ Yapıldı (Cloudflare D1 + Worker, api.promovote.com).
 2. Expo uygulaması:
    * giriş
    * akış (web'deki adil sıra mantığı sunucuya taşınır)

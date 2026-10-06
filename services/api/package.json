@@ -1,0 +1,25 @@
+{
+  "name": "promovote-api",
+  "version": "1.0.0",
+  "description": "PromoVote API on Cloudflare Workers + D1",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "db:migrate": "wrangler d1 migrations apply promovote-db --remote",
+    "db:migrate:local": "wrangler d1 migrations apply promovote-db --local",
+    "gen:auth": "node scripts/gen-auth-sql.mjs > migrations/0001_auth.sql",
+    "gen:seed": "python3 scripts/gen-seed-sql.py"
+  },
+  "dependencies": {
+    "@better-auth/expo": "^1.7.7",
+    "better-auth": "^1.7.7",
+    "hono": "^4.13.13"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^5.20261006.1",
+    "typescript": "^7.0.2",
+    "wrangler": "^4.147.0"
+  },
+  "private": true,
+  "type": "module"
+}
