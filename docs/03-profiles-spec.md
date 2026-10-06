@@ -22,6 +22,21 @@ Related: `docs/01-team-verdict.md` (source of truth), `docs/debate/`, `web/landi
 
 ---
 
+## Founder decisions (2026-10-06): these override anything below
+
+1. **Separate accounts.** An account is either a **Creator account** (advertiser) or a **Scout account** (viewer). The type is chosen at signup and cannot be switched. One email = one account, so a person who wants both needs two different emails. Consequences for the spec below:
+   * Replace "every account has a scout profile + optional creator page" with `accounts.account_type in ('creator','scout')`, fixed after signup.
+   * Creator accounts can browse the feed and follow other creators, but **cannot vote, call, react or earn Scout Score.**
+   * Scout accounts cannot upload promos.
+   * Self vote risk moves from "same account" to "same person, two accounts": the fraud system must link accounts by device, payment card and network signals and void calls between linked accounts.
+2. **No sector limits.** Any creator or business can join (games, YouTube, Twitch, Kick, TikTok, Instagram, apps, brands, local businesses). Prohibited and restricted categories from the Guidelines still apply.
+3. **Public view counts:** shown after 100 valid views, rounded (1.2K), owner can hide.
+4. **Hit definition:** internal Hit Score, top 20% of the weekly category cohort, calls excluded (as in 0.2).
+5. **Scout profiles are not indexed by Google** (noindex), visible inside PromoVote only.
+6. **Discord and itch.io links** are allowed in P0.
+
+---
+
 ## 0. Principles and definitions
 
 ### 0.1 Product principles for profiles

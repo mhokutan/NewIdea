@@ -28,7 +28,8 @@ Status: validation stage. **promovote.com landing page is LIVE** (waitlist).
 
 ## Current decisions (short)
 * First niche: indie game trailers. Users: players who like discovering new games.
-* OPEN: founder wants to include new creators on YouTube, Instagram, TikTok, Kick, Twitch too (channel trailers). Never reward users for following/subscribing (platform ToS, fake engagement).
+* Scope: all creators and businesses, no sector limit (games, YouTube, Twitch, Kick, TikTok, Instagram, apps, brands). Never reward users for following/subscribing (platform ToS, fake engagement).
+* Profiles: see `docs/03-profiles-spec.md`. Creator and Scout are **separate account types** (chosen at signup, one email = one account); creators cannot vote.
 * Paid product: "Trailer Test" report (creative test + real audience feedback), not cheap views.
 * Skip is free. Points = "Kaşif Puanı" (reputation, no cash value, not spent).
 * Advertiser offers (Steam keys, codes, beta) are optional and never tied to votes or reviews.
