@@ -1,0 +1,286 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Explore | PromoVote</title>
+  <meta name="description" content="Search new games, apps and shops on PromoVote. Browse by category and hashtag.">
+  <link rel="canonical" href="https://promovote.com/explore">
+  <meta name="theme-color" content="#0a0a0f">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://promovote.com/explore">
+  <meta property="og:title" content="Explore | PromoVote">
+  <meta property="og:description" content="Search new games, apps and shops on PromoVote. Browse by category and hashtag.">
+  <meta property="og:image" content="https://promovote.com/og.png">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:image" content="https://promovote.com/og.png">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="preload" href="/fonts/bricolage-latin.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="/styles.css">
+  <link rel="stylesheet" href="/feed.css">
+  <link rel="stylesheet" href="/profile.css">
+  <link rel="stylesheet" href="/explore.css">
+  <script src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit" async defer></script>
+  <script src="/i18n.js" defer></script>
+  <script src="/feed.js" defer></script>
+  <script src="/explore.js" defer></script>
+</head>
+<body class="profile-page explore-page">
+  <a class="skip-link" href="#main" data-i18n="skip">Skip to content</a>
+  <header class="topbar topbar-solid">
+    <a href="/" class="logo" aria-label="PromoVote home">
+      <span class="logo-mark" aria-hidden="true"><svg viewBox="0 0 64 64"><defs><linearGradient id="lgx" x1="0" y1="0" x2="64" y2="64" gradientUnits="userSpaceOnUse"><stop stop-color="#ff5470"/><stop offset="1" stop-color="#8b5cff"/></linearGradient></defs><circle cx="32" cy="32" r="29" fill="#14141f" stroke="url(#lgx)" stroke-width="5"/><path d="M20 35 32 23 44 35M20 46 32 34 44 46" fill="none" stroke="#c6ff3d" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+      <span>PromoVote</span>
+    </a>
+    <nav class="topnav" aria-label="Main">
+      <a href="/" class="topnav-link" data-i18n="nav_feed">Feed</a>
+      <a href="/about" class="topnav-link topnav-how" data-i18n="nav_how">How it works</a>
+      <label class="lang-pick"><span class="visually-hidden" data-i18n="lang_label">Language</span>
+        <select class="lang-select" aria-label="Language">
+          <option value="en">EN</option><option value="es">ES</option><option value="tr">TR</option>
+        </select></label>
+      <button type="button" class="btn btn-small" data-sheet="join" data-i18n="nav_join">Join</button>
+    </nav>
+  </header>
+
+  <main id="main" class="xwrap">
+    <h1 class="xtitle" data-i18n="x_title">Explore</h1>
+    <p class="xsub" data-i18n="x_sub">Find new games, apps and shops by category or hashtag.</p>
+
+    <form class="xsearch" role="search" action="/explore">
+      <label for="xq" class="visually-hidden" data-i18n="x_search">Search</label>
+      <svg aria-hidden="true"><use href="/icons.svg#i-search"/></svg>
+      <input id="xq" name="q" type="search" autocomplete="off" enterkeyhint="search" placeholder="Search games, apps, shops or #hashtags" data-i18n-placeholder="x_search_ph">
+    </form>
+
+    <div class="xchips" role="group" aria-label="Categories" data-i18n-aria="x_cat_label">
+          <button type="button" class="xchip" data-cat="all" aria-pressed="true" data-i18n="cat_all">All</button>
+          <button type="button" class="xchip" data-cat="games" aria-pressed="false" data-i18n="cat_games">Games</button>
+          <button type="button" class="xchip" data-cat="apps" aria-pressed="false" data-i18n="cat_apps">Apps</button>
+          <button type="button" class="xchip" data-cat="shops" aria-pressed="false" data-i18n="cat_shops">Shops</button>
+    </div>
+
+    <section class="xsection" aria-labelledby="xtags-h">
+      <h2 id="xtags-h" class="xh2" data-i18n="x_tags">Hashtags</h2>
+      <div class="xtags">
+          <a class="xtag" href="/explore?tag=truckgame" data-tag="truckgame">#truckgame</a>
+          <a class="xtag" href="/explore?tag=tycoon" data-tag="tycoon">#tycoon</a>
+          <a class="xtag" href="/explore?tag=indiegame" data-tag="indiegame">#indiegame</a>
+          <a class="xtag" href="/explore?tag=selfcare" data-tag="selfcare">#selfcare</a>
+          <a class="xtag" href="/explore?tag=etsyshop" data-tag="etsyshop">#etsyshop</a>
+          <a class="xtag" href="/explore?tag=manifestation" data-tag="manifestation">#manifestation</a>
+          <a class="xtag" href="/explore?tag=meditation" data-tag="meditation">#meditation</a>
+          <a class="xtag" href="/explore?tag=simulation" data-tag="simulation">#simulation</a>
+          <a class="xtag" href="/explore?tag=logistics" data-tag="logistics">#logistics</a>
+          <a class="xtag" href="/explore?tag=21days" data-tag="21days">#21days</a>
+          <a class="xtag" href="/explore?tag=affirmations" data-tag="affirmations">#affirmations</a>
+          <a class="xtag" href="/explore?tag=breathwork" data-tag="breathwork">#breathwork</a>
+          <a class="xtag" href="/explore?tag=calm" data-tag="calm">#calm</a>
+          <a class="xtag" href="/explore?tag=eink" data-tag="eink">#eink</a>
+          <a class="xtag" href="/explore?tag=habits" data-tag="habits">#habits</a>
+          <a class="xtag" href="/explore?tag=planner" data-tag="planner">#planner</a>
+          <a class="xtag" href="/explore?tag=spreadsheet" data-tag="spreadsheet">#spreadsheet</a>
+          <a class="xtag" href="/explore?tag=airbnbhost" data-tag="airbnbhost">#airbnbhost</a>
+      </div>
+    </section>
+
+    <section class="xsection" aria-labelledby="xcreators-h">
+      <h2 id="xcreators-h" class="xh2" data-i18n="x_creators">Creators</h2>
+      <div class="xcreators">
+          <a class="xcreator" href="/@haulingempire" data-creator="haulingempire" data-cat="games">
+            <img src="/media/hauling-empire-icon.jpg" width="56" height="56" alt="" class="xcreator-avatar">
+            <span class="xcreator-name">Hauling Empire</span>
+            <span class="xcreator-kind" data-ct="kind">Indie game</span>
+          </a>
+          <a class="xcreator" href="/@nicheable" data-creator="nicheable" data-cat="shops">
+            <span class="xcreator-avatar xcreator-avatar-mono" aria-hidden="true">N</span>
+            <span class="xcreator-name">Nicheable</span>
+            <span class="xcreator-kind" data-ct="kind">Etsy shop</span>
+          </a>
+          <a class="xcreator" href="/@poleris" data-creator="poleris" data-cat="apps">
+            <img src="/media/poleris-icon.jpg" width="56" height="56" alt="" class="xcreator-avatar">
+            <span class="xcreator-name">Poleris</span>
+            <span class="xcreator-kind" data-ct="kind">Wellness app</span>
+          </a>
+      </div>
+    </section>
+
+    <section class="xsection" aria-labelledby="xpromos-h">
+      <div class="xhead">
+        <h2 id="xpromos-h" class="xh2"><span data-i18n="x_promos">Promos</span> <span class="xcount" aria-live="polite"></span></h2>
+        <button type="button" class="xclear" hidden data-i18n="x_clear">Clear filters</button>
+      </div>
+      <div class="pgrid xgrid">
+          <a class="ptile" href="/?v=hauling-empire" data-id="hauling-empire" data-creator="haulingempire" data-cat="games" data-tags="truckgame tycoon simulation indiegame">
+            <img src="/media/hauling-empire-poster.jpg" alt="" loading="lazy" width="360" height="640">
+            <span class="ptile-dur">0:28</span>
+            <span class="ptile-who">Hauling Empire</span>
+            <span class="ptile-title" data-t="title">Hauling Empire: Truck Tycoon</span>
+          </a>
+          <a class="ptile" href="/?v=nicheable-rental-tax" data-id="nicheable-rental-tax" data-creator="nicheable" data-cat="shops" data-tags="spreadsheet airbnbhost taxes etsyshop">
+            <img src="/media/nicheable-rental-tax-poster.jpg" alt="" loading="lazy" width="360" height="640">
+            <span class="ptile-dur">0:14</span>
+            <span class="ptile-who">Nicheable</span>
+            <span class="ptile-title" data-t="title">Short-term rental tax tracker</span>
+          </a>
+          <a class="ptile" href="/?v=poleris" data-id="poleris" data-creator="poleris" data-cat="apps" data-tags="manifestation selfcare affirmations meditation">
+            <img src="/media/poleris-poster.jpg" alt="" loading="lazy" width="360" height="640">
+            <span class="ptile-dur">0:32</span>
+            <span class="ptile-who">Poleris</span>
+            <span class="ptile-title" data-t="title">Your daily manifestation ritual</span>
+          </a>
+          <a class="ptile" href="/?v=hauling-empire-ipad" data-id="hauling-empire-ipad" data-creator="haulingempire" data-cat="games" data-tags="truckgame tycoon ipadgames indiegame">
+            <img src="/media/hauling-empire-ipad-poster.jpg" alt="" loading="lazy" width="360" height="640">
+            <span class="ptile-dur">0:38</span>
+            <span class="ptile-who">Hauling Empire</span>
+            <span class="ptile-title" data-t="title">Hauling Empire on a bigger screen</span>
+          </a>
+          <a class="ptile" href="/?v=nicheable-grade-tracker" data-id="nicheable-grade-tracker" data-creator="nicheable" data-cat="shops" data-tags="spreadsheet studytools college etsyshop">
+            <img src="/media/nicheable-grade-tracker-poster.jpg" alt="" loading="lazy" width="360" height="640">
+            <span class="ptile-dur">0:10</span>
+            <span class="ptile-who">Nicheable</span>
+            <span class="ptile-title" data-t="title">College grade tracker</span>
+          </a>
+          <a class="ptile" href="/?v=poleris-tr" data-id="poleris-tr" data-creator="poleris" data-cat="apps" data-tags="manifestation selfcare affirmations meditation">
+            <img src="/media/poleris-tr-poster.jpg" alt="" loading="lazy" width="360" height="640">
+            <span class="ptile-dur">0:32</span>
+            <span class="ptile-who">Poleris</span>
+            <span class="ptile-title" data-t="title">Your daily manifestation ritual</span>
+          </a>
+          <a class="ptile" href="/?v=hauling-empire-es" data-id="hauling-empire-es" data-creator="haulingempire" data-cat="games" data-tags="truckgame tycoon indiegame">
+            <img src="/media/hauling-empire-es-poster.jpg" alt="" loading="lazy" width="360" height="640">
+            <span class="ptile-dur">0:28</span>
+            <span class="ptile-who">Hauling Empire</span>
+            <span class="ptile-title" data-t="title">Hauling Empire (Spanish trailer)</span>
+          </a>
+          <a class="ptile" href="/?v=nicheable-eink-planner" data-id="nicheable-eink-planner" data-creator="nicheable" data-cat="shops" data-tags="planner eink kindlescribe etsyshop">
+            <img src="/media/nicheable-eink-planner-poster.jpg" alt="" loading="lazy" width="360" height="640">
+            <span class="ptile-dur">0:12</span>
+            <span class="ptile-who">Nicheable</span>
+            <span class="ptile-title" data-t="title">Minimalist planner for E-Ink tablets</span>
+          </a>
+          <a class="ptile" href="/?v=poleris-21-day" data-id="poleris-21-day" data-creator="poleris" data-cat="apps" data-tags="manifestation 21days habits selfcare">
+            <img src="/media/poleris-21-day-poster.jpg" alt="" loading="lazy" width="360" height="640">
+            <span class="ptile-dur">0:15</span>
+            <span class="ptile-who">Poleris</span>
+            <span class="ptile-title" data-t="title">One intention, 21 days</span>
+          </a>
+          <a class="ptile" href="/?v=hauling-empire-tr" data-id="hauling-empire-tr" data-creator="haulingempire" data-cat="games" data-tags="truckgame tycoon indiegame">
+            <img src="/media/hauling-empire-tr-poster.jpg" alt="" loading="lazy" width="360" height="640">
+            <span class="ptile-dur">0:28</span>
+            <span class="ptile-who">Hauling Empire</span>
+            <span class="ptile-title" data-t="title">Hauling Empire (Turkish trailer)</span>
+          </a>
+          <a class="ptile" href="/?v=nicheable-planners" data-id="nicheable-planners" data-creator="nicheable" data-cat="shops" data-tags="planner eink budget etsyshop">
+            <img src="/media/nicheable-planners-poster.jpg" alt="" loading="lazy" width="360" height="640">
+            <span class="ptile-dur">0:14</span>
+            <span class="ptile-who">Nicheable</span>
+            <span class="ptile-title" data-t="title">Undated planners for focus, budget and life</span>
+          </a>
+          <a class="ptile" href="/?v=poleris-21-day-tr" data-id="poleris-21-day-tr" data-creator="poleris" data-cat="apps" data-tags="manifestation 21days habits selfcare">
+            <img src="/media/poleris-21-day-tr-poster.jpg" alt="" loading="lazy" width="360" height="640">
+            <span class="ptile-dur">0:15</span>
+            <span class="ptile-who">Poleris</span>
+            <span class="ptile-title" data-t="title">One intention, 21 days</span>
+          </a>
+          <a class="ptile" href="/?v=hauling-empire-tr-promo" data-id="hauling-empire-tr-promo" data-creator="haulingempire" data-cat="games" data-tags="truckgame tycoon indiegame">
+            <img src="/media/hauling-empire-tr-promo-poster.jpg" alt="" loading="lazy" width="360" height="640">
+            <span class="ptile-dur">0:43</span>
+            <span class="ptile-who">Hauling Empire</span>
+            <span class="ptile-title" data-t="title">First route: Istanbul to Ankara</span>
+          </a>
+          <a class="ptile" href="/?v=poleris-calm" data-id="poleris-calm" data-creator="poleris" data-cat="apps" data-tags="meditation breathwork calm selfcare">
+            <img src="/media/poleris-calm-poster.jpg" alt="" loading="lazy" width="360" height="640">
+            <span class="ptile-dur">0:17</span>
+            <span class="ptile-who">Poleris</span>
+            <span class="ptile-title" data-t="title">Breathe, visualize, rest</span>
+          </a>
+          <a class="ptile" href="/?v=hauling-empire-border-caucasus" data-id="hauling-empire-border-caucasus" data-creator="haulingempire" data-cat="games" data-tags="truckgame roadtrip simulation">
+            <img src="/media/hauling-empire-border-caucasus-poster.jpg" alt="" loading="lazy" width="360" height="640">
+            <span class="ptile-dur">0:11</span>
+            <span class="ptile-who">Hauling Empire</span>
+            <span class="ptile-title" data-t="title">Waiting at the Sarp border gate</span>
+          </a>
+          <a class="ptile" href="/?v=poleris-calm-tr" data-id="poleris-calm-tr" data-creator="poleris" data-cat="apps" data-tags="meditation breathwork calm selfcare">
+            <img src="/media/poleris-calm-tr-poster.jpg" alt="" loading="lazy" width="360" height="640">
+            <span class="ptile-dur">0:17</span>
+            <span class="ptile-who">Poleris</span>
+            <span class="ptile-title" data-t="title">Breathe, visualize, rest</span>
+          </a>
+          <a class="ptile" href="/?v=hauling-empire-border-night" data-id="hauling-empire-border-night" data-creator="haulingempire" data-cat="games" data-tags="truckgame nightdrive simulation">
+            <img src="/media/hauling-empire-border-night-poster.jpg" alt="" loading="lazy" width="360" height="640">
+            <span class="ptile-dur">0:11</span>
+            <span class="ptile-who">Hauling Empire</span>
+            <span class="ptile-title" data-t="title">Kapıkule at night</span>
+          </a>
+          <a class="ptile" href="/?v=hauling-empire-depot-day" data-id="hauling-empire-depot-day" data-creator="haulingempire" data-cat="games" data-tags="truckgame logistics tycoon">
+            <img src="/media/hauling-empire-depot-day-poster.jpg" alt="" loading="lazy" width="360" height="640">
+            <span class="ptile-dur">0:12</span>
+            <span class="ptile-who">Hauling Empire</span>
+            <span class="ptile-title" data-t="title">Your first depot in Istanbul</span>
+          </a>
+          <a class="ptile" href="/?v=hauling-empire-depot-night" data-id="hauling-empire-depot-night" data-creator="haulingempire" data-cat="games" data-tags="truckgame logistics tycoon">
+            <img src="/media/hauling-empire-depot-night-poster.jpg" alt="" loading="lazy" width="360" height="640">
+            <span class="ptile-dur">0:12</span>
+            <span class="ptile-who">Hauling Empire</span>
+            <span class="ptile-title" data-t="title">The depot never sleeps</span>
+          </a>
+          <a class="ptile" href="/?v=hauling-empire-deliveries" data-id="hauling-empire-deliveries" data-creator="haulingempire" data-cat="games" data-tags="truckgame logistics simulation">
+            <img src="/media/hauling-empire-deliveries-poster.jpg" alt="" loading="lazy" width="360" height="640">
+            <span class="ptile-dur">0:11</span>
+            <span class="ptile-who">Hauling Empire</span>
+            <span class="ptile-title" data-t="title">On time or late, every delivery counts</span>
+          </a>
+          <a class="ptile" href="/?v=hauling-empire-first-truck" data-id="hauling-empire-first-truck" data-creator="haulingempire" data-cat="games" data-tags="truckgame tycoon indiegame">
+            <img src="/media/hauling-empire-first-truck-poster.jpg" alt="" loading="lazy" width="360" height="640">
+            <span class="ptile-dur">0:18</span>
+            <span class="ptile-who">Hauling Empire</span>
+            <span class="ptile-title" data-t="title">First truck, first route</span>
+          </a>
+      </div>
+      <p class="xempty" hidden data-i18n="x_empty">Nothing matches yet. Try another word or hashtag.</p>
+    </section>
+
+    <section class="xsection xcharts" aria-labelledby="xcharts-h">
+      <h2 id="xcharts-h" class="xh2" data-i18n="x_charts">Charts</h2>
+      <div class="xperiods" aria-hidden="true">
+        <span data-i18n="x_today">Today</span><span data-i18n="x_week">This week</span><span data-i18n="x_month">This month</span>
+      </div>
+      <p class="xcharts-t" data-i18n="x_charts_t">Charts open when voting starts</p>
+      <p class="xcharts-p" data-i18n="x_charts_p">Rankings will use real, bot filtered views, clicks and votes. Paid boosts never buy a spot on a chart. We will not show made up numbers.</p>
+    </section>
+  </main>
+
+  <div class="sheet-backdrop" hidden></div>
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="sheet-title" hidden>
+    <button type="button" class="sheet-close" aria-label="Close"><svg><use href="/icons.svg#i-x"/></svg></button>
+    <div class="sheet-body">
+      <h2 id="sheet-title" class="sheet-title">Join PromoVote</h2>
+      <p class="sheet-text">Watching is always free. Join the waitlist to vote, save promos and earn Scout Score when accounts open.</p>
+      <form class="sheet-form" novalidate>
+        <label class="field">
+          <span data-i18n="f_email">Email</span>
+          <input type="email" name="email" required autocomplete="email" placeholder="you@example.com" data-i18n-placeholder="f_placeholder">
+        </label>
+        <div class="sheet-turnstile"></div>
+        <button type="submit" class="btn btn-wide" data-i18n="f_submit">Join the waitlist</button>
+        <p class="form-msg" role="status" aria-live="polite"></p>
+        <p class="fine"><span data-i18n="f_fine">18+ only. We only email you about PromoVote.</span> <a href="/privacy" data-i18n="f_privacy">Privacy Policy</a></p>
+      </form>
+      <div class="sheet-done" hidden>
+        <p class="done-title"><svg><use href="/icons.svg#i-check-circle"/></svg><span data-i18n="d_title">You&#x27;re on the list.</span></p>
+        <div class="perk-reveal" hidden>
+          <p class="sheet-text" data-i18n="p_text">Your perk from Nicheable: 25% off the whole shop, one use per buyer, until Dec 31, 2026.</p>
+          <div class="code-row">
+            <code class="perk-code"></code>
+            <button type="button" class="btn btn-small btn-ghost" data-copy data-i18n="p_copy">Copy code</button>
+          </div>
+          <a class="btn btn-wide perk-link" target="_blank" rel="sponsored noopener" data-i18n="p_shop">Shop with 25% off</a>
+          <p class="fine" data-i18n="p_fine">Offer by Nicheable, a shop owned by the PromoVote founder. Etsy terms apply.</p>
+        </div>
+        <p class="sheet-text done-default" data-i18n="d_default">We&#x27;ll email you when your wave opens.</p>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

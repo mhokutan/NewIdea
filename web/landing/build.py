@@ -97,6 +97,13 @@ def avatar(c, cls="who-avatar", size=40):
     return f'<span class="{cls} {mono}" aria-hidden="true">{e(a["mono"])}</span>'
 
 
+def hashtags(p, cls="reel-hashtags"):
+    if not p.get("tags"):
+        return ""
+    links = " ".join(f'<a href="/explore?tag={e(tag)}">#{e(tag)}</a>' for tag in p["tags"])
+    return f'<p class="{cls}">{links}</p>'
+
+
 def reel(p, first):
     cid = p["creator"]
     c = creators[cid]
@@ -135,6 +142,7 @@ def reel(p, first):
           </a>
           <h2 class="reel-title" data-t="title">{e(p['title']['en'])}</h2>
           <p class="reel-desc" data-t="desc">{e(p['desc']['en'])}</p>
+          {hashtags(p)}
           <div class="reel-tags">{''.join(tags)}</div>
           <div class="reel-cta">{cta}</div>
           <p class="reel-disclosure" data-i18n="{disc}">{t(disc)}</p>
@@ -150,8 +158,17 @@ def reel(p, first):
     </article>"""
 
 
-def topbar(gid, nav_feed=False):
-    left = '<a href="/" class="topnav-link" data-i18n="nav_feed">' + t("nav_feed") + "</a>" if nav_feed else '<a href="/about" class="topnav-link" data-i18n="nav_how">' + t("nav_how") + "</a>"
+NAV = {
+    "feed": '<a href="/" class="topnav-link" data-i18n="nav_feed">{}</a>',
+    "explore": '<a href="/explore" class="topnav-link" data-i18n="nav_explore">{}</a>',
+    "how": '<a href="/about" class="topnav-link topnav-how" data-i18n="nav_how">{}</a>',
+}
+
+
+def topbar(gid, nav_feed=False, links=None):
+    if links is None:
+        links = ["feed", "explore"] if nav_feed else ["explore", "how"]
+    left = "\n      ".join(NAV[k].format(t("nav_" + k)) for k in links)
     cls = "topbar topbar-solid" if nav_feed else "topbar"
     return f"""  <header class="{cls}">
     <a href="/" class="logo" aria-label="PromoVote home">
@@ -271,6 +288,115 @@ def build_profile(cid, c):
     (PUB / "creators" / f"{cid}.html").write_text(page)
 
 
+CATS = ["games", "apps", "shops"]
+
+
+def interleave(items, key):
+    """Round robin by key, so one creator does not fill the top of a grid."""
+    groups = {}
+    for it in items:
+        groups.setdefault(key(it), []).append(it)
+    out, lists = [], list(groups.values())
+    while any(lists):
+        for g in lists:
+            if g:
+                out.append(g.pop(0))
+    return out
+
+
+def build_explore():
+    ordered = interleave(promos, lambda p: p["creator"])
+    counts = {}
+    for p in promos:
+        for tag in p.get("tags", []):
+            counts[tag] = counts.get(tag, 0) + 1
+    top_tags = sorted(counts, key=lambda k: (-counts[k], k))[:18]
+    cat_btns = "\n".join(
+        f'          <button type="button" class="xchip" data-cat="{c}" aria-pressed="{"true" if c == "all" else "false"}" data-i18n="cat_{c}">{t("cat_" + c)}</button>'
+        for c in ["all", *CATS]
+    )
+    tag_links = "\n".join(
+        f'          <a class="xtag" href="/explore?tag={e(tag)}" data-tag="{e(tag)}">#{e(tag)}</a>' for tag in top_tags
+    )
+    cards = "\n".join(
+        f"""          <a class="xcreator" href="/@{cid}" data-creator="{cid}" data-cat="{c['category']}">
+            {avatar(c, 'xcreator-avatar', 56)}
+            <span class="xcreator-name">{e(c['name'])}</span>
+            <span class="xcreator-kind" data-ct="kind">{e(c['kind']['en'])}</span>
+          </a>"""
+        for cid, c in creators.items()
+    )
+    tiles = "\n".join(
+        f"""          <a class="ptile" href="/?v={p['id']}" data-id="{p['id']}" data-creator="{p['creator']}" data-cat="{creators[p['creator']]['category']}" data-tags="{' '.join(p.get('tags', []))}">
+            <img src="/media/{p['video']}-poster.jpg" alt="" loading="lazy" width="360" height="640">
+            <span class="ptile-dur">0:{p['dur']:02d}</span>
+            <span class="ptile-who">{e(creators[p['creator']]['name'])}</span>
+            <span class="ptile-title" data-t="title">{e(p['title']['en'])}</span>
+          </a>"""
+        for p in ordered
+    )
+    extra = chr(10) + '  <link rel="stylesheet" href="/profile.css">' + chr(10) + '  <link rel="stylesheet" href="/explore.css">'
+    page = f"""{head(EN['x_meta_title'], EN['x_meta_desc'], 'https://promovote.com/explore', 'https://promovote.com/og.png', extra).replace('</head>', '  <script src="/explore.js" defer></script>' + chr(10) + '</head>')}
+<body class="profile-page explore-page">
+  <a class="skip-link" href="#main" data-i18n="skip">{t('skip')}</a>
+{topbar('lgx', nav_feed=True, links=['feed', 'how'])}
+
+  <main id="main" class="xwrap">
+    <h1 class="xtitle" data-i18n="x_title">{t('x_title')}</h1>
+    <p class="xsub" data-i18n="x_sub">{t('x_sub')}</p>
+
+    <form class="xsearch" role="search" action="/explore">
+      <label for="xq" class="visually-hidden" data-i18n="x_search">{t('x_search')}</label>
+      <svg aria-hidden="true"><use href="/icons.svg#i-search"/></svg>
+      <input id="xq" name="q" type="search" autocomplete="off" enterkeyhint="search" placeholder="{t('x_search_ph')}" data-i18n-placeholder="x_search_ph">
+    </form>
+
+    <div class="xchips" role="group" aria-label="{t('x_cat_label')}" data-i18n-aria="x_cat_label">
+{cat_btns}
+    </div>
+
+    <section class="xsection" aria-labelledby="xtags-h">
+      <h2 id="xtags-h" class="xh2" data-i18n="x_tags">{t('x_tags')}</h2>
+      <div class="xtags">
+{tag_links}
+      </div>
+    </section>
+
+    <section class="xsection" aria-labelledby="xcreators-h">
+      <h2 id="xcreators-h" class="xh2" data-i18n="x_creators">{t('x_creators')}</h2>
+      <div class="xcreators">
+{cards}
+      </div>
+    </section>
+
+    <section class="xsection" aria-labelledby="xpromos-h">
+      <div class="xhead">
+        <h2 id="xpromos-h" class="xh2"><span data-i18n="x_promos">{t('x_promos')}</span> <span class="xcount" aria-live="polite"></span></h2>
+        <button type="button" class="xclear" hidden data-i18n="x_clear">{t('x_clear')}</button>
+      </div>
+      <div class="pgrid xgrid">
+{tiles}
+      </div>
+      <p class="xempty" hidden data-i18n="x_empty">{t('x_empty')}</p>
+    </section>
+
+    <section class="xsection xcharts" aria-labelledby="xcharts-h">
+      <h2 id="xcharts-h" class="xh2" data-i18n="x_charts">{t('x_charts')}</h2>
+      <div class="xperiods" aria-hidden="true">
+        <span data-i18n="x_today">{t('x_today')}</span><span data-i18n="x_week">{t('x_week')}</span><span data-i18n="x_month">{t('x_month')}</span>
+      </div>
+      <p class="xcharts-t" data-i18n="x_charts_t">{t('x_charts_t')}</p>
+      <p class="xcharts-p" data-i18n="x_charts_p">{t('x_charts_p')}</p>
+    </section>
+  </main>
+
+{SHEET}
+</body>
+</html>
+"""
+    (PUB / "explore.html").write_text(page)
+
+
 def build_i18n():
     out = {
         "ui": ui,
@@ -284,7 +410,8 @@ if __name__ == "__main__":
     build_feed()
     for cid, c in creators.items():
         build_profile(cid, c)
+    build_explore()
     build_i18n()
-    text = "".join(p.read_text() for p in [PUB / "index.html", PUB / "i18n.js", *(PUB / "creators").glob("*.html")])
+    text = "".join(p.read_text() for p in [PUB / "index.html", PUB / "explore.html", PUB / "i18n.js", *(PUB / "creators").glob("*.html")])
     assert "—" not in text and "–" not in text, "em or en dash found"
     print(f"built feed ({len(promos)} promos), {len(creators)} profiles, i18n for {', '.join(ui)}")

@@ -24,7 +24,16 @@
     "pr_follow": "Follow", "pr_new": "New creator", "pr_promos": "Promos", "pr_share": "Share profile",
     "pr_notify_t": "Be first to play", "pr_notify_p": "Get an email the day Hauling Empire launches.", "pr_notify_b": "Notify me",
     "pr_perk_p": "For PromoVote members. One use per buyer, until Dec 31, 2026.", "pr_perk_b": "Get perk",
-    "pr_founder_made": "Made by the PromoVote founder.", "pr_founder_shop": "Shop by the PromoVote founder."
+    "pr_founder_made": "Made by the PromoVote founder.", "pr_founder_shop": "Shop by the PromoVote founder.",
+    "nav_explore": "Explore", "x_meta_title": "Explore | PromoVote", "x_meta_desc": "Search new games, apps and shops on PromoVote. Browse by category and hashtag.",
+    "x_title": "Explore", "x_sub": "Find new games, apps and shops by category or hashtag.", "x_search": "Search",
+    "x_search_ph": "Search games, apps, shops or #hashtags", "x_cat_label": "Categories", "cat_all": "All",
+    "cat_games": "Games", "cat_apps": "Apps", "cat_shops": "Shops",
+    "x_tags": "Hashtags", "x_charts": "Charts", "x_today": "Today",
+    "x_week": "This week", "x_month": "This month", "x_charts_t": "Charts open when voting starts",
+    "x_charts_p": "Rankings will use real, bot filtered views, clicks and votes. Paid boosts never buy a spot on a chart. We will not show made up numbers.", "x_creators": "Creators", "x_promos": "Promos",
+    "x_empty": "Nothing matches yet. Try another word or hashtag.", "x_clear": "Clear filters", "x_more": "How it works",
+    "x_view": "View profile"
   },
   "es": {
     "lang_name": "Español",
@@ -51,7 +60,16 @@
     "pr_follow": "Seguir", "pr_new": "Creador nuevo", "pr_promos": "Promos", "pr_share": "Compartir perfil",
     "pr_notify_t": "Juega antes que nadie", "pr_notify_p": "Recibe un email el día que salga Hauling Empire.", "pr_notify_b": "Avísame",
     "pr_perk_p": "Para miembros de PromoVote. Un uso por comprador, hasta el 31 de diciembre de 2026.", "pr_perk_b": "Obtener beneficio",
-    "pr_founder_made": "Hecho por el fundador de PromoVote.", "pr_founder_shop": "Tienda del fundador de PromoVote."
+    "pr_founder_made": "Hecho por el fundador de PromoVote.", "pr_founder_shop": "Tienda del fundador de PromoVote.",
+    "nav_explore": "Explorar", "x_meta_title": "Explorar | PromoVote", "x_meta_desc": "Busca juegos, apps y tiendas nuevas en PromoVote. Explora por categoría y hashtag.",
+    "x_title": "Explorar", "x_sub": "Encuentra juegos, apps y tiendas nuevas por categoría o hashtag.", "x_search": "Buscar",
+    "x_search_ph": "Busca juegos, apps, tiendas o #hashtags", "x_cat_label": "Categorías", "cat_all": "Todo",
+    "cat_games": "Juegos", "cat_apps": "Apps", "cat_shops": "Tiendas",
+    "x_tags": "Hashtags", "x_charts": "Rankings", "x_today": "Hoy",
+    "x_week": "Esta semana", "x_month": "Este mes", "x_charts_t": "Los rankings abren cuando empiece la votación",
+    "x_charts_p": "Usaremos vistas, clics y votos reales, filtrados contra bots. Pagar un impulso nunca compra un puesto. No mostraremos números inventados.", "x_creators": "Creadores", "x_promos": "Promos",
+    "x_empty": "Nada coincide todavía. Prueba otra palabra o hashtag.", "x_clear": "Quitar filtros", "x_more": "Cómo funciona",
+    "x_view": "Ver perfil"
   },
   "tr": {
     "lang_name": "Türkçe",
@@ -78,6 +96,15 @@
     "pr_follow": "Takip et", "pr_new": "Yeni içerik üreticisi", "pr_promos": "Videolar", "pr_share": "Profili paylaş",
     "pr_notify_t": "İlk oynayan sen ol", "pr_notify_p": "Hauling Empire çıktığı gün sana e-posta gelsin.", "pr_notify_b": "Haber ver",
     "pr_perk_p": "PromoVote üyelerine özel. Kişi başı tek kullanım, 31 Aralık 2026'ya kadar.", "pr_perk_b": "Hediyeyi al",
-    "pr_founder_made": "PromoVote kurucusunun yapımı.", "pr_founder_shop": "PromoVote kurucusunun mağazası."
+    "pr_founder_made": "PromoVote kurucusunun yapımı.", "pr_founder_shop": "PromoVote kurucusunun mağazası.",
+    "nav_explore": "Keşfet", "x_meta_title": "Keşfet | PromoVote", "x_meta_desc": "PromoVote'ta yeni oyun, uygulama ve mağazaları ara. Kategori ve hashtag ile gez.",
+    "x_title": "Keşfet", "x_sub": "Yeni oyun, uygulama ve mağazaları kategoriye veya hashtag'e göre bul.", "x_search": "Ara",
+    "x_search_ph": "Oyun, uygulama, mağaza veya #hashtag ara", "x_cat_label": "Kategoriler", "cat_all": "Tümü",
+    "cat_games": "Oyunlar", "cat_apps": "Uygulamalar", "cat_shops": "Mağazalar",
+    "x_tags": "Hashtagler", "x_charts": "Sıralamalar", "x_today": "Bugün",
+    "x_week": "Bu hafta", "x_month": "Bu ay", "x_charts_t": "Sıralamalar oylama başlayınca açılacak",
+    "x_charts_p": "Sıralamada gerçek ve botlardan temizlenmiş izlenme, tıklama ve oylar kullanılacak. Ücretli öne çıkarma sıralamada yer satın alamaz. Uydurma sayı göstermeyiz.", "x_creators": "Firmalar", "x_promos": "Videolar",
+    "x_empty": "Henüz eşleşen yok. Başka bir kelime veya hashtag dene.", "x_clear": "Filtreleri temizle", "x_more": "Nasıl çalışır",
+    "x_view": "Profili gör"
   }
 }
