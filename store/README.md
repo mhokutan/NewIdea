@@ -1,4 +1,4 @@
-# 07. Mağaza kurulumu: masaüstü Claude için prompt
+# Mağaza kurulumu: masaüstü Claude için talimat
 
 Tarih: 2026-10-06. Kurucu kararı: App Store ve Google Play kurulumunu kurucunun bilgisayarındaki Claude (masaüstü uygulama, tarayıcı ve terminal) yapar. Kurucu sadece giriş, 2FA, banka ve vergi adımlarında devreye girer.
 
@@ -16,7 +16,7 @@ RevenueCat kullanılmıyor (kurucu kararı 2026-10-06). Satın almalar uygulamad
 | `com.miapera.promovote.boost.7d` | Boost 7 gün | $19.99 |
 | `com.miapera.promovote.trailertest` | Trailer Test raporu | $49.99 |
 
-Aşağıdaki metin masaüstü Claude'a olduğu gibi yapıştırılır.
+Masaüstü Claude bu dosyadaki kod bloğunu talimat olarak uygular. Bütün repoyu değil, sadece `store/` ve `apps/mobile/` klasörlerini indirir (sparse checkout).
 
 ---
 
@@ -27,9 +27,9 @@ KURALLAR
 - Şifre, 2FA kodu, banka, vergi, kimlik doğrulama veya ödeme bilgisi gereken bir yere gelirsen dur ve bana sor. Onları ben girerim.
 - Yasal sözleşme kabul etmen gerekirse önce bana sor.
 - Hiçbir key, .p8, .json veya şifre içeriğini sohbete yazma.
-- İndirdiğin bütün key dosyalarını masaüstünde "PromoVote-keys" klasöründe tut (yoksa oluştur).
+- Key dosyaları D:\PromoVote\SecretKeys klasöründe. Var olanları oradan oku, yeni indirdiğin bütün key dosyalarını da oraya kaydet. Bu klasörü asla repoya kopyalama.
 - Emin olmadığın bir soru olursa tahmin etme, bana sor.
-- İlerlemeyi repodaki docs/07-store-setup-status.md dosyasına yaz (Bölüm F). Bu dosyaya asla key, şifre veya gizli değer yazma.
+- İlerlemeyi repodaki store/status.md dosyasına yaz (Bölüm F). Bu dosyaya asla key, şifre veya gizli değer yazma.
 
 BİLGİLER
 - Uygulama: PromoVote
@@ -39,7 +39,8 @@ BİLGİLER
 - Gizlilik: https://promovote.com/privacy
 - Şartlar: https://promovote.com/terms
 - Destek emaili: support@promovote.com
-- Repo: https://github.com/mhokutan/NewIdea, branch claude/gracious-pasteur-nu8ssc, uygulama klasörü apps/mobile
+- Repo: https://github.com/mhokutan/NewIdea, branch claude/gracious-pasteur-nu8ssc. Yerel klasör: D:\PromoVote\repo (sadece store/ ve apps/mobile/)
+- Mağaza görselleri: store/assets/ (app-store-icon-1024.png, play-icon-512.png, feature-graphic-1024x500.png)
 - Expo projesi: @mhokutan/promovote (https://expo.dev/accounts/mhokutan/projects/promovote)
 - Kısa açıklama: "Discover, vote and rank the best game trailers and app promos."
 - Yaş sınırı: 18+. Kumar yok, parayla ödül yok, kullanıcılara para verilmez.
@@ -49,13 +50,23 @@ BİLGİLER
 ====================
 BÖLÜM A. iOS SERTİFİKASI (EAS, terminal)
 ====================
-1. Repoyu klonla veya güncelle, branch claude/gracious-pasteur-nu8ssc. apps/mobile klasöründe "npm ci" çalıştır.
+1. Repo yoksa PowerShell'de sadece gereken klasörleri indir:
+   git clone --filter=blob:none --sparse -b claude/gracious-pasteur-nu8ssc https://github.com/mhokutan/NewIdea D:\PromoVote\repo
+   cd D:\PromoVote\repo
+   git sparse-checkout set store apps/mobile
+   Repo varsa: cd D:\PromoVote\repo ve git pull.
+   Sonra apps/mobile klasöründe "npm ci" çalıştır (EAS, uygulama ayarlarını okumak için paketlere ihtiyaç duyuyor). Node.js yoksa LTS sürümünü kur.
 2. Expo'ya giriş: "npx eas-cli@latest whoami". Giriş yoksa "npx eas-cli@latest login" çalıştır ve dur, giriş bilgilerini ben yazarım.
 3. Gerçek bir terminal penceresinde (sorulara cevap verebileceğin şekilde) çalıştır:
    npx eas-cli@latest credentials -p ios
    Seçimler:
    - Build profile: production
-   - Apple hesabına giriş: evet. Apple ID ve şifre sorulursa dur, ben yazarım.
+   - Apple girişi: şifresiz geçmek için komuttan önce aynı terminalde şu değişkenleri ayarla (değerler D:\PromoVote\SecretKeys içindeki App Store Connect API (Admin) key'den):
+     $env:EXPO_ASC_API_KEY_PATH="D:\PromoVote\SecretKeys\<AuthKey_XXXX>.p8"
+     $env:EXPO_ASC_KEY_ID="<key id>"
+     $env:EXPO_ASC_ISSUER_ID="<issuer id>"
+     $env:EXPO_APPLE_TEAM_ID="<team id>"
+     Bu değerler klasörde yoksa veya Apple ID ve şifre sorulursa dur, ben yazarım.
    - Distribution Certificate: yeni oluştur (Yes)
    - com.miapera.promovote için Provisioning Profile: yeni oluştur (Yes)
    - Push Notifications key sorulursa: No
@@ -72,7 +83,7 @@ B1. Uygulama kaydı
 B2. In-App Purchase key
 1. Users and Access > Integrations > In-App Purchase sekmesi.
 2. "+" ile key oluştur, adı "PromoVote API".
-3. .p8 dosyasını PromoVote-keys klasörüne indir (sadece bir kez indirilebilir). Key ID'yi not al.
+3. .p8 dosyasını D:\PromoVote\SecretKeys klasörüne kaydet (sadece bir kez indirilebilir). Key ID'yi not al.
 
 B3. Sunucu bildirimleri
 1. Apps > PromoVote > App Information > App Store Server Notifications.
@@ -86,7 +97,7 @@ B4. Uygulama bilgileri
 4. Pricing and Availability: Free, tüm ülkeler.
 5. Business bölümünde Paid Apps Agreement durumuna bak. Tamamlanmamışsa dur ve bana söyle, banka ve vergi bilgisini ben girerim.
 6. Small Business Program başvurusu: https://developer.apple.com/app-store/small-business-program/ . Form doldurmak gerekiyorsa şirket bilgilerini kullan, yasal onay kısmında bana sor.
-7. Ekran görüntüleri ve açıklama metni için şimdilik dur, uygulama ekranları hazır olunca yapılacak.
+7. App icon olarak store/assets/app-store-icon-1024.png kullanılır (build içinde de aynı ikon var). Ekran görüntüleri ve açıklama metni için şimdilik dur, uygulama ekranları hazır olunca yapılacak.
 
 ====================
 BÖLÜM C. GOOGLE CLOUD
@@ -106,7 +117,7 @@ C2. Google ile giriş (OAuth)
 C3. Google Play API için service account
 1. APIs and Services > Library: "Google Play Android Developer API" etkinleştir. "Cloud Pub/Sub API" da etkinleştir.
 2. IAM and Admin > Service Accounts > Create: adı "play-api". Rol verme.
-3. Bu hesap > Keys > Add key > JSON. Dosyayı PromoVote-keys klasörüne indir.
+3. Bu hesap > Keys > Add key > JSON. Dosyayı D:\PromoVote\SecretKeys klasörüne kaydet.
 4. Service account email adresini not al.
 
 C4. Satın alma bildirimleri (Pub/Sub)
@@ -146,7 +157,7 @@ Policy and programs > App content bölümünü doldur:
 - Target audience: 18 and over.
 - Data safety: B4 maddesi 3'teki verilerle aynı. Şifreli iletim: evet. Kullanıcı silme isteyebilir: evet (uygulama içinde ve support@promovote.com).
 - Government apps, financial features, health, news: hayır.
-Ekran görüntüleri ve store listing metinleri için şimdilik dur.
+Store listing: App icon store/assets/play-icon-512.png, Feature graphic store/assets/feature-graphic-1024x500.png, short description yukarıdaki kısa açıklama. Ekran görüntüleri ve uzun açıklama için şimdilik dur.
 
 ====================
 BÖLÜM E. KEY'LERİ BULUT ORTAMINA EKLEME
@@ -156,8 +167,7 @@ Claude Code bulut oturumlarının ortamına (claude.ai/code, NewIdea oturumları
 - APPLE_IAP_KEY_ID=<B2 Key ID>
 - APPLE_IAP_KEY_P8=<B2 .p8 dosyasının içeriği, BEGIN ve END satırları hariç, satır sonları silinmiş, tek satır>
 - GOOGLE_PLAY_SA_JSON_B64=<C3 JSON dosyasının base64 hali, tek satır>
-  Windows PowerShell: [Convert]::ToBase64String([IO.File]::ReadAllBytes("<json yolu>"))
-  Mac: base64 -i <json yolu> | tr -d '\n'
+  PowerShell: [Convert]::ToBase64String([IO.File]::ReadAllBytes("D:\PromoVote\SecretKeys\<dosya>.json"))
 - GOOGLE_CLOUD_PROJECT_ID=<proje id>
 - GOOGLE_OAUTH_WEB_CLIENT_ID=<C2 web client id>
 - GOOGLE_OAUTH_IOS_CLIENT_ID=<C2 iOS client id>
@@ -168,7 +178,7 @@ Ortamda zaten olanlar: EXPO_TOKEN, EXPO_ASC_KEY_ID, EXPO_ASC_ISSUER_ID, EXPO_APP
 BÖLÜM F. GIT İLE HABERLEŞME
 ====================
 Bulut oturumundaki Claude ile bu repo üzerinden haberleşiyorsun.
-1. Her bölüm bitince docs/07-store-setup-status.md dosyasını güncelle: bölüm adı, durum (bitti / yarım / beklemede), not. Gizli olmayan değerleri yazabilirsin: App Store Apple ID, Google Cloud project id, service account email, OAuth client id'leri, Google Play hesap türü.
+1. Her bölüm bitince store/status.md dosyasını güncelle: bölüm adı, durum (bitti / yarım / beklemede), not. Gizli olmayan değerleri yazabilirsin: App Store Apple ID, Google Cloud project id, service account email, OAuth client id'leri, Google Play hesap türü.
 2. Asla yazma: .p8 içeriği, JSON key içeriği, şifre, token, Shared Secret.
 3. Commit et ve branch claude/gracious-pasteur-nu8ssc'ye push et. Commit mesajı örneği: "Store setup: section B done".
 4. Her bölüme başlamadan önce "git pull" yap. Bulut Claude bu dosyaya sana not veya yeni iş bırakabilir ("Bulut Claude notları" bölümü). Oradaki işleri de yap.

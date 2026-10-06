@@ -24,7 +24,7 @@ Not: bu belgedeki vergi ve hukuk notları hukuki veya mali tavsiye değildir. Mu
 | Küçük işletme | **%15** (App Store Small Business Program, yıllık 1 milyon dolar altı, başvuru gerekir) | **%15** (yıllık ilk 1 milyon dolar, Play Console'da hesap grubuna kayıt gerekir) |
 | Vergi (sales tax, KDV) | Apple toplar ve öder | Google toplar ve öder |
 
-* RevenueCat kullanılmaz (kurucu kararı 2026-10-06, maliyet). Satın almayı kendi Worker'ımız doğrular: Apple için App Store Server API ve Server Notifications V2, Google için Play Developer API ve Real-time Developer Notifications. Ayrıntı `07-store-setup-desktop-prompt.md`.
+* RevenueCat kullanılmaz (kurucu kararı 2026-10-06, maliyet). Satın almayı kendi Worker'ımız doğrular: Apple için App Store Server API ve Server Notifications V2, Google için Play Developer API ve Real-time Developer Notifications. Ayrıntı `store/README.md`.
 * ABD'de Apple ve Google artık uygulamadan web ödemesine link vermeye izin veriyor (mahkeme kararları, 2025). Gelir büyüyünce komisyonu düşürmek için web ödemesi sonradan eklenebilir. Şimdilik gerek yok.
 
 ## 3. Fatura (invoice) kimin işi

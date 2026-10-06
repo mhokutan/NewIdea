@@ -8,7 +8,6 @@
     "scheme": "promovote",
     "userInterfaceStyle": "dark",
     "ios": {
-      "icon": "./assets/expo.icon",
       "bundleIdentifier": "com.miapera.promovote",
       "supportsTablet": false,
       "associatedDomains": [

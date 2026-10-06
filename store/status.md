@@ -1,6 +1,6 @@
-# 07. Mağaza kurulumu durumu
+# Mağaza kurulumu durumu
 
-Bu dosya masaüstü Claude ile bulut Claude arasında haberleşme için. Talimatlar: `docs/07-store-setup-desktop-prompt.md`.
+Bu dosya masaüstü Claude ile bulut Claude arasında haberleşme için. Talimatlar: `store/README.md`.
 Asla key, şifre, token veya Shared Secret yazılmaz.
 
 DURUM: BAŞLAMADI
