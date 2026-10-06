@@ -24,6 +24,7 @@ Masaüstü Claude bu dosyadaki kod bloğunu talimat olarak uygular. Bütün repo
 PromoVote mobil uygulaması için App Store ve Google Play kurulumunu yapacaksın. Tarayıcıda benim açık oturumlarımı kullan, terminal gerekirse aç.
 
 KURALLAR
+- GOOGLE HESABI: Google ile ilgili her işi (Google Cloud Console, Google Play Console, Pub/Sub, OAuth) SADECE hazimokutan@gmail.com hesabıyla yap. Google Play geliştirici hesabı bu hesapta. Tarayıcıda başka bir Google hesabı da açık olabilir: her sayfada sağ üstteki profil resmine bakıp hazimokutan@gmail.com olduğunu kontrol et. Değilse hesabı değiştir veya linkin sonuna ?authuser=hazimokutan@gmail.com ekle. Başka hesapla proje, key veya uygulama oluşturma. Yanlış hesapta bir şey oluşturduysan dur ve bana söyle.
 - Şifre, 2FA kodu, banka, vergi, kimlik doğrulama veya ödeme bilgisi gereken bir yere gelirsen dur ve bana sor. Onları ben girerim.
 - Yasal sözleşme kabul etmen gerekirse önce bana sor.
 - Hiçbir key, .p8, .json veya şifre içeriğini sohbete yazma.
@@ -103,7 +104,7 @@ B4. Uygulama bilgileri
 BÖLÜM C. GOOGLE CLOUD
 ====================
 C1. Proje
-1. https://console.cloud.google.com adresinde "PromoVote" projesi yoksa oluştur.
+1. hazimokutan@gmail.com ile https://console.cloud.google.com/?authuser=hazimokutan@gmail.com adresinde "PromoVote" projesi yoksa oluştur.
 
 C2. Google ile giriş (OAuth)
 1. Google Auth Platform > Branding: App name PromoVote, support email support@promovote.com, home page, privacy ve terms linkleri yukarıda, authorized domain promovote.com. Audience: External, Publish (production).
@@ -129,14 +130,14 @@ C4. Satın alma bildirimleri (Pub/Sub)
 BÖLÜM D. GOOGLE PLAY CONSOLE
 ====================
 D1. Uygulama
-1. https://play.google.com/console > Create app: "PromoVote", English (United States), App, Free. Beyanlar için bana sor.
+1. hazimokutan@gmail.com ile https://play.google.com/console/?authuser=hazimokutan@gmail.com > Create app: "PromoVote", English (United States), App, Free. Beyanlar için bana sor.
 2. Hesap türünü kontrol et (Organization mı Personal mı). Personal ise üretime çıkmadan önce 12 test kullanıcısı ile 14 gün kapalı test şartı var, bunu bana yaz.
 
 D2. İlk Android dosyası (elle yükleme şart)
 1. Build sayfası: https://expo.dev/accounts/mhokutan/projects/promovote/builds/717c2210-d583-43ab-bce7-68a9379979e9
 2. Build bittiyse .aab dosyasını indir. Bitmediyse bekle. Hata verdiyse bana söyle.
 3. Play Console > Test and release > Testing > Internal testing > Create new release. Play App Signing'i kabul et (Google yönetsin). .aab dosyasını yükle, release notes "First internal build", kaydet ve yayınla.
-4. Testers: email listesi oluştur, içine benim Google hesabımı ekle (bana sor).
+4. Testers: email listesi oluştur, içine hazimokutan@gmail.com ekle.
 
 D3. Service account izinleri
 1. Users and permissions > Invite new users > Bölüm C3'teki service account email.

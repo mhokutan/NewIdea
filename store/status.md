@@ -23,6 +23,7 @@ DURUM: BAŞLAMADI
 * OAuth web client id:
 * OAuth iOS client id:
 * OAuth Android client id'leri:
+* Google hesabı: hazimokutan@gmail.com (Cloud ve Play Console sadece bu hesapla)
 * Google Play hesap türü (Organization / Personal):
 
 ## Kurucunun yapması gerekenler
