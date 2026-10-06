@@ -241,6 +241,15 @@ export default {
       return new Response(res.body, { status: res.status, headers: { "Content-Type": "text/plain; charset=utf-8", ...SECURITY_HEADERS } });
     }
 
+    // Creator profiles: /@handle is served from /creators/<handle>.html
+    const profile = /^\/@([a-z0-9_]{3,24})\/?$/.exec(url.pathname);
+    if (profile) {
+      const res = await env.ASSETS.fetch(new Request(new URL(`/creators/${profile[1]}`, url), request));
+      const out = new Response(res.body, res);
+      for (const [k, v] of Object.entries(SECURITY_HEADERS)) out.headers.set(k, v);
+      return out;
+    }
+
     if (url.pathname.startsWith("/media/") && (request.method === "GET" || request.method === "HEAD")) {
       return serveMedia(request, env);
     }
