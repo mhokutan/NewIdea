@@ -1,7 +1,7 @@
 # Nicheable — Etsy ürün videoları
 
 Mağaza: https://www.etsy.com/shop/Nicheable
-İndirim kodu: (henüz verilmedi — mağaza sahibi ekleyecek)
+İndirim kodu: **NEWIDEA25** — tüm mağazada %25 indirim
 
 ## Etsy listelemesinde yayında olan videolar
 | Ürün | Link | Video |
