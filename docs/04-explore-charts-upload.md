@@ -55,6 +55,29 @@ Linkler paylaşılabilir: `/explore?cat=apps`, `/explore?tag=planner`, `/explore
 
 Hesaplar açılınca arama sunucuya taşınır (Supabase full text search), kişiye göre "Senin için" bölümü eklenir.
 
+### 2.1 Mobil uygulamada Keşfet (iOS ve Android)
+
+Kurucu kararı (2026-10-06): web'deki Keşfet sayfası **sadece web için**. Uygulamada Keşfet, Instagram, TikTok ve Snapchat gibi görsel ve kaydırmalı olacak. Liste ve form görünümü olmayacak.
+
+| Bölüm | Örnek aldığımız | Nasıl çalışır |
+|---|---|---|
+| Üstte arama çubuğu | Instagram, TikTok | Dokununca tam ekran arama açılır. Sekmeler: Üst sonuçlar, Firmalar, Videolar, Hashtagler. Son aramalar ve popüler aramalar görünür. |
+| Firma yuvarlakları | Snapchat, Instagram hikayeleri | Üstte yatay kayan yuvarlak avatarlar. Takip ettiğin firmaların yeni videosu varsa renkli halka çıkar. Dokununca o firmanın yeni videoları hikaye gibi tam ekran oynar. |
+| Kategori hapları | TikTok, Instagram | Yatay kayan butonlar: Senin için, Oyunlar, Uygulamalar, Mağazalar, İçerik üreticileri, Markalar. |
+| Video ızgarası | Instagram Keşfet | Karışık boyutlu kareler (bazı kareler 2 kat büyük). Ekranda görünen kareler **sessiz önizleme** oynatır. Sonsuz kaydırma. |
+| Tam ekran geçiş | Instagram, TikTok | Bir kareye dokununca video tam ekran açılır. Yukarı kaydırınca aynı kategorideki veya hashtag'deki diğer videolar gelir. Geri kaydırınca ızgaraya döner. |
+| Trend hashtagler | TikTok Keşfet | Izgaranın arasında yatay satırlar: "#truckgame" başlığı altında o hashtag'in videoları yan yana. |
+| Sıralamalar | Spotify listeleri, App Store top charts | Ayrı bir kart: Bugün, Bu hafta, Bu ay. Dokununca 1'den 10'a numaralı liste. |
+
+Kurallar:
+
+* Ücretli Boost videoları ızgarada "Sponsorlu" etiketiyle görünür. Her 8 karede en fazla 1 tane olabilir. Sıralamalara ve trend hashtaglere girmez.
+* Adil sıra burada da geçerli: aynı firma ızgarada yan yana iki kare alamaz.
+* Önizlemeler sadece Wi-Fi'da veya kullanıcı izin verirse otomatik oynar. Ayarlarda "Önizleme oynatma" açılıp kapatılabilir. Düşük veri modunda sadece poster gösterilir.
+* Alt menü sırası: Akış, Keşfet, (içerik üreticileri için) Yükle, Hediyeler, Profil.
+
+Web'de bu tasarım yapılmayacak. Web sade, hızlı ve arama motoru dostu kalacak.
+
 ---
 
 ## 3. Hashtag kuralları
@@ -134,7 +157,8 @@ Kurallar:
 
 | Aşama | Ne | Durum |
 |---|---|---|
-| A | Keşfet sayfası: arama, kategori, hashtag, firma kartları, video ızgarası (statik içerikle) | Bu oturumda yapıldı |
+| A | Web Keşfet sayfası: arama, kategori, hashtag, firma kartları, video ızgarası (statik içerikle) | Yapıldı |
+| A2 | Uygulama Keşfet ekranı (bölüm 2.1), Expo ile | Uygulama yapılırken |
 | B | Hesaplar (Supabase auth), email doğrulama | Sırada |
 | C | Yükleme formu, Cloudflare Stream, link güvenlik taraması, moderasyon kuyruğu | B'den sonra |
 | D | İzlenme ve tıklama sayımı (sunucu), bot filtresi | C ile birlikte |

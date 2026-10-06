@@ -19,6 +19,7 @@ Status: validation stage. **promovote.com landing page is LIVE** (waitlist).
 * Feed ordering (in `public/feed.js`): per viewer fair rotation. Each round gives every creator 2 slots, least seen first, viewer language first, a promo counts as seen after 3s. Moves server side when accounts exist.
 * Videos: originals in `media/incoming/`, web versions (MP4 + WebM + poster) in `web/landing/public/media/`. Media is served with HTTP range support by the Worker (Safari needs it).
 * Explore page `/explore` (built by build.py into `public/explore.html`, logic in `public/explore.js`): search, categories (creator `category`: games, apps, shops), hashtags (promo `tags`), creators, promo grid. Charts (today, week, month) and uploads are specified in `docs/04-explore-charts-upload.md`; charts stay an honest empty state until real vote data exists. Boost never counts toward charts.
+* Mobile app Explore is different from web (founder decision): Instagram/TikTok/Snapchat style with creator story circles, category pills, autoplay masonry grid, tap to full screen feed. See section 2.1 of `docs/04-explore-charts-upload.md`.
 * Founder creators in the feed: Hauling Empire (game, store pending, notify CTA), Nicheable (Etsy, perk NEWIDEA25), Poleris (app, App Store live, Google Play soon; creator `cta: {type: store, android: soon}`, promo `linkKind: appstore`).
 * Company: MIA PERA TRANSPORTATION LLC (NJ) dba PromoVote for now. Separate LLC when revenue starts or before user uploads open. Payments plan: Stripe on the web for advertisers, optional in-app purchase later.
 
