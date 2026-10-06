@@ -15,6 +15,11 @@ Status: validation stage. **promovote.com landing page is LIVE** (waitlist).
 * Email Routing: hello@ and support@promovote.com forward to the founder's Hotmail.
 * Zone: Always HTTPS, min TLS 1.2. Token comes from env `CLOUDFLARE_API_TOKEN` / `CLOUDFLARE_ACCOUNT_ID`. Never print it.
 * Privacy and Terms pages are drafts for lawyer review before launch.
+* Feed content is generated: edit `web/landing/content/promos.json` (promos, creators, translations) and `web/landing/content/ui.json` (UI strings in en, es, tr), then run `python3 web/landing/build.py` and deploy. Do not hand-edit `public/index.html`, `public/creators/*.html` or `public/i18n.js`.
+* Feed ordering (in `public/feed.js`): per viewer fair rotation. Each round gives every creator 2 slots, least seen first, viewer language first, a promo counts as seen after 3s. Moves server side when accounts exist.
+* Videos: originals in `media/incoming/`, web versions (MP4 + WebM + poster) in `web/landing/public/media/`. Media is served with HTTP range support by the Worker (Safari needs it).
+* Company: MIA PERA TRANSPORTATION LLC (NJ) dba PromoVote for now. Separate LLC when revenue starts or before user uploads open. Payments plan: Stripe on the web for advertisers, optional in-app purchase later.
+
 
 ## Founder context
 * Lives in the USA, already has a company (LLC), active Apple Developer and Google Play accounts.

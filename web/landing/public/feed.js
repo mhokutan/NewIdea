@@ -6,6 +6,60 @@
   };
 
   // =====================================================================
+  // Language: saved choice, else browser language, else English
+  // =====================================================================
+  const I18N = window.PV_I18N || { ui: { en: {} }, promos: {}, creators: {} };
+  const LANGS = Object.keys(I18N.ui);
+  const detect = () => {
+    const saved = store.get("pv_lang");
+    if (saved && LANGS.includes(saved)) return saved;
+    for (const l of navigator.languages || [navigator.language || "en"]) {
+      const short = String(l).slice(0, 2).toLowerCase();
+      if (LANGS.includes(short)) return short;
+    }
+    return "en";
+  };
+  let lang = detect();
+  const T = (key) => (I18N.ui[lang] && I18N.ui[lang][key]) || (I18N.ui.en && I18N.ui.en[key]) || key;
+
+  function applyLang(root = document) {
+    root.querySelectorAll("[data-i18n]").forEach((el) => { el.textContent = T(el.dataset.i18n); });
+    root.querySelectorAll("[data-i18n-placeholder]").forEach((el) => { el.placeholder = T(el.dataset.i18nPlaceholder); });
+    root.querySelectorAll("[data-i18n-aria]").forEach((el) => el.setAttribute("aria-label", T(el.dataset.i18nAria)));
+    root.querySelectorAll("[data-t]").forEach((el) => {
+      const holder = el.closest("[data-id]");
+      const p = holder && I18N.promos[holder.dataset.id];
+      if (p && p[el.dataset.t]) el.textContent = p[el.dataset.t][lang] || p[el.dataset.t].en;
+    });
+    root.querySelectorAll("[data-ct]").forEach((el) => {
+      const holder = el.closest("[data-creator]") || el.closest("[data-creator-page]");
+      const cid = holder && (holder.dataset.creator || holder.dataset.creatorPage);
+      const c = cid && I18N.creators[cid];
+      if (c && c[el.dataset.ct]) el.textContent = c[el.dataset.ct][lang] || c[el.dataset.ct].en;
+    });
+    root.querySelectorAll("[data-lang-chip]").forEach((el) => {
+      const r = el.closest("[data-lang]");
+      el.hidden = !r || r.dataset.lang === lang;
+    });
+  }
+  let soundBtn = null;
+  function setLang(l) {
+    lang = l;
+    store.set("pv_lang", l);
+    document.documentElement.lang = l;
+    applyLang();
+    document.querySelectorAll(".lang-select").forEach((s) => { s.value = l; });
+    if (window.PV_onLang) window.PV_onLang();
+    if (soundBtn) renderSound();
+  }
+  document.documentElement.lang = lang;
+  document.querySelectorAll(".lang-select").forEach((s) => {
+    s.value = lang;
+    s.addEventListener("change", () => setLang(s.value));
+  });
+  applyLang();
+
+  // =====================================================================
   // Feed (home page only): endless vertical promo feed
   // =====================================================================
   const feed = document.getElementById("feed");
@@ -15,10 +69,9 @@
   const pausePlayback = () => { const v = current && current.querySelector("video"); if (v && !v.paused) v.pause(); };
   const resumePlayback = () => { if (current) play(current); };
 
-  let soundBtn = null;
   function renderSound() {
     soundBtn.innerHTML = `<svg aria-hidden="true"><use href="/icons.svg#i-speaker-${muted ? "slash" : "high"}"/></svg>`;
-    soundBtn.setAttribute("aria-label", muted ? "Turn sound on" : "Turn sound off");
+    soundBtn.setAttribute("aria-label", T(muted ? "sound_on" : "sound_off"));
   }
 
   function play(reel) {
@@ -36,17 +89,23 @@
 
   if (feed) {
     // ---------- Fair rotation queue (per viewer) ----------
-    // Unseen promos first, in random order. A promo counts as seen after 3s on screen
-    // and then moves to the back. When everything is seen, the least seen come back first.
-    // The same creator is never shown twice in a row when another creator is available,
-    // so a creator with many promos cannot crowd out the others.
+    // Each round gives every creator the same number of slots, so a creator with many
+    // promos cannot crowd out others. Inside a creator: least seen first, then the
+    // viewer's language, then English, then the rest, random within ties.
+    // A promo counts as seen after 3 seconds on screen and moves to the back.
+    // Creators alternate, so the same creator is not shown twice in a row.
+    const SLOTS_PER_CREATOR = 2;
     const templates = new Map();
     feed.querySelectorAll("[data-reel]").forEach((r) => templates.set(r.dataset.id, r.cloneNode(true)));
     const SEEN_KEY = "pv_seen_v1";
     let seen = {};
     try { seen = JSON.parse(store.get(SEEN_KEY) || "{}") || {}; } catch { seen = {}; }
     const saveSeen = () => store.set(SEEN_KEY, JSON.stringify(seen));
+    const queuedUnseen = {}; // queued in this session but not watched yet
     const creatorOf = (id) => templates.get(id).dataset.creator;
+    const langOf = (id) => templates.get(id).dataset.lang;
+    const exposure = (id) => (seen[id]?.n || 0) + (queuedUnseen[id] || 0);
+    const langRank = (id) => (langOf(id) === lang ? 0 : langOf(id) === "en" ? 1 : 2);
 
     function shuffle(a) {
       for (let i = a.length - 1; i > 0; i--) {
@@ -57,29 +116,45 @@
     }
 
     function nextRound(prevId, firstId) {
-      const ids = shuffle([...templates.keys()]);
-      ids.sort((a, b) => (seen[a]?.n || 0) - (seen[b]?.n || 0)); // stable: random within the same count
-      const out = [];
-      if (firstId && templates.has(firstId)) { out.push(firstId); ids.splice(ids.indexOf(firstId), 1); }
-      let prev = out.length ? out[out.length - 1] : prevId;
-      const count = (id) => seen[id]?.n || 0;
-      while (ids.length) {
-        // Only interleave creators inside the least-seen tier, so "unseen first" always wins.
-        const tier = count(ids[0]);
-        const prevCreator = prev && templates.has(prev) ? creatorOf(prev) : null;
-        let k = ids.findIndex((id) => count(id) === tier && id !== prev && creatorOf(id) !== prevCreator);
-        if (k === -1) k = ids.findIndex((id) => count(id) === tier && id !== prev);
-        if (k === -1) k = 0;
-        const [id] = ids.splice(k, 1);
-        out.push(id);
-        prev = id;
+      const byCreator = new Map();
+      for (const id of shuffle([...templates.keys()])) {
+        const c = creatorOf(id);
+        if (!byCreator.has(c)) byCreator.set(c, []);
+        byCreator.get(c).push(id);
       }
+      for (const list of byCreator.values()) {
+        list.sort((a, b) => exposure(a) - exposure(b) || langRank(a) - langRank(b)); // stable: random within ties
+      }
+      const out = [];
+      if (firstId && templates.has(firstId)) {
+        out.push(firstId);
+        const list = byCreator.get(creatorOf(firstId));
+        list.splice(list.indexOf(firstId), 1);
+      }
+      // Random creator order, never starting with the creator that was just shown.
+      const lastCreator = out.length ? creatorOf(out[0]) : prevId && templates.has(prevId) ? creatorOf(prevId) : null;
+      const order = shuffle([...byCreator.keys()]);
+      if (order.length > 1 && order[0] === lastCreator) order.push(order.shift());
+      const taken = new Map(order.map((c) => [c, out.length && creatorOf(out[0]) === c ? 1 : 0]));
+      let progress = true;
+      while (progress) {
+        progress = false;
+        for (const c of order) {
+          const list = byCreator.get(c);
+          if (!list.length || taken.get(c) >= SLOTS_PER_CREATOR) continue;
+          out.push(list.shift());
+          taken.set(c, taken.get(c) + 1);
+          progress = true;
+        }
+      }
+      out.forEach((id) => { queuedUnseen[id] = (queuedUnseen[id] || 0) + 1; });
       return out;
     }
 
     function markSeen(id) {
       const s = seen[id] || { n: 0, t: 0 };
       seen[id] = { n: s.n + 1, t: Date.now() };
+      if (queuedUnseen[id] > 0) queuedUnseen[id]--;
       saveSeen();
     }
 
@@ -112,7 +187,7 @@
           const next = list[i + 1];
           const nv = next && next.querySelector("video");
           if (nv && nv.preload === "none") nv.preload = "metadata";
-          if (i >= list.length - 3) appendCycle(); // endless: add another round before the end
+          if (i >= list.length - 3) appendRound(); // endless
           const id = current.dataset.id;
           if (id) history.replaceState(null, "", `/?v=${id}`);
         } else if (e.target === current && e.intersectionRatio < 0.6) {
@@ -122,6 +197,7 @@
     }, { root: feed, threshold: [0, 0.6, 1] });
 
     function setupReel(reel) {
+      applyLang(reel);
       const v = reel.querySelector("video");
       if (v) {
         const bar = reel.querySelector(".progress i");
@@ -136,26 +212,22 @@
       visible.observe(reel);
     }
 
-    function appendCycle() {
+    function appendRound(firstId) {
       const list = reels();
       const lastId = list.length ? list[list.length - 1].dataset.id : null;
-      nextRound(lastId).forEach((id) => {
+      nextRound(lastId, firstId).forEach((id, i) => {
         const r = templates.get(id).cloneNode(true);
-        r.querySelectorAll("video").forEach((v) => { v.preload = "none"; });
+        r.querySelectorAll("video").forEach((v) => { v.preload = !list.length && i === 0 ? "metadata" : "none"; });
         feed.appendChild(r);
         setupReel(r);
       });
     }
 
-    // First round: deep link (/?v=id) goes first, then the fair queue
+    // First rounds: deep link (/?v=id) goes first, then the fair queue
     const wanted = new URLSearchParams(location.search).get("v");
     reels().forEach((r) => r.remove());
-    nextRound(null, wanted).forEach((id, i) => {
-      const r = templates.get(id).cloneNode(true);
-      r.querySelectorAll("video").forEach((v) => { v.preload = i === 0 ? "metadata" : "none"; });
-      feed.appendChild(r);
-      setupReel(r);
-    });
+    appendRound(wanted);
+    appendRound();
     feed.scrollTop = 0;
 
     const go = (dir) => {
@@ -186,14 +258,14 @@
     const title = (reel && reel.querySelector(".reel-title")?.textContent) || document.title;
     const url = reel && reel.dataset.id ? `https://promovote.com/?v=${reel.dataset.id}` : location.href;
     try {
-      if (navigator.share) await navigator.share({ title, text: `${title} on PromoVote`, url });
+      if (navigator.share) await navigator.share({ title, text: `${title} | PromoVote`, url });
       else {
         await navigator.clipboard.writeText(url);
         const label = b.querySelector("span");
         if (label) {
           const old = label.textContent;
           b.classList.add("is-shared");
-          label.textContent = "Link copied";
+          label.textContent = T("link_copied");
           setTimeout(() => { b.classList.remove("is-shared"); label.textContent = old; }, 1600);
         }
       }
@@ -218,10 +290,12 @@
   const perkCodeEl = sheet.querySelector(".perk-code");
   const perkLinkEl = sheet.querySelector(".perk-link");
   const SITE_KEY = "0x4AAAAAAFMH6xbA0dPcxH_-";
+  const MODES = ["join", "vote", "save", "follow", "notify", "perk"];
   let widgetId = null;
   let mode = "join";
   let lastFocus = null;
   let pendingSubmit = false;
+  let doneKey = null;
   const joined = () => store.get("pv_joined") === "1";
 
   const applyPerk = (p) => {
@@ -232,25 +306,24 @@
   };
   try { applyPerk(JSON.parse(store.get("pv_perk_nicheable") || "null")); } catch {}
 
-  const COPY = {
-    join: ["Join PromoVote", "Watching is always free. Join the waitlist to vote, save promos and earn Scout Score when accounts open."],
-    vote: ["Votes are for members", "Watching is free for everyone. Join the waitlist to vote on what will blow up and earn Scout Score when accounts open."],
-    save: ["Save promos with an account", "Join the waitlist and you can save promos to your list when accounts open."],
-    follow: ["Follow creators with an account", "Join the waitlist and you can follow creators and hear about their new promos when accounts open."],
-    notify: ["Get notified at launch", "Leave your email and we'll tell you when this game is out on iOS and Android."],
-    perk: ["Unlock 25% off at Nicheable", "Perks are for members. Join the waitlist with your email to see the code right away."],
-  };
+  function renderTexts() {
+    titleEl.textContent = T(`s_${mode}_t`);
+    textEl.textContent = doneKey ? T(doneKey) : T(`s_${mode}_p`);
+  }
+  window.PV_onLang = () => { if (!sheet.hidden) renderTexts(); };
 
   function renderTurnstile() {
     if (widgetId !== null || !window.turnstile) return;
     widgetId = window.turnstile.render(sheet.querySelector(".sheet-turnstile"), {
-      sitekey: SITE_KEY, theme: "dark", size: "flexible",
+      sitekey: SITE_KEY, theme: "dark", size: "flexible", language: lang,
       callback: () => { if (pendingSubmit) { pendingSubmit = false; form.requestSubmit(); } },
-      "error-callback": () => { pendingSubmit = false; resetSubmit(); msg.textContent = "The human check could not load. Please refresh and try again."; },
+      "error-callback": () => { pendingSubmit = false; resetSubmit(); msg.textContent = T("e_turnstile"); },
     });
   }
 
-  function showDone() {
+  function showDone(key) {
+    doneKey = key;
+    renderTexts();
     form.hidden = true;
     done.hidden = false;
     const isPerk = mode === "perk";
@@ -259,22 +332,13 @@
   }
 
   function openSheet(kind) {
-    mode = kind;
-    const [t, p] = COPY[kind] || COPY.join;
-    titleEl.textContent = t;
-    textEl.textContent = p;
+    mode = MODES.includes(kind) ? kind : "join";
+    doneKey = null;
     msg.textContent = "";
     const hasPerk = Boolean(perkCodeEl.textContent);
-    if (joined() && kind !== "perk") {
-      textEl.textContent = "You're on the waitlist. We'll email you when accounts open.";
-      showDone();
-    } else if (joined() && hasPerk) {
-      textEl.textContent = "Thanks for joining. Here is your perk.";
-      showDone();
-    } else {
-      form.hidden = false;
-      done.hidden = true;
-    }
+    if (joined() && mode !== "perk") showDone("d_already");
+    else if (joined() && hasPerk) showDone("d_thanks_perk");
+    else { renderTexts(); form.hidden = false; done.hidden = true; }
     lastFocus = document.activeElement;
     backdrop.hidden = false;
     sheet.hidden = false;
@@ -308,28 +372,25 @@
 
   function resetSubmit() {
     submitBtn.disabled = false;
-    submitBtn.textContent = "Join the waitlist";
+    submitBtn.textContent = T("f_submit");
   }
 
-  const ERR = {
-    invalid_email: "Please enter a valid email address.",
-    verification_failed: "Quick human check failed. Please try again.",
-  };
+  const ERR = { invalid_email: "e_email", verification_failed: "e_human" };
 
   form.addEventListener("submit", async (e) => {
     e.preventDefault();
     msg.textContent = "";
     const email = form.email.value.trim();
-    if (!email || !form.email.checkValidity()) { msg.textContent = ERR.invalid_email; form.email.focus(); return; }
+    if (!email || !form.email.checkValidity()) { msg.textContent = T("e_email"); form.email.focus(); return; }
     const token = widgetId !== null && window.turnstile ? window.turnstile.getResponse(widgetId) : "";
     submitBtn.disabled = true;
     if (!token) {
       pendingSubmit = true;
-      submitBtn.textContent = "Checking you're human...";
+      submitBtn.textContent = T("f_checking");
       renderTurnstile();
       return;
     }
-    submitBtn.textContent = "Joining...";
+    submitBtn.textContent = T("f_joining");
     try {
       const res = await fetch("/api/waitlist", {
         method: "POST",
@@ -340,20 +401,19 @@
       if (res.ok && data.ok) {
         store.set("pv_joined", "1");
         applyPerk(data.perk);
-        textEl.textContent = mode === "perk" ? "Thanks for joining. Here is your perk." : "Thanks for joining.";
-        showDone();
+        showDone(mode === "perk" ? "d_thanks_perk" : "d_thanks");
         resetSubmit();
         return;
       }
-      msg.textContent = ERR[data.error] || "Something went wrong. Please try again.";
+      msg.textContent = T(ERR[data.error] || "e_generic");
     } catch {
-      msg.textContent = "Network error. Please try again.";
+      msg.textContent = T("e_network");
     }
     if (window.turnstile && widgetId !== null) window.turnstile.reset(widgetId);
     resetSubmit();
   });
 
   sheet.querySelector("[data-copy]").addEventListener("click", async (e) => {
-    try { await navigator.clipboard.writeText(perkCodeEl.textContent); e.target.textContent = "Copied"; } catch { e.target.textContent = "Select and copy"; }
+    try { await navigator.clipboard.writeText(perkCodeEl.textContent); e.target.textContent = T("p_copied"); } catch {}
   });
 })();

@@ -9,8 +9,8 @@
   <meta name="theme-color" content="#0a0a0f">
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://promovote.com/">
-  <meta property="og:title" content="PromoVote | The social media of ads">
-  <meta property="og:description" content="Watch short promos from new creators, indie games and small shops. Vote on what will blow up.">
+  <meta property="og:title" content="PromoVote | Watch new creators, games and shops first">
+  <meta property="og:description" content="A vertical feed of short promos from new creators, indie games and small shops. Watch free, vote on what will blow up and unlock perks from creators.">
   <meta property="og:image" content="https://promovote.com/og.png">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:image" content="https://promovote.com/og.png">
@@ -19,10 +19,11 @@
   <link rel="stylesheet" href="/styles.css">
   <link rel="stylesheet" href="/feed.css">
   <script src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit" async defer></script>
+  <script src="/i18n.js" defer></script>
   <script src="/feed.js" defer></script>
 </head>
 <body class="feed-page">
-  <a class="skip-link" href="#feed">Skip to the feed</a>
+  <a class="skip-link" href="#feed" data-i18n="skip_feed">Skip to the feed</a>
 
   <header class="topbar">
     <a href="/" class="logo" aria-label="PromoVote home">
@@ -30,216 +31,496 @@
       <span>PromoVote</span>
     </a>
     <nav class="topnav" aria-label="Main">
-      <a href="/about" class="topnav-link">How it works</a>
-      <button type="button" class="btn btn-small" data-sheet="join">Join</button>
+      <a href="/about" class="topnav-link" data-i18n="nav_how">How it works</a>
+      <label class="lang-pick"><span class="visually-hidden" data-i18n="lang_label">Language</span>
+        <select class="lang-select" aria-label="Language">
+          <option value="en">EN</option><option value="es">ES</option><option value="tr">TR</option>
+        </select></label>
+      <button type="button" class="btn btn-small" data-sheet="join" data-i18n="nav_join">Join</button>
     </nav>
   </header>
 
   <main id="feed" class="feed" tabindex="-1" aria-label="Promo feed">
 
-    <article class="reel" data-reel data-id="hauling-empire" data-creator="haulingempire" aria-label="Hauling Empire: Truck Tycoon promo">
+    <article class="reel" data-reel data-id="hauling-empire" data-creator="haulingempire" data-lang="en" aria-label="Hauling Empire: Truck Tycoon">
       <div class="reel-bg" style="background-image:url(/media/hauling-empire-poster.jpg)" aria-hidden="true"></div>
       <div class="stage">
-        <video class="reel-video" poster="/media/hauling-empire-poster.jpg" muted loop playsinline preload="metadata" aria-label="Hauling Empire: Truck Tycoon promo video">
+        <video class="reel-video" poster="/media/hauling-empire-poster.jpg" muted loop playsinline preload="metadata" aria-label="Hauling Empire: Truck Tycoon">
           <source src="/media/hauling-empire.mp4" type="video/mp4">
           <source src="/media/hauling-empire.webm" type="video/webm">
         </video>
         <div class="paused-badge" aria-hidden="true"><svg><use href="/icons.svg#i-play"/></svg></div>
         <div class="reel-info">
-          <a class="who" href="/@haulingempire" aria-label="Hauling Empire profile">
+          <a class="who" href="/@haulingempire" aria-label="Hauling Empire">
             <img src="/media/hauling-empire-icon.jpg" width="40" height="40" alt="" class="who-avatar">
             <span>
               <span class="who-name">Hauling Empire</span>
-              <span class="who-kind">Indie game</span>
+              <span class="who-kind" data-ct="kind">Indie game</span>
             </span>
           </a>
-          <h2 class="reel-title">Hauling Empire: Truck Tycoon</h2>
-          <p class="reel-desc">Run a trucking business: pick loads, plan routes and grow one van into a logistics empire. No gems, no energy timers.</p>
-          <div class="reel-tags"><span class="tag-soon">Coming soon to iOS and Android</span></div>
-          <div class="reel-cta">
-            <button type="button" class="btn btn-small" data-sheet="notify" data-title="Hauling Empire">Notify me at launch</button>
-          </div>
-          <p class="reel-disclosure">Made by the PromoVote founder</p>
+          <h2 class="reel-title" data-t="title">Hauling Empire: Truck Tycoon</h2>
+          <p class="reel-desc" data-t="desc">Run a trucking business: pick loads, plan routes and grow one van into a logistics empire. No gems, no energy timers.</p>
+          <div class="reel-tags"><span class="tag-soon" data-i18n="tag_soon">Coming soon to iOS and Android</span><span class="tag-lang" data-lang-chip hidden>English</span></div>
+          <div class="reel-cta"><button type="button" class="btn btn-small" data-sheet="notify" data-i18n="cta_notify">Notify me at launch</button></div>
+          <p class="reel-disclosure" data-i18n="disc_founder_made">Made by the PromoVote founder</p>
         </div>
         <div class="progress" aria-hidden="true"><i></i></div>
       </div>
-      <div class="rail" aria-label="Actions">
-        <button type="button" class="rail-btn rail-up" data-sheet="vote"><svg><use href="/icons.svg#i-fire"/></svg><span>Will blow up</span></button>
-        <button type="button" class="rail-btn" data-sheet="vote"><svg><use href="/icons.svg#i-thumbs-down"/></svg><span>Not for me</span></button>
-        <button type="button" class="rail-btn" data-sheet="save"><svg><use href="/icons.svg#i-bookmark-simple"/></svg><span>Save</span></button>
-        <button type="button" class="rail-btn" data-share><svg><use href="/icons.svg#i-share-fat"/></svg><span>Share</span></button>
+      <div class="rail">
+        <button type="button" class="rail-btn rail-up" data-sheet="vote"><svg><use href="/icons.svg#i-fire"/></svg><span data-i18n="rail_up">Will blow up</span></button>
+        <button type="button" class="rail-btn" data-sheet="vote"><svg><use href="/icons.svg#i-thumbs-down"/></svg><span data-i18n="rail_down">Not for me</span></button>
+        <button type="button" class="rail-btn" data-sheet="save"><svg><use href="/icons.svg#i-bookmark-simple"/></svg><span data-i18n="rail_save">Save</span></button>
+        <button type="button" class="rail-btn" data-share><svg><use href="/icons.svg#i-share-fat"/></svg><span data-i18n="rail_share">Share</span></button>
       </div>
     </article>
 
-    <article class="reel" data-reel data-id="nicheable-rental-tax" data-creator="nicheable" aria-label="Nicheable short-term rental tax tracker promo">
-      <div class="reel-bg" style="background-image:url(/media/nicheable-rental-tax-poster.jpg)" aria-hidden="true"></div>
-      <div class="stage">
-        <video class="reel-video" poster="/media/nicheable-rental-tax-poster.jpg" muted loop playsinline preload="none" aria-label="Short-term rental tax tracker promo video">
-          <source src="/media/nicheable-rental-tax.mp4" type="video/mp4">
-          <source src="/media/nicheable-rental-tax.webm" type="video/webm">
-        </video>
-        <div class="paused-badge" aria-hidden="true"><svg><use href="/icons.svg#i-play"/></svg></div>
-        <div class="reel-info">
-          <a class="who" href="/@nicheable" aria-label="Nicheable profile">
-            <span class="who-avatar who-mono" aria-hidden="true">N</span>
-            <span>
-              <span class="who-name">Nicheable</span>
-              <span class="who-kind">Etsy shop</span>
-            </span>
-          </a>
-          <h2 class="reel-title">Short-term rental tax tracker</h2>
-          <p class="reel-desc">A spreadsheet for Airbnb hosts that sorts every expense into tax categories and keeps platform fees apart.</p>
-          <div class="reel-tags"><button type="button" class="tag-perk" data-sheet="perk"><svg><use href="/icons.svg#i-gift"/></svg>25% off the whole shop</button></div>
-          <div class="reel-cta">
-            <a class="btn btn-small btn-ghost" href="https://www.etsy.com/listing/4556599214/short-term-rental-tax-spreadsheet-airbnb" target="_blank" rel="sponsored noopener">View on Etsy <svg class="ext"><use href="/icons.svg#i-arrow-up-right"/></svg></a>
-          </div>
-          <p class="reel-disclosure">Shop by the PromoVote founder</p>
-        </div>
-        <div class="progress" aria-hidden="true"><i></i></div>
-      </div>
-      <div class="rail" aria-label="Actions">
-        <button type="button" class="rail-btn rail-up" data-sheet="vote"><svg><use href="/icons.svg#i-fire"/></svg><span>Will blow up</span></button>
-        <button type="button" class="rail-btn" data-sheet="vote"><svg><use href="/icons.svg#i-thumbs-down"/></svg><span>Not for me</span></button>
-        <button type="button" class="rail-btn" data-sheet="save"><svg><use href="/icons.svg#i-bookmark-simple"/></svg><span>Save</span></button>
-        <button type="button" class="rail-btn" data-share><svg><use href="/icons.svg#i-share-fat"/></svg><span>Share</span></button>
-      </div>
-    </article>
-
-    <article class="reel" data-reel data-id="nicheable-grade-tracker" data-creator="nicheable" aria-label="Nicheable college grade tracker promo">
-      <div class="reel-bg" style="background-image:url(/media/nicheable-grade-tracker-poster.jpg)" aria-hidden="true"></div>
-      <div class="stage">
-        <video class="reel-video" poster="/media/nicheable-grade-tracker-poster.jpg" muted loop playsinline preload="none" aria-label="College grade tracker promo video">
-          <source src="/media/nicheable-grade-tracker.mp4" type="video/mp4">
-          <source src="/media/nicheable-grade-tracker.webm" type="video/webm">
-        </video>
-        <div class="paused-badge" aria-hidden="true"><svg><use href="/icons.svg#i-play"/></svg></div>
-        <div class="reel-info">
-          <a class="who" href="/@nicheable" aria-label="Nicheable profile">
-            <span class="who-avatar who-mono" aria-hidden="true">N</span>
-            <span>
-              <span class="who-name">Nicheable</span>
-              <span class="who-kind">Etsy shop</span>
-            </span>
-          </a>
-          <h2 class="reel-title">College grade tracker</h2>
-          <p class="reel-desc">See your current grade, your GPA and exactly what you need on the final, for any class.</p>
-          <div class="reel-tags"><button type="button" class="tag-perk" data-sheet="perk"><svg><use href="/icons.svg#i-gift"/></svg>25% off the whole shop</button></div>
-          <div class="reel-cta">
-            <a class="btn btn-small btn-ghost" href="https://www.etsy.com/listing/4557342957/college-grade-tracker-spreadsheet-final" target="_blank" rel="sponsored noopener">View on Etsy <svg class="ext"><use href="/icons.svg#i-arrow-up-right"/></svg></a>
-          </div>
-          <p class="reel-disclosure">Shop by the PromoVote founder</p>
-        </div>
-        <div class="progress" aria-hidden="true"><i></i></div>
-      </div>
-      <div class="rail" aria-label="Actions">
-        <button type="button" class="rail-btn rail-up" data-sheet="vote"><svg><use href="/icons.svg#i-fire"/></svg><span>Will blow up</span></button>
-        <button type="button" class="rail-btn" data-sheet="vote"><svg><use href="/icons.svg#i-thumbs-down"/></svg><span>Not for me</span></button>
-        <button type="button" class="rail-btn" data-sheet="save"><svg><use href="/icons.svg#i-bookmark-simple"/></svg><span>Save</span></button>
-        <button type="button" class="rail-btn" data-share><svg><use href="/icons.svg#i-share-fat"/></svg><span>Share</span></button>
-      </div>
-    </article>
-
-    <article class="reel" data-reel data-id="hauling-empire-ipad" data-creator="haulingempire" aria-label="Hauling Empire on iPad promo">
+    <article class="reel" data-reel data-id="hauling-empire-ipad" data-creator="haulingempire" data-lang="en" aria-label="Hauling Empire on a bigger screen">
       <div class="reel-bg" style="background-image:url(/media/hauling-empire-ipad-poster.jpg)" aria-hidden="true"></div>
       <div class="stage">
-        <video class="reel-video" poster="/media/hauling-empire-ipad-poster.jpg" muted loop playsinline preload="none" aria-label="Hauling Empire on iPad promo video">
+        <video class="reel-video" poster="/media/hauling-empire-ipad-poster.jpg" muted loop playsinline preload="none" aria-label="Hauling Empire on a bigger screen">
           <source src="/media/hauling-empire-ipad.mp4" type="video/mp4">
           <source src="/media/hauling-empire-ipad.webm" type="video/webm">
         </video>
         <div class="paused-badge" aria-hidden="true"><svg><use href="/icons.svg#i-play"/></svg></div>
         <div class="reel-info">
-          <a class="who" href="/@haulingempire" aria-label="Hauling Empire profile">
+          <a class="who" href="/@haulingempire" aria-label="Hauling Empire">
             <img src="/media/hauling-empire-icon.jpg" width="40" height="40" alt="" class="who-avatar">
             <span>
               <span class="who-name">Hauling Empire</span>
-              <span class="who-kind">Indie game</span>
+              <span class="who-kind" data-ct="kind">Indie game</span>
             </span>
           </a>
-          <h2 class="reel-title">Hauling Empire on a bigger screen</h2>
-          <p class="reel-desc">Haul across the world, hire staff and found your company. Built for phones and tablets.</p>
-          <div class="reel-tags"><span class="tag-soon">Coming soon to iOS and Android</span></div>
-          <div class="reel-cta">
-            <button type="button" class="btn btn-small" data-sheet="notify" data-title="Hauling Empire">Notify me at launch</button>
-          </div>
-          <p class="reel-disclosure">Made by the PromoVote founder</p>
+          <h2 class="reel-title" data-t="title">Hauling Empire on a bigger screen</h2>
+          <p class="reel-desc" data-t="desc">Haul across the world, hire staff and found your company. Built for phones and tablets.</p>
+          <div class="reel-tags"><span class="tag-soon" data-i18n="tag_soon">Coming soon to iOS and Android</span><span class="tag-lang" data-lang-chip hidden>English</span></div>
+          <div class="reel-cta"><button type="button" class="btn btn-small" data-sheet="notify" data-i18n="cta_notify">Notify me at launch</button></div>
+          <p class="reel-disclosure" data-i18n="disc_founder_made">Made by the PromoVote founder</p>
         </div>
         <div class="progress" aria-hidden="true"><i></i></div>
       </div>
-      <div class="rail" aria-label="Actions">
-        <button type="button" class="rail-btn rail-up" data-sheet="vote"><svg><use href="/icons.svg#i-fire"/></svg><span>Will blow up</span></button>
-        <button type="button" class="rail-btn" data-sheet="vote"><svg><use href="/icons.svg#i-thumbs-down"/></svg><span>Not for me</span></button>
-        <button type="button" class="rail-btn" data-sheet="save"><svg><use href="/icons.svg#i-bookmark-simple"/></svg><span>Save</span></button>
-        <button type="button" class="rail-btn" data-share><svg><use href="/icons.svg#i-share-fat"/></svg><span>Share</span></button>
+      <div class="rail">
+        <button type="button" class="rail-btn rail-up" data-sheet="vote"><svg><use href="/icons.svg#i-fire"/></svg><span data-i18n="rail_up">Will blow up</span></button>
+        <button type="button" class="rail-btn" data-sheet="vote"><svg><use href="/icons.svg#i-thumbs-down"/></svg><span data-i18n="rail_down">Not for me</span></button>
+        <button type="button" class="rail-btn" data-sheet="save"><svg><use href="/icons.svg#i-bookmark-simple"/></svg><span data-i18n="rail_save">Save</span></button>
+        <button type="button" class="rail-btn" data-share><svg><use href="/icons.svg#i-share-fat"/></svg><span data-i18n="rail_share">Share</span></button>
       </div>
     </article>
-    <article class="reel" data-reel data-id="nicheable-eink-planner" data-creator="nicheable" aria-label="Nicheable minimalist E-Ink planner promo">
+
+    <article class="reel" data-reel data-id="hauling-empire-es" data-creator="haulingempire" data-lang="es" aria-label="Hauling Empire (Spanish trailer)">
+      <div class="reel-bg" style="background-image:url(/media/hauling-empire-es-poster.jpg)" aria-hidden="true"></div>
+      <div class="stage">
+        <video class="reel-video" poster="/media/hauling-empire-es-poster.jpg" muted loop playsinline preload="none" aria-label="Hauling Empire (Spanish trailer)">
+          <source src="/media/hauling-empire-es.mp4" type="video/mp4">
+          <source src="/media/hauling-empire-es.webm" type="video/webm">
+        </video>
+        <div class="paused-badge" aria-hidden="true"><svg><use href="/icons.svg#i-play"/></svg></div>
+        <div class="reel-info">
+          <a class="who" href="/@haulingempire" aria-label="Hauling Empire">
+            <img src="/media/hauling-empire-icon.jpg" width="40" height="40" alt="" class="who-avatar">
+            <span>
+              <span class="who-name">Hauling Empire</span>
+              <span class="who-kind" data-ct="kind">Indie game</span>
+            </span>
+          </a>
+          <h2 class="reel-title" data-t="title">Hauling Empire (Spanish trailer)</h2>
+          <p class="reel-desc" data-t="desc">The official trailer with Spanish captions.</p>
+          <div class="reel-tags"><span class="tag-soon" data-i18n="tag_soon">Coming soon to iOS and Android</span><span class="tag-lang" data-lang-chip hidden>Español</span></div>
+          <div class="reel-cta"><button type="button" class="btn btn-small" data-sheet="notify" data-i18n="cta_notify">Notify me at launch</button></div>
+          <p class="reel-disclosure" data-i18n="disc_founder_made">Made by the PromoVote founder</p>
+        </div>
+        <div class="progress" aria-hidden="true"><i></i></div>
+      </div>
+      <div class="rail">
+        <button type="button" class="rail-btn rail-up" data-sheet="vote"><svg><use href="/icons.svg#i-fire"/></svg><span data-i18n="rail_up">Will blow up</span></button>
+        <button type="button" class="rail-btn" data-sheet="vote"><svg><use href="/icons.svg#i-thumbs-down"/></svg><span data-i18n="rail_down">Not for me</span></button>
+        <button type="button" class="rail-btn" data-sheet="save"><svg><use href="/icons.svg#i-bookmark-simple"/></svg><span data-i18n="rail_save">Save</span></button>
+        <button type="button" class="rail-btn" data-share><svg><use href="/icons.svg#i-share-fat"/></svg><span data-i18n="rail_share">Share</span></button>
+      </div>
+    </article>
+
+    <article class="reel" data-reel data-id="hauling-empire-tr" data-creator="haulingempire" data-lang="tr" aria-label="Hauling Empire (Turkish trailer)">
+      <div class="reel-bg" style="background-image:url(/media/hauling-empire-tr-poster.jpg)" aria-hidden="true"></div>
+      <div class="stage">
+        <video class="reel-video" poster="/media/hauling-empire-tr-poster.jpg" muted loop playsinline preload="none" aria-label="Hauling Empire (Turkish trailer)">
+          <source src="/media/hauling-empire-tr.mp4" type="video/mp4">
+          <source src="/media/hauling-empire-tr.webm" type="video/webm">
+        </video>
+        <div class="paused-badge" aria-hidden="true"><svg><use href="/icons.svg#i-play"/></svg></div>
+        <div class="reel-info">
+          <a class="who" href="/@haulingempire" aria-label="Hauling Empire">
+            <img src="/media/hauling-empire-icon.jpg" width="40" height="40" alt="" class="who-avatar">
+            <span>
+              <span class="who-name">Hauling Empire</span>
+              <span class="who-kind" data-ct="kind">Indie game</span>
+            </span>
+          </a>
+          <h2 class="reel-title" data-t="title">Hauling Empire (Turkish trailer)</h2>
+          <p class="reel-desc" data-t="desc">The official trailer with Turkish captions.</p>
+          <div class="reel-tags"><span class="tag-soon" data-i18n="tag_soon">Coming soon to iOS and Android</span><span class="tag-lang" data-lang-chip hidden>Türkçe</span></div>
+          <div class="reel-cta"><button type="button" class="btn btn-small" data-sheet="notify" data-i18n="cta_notify">Notify me at launch</button></div>
+          <p class="reel-disclosure" data-i18n="disc_founder_made">Made by the PromoVote founder</p>
+        </div>
+        <div class="progress" aria-hidden="true"><i></i></div>
+      </div>
+      <div class="rail">
+        <button type="button" class="rail-btn rail-up" data-sheet="vote"><svg><use href="/icons.svg#i-fire"/></svg><span data-i18n="rail_up">Will blow up</span></button>
+        <button type="button" class="rail-btn" data-sheet="vote"><svg><use href="/icons.svg#i-thumbs-down"/></svg><span data-i18n="rail_down">Not for me</span></button>
+        <button type="button" class="rail-btn" data-sheet="save"><svg><use href="/icons.svg#i-bookmark-simple"/></svg><span data-i18n="rail_save">Save</span></button>
+        <button type="button" class="rail-btn" data-share><svg><use href="/icons.svg#i-share-fat"/></svg><span data-i18n="rail_share">Share</span></button>
+      </div>
+    </article>
+
+    <article class="reel" data-reel data-id="hauling-empire-tr-promo" data-creator="haulingempire" data-lang="tr" aria-label="First route: Istanbul to Ankara">
+      <div class="reel-bg" style="background-image:url(/media/hauling-empire-tr-promo-poster.jpg)" aria-hidden="true"></div>
+      <div class="stage">
+        <video class="reel-video" poster="/media/hauling-empire-tr-promo-poster.jpg" muted loop playsinline preload="none" aria-label="First route: Istanbul to Ankara">
+          <source src="/media/hauling-empire-tr-promo.mp4" type="video/mp4">
+          <source src="/media/hauling-empire-tr-promo.webm" type="video/webm">
+        </video>
+        <div class="paused-badge" aria-hidden="true"><svg><use href="/icons.svg#i-play"/></svg></div>
+        <div class="reel-info">
+          <a class="who" href="/@haulingempire" aria-label="Hauling Empire">
+            <img src="/media/hauling-empire-icon.jpg" width="40" height="40" alt="" class="who-avatar">
+            <span>
+              <span class="who-name">Hauling Empire</span>
+              <span class="who-kind" data-ct="kind">Indie game</span>
+            </span>
+          </a>
+          <h2 class="reel-title" data-t="title">First route: Istanbul to Ankara</h2>
+          <p class="reel-desc" data-t="desc">Gameplay from the Turkish version: your first delivery, your first truck and your own company.</p>
+          <div class="reel-tags"><span class="tag-soon" data-i18n="tag_soon">Coming soon to iOS and Android</span><span class="tag-lang" data-lang-chip hidden>Türkçe</span></div>
+          <div class="reel-cta"><button type="button" class="btn btn-small" data-sheet="notify" data-i18n="cta_notify">Notify me at launch</button></div>
+          <p class="reel-disclosure" data-i18n="disc_founder_made">Made by the PromoVote founder</p>
+        </div>
+        <div class="progress" aria-hidden="true"><i></i></div>
+      </div>
+      <div class="rail">
+        <button type="button" class="rail-btn rail-up" data-sheet="vote"><svg><use href="/icons.svg#i-fire"/></svg><span data-i18n="rail_up">Will blow up</span></button>
+        <button type="button" class="rail-btn" data-sheet="vote"><svg><use href="/icons.svg#i-thumbs-down"/></svg><span data-i18n="rail_down">Not for me</span></button>
+        <button type="button" class="rail-btn" data-sheet="save"><svg><use href="/icons.svg#i-bookmark-simple"/></svg><span data-i18n="rail_save">Save</span></button>
+        <button type="button" class="rail-btn" data-share><svg><use href="/icons.svg#i-share-fat"/></svg><span data-i18n="rail_share">Share</span></button>
+      </div>
+    </article>
+
+    <article class="reel" data-reel data-id="hauling-empire-border-caucasus" data-creator="haulingempire" data-lang="tr" aria-label="Waiting at the Sarp border gate">
+      <div class="reel-bg" style="background-image:url(/media/hauling-empire-border-caucasus-poster.jpg)" aria-hidden="true"></div>
+      <div class="stage">
+        <video class="reel-video" poster="/media/hauling-empire-border-caucasus-poster.jpg" muted loop playsinline preload="none" aria-label="Waiting at the Sarp border gate">
+          <source src="/media/hauling-empire-border-caucasus.mp4" type="video/mp4">
+          <source src="/media/hauling-empire-border-caucasus.webm" type="video/webm">
+        </video>
+        <div class="paused-badge" aria-hidden="true"><svg><use href="/icons.svg#i-play"/></svg></div>
+        <div class="reel-info">
+          <a class="who" href="/@haulingempire" aria-label="Hauling Empire">
+            <img src="/media/hauling-empire-icon.jpg" width="40" height="40" alt="" class="who-avatar">
+            <span>
+              <span class="who-name">Hauling Empire</span>
+              <span class="who-kind" data-ct="kind">Indie game</span>
+            </span>
+          </a>
+          <h2 class="reel-title" data-t="title">Waiting at the Sarp border gate</h2>
+          <p class="reel-desc" data-t="desc">Customs queues are part of the job. Get your permits ready and plan around the wait.</p>
+          <div class="reel-tags"><span class="tag-soon" data-i18n="tag_soon">Coming soon to iOS and Android</span><span class="tag-lang" data-lang-chip hidden>Türkçe</span></div>
+          <div class="reel-cta"><button type="button" class="btn btn-small" data-sheet="notify" data-i18n="cta_notify">Notify me at launch</button></div>
+          <p class="reel-disclosure" data-i18n="disc_founder_made">Made by the PromoVote founder</p>
+        </div>
+        <div class="progress" aria-hidden="true"><i></i></div>
+      </div>
+      <div class="rail">
+        <button type="button" class="rail-btn rail-up" data-sheet="vote"><svg><use href="/icons.svg#i-fire"/></svg><span data-i18n="rail_up">Will blow up</span></button>
+        <button type="button" class="rail-btn" data-sheet="vote"><svg><use href="/icons.svg#i-thumbs-down"/></svg><span data-i18n="rail_down">Not for me</span></button>
+        <button type="button" class="rail-btn" data-sheet="save"><svg><use href="/icons.svg#i-bookmark-simple"/></svg><span data-i18n="rail_save">Save</span></button>
+        <button type="button" class="rail-btn" data-share><svg><use href="/icons.svg#i-share-fat"/></svg><span data-i18n="rail_share">Share</span></button>
+      </div>
+    </article>
+
+    <article class="reel" data-reel data-id="hauling-empire-border-night" data-creator="haulingempire" data-lang="tr" aria-label="Kapıkule at night">
+      <div class="reel-bg" style="background-image:url(/media/hauling-empire-border-night-poster.jpg)" aria-hidden="true"></div>
+      <div class="stage">
+        <video class="reel-video" poster="/media/hauling-empire-border-night-poster.jpg" muted loop playsinline preload="none" aria-label="Kapıkule at night">
+          <source src="/media/hauling-empire-border-night.mp4" type="video/mp4">
+          <source src="/media/hauling-empire-border-night.webm" type="video/webm">
+        </video>
+        <div class="paused-badge" aria-hidden="true"><svg><use href="/icons.svg#i-play"/></svg></div>
+        <div class="reel-info">
+          <a class="who" href="/@haulingempire" aria-label="Hauling Empire">
+            <img src="/media/hauling-empire-icon.jpg" width="40" height="40" alt="" class="who-avatar">
+            <span>
+              <span class="who-name">Hauling Empire</span>
+              <span class="who-kind" data-ct="kind">Indie game</span>
+            </span>
+          </a>
+          <h2 class="reel-title" data-t="title">Kapıkule at night</h2>
+          <p class="reel-desc" data-t="desc">Timing matters. Some border gates move faster after dark.</p>
+          <div class="reel-tags"><span class="tag-soon" data-i18n="tag_soon">Coming soon to iOS and Android</span><span class="tag-lang" data-lang-chip hidden>Türkçe</span></div>
+          <div class="reel-cta"><button type="button" class="btn btn-small" data-sheet="notify" data-i18n="cta_notify">Notify me at launch</button></div>
+          <p class="reel-disclosure" data-i18n="disc_founder_made">Made by the PromoVote founder</p>
+        </div>
+        <div class="progress" aria-hidden="true"><i></i></div>
+      </div>
+      <div class="rail">
+        <button type="button" class="rail-btn rail-up" data-sheet="vote"><svg><use href="/icons.svg#i-fire"/></svg><span data-i18n="rail_up">Will blow up</span></button>
+        <button type="button" class="rail-btn" data-sheet="vote"><svg><use href="/icons.svg#i-thumbs-down"/></svg><span data-i18n="rail_down">Not for me</span></button>
+        <button type="button" class="rail-btn" data-sheet="save"><svg><use href="/icons.svg#i-bookmark-simple"/></svg><span data-i18n="rail_save">Save</span></button>
+        <button type="button" class="rail-btn" data-share><svg><use href="/icons.svg#i-share-fat"/></svg><span data-i18n="rail_share">Share</span></button>
+      </div>
+    </article>
+
+    <article class="reel" data-reel data-id="hauling-empire-depot-day" data-creator="haulingempire" data-lang="tr" aria-label="Your first depot in Istanbul">
+      <div class="reel-bg" style="background-image:url(/media/hauling-empire-depot-day-poster.jpg)" aria-hidden="true"></div>
+      <div class="stage">
+        <video class="reel-video" poster="/media/hauling-empire-depot-day-poster.jpg" muted loop playsinline preload="none" aria-label="Your first depot in Istanbul">
+          <source src="/media/hauling-empire-depot-day.mp4" type="video/mp4">
+          <source src="/media/hauling-empire-depot-day.webm" type="video/webm">
+        </video>
+        <div class="paused-badge" aria-hidden="true"><svg><use href="/icons.svg#i-play"/></svg></div>
+        <div class="reel-info">
+          <a class="who" href="/@haulingempire" aria-label="Hauling Empire">
+            <img src="/media/hauling-empire-icon.jpg" width="40" height="40" alt="" class="who-avatar">
+            <span>
+              <span class="who-name">Hauling Empire</span>
+              <span class="who-kind" data-ct="kind">Indie game</span>
+            </span>
+          </a>
+          <h2 class="reel-title" data-t="title">Your first depot in Istanbul</h2>
+          <p class="reel-desc" data-t="desc">Rent a depot, park ten trucks and upgrade as your fleet grows.</p>
+          <div class="reel-tags"><span class="tag-soon" data-i18n="tag_soon">Coming soon to iOS and Android</span><span class="tag-lang" data-lang-chip hidden>Türkçe</span></div>
+          <div class="reel-cta"><button type="button" class="btn btn-small" data-sheet="notify" data-i18n="cta_notify">Notify me at launch</button></div>
+          <p class="reel-disclosure" data-i18n="disc_founder_made">Made by the PromoVote founder</p>
+        </div>
+        <div class="progress" aria-hidden="true"><i></i></div>
+      </div>
+      <div class="rail">
+        <button type="button" class="rail-btn rail-up" data-sheet="vote"><svg><use href="/icons.svg#i-fire"/></svg><span data-i18n="rail_up">Will blow up</span></button>
+        <button type="button" class="rail-btn" data-sheet="vote"><svg><use href="/icons.svg#i-thumbs-down"/></svg><span data-i18n="rail_down">Not for me</span></button>
+        <button type="button" class="rail-btn" data-sheet="save"><svg><use href="/icons.svg#i-bookmark-simple"/></svg><span data-i18n="rail_save">Save</span></button>
+        <button type="button" class="rail-btn" data-share><svg><use href="/icons.svg#i-share-fat"/></svg><span data-i18n="rail_share">Share</span></button>
+      </div>
+    </article>
+
+    <article class="reel" data-reel data-id="hauling-empire-depot-night" data-creator="haulingempire" data-lang="tr" aria-label="The depot never sleeps">
+      <div class="reel-bg" style="background-image:url(/media/hauling-empire-depot-night-poster.jpg)" aria-hidden="true"></div>
+      <div class="stage">
+        <video class="reel-video" poster="/media/hauling-empire-depot-night-poster.jpg" muted loop playsinline preload="none" aria-label="The depot never sleeps">
+          <source src="/media/hauling-empire-depot-night.mp4" type="video/mp4">
+          <source src="/media/hauling-empire-depot-night.webm" type="video/webm">
+        </video>
+        <div class="paused-badge" aria-hidden="true"><svg><use href="/icons.svg#i-play"/></svg></div>
+        <div class="reel-info">
+          <a class="who" href="/@haulingempire" aria-label="Hauling Empire">
+            <img src="/media/hauling-empire-icon.jpg" width="40" height="40" alt="" class="who-avatar">
+            <span>
+              <span class="who-name">Hauling Empire</span>
+              <span class="who-kind" data-ct="kind">Indie game</span>
+            </span>
+          </a>
+          <h2 class="reel-title" data-t="title">The depot never sleeps</h2>
+          <p class="reel-desc" data-t="desc">More capacity means more trucks on the road. Upgrade when you are ready.</p>
+          <div class="reel-tags"><span class="tag-soon" data-i18n="tag_soon">Coming soon to iOS and Android</span><span class="tag-lang" data-lang-chip hidden>Türkçe</span></div>
+          <div class="reel-cta"><button type="button" class="btn btn-small" data-sheet="notify" data-i18n="cta_notify">Notify me at launch</button></div>
+          <p class="reel-disclosure" data-i18n="disc_founder_made">Made by the PromoVote founder</p>
+        </div>
+        <div class="progress" aria-hidden="true"><i></i></div>
+      </div>
+      <div class="rail">
+        <button type="button" class="rail-btn rail-up" data-sheet="vote"><svg><use href="/icons.svg#i-fire"/></svg><span data-i18n="rail_up">Will blow up</span></button>
+        <button type="button" class="rail-btn" data-sheet="vote"><svg><use href="/icons.svg#i-thumbs-down"/></svg><span data-i18n="rail_down">Not for me</span></button>
+        <button type="button" class="rail-btn" data-sheet="save"><svg><use href="/icons.svg#i-bookmark-simple"/></svg><span data-i18n="rail_save">Save</span></button>
+        <button type="button" class="rail-btn" data-share><svg><use href="/icons.svg#i-share-fat"/></svg><span data-i18n="rail_share">Share</span></button>
+      </div>
+    </article>
+
+    <article class="reel" data-reel data-id="hauling-empire-deliveries" data-creator="haulingempire" data-lang="tr" aria-label="On time or late, every delivery counts">
+      <div class="reel-bg" style="background-image:url(/media/hauling-empire-deliveries-poster.jpg)" aria-hidden="true"></div>
+      <div class="stage">
+        <video class="reel-video" poster="/media/hauling-empire-deliveries-poster.jpg" muted loop playsinline preload="none" aria-label="On time or late, every delivery counts">
+          <source src="/media/hauling-empire-deliveries.mp4" type="video/mp4">
+          <source src="/media/hauling-empire-deliveries.webm" type="video/webm">
+        </video>
+        <div class="paused-badge" aria-hidden="true"><svg><use href="/icons.svg#i-play"/></svg></div>
+        <div class="reel-info">
+          <a class="who" href="/@haulingempire" aria-label="Hauling Empire">
+            <img src="/media/hauling-empire-icon.jpg" width="40" height="40" alt="" class="who-avatar">
+            <span>
+              <span class="who-name">Hauling Empire</span>
+              <span class="who-kind" data-ct="kind">Indie game</span>
+            </span>
+          </a>
+          <h2 class="reel-title" data-t="title">On time or late, every delivery counts</h2>
+          <p class="reel-desc" data-t="desc">Freight pay, fuel, tolls and late penalties all decide your profit.</p>
+          <div class="reel-tags"><span class="tag-soon" data-i18n="tag_soon">Coming soon to iOS and Android</span><span class="tag-lang" data-lang-chip hidden>Türkçe</span></div>
+          <div class="reel-cta"><button type="button" class="btn btn-small" data-sheet="notify" data-i18n="cta_notify">Notify me at launch</button></div>
+          <p class="reel-disclosure" data-i18n="disc_founder_made">Made by the PromoVote founder</p>
+        </div>
+        <div class="progress" aria-hidden="true"><i></i></div>
+      </div>
+      <div class="rail">
+        <button type="button" class="rail-btn rail-up" data-sheet="vote"><svg><use href="/icons.svg#i-fire"/></svg><span data-i18n="rail_up">Will blow up</span></button>
+        <button type="button" class="rail-btn" data-sheet="vote"><svg><use href="/icons.svg#i-thumbs-down"/></svg><span data-i18n="rail_down">Not for me</span></button>
+        <button type="button" class="rail-btn" data-sheet="save"><svg><use href="/icons.svg#i-bookmark-simple"/></svg><span data-i18n="rail_save">Save</span></button>
+        <button type="button" class="rail-btn" data-share><svg><use href="/icons.svg#i-share-fat"/></svg><span data-i18n="rail_share">Share</span></button>
+      </div>
+    </article>
+
+    <article class="reel" data-reel data-id="hauling-empire-first-truck" data-creator="haulingempire" data-lang="tr" aria-label="First truck, first route">
+      <div class="reel-bg" style="background-image:url(/media/hauling-empire-first-truck-poster.jpg)" aria-hidden="true"></div>
+      <div class="stage">
+        <video class="reel-video" poster="/media/hauling-empire-first-truck-poster.jpg" muted loop playsinline preload="none" aria-label="First truck, first route">
+          <source src="/media/hauling-empire-first-truck.mp4" type="video/mp4">
+          <source src="/media/hauling-empire-first-truck.webm" type="video/webm">
+        </video>
+        <div class="paused-badge" aria-hidden="true"><svg><use href="/icons.svg#i-play"/></svg></div>
+        <div class="reel-info">
+          <a class="who" href="/@haulingempire" aria-label="Hauling Empire">
+            <img src="/media/hauling-empire-icon.jpg" width="40" height="40" alt="" class="who-avatar">
+            <span>
+              <span class="who-name">Hauling Empire</span>
+              <span class="who-kind" data-ct="kind">Indie game</span>
+            </span>
+          </a>
+          <h2 class="reel-title" data-t="title">First truck, first route</h2>
+          <p class="reel-desc" data-t="desc">Get the keys, hit the road and level up your company.</p>
+          <div class="reel-tags"><span class="tag-soon" data-i18n="tag_soon">Coming soon to iOS and Android</span><span class="tag-lang" data-lang-chip hidden>Türkçe</span></div>
+          <div class="reel-cta"><button type="button" class="btn btn-small" data-sheet="notify" data-i18n="cta_notify">Notify me at launch</button></div>
+          <p class="reel-disclosure" data-i18n="disc_founder_made">Made by the PromoVote founder</p>
+        </div>
+        <div class="progress" aria-hidden="true"><i></i></div>
+      </div>
+      <div class="rail">
+        <button type="button" class="rail-btn rail-up" data-sheet="vote"><svg><use href="/icons.svg#i-fire"/></svg><span data-i18n="rail_up">Will blow up</span></button>
+        <button type="button" class="rail-btn" data-sheet="vote"><svg><use href="/icons.svg#i-thumbs-down"/></svg><span data-i18n="rail_down">Not for me</span></button>
+        <button type="button" class="rail-btn" data-sheet="save"><svg><use href="/icons.svg#i-bookmark-simple"/></svg><span data-i18n="rail_save">Save</span></button>
+        <button type="button" class="rail-btn" data-share><svg><use href="/icons.svg#i-share-fat"/></svg><span data-i18n="rail_share">Share</span></button>
+      </div>
+    </article>
+
+    <article class="reel" data-reel data-id="nicheable-rental-tax" data-creator="nicheable" data-lang="en" aria-label="Short-term rental tax tracker">
+      <div class="reel-bg" style="background-image:url(/media/nicheable-rental-tax-poster.jpg)" aria-hidden="true"></div>
+      <div class="stage">
+        <video class="reel-video" poster="/media/nicheable-rental-tax-poster.jpg" muted loop playsinline preload="none" aria-label="Short-term rental tax tracker">
+          <source src="/media/nicheable-rental-tax.mp4" type="video/mp4">
+          <source src="/media/nicheable-rental-tax.webm" type="video/webm">
+        </video>
+        <div class="paused-badge" aria-hidden="true"><svg><use href="/icons.svg#i-play"/></svg></div>
+        <div class="reel-info">
+          <a class="who" href="/@nicheable" aria-label="Nicheable">
+            <span class="who-avatar who-mono" aria-hidden="true">N</span>
+            <span>
+              <span class="who-name">Nicheable</span>
+              <span class="who-kind" data-ct="kind">Etsy shop</span>
+            </span>
+          </a>
+          <h2 class="reel-title" data-t="title">Short-term rental tax tracker</h2>
+          <p class="reel-desc" data-t="desc">A spreadsheet for Airbnb hosts that sorts every expense into tax categories and keeps platform fees apart.</p>
+          <div class="reel-tags"><button type="button" class="tag-perk" data-sheet="perk"><svg><use href="/icons.svg#i-gift"/></svg><span data-i18n="perk_tag">25% off the whole shop</span></button><span class="tag-lang" data-lang-chip hidden>English</span></div>
+          <div class="reel-cta"><a class="btn btn-small btn-ghost" href="https://www.etsy.com/listing/4556599214/short-term-rental-tax-spreadsheet-airbnb" target="_blank" rel="sponsored noopener"><span data-i18n="cta_etsy">View on Etsy</span> <svg class="ext"><use href="/icons.svg#i-arrow-up-right"/></svg></a></div>
+          <p class="reel-disclosure" data-i18n="disc_founder_shop">Shop by the PromoVote founder</p>
+        </div>
+        <div class="progress" aria-hidden="true"><i></i></div>
+      </div>
+      <div class="rail">
+        <button type="button" class="rail-btn rail-up" data-sheet="vote"><svg><use href="/icons.svg#i-fire"/></svg><span data-i18n="rail_up">Will blow up</span></button>
+        <button type="button" class="rail-btn" data-sheet="vote"><svg><use href="/icons.svg#i-thumbs-down"/></svg><span data-i18n="rail_down">Not for me</span></button>
+        <button type="button" class="rail-btn" data-sheet="save"><svg><use href="/icons.svg#i-bookmark-simple"/></svg><span data-i18n="rail_save">Save</span></button>
+        <button type="button" class="rail-btn" data-share><svg><use href="/icons.svg#i-share-fat"/></svg><span data-i18n="rail_share">Share</span></button>
+      </div>
+    </article>
+
+    <article class="reel" data-reel data-id="nicheable-grade-tracker" data-creator="nicheable" data-lang="en" aria-label="College grade tracker">
+      <div class="reel-bg" style="background-image:url(/media/nicheable-grade-tracker-poster.jpg)" aria-hidden="true"></div>
+      <div class="stage">
+        <video class="reel-video" poster="/media/nicheable-grade-tracker-poster.jpg" muted loop playsinline preload="none" aria-label="College grade tracker">
+          <source src="/media/nicheable-grade-tracker.mp4" type="video/mp4">
+          <source src="/media/nicheable-grade-tracker.webm" type="video/webm">
+        </video>
+        <div class="paused-badge" aria-hidden="true"><svg><use href="/icons.svg#i-play"/></svg></div>
+        <div class="reel-info">
+          <a class="who" href="/@nicheable" aria-label="Nicheable">
+            <span class="who-avatar who-mono" aria-hidden="true">N</span>
+            <span>
+              <span class="who-name">Nicheable</span>
+              <span class="who-kind" data-ct="kind">Etsy shop</span>
+            </span>
+          </a>
+          <h2 class="reel-title" data-t="title">College grade tracker</h2>
+          <p class="reel-desc" data-t="desc">See your current grade, your GPA and exactly what you need on the final, for any class.</p>
+          <div class="reel-tags"><button type="button" class="tag-perk" data-sheet="perk"><svg><use href="/icons.svg#i-gift"/></svg><span data-i18n="perk_tag">25% off the whole shop</span></button><span class="tag-lang" data-lang-chip hidden>English</span></div>
+          <div class="reel-cta"><a class="btn btn-small btn-ghost" href="https://www.etsy.com/listing/4557342957/college-grade-tracker-spreadsheet-final" target="_blank" rel="sponsored noopener"><span data-i18n="cta_etsy">View on Etsy</span> <svg class="ext"><use href="/icons.svg#i-arrow-up-right"/></svg></a></div>
+          <p class="reel-disclosure" data-i18n="disc_founder_shop">Shop by the PromoVote founder</p>
+        </div>
+        <div class="progress" aria-hidden="true"><i></i></div>
+      </div>
+      <div class="rail">
+        <button type="button" class="rail-btn rail-up" data-sheet="vote"><svg><use href="/icons.svg#i-fire"/></svg><span data-i18n="rail_up">Will blow up</span></button>
+        <button type="button" class="rail-btn" data-sheet="vote"><svg><use href="/icons.svg#i-thumbs-down"/></svg><span data-i18n="rail_down">Not for me</span></button>
+        <button type="button" class="rail-btn" data-sheet="save"><svg><use href="/icons.svg#i-bookmark-simple"/></svg><span data-i18n="rail_save">Save</span></button>
+        <button type="button" class="rail-btn" data-share><svg><use href="/icons.svg#i-share-fat"/></svg><span data-i18n="rail_share">Share</span></button>
+      </div>
+    </article>
+
+    <article class="reel" data-reel data-id="nicheable-eink-planner" data-creator="nicheable" data-lang="en" aria-label="Minimalist planner for E-Ink tablets">
       <div class="reel-bg" style="background-image:url(/media/nicheable-eink-planner-poster.jpg)" aria-hidden="true"></div>
       <div class="stage">
-        <video class="reel-video" poster="/media/nicheable-eink-planner-poster.jpg" muted loop playsinline preload="none" aria-label="Minimalist E-Ink planner promo video">
+        <video class="reel-video" poster="/media/nicheable-eink-planner-poster.jpg" muted loop playsinline preload="none" aria-label="Minimalist planner for E-Ink tablets">
           <source src="/media/nicheable-eink-planner.mp4" type="video/mp4">
           <source src="/media/nicheable-eink-planner.webm" type="video/webm">
         </video>
         <div class="paused-badge" aria-hidden="true"><svg><use href="/icons.svg#i-play"/></svg></div>
         <div class="reel-info">
-          <a class="who" href="/@nicheable" aria-label="Nicheable profile">
+          <a class="who" href="/@nicheable" aria-label="Nicheable">
             <span class="who-avatar who-mono" aria-hidden="true">N</span>
             <span>
               <span class="who-name">Nicheable</span>
-              <span class="who-kind">Etsy shop</span>
+              <span class="who-kind" data-ct="kind">Etsy shop</span>
             </span>
           </a>
-          <h2 class="reel-title">Minimalist planner for E-Ink tablets</h2>
-          <p class="reel-desc">An undated, hyperlinked PDF planner made for Kindle Scribe and reMarkable screens.</p>
-          <div class="reel-tags"><button type="button" class="tag-perk" data-sheet="perk"><svg><use href="/icons.svg#i-gift"/></svg>25% off the whole shop</button></div>
-          <div class="reel-cta">
-            <a class="btn btn-small btn-ghost" href="https://www.etsy.com/listing/4545867467/minimalist-undated-digital-planner-for-e" target="_blank" rel="sponsored noopener">View on Etsy <svg class="ext"><use href="/icons.svg#i-arrow-up-right"/></svg></a>
-          </div>
-          <p class="reel-disclosure">Shop by the PromoVote founder</p>
+          <h2 class="reel-title" data-t="title">Minimalist planner for E-Ink tablets</h2>
+          <p class="reel-desc" data-t="desc">An undated, hyperlinked PDF planner made for Kindle Scribe and reMarkable screens.</p>
+          <div class="reel-tags"><button type="button" class="tag-perk" data-sheet="perk"><svg><use href="/icons.svg#i-gift"/></svg><span data-i18n="perk_tag">25% off the whole shop</span></button><span class="tag-lang" data-lang-chip hidden>English</span></div>
+          <div class="reel-cta"><a class="btn btn-small btn-ghost" href="https://www.etsy.com/listing/4545867467/minimalist-undated-digital-planner-for-e" target="_blank" rel="sponsored noopener"><span data-i18n="cta_etsy">View on Etsy</span> <svg class="ext"><use href="/icons.svg#i-arrow-up-right"/></svg></a></div>
+          <p class="reel-disclosure" data-i18n="disc_founder_shop">Shop by the PromoVote founder</p>
         </div>
         <div class="progress" aria-hidden="true"><i></i></div>
       </div>
-      <div class="rail" aria-label="Actions">
-        <button type="button" class="rail-btn rail-up" data-sheet="vote"><svg><use href="/icons.svg#i-fire"/></svg><span>Will blow up</span></button>
-        <button type="button" class="rail-btn" data-sheet="vote"><svg><use href="/icons.svg#i-thumbs-down"/></svg><span>Not for me</span></button>
-        <button type="button" class="rail-btn" data-sheet="save"><svg><use href="/icons.svg#i-bookmark-simple"/></svg><span>Save</span></button>
-        <button type="button" class="rail-btn" data-share><svg><use href="/icons.svg#i-share-fat"/></svg><span>Share</span></button>
+      <div class="rail">
+        <button type="button" class="rail-btn rail-up" data-sheet="vote"><svg><use href="/icons.svg#i-fire"/></svg><span data-i18n="rail_up">Will blow up</span></button>
+        <button type="button" class="rail-btn" data-sheet="vote"><svg><use href="/icons.svg#i-thumbs-down"/></svg><span data-i18n="rail_down">Not for me</span></button>
+        <button type="button" class="rail-btn" data-sheet="save"><svg><use href="/icons.svg#i-bookmark-simple"/></svg><span data-i18n="rail_save">Save</span></button>
+        <button type="button" class="rail-btn" data-share><svg><use href="/icons.svg#i-share-fat"/></svg><span data-i18n="rail_share">Share</span></button>
       </div>
     </article>
 
-    <article class="reel" data-reel data-id="nicheable-planners" data-creator="nicheable" aria-label="Nicheable undated planners promo">
+    <article class="reel" data-reel data-id="nicheable-planners" data-creator="nicheable" data-lang="en" aria-label="Undated planners for focus, budget and life">
       <div class="reel-bg" style="background-image:url(/media/nicheable-planners-poster.jpg)" aria-hidden="true"></div>
       <div class="stage">
-        <video class="reel-video" poster="/media/nicheable-planners-poster.jpg" muted loop playsinline preload="none" aria-label="Undated planners promo video">
+        <video class="reel-video" poster="/media/nicheable-planners-poster.jpg" muted loop playsinline preload="none" aria-label="Undated planners for focus, budget and life">
           <source src="/media/nicheable-planners.mp4" type="video/mp4">
           <source src="/media/nicheable-planners.webm" type="video/webm">
         </video>
         <div class="paused-badge" aria-hidden="true"><svg><use href="/icons.svg#i-play"/></svg></div>
         <div class="reel-info">
-          <a class="who" href="/@nicheable" aria-label="Nicheable profile">
+          <a class="who" href="/@nicheable" aria-label="Nicheable">
             <span class="who-avatar who-mono" aria-hidden="true">N</span>
             <span>
               <span class="who-name">Nicheable</span>
-              <span class="who-kind">Etsy shop</span>
+              <span class="who-kind" data-ct="kind">Etsy shop</span>
             </span>
           </a>
-          <h2 class="reel-title">Undated planners for focus, budget and life</h2>
-          <p class="reel-desc">A daily focus planner, a budget and debt payoff tracker and more, as hyperlinked PDFs for E-Ink tablets.</p>
-          <div class="reel-tags"><button type="button" class="tag-perk" data-sheet="perk"><svg><use href="/icons.svg#i-gift"/></svg>25% off the whole shop</button></div>
-          <div class="reel-cta">
-            <a class="btn btn-small btn-ghost" href="https://nicheable.etsy.com" target="_blank" rel="sponsored noopener">Visit the shop <svg class="ext"><use href="/icons.svg#i-arrow-up-right"/></svg></a>
-          </div>
-          <p class="reel-disclosure">Shop by the PromoVote founder</p>
+          <h2 class="reel-title" data-t="title">Undated planners for focus, budget and life</h2>
+          <p class="reel-desc" data-t="desc">A daily focus planner, a budget and debt payoff tracker and more, as hyperlinked PDFs for E-Ink tablets.</p>
+          <div class="reel-tags"><button type="button" class="tag-perk" data-sheet="perk"><svg><use href="/icons.svg#i-gift"/></svg><span data-i18n="perk_tag">25% off the whole shop</span></button><span class="tag-lang" data-lang-chip hidden>English</span></div>
+          <div class="reel-cta"><a class="btn btn-small btn-ghost" href="https://nicheable.etsy.com" target="_blank" rel="sponsored noopener"><span data-i18n="cta_shop">Visit the shop</span> <svg class="ext"><use href="/icons.svg#i-arrow-up-right"/></svg></a></div>
+          <p class="reel-disclosure" data-i18n="disc_founder_shop">Shop by the PromoVote founder</p>
         </div>
         <div class="progress" aria-hidden="true"><i></i></div>
       </div>
-      <div class="rail" aria-label="Actions">
-        <button type="button" class="rail-btn rail-up" data-sheet="vote"><svg><use href="/icons.svg#i-fire"/></svg><span>Will blow up</span></button>
-        <button type="button" class="rail-btn" data-sheet="vote"><svg><use href="/icons.svg#i-thumbs-down"/></svg><span>Not for me</span></button>
-        <button type="button" class="rail-btn" data-sheet="save"><svg><use href="/icons.svg#i-bookmark-simple"/></svg><span>Save</span></button>
-        <button type="button" class="rail-btn" data-share><svg><use href="/icons.svg#i-share-fat"/></svg><span>Share</span></button>
+      <div class="rail">
+        <button type="button" class="rail-btn rail-up" data-sheet="vote"><svg><use href="/icons.svg#i-fire"/></svg><span data-i18n="rail_up">Will blow up</span></button>
+        <button type="button" class="rail-btn" data-sheet="vote"><svg><use href="/icons.svg#i-thumbs-down"/></svg><span data-i18n="rail_down">Not for me</span></button>
+        <button type="button" class="rail-btn" data-sheet="save"><svg><use href="/icons.svg#i-bookmark-simple"/></svg><span data-i18n="rail_save">Save</span></button>
+        <button type="button" class="rail-btn" data-share><svg><use href="/icons.svg#i-share-fat"/></svg><span data-i18n="rail_share">Share</span></button>
       </div>
     </article>
-
   </main>
 
   <div class="sheet-backdrop" hidden></div>
@@ -250,26 +531,26 @@
       <p class="sheet-text">Watching is always free. Join the waitlist to vote, save promos and earn Scout Score when accounts open.</p>
       <form class="sheet-form" novalidate>
         <label class="field">
-          <span>Email</span>
-          <input type="email" name="email" required autocomplete="email" placeholder="you@example.com">
+          <span data-i18n="f_email">Email</span>
+          <input type="email" name="email" required autocomplete="email" placeholder="you@example.com" data-i18n-placeholder="f_placeholder">
         </label>
         <div class="sheet-turnstile"></div>
-        <button type="submit" class="btn btn-wide">Join the waitlist</button>
+        <button type="submit" class="btn btn-wide" data-i18n="f_submit">Join the waitlist</button>
         <p class="form-msg" role="status" aria-live="polite"></p>
-        <p class="fine">18+ only. We only email you about PromoVote. <a href="/privacy">Privacy Policy</a></p>
+        <p class="fine"><span data-i18n="f_fine">18+ only. We only email you about PromoVote.</span> <a href="/privacy" data-i18n="f_privacy">Privacy Policy</a></p>
       </form>
       <div class="sheet-done" hidden>
-        <p class="done-title"><svg><use href="/icons.svg#i-check-circle"/></svg><span>You're on the list.</span></p>
+        <p class="done-title"><svg><use href="/icons.svg#i-check-circle"/></svg><span data-i18n="d_title">You&#x27;re on the list.</span></p>
         <div class="perk-reveal" hidden>
-          <p class="sheet-text">Your perk from Nicheable: 25% off the whole shop, one use per buyer, until Dec 31, 2026.</p>
+          <p class="sheet-text" data-i18n="p_text">Your perk from Nicheable: 25% off the whole shop, one use per buyer, until Dec 31, 2026.</p>
           <div class="code-row">
             <code class="perk-code"></code>
-            <button type="button" class="btn btn-small btn-ghost" data-copy>Copy code</button>
+            <button type="button" class="btn btn-small btn-ghost" data-copy data-i18n="p_copy">Copy code</button>
           </div>
-          <a class="btn btn-wide perk-link" target="_blank" rel="sponsored noopener">Shop with 25% off</a>
-          <p class="fine">Offer by Nicheable, a shop owned by the PromoVote founder. Etsy terms apply.</p>
+          <a class="btn btn-wide perk-link" target="_blank" rel="sponsored noopener" data-i18n="p_shop">Shop with 25% off</a>
+          <p class="fine" data-i18n="p_fine">Offer by Nicheable, a shop owned by the PromoVote founder. Etsy terms apply.</p>
         </div>
-        <p class="sheet-text done-default">We'll email you when your wave opens.</p>
+        <p class="sheet-text done-default" data-i18n="d_default">We&#x27;ll email you when your wave opens.</p>
       </div>
     </div>
   </div>
