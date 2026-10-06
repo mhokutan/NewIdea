@@ -34,6 +34,11 @@ Related: `docs/01-team-verdict.md` (source of truth), `docs/debate/`, `web/landi
 4. **Hit definition:** internal Hit Score, top 20% of the weekly category cohort, calls excluded (as in 0.2).
 5. **Scout profiles are not indexed by Google** (noindex), visible inside PromoVote only.
 6. **Discord and itch.io links** are allowed in P0.
+7. **Creator perks are P0** (promo codes, discount codes, beta keys, free trials). Creators set them on each promo: code or key list, quantity, max 1 per account, start and end date, terms text, optional "single code for everyone" vs "unique codes" mode. Scouts claim with a "Get perk" button (rules in 3.2.8, never tied to votes, follows or reviews). Delivery:
+   * Always shown in the scout's in app **My Perks** wallet.
+   * **Email copy only for scouts who opted in** ("Email me perks I claim" and, separately, "Email me new perks from creators I follow"). Sent by PromoVote, never by the creator. Creators never see scout emails.
+   * Every perk email: clear sender, honest subject, unsubscribe link, PromoVote postal address (CAN-SPAM), and a line saying the offer is from the named creator.
+   * Creators accept Perk Terms: they must honor codes, no illegal or restricted offers, no "vote/follow/review to get".
 
 ---
 
