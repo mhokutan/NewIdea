@@ -18,6 +18,7 @@ const en = {
   delete_q: 'Delete your account? You have 30 days to change your mind by signing in again.', cancel: 'Cancel', ok: 'OK',
   guest_t: 'You are watching as a guest', guest_p: 'Guests can watch everything. Sign in to vote, save and follow.',
   error: 'Something went wrong. Try again.', retry: 'Try again', report: 'Report', block: 'Block',
+  with_google: 'Continue with Google', soon_login: 'Sign in is opening soon. You can watch everything as a guest.', legal_note: 'By continuing you agree to the Terms and Privacy Policy. 18+ only.',
 };
 type Key = keyof typeof en;
 const es: Partial<Record<Key, string>> = {
@@ -37,6 +38,7 @@ const es: Partial<Record<Key, string>> = {
   delete_q: '¿Eliminar tu cuenta? Tienes 30 días para cambiar de opinión entrando de nuevo.', cancel: 'Cancelar', ok: 'OK',
   guest_t: 'Estás mirando como invitado', guest_p: 'Los invitados pueden ver todo. Entra para votar, guardar y seguir.',
   error: 'Algo salió mal. Inténtalo de nuevo.', retry: 'Reintentar', report: 'Reportar', block: 'Bloquear',
+  with_google: 'Continuar con Google', soon_login: 'El inicio de sesión abre pronto. Puedes ver todo como invitado.', legal_note: 'Al continuar aceptas los Términos y la Política de privacidad. Solo mayores de 18.',
 };
 const tr: Partial<Record<Key, string>> = {
   tab_feed: 'Akış', tab_explore: 'Keşfet', tab_me: 'Profil',
@@ -55,6 +57,7 @@ const tr: Partial<Record<Key, string>> = {
   delete_q: 'Hesabın silinsin mi? 30 gün içinde tekrar giriş yaparsan geri alabilirsin.', cancel: 'Vazgeç', ok: 'Tamam',
   guest_t: 'Misafir olarak izliyorsun', guest_p: 'Misafirler her şeyi izleyebilir. Oy vermek, kaydetmek ve takip etmek için giriş yap.',
   error: 'Bir şeyler ters gitti. Tekrar dene.', retry: 'Tekrar dene', report: 'Şikayet et', block: 'Engelle',
+  with_google: 'Google ile devam et', soon_login: 'Giriş yakında açılıyor. Misafir olarak her şeyi izleyebilirsin.', legal_note: 'Devam ederek Kullanım Şartları ve Gizlilik Politikası’nı kabul edersin. Sadece 18 yaş üstü.',
 };
 
 const DICTS = { en, es, tr } as const;
