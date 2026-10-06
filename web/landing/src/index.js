@@ -201,6 +201,12 @@ export default {
       return Response.redirect(url.toString(), 301);
     }
 
+    if (url.pathname === "/.well-known/security.txt") {
+      // Wrangler does not upload dot folders, so serve the RFC 9116 path from /security.txt.
+      const res = await env.ASSETS.fetch(new Request(new URL("/security.txt", url), request));
+      return new Response(res.body, { status: res.status, headers: { "Content-Type": "text/plain; charset=utf-8", ...SECURITY_HEADERS } });
+    }
+
     if (url.pathname === "/admin" || url.pathname.startsWith("/admin/")) {
       return handleAdmin(request, env, url);
     }
