@@ -35,7 +35,54 @@
   }
 
   if (feed) {
-    const base = [...feed.querySelectorAll("[data-reel]")].map((r) => r.cloneNode(true));
+    // ---------- Fair rotation queue (per viewer) ----------
+    // Unseen promos first, in random order. A promo counts as seen after 3s on screen
+    // and then moves to the back. When everything is seen, the least seen come back first.
+    // The same creator is never shown twice in a row when another creator is available,
+    // so a creator with many promos cannot crowd out the others.
+    const templates = new Map();
+    feed.querySelectorAll("[data-reel]").forEach((r) => templates.set(r.dataset.id, r.cloneNode(true)));
+    const SEEN_KEY = "pv_seen_v1";
+    let seen = {};
+    try { seen = JSON.parse(store.get(SEEN_KEY) || "{}") || {}; } catch { seen = {}; }
+    const saveSeen = () => store.set(SEEN_KEY, JSON.stringify(seen));
+    const creatorOf = (id) => templates.get(id).dataset.creator;
+
+    function shuffle(a) {
+      for (let i = a.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [a[i], a[j]] = [a[j], a[i]];
+      }
+      return a;
+    }
+
+    function nextRound(prevId, firstId) {
+      const ids = shuffle([...templates.keys()]);
+      ids.sort((a, b) => (seen[a]?.n || 0) - (seen[b]?.n || 0)); // stable: random within the same count
+      const out = [];
+      if (firstId && templates.has(firstId)) { out.push(firstId); ids.splice(ids.indexOf(firstId), 1); }
+      let prev = out.length ? out[out.length - 1] : prevId;
+      const count = (id) => seen[id]?.n || 0;
+      while (ids.length) {
+        // Only interleave creators inside the least-seen tier, so "unseen first" always wins.
+        const tier = count(ids[0]);
+        const prevCreator = prev && templates.has(prev) ? creatorOf(prev) : null;
+        let k = ids.findIndex((id) => count(id) === tier && id !== prev && creatorOf(id) !== prevCreator);
+        if (k === -1) k = ids.findIndex((id) => count(id) === tier && id !== prev);
+        if (k === -1) k = 0;
+        const [id] = ids.splice(k, 1);
+        out.push(id);
+        prev = id;
+      }
+      return out;
+    }
+
+    function markSeen(id) {
+      const s = seen[id] || { n: 0, t: 0 };
+      seen[id] = { n: s.n + 1, t: Date.now() };
+      saveSeen();
+    }
+
     const reels = () => [...feed.querySelectorAll("[data-reel]")];
 
     soundBtn = document.createElement("button");
@@ -50,12 +97,16 @@
       if (v) { v.muted = muted; if (v.paused && !userPaused.has(v)) v.play().catch(() => {}); }
     });
 
+    let seenTimer = null;
     const visible = new IntersectionObserver((entries) => {
       entries.forEach((e) => {
         if (e.isIntersecting && e.intersectionRatio >= 0.6) {
           if (current && current !== e.target) stop(current);
           current = e.target;
           play(current);
+          clearTimeout(seenTimer);
+          const watching = current;
+          seenTimer = setTimeout(() => { if (current === watching && watching.dataset.id) markSeen(watching.dataset.id); }, 3000);
           const list = reels();
           const i = list.indexOf(current);
           const next = list[i + 1];
@@ -86,20 +137,26 @@
     }
 
     function appendCycle() {
-      base.forEach((tpl) => {
-        const r = tpl.cloneNode(true);
+      const list = reels();
+      const lastId = list.length ? list[list.length - 1].dataset.id : null;
+      nextRound(lastId).forEach((id) => {
+        const r = templates.get(id).cloneNode(true);
         r.querySelectorAll("video").forEach((v) => { v.preload = "none"; });
         feed.appendChild(r);
         setupReel(r);
       });
     }
 
-    reels().forEach(setupReel);
-
-    // Deep link: /?v=nicheable-grade-tracker opens that promo first
+    // First round: deep link (/?v=id) goes first, then the fair queue
     const wanted = new URLSearchParams(location.search).get("v");
-    const start = wanted && reels().find((r) => r.dataset.id === wanted);
-    if (start) requestAnimationFrame(() => start.scrollIntoView());
+    reels().forEach((r) => r.remove());
+    nextRound(null, wanted).forEach((id, i) => {
+      const r = templates.get(id).cloneNode(true);
+      r.querySelectorAll("video").forEach((v) => { v.preload = i === 0 ? "metadata" : "none"; });
+      feed.appendChild(r);
+      setupReel(r);
+    });
+    feed.scrollTop = 0;
 
     const go = (dir) => {
       const list = reels();
