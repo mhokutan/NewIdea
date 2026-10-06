@@ -24,7 +24,7 @@ Not: bu belgedeki vergi ve hukuk notları hukuki veya mali tavsiye değildir. Mu
 | Küçük işletme | **%15** (App Store Small Business Program, yıllık 1 milyon dolar altı, başvuru gerekir) | **%15** (yıllık ilk 1 milyon dolar, Play Console'da hesap grubuna kayıt gerekir) |
 | Vergi (sales tax, KDV) | Apple toplar ve öder | Google toplar ve öder |
 
-* Satın alma kontrolü için **RevenueCat** kullanılır. Aylık 2.500 dolar gelire kadar ücretsiz, sonra %1. Makbuz doğrulama, iade bildirimi, iOS ve Android tek panel sağlar.
+* RevenueCat kullanılmaz (kurucu kararı 2026-10-06, maliyet). Satın almayı kendi Worker'ımız doğrular: Apple için App Store Server API ve Server Notifications V2, Google için Play Developer API ve Real-time Developer Notifications. Ayrıntı `07-store-setup-desktop-prompt.md`.
 * ABD'de Apple ve Google artık uygulamadan web ödemesine link vermeye izin veriyor (mahkeme kararları, 2025). Gelir büyüyünce komisyonu düşürmek için web ödemesi sonradan eklenebilir. Şimdilik gerek yok.
 
 ## 3. Fatura (invoice) kimin işi
@@ -79,7 +79,7 @@ Supabase kullanılmaz. Kurucunun Supabase'teki projeleri (hauling-empire ve diğ
 | Video | Stream (yükleme açılınca) |
 | Resim | R2 (yükleme açılınca) |
 | Email | Email Sending (kurucunun açması gerekiyor, aşağıya bak) |
-| Ödeme | RevenueCat webhook, `POST /v1/webhooks/revenuecat` |
+| Ödeme | Apple ve Google webhook, `POST /v1/webhooks/apple` ve `POST /v1/webhooks/google` |
 
 Tablolar `services/api/migrations/` içinde:
 
@@ -119,6 +119,6 @@ istenir. Bu bilgiler bizim veritabanımızda değil, ödeme sağlayıcısında (
    * Keşfet (Instagram / TikTok tarzı, `04` bölüm 2.1)
    * profil
 3. Video yükleme + Cloudflare Stream + moderasyon kuyruğu + link taraması.
-4. RevenueCat + Boost ürünleri.
+4. StoreKit ve Play Billing (`expo-iap`), Worker'da doğrulama, Boost ürünleri.
 5. TestFlight ve Google kapalı test.
 6. Mağaza başvurusu.
