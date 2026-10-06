@@ -12,7 +12,7 @@ Status: validation stage. **promovote.com landing page is LIVE** (waitlist).
 * Waitlist: D1 `promovote-waitlist`, table `waitlist` (email, role, link, country, created_at). Count: `npx wrangler d1 execute promovote-waitlist --remote --command "SELECT role, COUNT(*) FROM waitlist GROUP BY role"`.
 * Admin: `promovote.com/admin` (HTTP Basic auth, password = Worker secret `ADMIN_PASSWORD` set by the founder in the dashboard; Claude does not know it). Shows signups, roles, countries, CSV export at `/admin/export.csv`.
 * Bot protection: Turnstile widget `promovote-waitlist`; secret stored as Worker secret `TURNSTILE_SECRET` (never commit it).
-* Email Routing: hello@ and support@promovote.com forward to the founder's Hotmail.
+* Email Routing: hello@, support@, security@ and founder@promovote.com forward to the founder's Hotmail.
 * Zone: Always HTTPS, min TLS 1.2. Token comes from env `CLOUDFLARE_API_TOKEN` / `CLOUDFLARE_ACCOUNT_ID`. Never print it.
 * Privacy and Terms pages are drafts for lawyer review before launch.
 * Feed content is generated: edit `web/landing/content/promos.json` (promos, creators, translations) and `web/landing/content/ui.json` (UI strings in en, es, tr), then run `python3 web/landing/build.py` and deploy. Do not hand-edit `public/index.html`, `public/creators/*.html` or `public/i18n.js`.
