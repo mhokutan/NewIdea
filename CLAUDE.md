@@ -10,7 +10,8 @@ Status: validation stage. **promovote.com landing page is LIVE** (waitlist).
 ## Live infrastructure (Cloudflare)
 * Landing page: `web/landing/` (Cloudflare Worker + static assets). Deploy: `cd web/landing && npx wrangler deploy`. Custom domains promovote.com and www (www 301 to apex).
 * Waitlist: D1 `promovote-waitlist`, table `waitlist` (email, role, link, country, created_at). Count: `npx wrangler d1 execute promovote-waitlist --remote --command "SELECT role, COUNT(*) FROM waitlist GROUP BY role"`.
-* Admin: `promovote.com/admin` (HTTP Basic auth, password = Worker secret `ADMIN_PASSWORD` set by the founder in the dashboard; Claude does not know it). Shows signups, roles, countries, CSV export at `/admin/export.csv`.
+* Admin: `promovote.com/admin` (HTTP Basic auth, password = Worker secret `ADMIN_PASSWORD` set by the founder in the dashboard; Claude does not know it). Shows signups, roles, countries, CSV export at `/admin/export.csv`, and real visitors for the last 14 days.
+* Visit counter (cookieless, own): the Worker injects `public/v.js` into every HTML page; it posts to `/api/v`, rows go to D1 `promovote-waitlist` table `visits` (visitor = daily salted hash, no IP stored; salt in `visit_salt`). Bots, headless browsers and the admin's browser (`v-ignore.js` on /admin) are not counted.
 * Bot protection: Turnstile widget `promovote-waitlist`; secret stored as Worker secret `TURNSTILE_SECRET` (never commit it).
 * Email Routing: hello@ and support@promovote.com forward to the founder's Hotmail.
 * Zone: Always HTTPS, min TLS 1.2. Token comes from env `CLOUDFLARE_API_TOKEN` / `CLOUDFLARE_ACCOUNT_ID`. Never print it.

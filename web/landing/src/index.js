@@ -122,6 +122,54 @@ function isAdmin(request, env) {
   return timingSafeEqual(password, env.ADMIN_PASSWORD);
 }
 
+const BOT_UA = /bot|crawl|spider|slurp|headless|lighthouse|preview|curl|wget|python|httpclient|go-http|java\//i;
+
+async function sha256(text) {
+  const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
+  return [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+// Daily random salt, so visitor hashes cannot be linked across days or reversed to an IP.
+async function dailySalt(env, day) {
+  const row = await env.DB.prepare("SELECT salt FROM visit_salt WHERE day = ?").bind(day).first();
+  if (row) return row.salt;
+  const salt = crypto.randomUUID();
+  await env.DB.batch([
+    env.DB.prepare("INSERT OR IGNORE INTO visit_salt (day, salt) VALUES (?, ?)").bind(day, salt),
+    env.DB.prepare("DELETE FROM visit_salt WHERE day < ?").bind(day),
+  ]);
+  return (await env.DB.prepare("SELECT salt FROM visit_salt WHERE day = ?").bind(day).first()).salt;
+}
+
+async function handleVisit(request, env) {
+  const ok = new Response(null, { status: 204 });
+  if (request.method !== "POST") return new Response(null, { status: 405 });
+  const ua = request.headers.get("User-Agent") || "";
+  if (request.headers.get("Origin") !== "https://promovote.com" || !ua || BOT_UA.test(ua)) return ok;
+  const raw = await request.text();
+  if (raw.length > 2048) return ok;
+  let data;
+  try {
+    data = JSON.parse(raw);
+  } catch {
+    return ok;
+  }
+  const path = typeof data.p === "string" && data.p.startsWith("/") ? data.p.slice(0, 120) : "/";
+  let ref = null;
+  try {
+    const host = new URL(data.r).hostname.replace(/^www\./, "");
+    if (host && host !== "promovote.com") ref = host.slice(0, 80);
+  } catch {}
+  const day = new Date().toISOString().slice(0, 10);
+  const ip = request.headers.get("CF-Connecting-IP") || "";
+  const visitor = (await sha256(`${await dailySalt(env, day)}|${ip}|${ua}`)).slice(0, 32);
+  const device = /iPad|Tablet/i.test(ua) ? "tablet" : /Mobi|Android|iPhone/i.test(ua) ? "mobile" : "desktop";
+  await env.DB.prepare("INSERT INTO visits (day, path, ref, country, device, visitor) VALUES (?, ?, ?, ?, ?, ?)")
+    .bind(day, path, ref, request.cf?.country || null, device, visitor)
+    .run();
+  return ok;
+}
+
 const ADMIN_HEADERS = { "Cache-Control": "no-store", "X-Robots-Tag": "noindex, nofollow", ...SECURITY_HEADERS };
 const ROLE_LABELS = { creator: "Creator / Streamer", developer: "Game developer", brand: "Brand / Business", viewer: "Viewer" };
 
@@ -161,6 +209,22 @@ async function handleAdmin(request, env, url) {
     if (r.country) byCountry[r.country] = (byCountry[r.country] || 0) + 1;
     if (String(r.created_at).startsWith(todayStr)) today++;
   }
+  const since = new Date(Date.now() - 13 * 864e5).toISOString().slice(0, 10);
+  const [{ results: daily }, { results: refs }, { results: vCountries }, { results: pages }] = await env.DB.batch([
+    env.DB.prepare("SELECT day, COUNT(DISTINCT visitor) v, COUNT(*) pv, SUM(device = 'mobile') m FROM visits WHERE day >= ? GROUP BY day ORDER BY day DESC").bind(since),
+    env.DB.prepare("SELECT ref k, COUNT(DISTINCT day || visitor) n FROM visits WHERE day >= ? AND ref IS NOT NULL GROUP BY ref ORDER BY n DESC LIMIT 10").bind(since),
+    env.DB.prepare("SELECT country k, COUNT(DISTINCT day || visitor) n FROM visits WHERE day >= ? AND country IS NOT NULL GROUP BY country ORDER BY n DESC LIMIT 10").bind(since),
+    env.DB.prepare("SELECT path k, COUNT(*) n FROM visits WHERE day >= ? GROUP BY path ORDER BY n DESC LIMIT 10").bind(since),
+  ]);
+  const list = (rows) => (rows.length ? rows.map((r) => `${esc(r.k)} (${r.n})`).join(", ") : "none yet");
+  const visitRows = daily.length
+    ? daily.map((d) => `<tr><td>${esc(d.day)}</td><td>${d.v}</td><td>${d.pv}</td><td>${d.m}</td></tr>`).join("")
+    : '<tr><td colspan="4" class="dim center">No visits counted yet.</td></tr>';
+  const visitsHtml = `<h2 style="margin:40px 0 6px">Real visitors (last 14 days)</h2>
+<p class="countries">Browsers that ran the page script. Bots, scanners and your own admin browser are not counted.</p>
+<div class="tablewrap"><table><thead><tr><th>Day (UTC)</th><th>Visitors</th><th>Page views</th><th>Mobile views</th></tr></thead><tbody>${visitRows}</tbody></table></div>
+<p class="countries" style="margin-top:16px">Came from: ${list(refs)}<br>Countries: ${list(vCountries)}<br>Pages: ${list(pages)}</p>`;
+
   const topCountries = Object.entries(byCountry).sort((a, b) => b[1] - a[1]).slice(0, 6);
 
   const tiles = [
@@ -197,7 +261,8 @@ td a{color:#b394ff}.dim{color:var(--dim)}.center{text-align:center}.role{padding
 <div class="tiles">${tiles}</div>
 <p class="countries">Top countries: ${topCountries.length ? topCountries.map(([c, n]) => `${esc(c)} (${n})`).join(", ") : "none yet"}</p>
 <div class="tablewrap"><table><thead><tr><th>#</th><th>Email</th><th>Role</th><th>Link</th><th>Country</th><th>Joined</th></tr></thead><tbody>${table}</tbody></table></div>
-</main></body></html>`;
+${visitsHtml}
+</main><script src="/v-ignore.js"></script></body></html>`;
   return new Response(html, { headers: { "Content-Type": "text/html; charset=utf-8", ...ADMIN_HEADERS } });
 }
 
@@ -226,6 +291,14 @@ async function serveMedia(request, env) {
   return new Response(request.method === "HEAD" ? null : buf.slice(start, end + 1), { status: 206, headers });
 }
 
+// Adds the visit counter script to every HTML page served from static assets.
+function withCounter(res) {
+  if (!(res.headers.get("Content-Type") || "").includes("text/html")) return res;
+  return new HTMLRewriter()
+    .on("head", { element: (el) => el.append('<script src="/v.js" defer></script>', { html: true }) })
+    .transform(res);
+}
+
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
@@ -247,7 +320,7 @@ export default {
       const res = await env.ASSETS.fetch(new Request(new URL(`/creators/${profile[1]}`, url), request));
       const out = new Response(res.body, res);
       for (const [k, v] of Object.entries(SECURITY_HEADERS)) out.headers.set(k, v);
-      return out;
+      return withCounter(out);
     }
 
     if (url.pathname.startsWith("/media/") && (request.method === "GET" || request.method === "HEAD")) {
@@ -256,6 +329,15 @@ export default {
 
     if (url.pathname === "/admin" || url.pathname.startsWith("/admin/")) {
       return handleAdmin(request, env, url);
+    }
+
+    if (url.pathname === "/api/v") {
+      try {
+        return await handleVisit(request, env);
+      } catch (err) {
+        console.error("visit_error", err?.message);
+        return new Response(null, { status: 204 });
+      }
     }
 
     if (url.pathname === "/api/waitlist") {
@@ -270,6 +352,6 @@ export default {
     const res = await env.ASSETS.fetch(request);
     const out = new Response(res.body, res);
     for (const [k, v] of Object.entries(SECURITY_HEADERS)) out.headers.set(k, v);
-    return out;
+    return withCounter(out);
   },
 };
