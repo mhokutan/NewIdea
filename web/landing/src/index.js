@@ -1,4 +1,9 @@
 const ROLES = new Set(["creator", "developer", "brand", "viewer"]);
+
+// Creator perks are only revealed after a verified waitlist signup (never in page source).
+const PERKS = {
+  nicheable: { code: "NEWIDEA25", url: "https://nicheable.etsy.com?coupon=NEWIDEA25", expires: "2026-12-31T23:59:59Z" },
+};
 const EMAIL_RE = /^[^\s@]{1,64}@[^\s@]{1,255}\.[^\s@]{2,}$/;
 
 const SECURITY_HEADERS = {
@@ -82,6 +87,10 @@ async function handleWaitlist(request, env) {
     .bind(email, role, link, country)
     .run();
 
+  const perk = PERKS[body.perk];
+  if (perk && Date.now() < Date.parse(perk.expires)) {
+    return json({ ok: true, perk: { code: perk.code, url: perk.url } });
+  }
   return json({ ok: true });
 }
 
