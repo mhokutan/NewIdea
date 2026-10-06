@@ -11,7 +11,7 @@ DURUM: DEVAM EDİYOR
 |---|---|---|
 | A. iOS sertifikası (EAS) | yarım | Bundle ID kaydedildi. Capability (Sign in with Apple, Associated Domains) kaydı kurucu onayı bekliyor. Sertifika adımı etkileşimli terminal istiyor (mevcut dağıtım sertifikası 8WKQ264TKD yeniden kullanılabilir). Team ID 6WRT42YG28 (Individual hesap). |
 | B. App Store Connect | beklemede | |
-| C. Google Cloud | yarım | C1 bitti. C3 bitti (API'ler açık, play-api service account, JSON key SecretKeys klasöründe). C4: topic play-rtdn oluştu; Publisher yetkisi ve push subscription kalan. C2 (OAuth) başlamadı. |
+| C. Google Cloud | yarım | C1, C3, C4 bitti (topic play-rtdn, Publisher yetkisi kurucu tarafından verildi, push subscription play-rtdn-push, never expire). C2: branding ve 3 client bitti; 'Publish app' (Production) kurucu bekliyor; Play App Signing SHA-1 ile ikinci Android client Bölüm D sonrası. Destek emaili Google kuralı gereği hazimokutan@gmail.com. |
 | D. Google Play Console | beklemede | |
 | E. Bulut ortamına key'ler | beklemede | |
 
@@ -20,9 +20,9 @@ DURUM: DEVAM EDİYOR
 * App Store Apple ID:
 * Google Cloud project id: promovote
 * Play service account email: play-api@promovote.iam.gserviceaccount.com
-* OAuth web client id:
-* OAuth iOS client id:
-* OAuth Android client id'leri:
+* OAuth web client id: 506724718671-t1g7ehas8tssjdjs3vhsvdgo60g4pini.apps.googleusercontent.com
+* OAuth iOS client id: 506724718671-onetdf2qhmf8pgg1lrlij9gi7luqt1c3.apps.googleusercontent.com
+* OAuth Android client id'leri: 506724718671-532i7nc7cvuoeod7qj0o20s5o5av717i.apps.googleusercontent.com (EAS upload key SHA-1 AD:B8:...:09:F8), Play App Signing client'ı bekliyor
 * Google hesabı: hazimokutan@gmail.com (Cloud ve Play Console sadece bu hesapla)
 * Google Play hesap türü (Organization / Personal):
 
