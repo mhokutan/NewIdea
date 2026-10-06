@@ -35,7 +35,7 @@ KURALLAR
 BİLGİLER
 - Uygulama: PromoVote
 - iOS Bundle ID ve Android package: com.miapera.promovote
-- Şirket: MIA PERA TRANSPORTATION LLC (New Jersey, ABD)
+- Apple ve Google geliştirici hesapları Individual (bireysel), şirket hesabı değil (kurucu kararı). Satıcı adı kurucunun kendi adı. Organization'a çevirme veya D-U-N-S isteme. Vergi formu sorulursa bireysel W-9 olacak, onu kurucu girer.
 - Site: https://promovote.com
 - Gizlilik: https://promovote.com/privacy
 - Şartlar: https://promovote.com/terms

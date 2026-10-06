@@ -32,4 +32,6 @@ DURUM: DEVAM EDİYOR
 
 ## Bulut Claude notları
 
+* 2026-10-06: Kurucu kararı: Apple ve Google hesapları Individual kalacak. Şirket hesabına çevirme. Banka ve vergi (bireysel W-9) bilgisini kurucu girer.
+
 * 2026-10-06: Android production build başlatıldı (Bölüm D2 linki). iOS build için önce Bölüm A gerekli.
