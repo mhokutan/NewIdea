@@ -68,7 +68,27 @@ Kurucunun $50 / $150 / $250 paketleri **silinmedi, ertelendi**. Sebep: trafik yo
 | 0 | Hafta 0 ile 3 | Elle hazırlanan "Trailer Test" raporu, ilk müşterilere $29 ile $49 | 10 ödeme, en az 3 tekrar |
 | 1 | Ay 1 ile 4 | Yükleme ücretsiz. Uygulama içi Trailer Test $29 ile $99 (2 trailer, 300 ile 500 tamamlanmış izleme). İlk 20 ile 50 müşteriye "Founding" fiyatı | 1,000 DAU, D7 %15 |
 | 2 | Ay 4 ile 9 | Ön ödemeli kredi (en az $25, süresi dolmaz), CPCV yaklaşık 2 cent, "Öne çıkan lansman" $49/hafta | 50 ödeyen, 3,000 DAU |
-| 3 | Ay 9 sonrası | **$49 / $149 / $249 abonelikleri geri döner**, view kotası yerine kredi + rapor | Aylık yenileme %70, yaklaşık 4,000 DAU |
+| 3 | Ay 9 sonrası | ~~$49 / $149 / $249 abonelikleri~~ **İptal (2026-10-06, kurucu kararı).** Yerine ücretsiz model devam eder, Boost, Trailer Test ve Pro istatistik büyür | Aylık tekrar alım %70, yaklaşık 4,000 DAU |
+
+### Karar (2026-10-06): üyelik yok, ücretsiz sosyal medya modeli
+
+Kurucu kararı: aylık üyelik paketleri **tamamen kaldırıldı**. PromoVote bir sosyal medya gibi çalışır.
+
+* **Herkese ücretsiz:** profil, takipçi, video paylaşımı ve izlemek. Bu hem izleyiciler hem içerik üreticileri ve firmalar için geçerli.
+* **Ücretli ekstralar:**
+  * **Boost:** "Sponsorlu" etiketiyle ayrı bir slotta gösterilir. Adil sıradaki organik slotlardan çalmaz.
+  * **Trailer Test raporu**
+  * **Pro istatistik**
+* **Neden:**
+  * Aylık üyelik "garanti izlenme" beklentisi yaratır. Bu da ya izleyiciye ödül vermeye ya da iadeye zorlar.
+  * Ücretsiz modelde izleyiciye para veya ödül vermek gerekmez. Puanlar sadece itibar olarak kalır.
+* **Boost'ta tek söz:** gerçek ve botsuz gösterim. İzlenme garantisi verilmez, sadece daha fazla gösterim sunulur.
+* **Spam önlemleri:**
+  * email doğrulama
+  * yeni hesaplara haftalık video limiti (örnek 3)
+  * video süre limiti
+  * link güvenlik taraması
+  * ilk videoların elle onayı
 
 Fiyat konusunda ekip tam anlaşamadı ($29, $39, $49, $99 önerildi). Faz 0'da test edilerek karar verilecek.
 

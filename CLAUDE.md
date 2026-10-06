@@ -39,7 +39,7 @@ Status: validation stage. **promovote.com landing page is LIVE** (waitlist).
 * Paid product: "Trailer Test" report (creative test + real audience feedback), not cheap views.
 * Skip is free. Points = "Kaşif Puanı" (reputation, no cash value, not spent).
 * Advertiser offers (Steam keys, codes, beta) are optional and never tied to votes or reviews.
-* $50/$150/$250 subscriptions come back only in Phase 3.
+* No subscriptions (founder decision 2026-10-06). Everything is free like social media (profiles, posting, watching). Paid extras only: Boost (labeled Sponsored, separate slot, never takes organic fair-queue turns), Trailer Test report, Pro analytics. Viewers are never paid. Free accounts get upload limits.
 * 18+, English first, restricted categories closed.
 * Planned stack: Expo + React Native Web (web, iOS, Android from one codebase), Next.js advertiser panel, Supabase, Cloudflare Stream, Stripe. Web public first, app stores after the checklist in the verdict.
 * Before building: 3 week validation test (paid concierge reports + weekly trailer list).
