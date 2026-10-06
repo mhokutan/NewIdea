@@ -52,6 +52,13 @@
       "typedRoutes": true,
       "reactCompiler": true
     },
-    "backgroundColor": "#0a0a0f"
+    "backgroundColor": "#0a0a0f",
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "1312e509-fef9-487f-9478-f1b95f1678af"
+      }
+    },
+    "owner": "mhokutan"
   }
 }
