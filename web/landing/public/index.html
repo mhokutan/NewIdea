@@ -68,30 +68,14 @@
           <div class="phone">
             <div class="phone-notch"></div>
             <div class="phone-screen">
-              <div class="feed-top"><span>Today's drop</span><span class="pill">3 of 7</span></div>
+              <div class="feed-top"><span>Now showing</span><span class="pill">Preview</span></div>
               <div class="cards">
-                <article class="pcard is-active" style="--c1:#ff5470;--c2:#ffb347">
-                  <div class="pcard-media"><span class="play">▶</span><span class="dur">0:28</span></div>
-                  <div class="pcard-meta">
-                    <span class="tag">Indie game</span>
-                    <h3>Hollow Lantern</h3>
-                    <p>A cozy horror puzzle game. Demo on Steam.</p>
-                  </div>
-                </article>
-                <article class="pcard" style="--c1:#8b5cff;--c2:#3dd6ff">
-                  <div class="pcard-media"><span class="play">▶</span><span class="dur">0:19</span></div>
-                  <div class="pcard-meta">
-                    <span class="tag">New streamer · Kick</span>
-                    <h3>nightowl_tv</h3>
-                    <p>Speedruns and late night chill streams.</p>
-                  </div>
-                </article>
-                <article class="pcard" style="--c1:#22c55e;--c2:#c6ff3d">
-                  <div class="pcard-media"><span class="play">▶</span><span class="dur">0:34</span></div>
-                  <div class="pcard-meta">
-                    <span class="tag">New channel · YouTube</span>
-                    <h3>Luna Cooks</h3>
-                    <p>15 minute meals for broke students.</p>
+                <article class="pcard pcard-video is-active">
+                  <video class="pvideo" poster="/media/hauling-empire-poster.jpg" autoplay muted loop playsinline preload="metadata"><source src="/media/hauling-empire-loop.mp4" type="video/mp4"><source src="/media/hauling-empire-loop.webm" type="video/webm"></video>
+                  <div class="pcard-overlay">
+                    <span class="tag">Indie game · Coming soon</span>
+                    <h3>Hauling Empire</h3>
+                    <p>Truck Tycoon for iOS and Android</p>
                   </div>
                 </article>
               </div>
@@ -102,7 +86,56 @@
             </div>
           </div>
           <div class="float float-a"><strong>+12</strong> Scout Score</div>
-          <div class="float float-b"><span class="mini-bar"><i></i></span> 74% watched to the end</div>
+          <div class="float float-b"><span class="mini-bar"><i></i></span> Skip is always free</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- NOW SHOWING -->
+    <section class="section showcase" id="now-showing">
+      <div class="wrap">
+        <p class="kicker">Now showing</p>
+        <h2 class="h2-left">Watch the first promo on PromoVote.</h2>
+        <div class="show-grid">
+          <div class="player">
+            <video id="show-video" poster="/media/hauling-empire-poster.jpg" muted loop playsinline preload="metadata" aria-label="Hauling Empire: Truck Tycoon promo video"><source src="/media/hauling-empire.mp4" type="video/mp4"><source src="/media/hauling-empire.webm" type="video/webm"></video>
+            <div class="player-ui">
+              <button type="button" class="pbtn" id="show-play" aria-label="Pause video">❚❚</button>
+              <button type="button" class="pbtn" id="show-sound" aria-label="Turn sound on">🔇</button>
+            </div>
+            <div class="player-progress" aria-hidden="true"><i id="show-bar"></i></div>
+          </div>
+
+          <div class="show-info">
+            <div class="creator-row">
+              <img src="/media/hauling-empire-icon.jpg" width="56" height="56" alt="Hauling Empire app icon" class="creator-icon">
+              <div>
+                <h3>Hauling Empire: Truck Tycoon</h3>
+                <p class="creator-sub">Indie game · iOS and Android</p>
+              </div>
+            </div>
+            <div class="chips">
+              <span class="chip chip-soon">Coming soon to iOS &amp; Android</span>
+              <span class="chip">Tycoon</span>
+              <span class="chip">No gems, no energy</span>
+            </div>
+            <p class="show-desc">Run a trucking business: pick loads, plan routes, hire drivers and grow one van into a logistics empire. Fair play, with no gems and no energy timers.</p>
+
+            <div class="vote-box">
+              <p class="vote-q">Will this game blow up?</p>
+              <div class="vote-actions">
+                <button type="button" class="vote-btn vote-up" data-vote>🔥 Will blow up</button>
+                <button type="button" class="vote-btn" data-vote>Not for me</button>
+              </div>
+              <p class="vote-note" id="vote-note" role="status" aria-live="polite">Watching is free for everyone. Join PromoVote to vote and earn Scout Score.</p>
+            </div>
+
+            <div class="show-cta">
+              <a href="#join" class="btn" data-join-role="viewer">Join to vote</a>
+              <a href="#join" class="btn btn-ghost" data-join-role="viewer">Notify me at launch</a>
+            </div>
+            <p class="disclosure">Made by the PromoVote founder. Shown here as our first launch promo.</p>
+          </div>
         </div>
       </div>
     </section>

@@ -192,6 +192,31 @@ td a{color:#b394ff}.dim{color:var(--dim)}.center{text-align:center}.role{padding
   return new Response(html, { headers: { "Content-Type": "text/html; charset=utf-8", ...ADMIN_HEADERS } });
 }
 
+// Static assets ignore Range headers, but Safari needs 206 responses to play <video>.
+async function serveMedia(request, env) {
+  const res = await env.ASSETS.fetch(new Request(request.url, { method: "GET" }));
+  if (!res.ok) return res;
+  const headers = new Headers(res.headers);
+  headers.set("Accept-Ranges", "bytes");
+  headers.set("Cache-Control", "public, max-age=604800");
+  for (const [k, v] of Object.entries(SECURITY_HEADERS)) headers.set(k, v);
+  const range = request.headers.get("Range");
+  const m = range && /^bytes=(\d*)-(\d*)$/.exec(range.trim());
+  if (!m) return new Response(request.method === "HEAD" ? null : res.body, { status: 200, headers });
+  const buf = await res.arrayBuffer();
+  const size = buf.byteLength;
+  let start = m[1] === "" ? size - Number(m[2]) : Number(m[1]);
+  let end = m[1] === "" || m[2] === "" ? size - 1 : Math.min(Number(m[2]), size - 1);
+  if (Number.isNaN(start) || start < 0) start = 0;
+  if (start > end || start >= size) {
+    headers.set("Content-Range", `bytes */${size}`);
+    return new Response(null, { status: 416, headers });
+  }
+  headers.set("Content-Range", `bytes ${start}-${end}/${size}`);
+  headers.set("Content-Length", String(end - start + 1));
+  return new Response(request.method === "HEAD" ? null : buf.slice(start, end + 1), { status: 206, headers });
+}
+
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
@@ -205,6 +230,10 @@ export default {
       // Wrangler does not upload dot folders, so serve the RFC 9116 path from /security.txt.
       const res = await env.ASSETS.fetch(new Request(new URL("/security.txt", url), request));
       return new Response(res.body, { status: res.status, headers: { "Content-Type": "text/plain; charset=utf-8", ...SECURITY_HEADERS } });
+    }
+
+    if (url.pathname.startsWith("/media/") && (request.method === "GET" || request.method === "HEAD")) {
+      return serveMedia(request, env);
     }
 
     if (url.pathname === "/admin" || url.pathname.startsWith("/admin/")) {

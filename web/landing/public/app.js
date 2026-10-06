@@ -7,18 +7,67 @@
   onScroll();
   window.addEventListener("scroll", onScroll, { passive: true });
 
-  // Rotate phone cards
-  const cards = [...document.querySelectorAll(".pcard")];
-  const pill = document.querySelector(".pill");
-  if (cards.length && !reduceMotion) {
-    let i = 0;
-    setInterval(() => {
-      cards[i].classList.remove("is-active");
-      i = (i + 1) % cards.length;
-      cards[i].classList.add("is-active");
-      if (pill) pill.textContent = `${i + 3} of 7`;
-    }, 3200);
+  // Hero phone video: respect reduced motion
+  const heroVideo = document.querySelector(".pvideo");
+  if (heroVideo && reduceMotion) {
+    heroVideo.removeAttribute("autoplay");
+    heroVideo.pause();
   }
+
+  // Now showing player: plays muted when visible, guests can watch freely
+  const showVideo = document.getElementById("show-video");
+  if (showVideo) {
+    const playBtn = document.getElementById("show-play");
+    const soundBtn = document.getElementById("show-sound");
+    const bar = document.getElementById("show-bar");
+    let userPaused = false;
+    const syncPlay = () => {
+      const playing = !showVideo.paused;
+      playBtn.textContent = playing ? "❚❚" : "▶";
+      playBtn.setAttribute("aria-label", playing ? "Pause video" : "Play video");
+    };
+    playBtn.addEventListener("click", () => {
+      if (showVideo.paused) { userPaused = false; showVideo.play().catch(() => {}); }
+      else { userPaused = true; showVideo.pause(); }
+    });
+    soundBtn.addEventListener("click", () => {
+      showVideo.muted = !showVideo.muted;
+      soundBtn.textContent = showVideo.muted ? "🔇" : "🔊";
+      soundBtn.setAttribute("aria-label", showVideo.muted ? "Turn sound on" : "Turn sound off");
+      if (!showVideo.muted && showVideo.paused) showVideo.play().catch(() => {});
+    });
+    showVideo.addEventListener("play", syncPlay);
+    showVideo.addEventListener("pause", syncPlay);
+    showVideo.addEventListener("timeupdate", () => {
+      if (showVideo.duration) bar.style.width = `${(showVideo.currentTime / showVideo.duration) * 100}%`;
+    });
+    if ("IntersectionObserver" in window && !reduceMotion) {
+      new IntersectionObserver((entries) => {
+        entries.forEach((e) => {
+          if (e.isIntersecting && !userPaused) showVideo.play().catch(() => {});
+          else if (!e.isIntersecting) showVideo.pause();
+        });
+      }, { threshold: 0.5 }).observe(showVideo);
+    }
+    syncPlay();
+  }
+
+  // Guests can watch but cannot vote or earn Scout Score
+  const voteNote = document.getElementById("vote-note");
+  document.querySelectorAll("[data-vote]").forEach((b) =>
+    b.addEventListener("click", () => {
+      voteNote.innerHTML = 'Voting and Scout Score are for members. <a href="#join">Join the waitlist</a> to be first in line. Watching stays free.';
+      voteNote.classList.add("is-nudge");
+    })
+  );
+
+  // "Join" buttons preselect the viewer role in the waitlist form
+  document.querySelectorAll("[data-join-role]").forEach((a) =>
+    a.addEventListener("click", () => {
+      const input = document.querySelector(`#waitlist input[name=role][value="${a.dataset.joinRole}"]`);
+      if (input) { input.checked = true; input.dispatchEvent(new Event("change")); }
+    })
+  );
 
   // Reveal sections on scroll
   const targets = document.querySelectorAll(".section .wrap > *, .stat, .step, .trust-item");
