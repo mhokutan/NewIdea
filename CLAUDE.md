@@ -21,7 +21,7 @@ Status: validation stage. **promovote.com landing page is LIVE** (waitlist).
 * Explore page `/explore` (built by build.py into `public/explore.html`, logic in `public/explore.js`): search, categories (creator `category`: games, apps, shops), hashtags (promo `tags`), creators, promo grid. Charts (today, week, month) and uploads are specified in `docs/04-explore-charts-upload.md`; charts stay an honest empty state until real vote data exists. Boost never counts toward charts.
 * Mobile app Explore is different from web (founder decision): Instagram/TikTok/Snapchat style with creator story circles, category pills, autoplay masonry grid, tap to full screen feed. See section 2.1 of `docs/04-explore-charts-upload.md`.
 * Founder creators in the feed: Hauling Empire (game, store pending, notify CTA), Nicheable (Etsy, perk NEWIDEA25), Poleris (app, App Store live, Google Play soon; creator `cta: {type: store, android: soon}`, promo `linkKind: appstore`).
-* Company: MIA PERA TRANSPORTATION LLC (NJ) dba PromoVote for now. Separate LLC when revenue starts or before user uploads open. Payments plan: Stripe on the web for advertisers, optional in-app purchase later.
+* Company: MIA PERA TRANSPORTATION LLC (NJ) dba PromoVote for now. Separate LLC when revenue starts or before user uploads open. Payments (founder decision 2026-10-06): in-app only (Apple IAP + Google Play Billing via RevenueCat), no Stripe for now. Apple and Google are merchant of record and send buyer receipts. Never collect address, billing or card data. See `docs/05-mobile-app-and-payments.md`.
 
 
 ## Founder context
@@ -43,7 +43,7 @@ Status: validation stage. **promovote.com landing page is LIVE** (waitlist).
 * Advertiser offers (Steam keys, codes, beta) are optional and never tied to votes or reviews.
 * No subscriptions (founder decision 2026-10-06). Everything is free like social media (profiles, posting, watching). Paid extras only: Boost (labeled Sponsored, separate slot, never takes organic fair-queue turns), Trailer Test report, Pro analytics. Viewers are never paid. Free accounts get upload limits.
 * 18+, English first, restricted categories closed.
-* Planned stack: Expo + React Native Web (web, iOS, Android from one codebase), Next.js advertiser panel, Supabase, Cloudflare Stream, Stripe. Web public first, app stores after the checklist in the verdict.
+* Planned stack: Expo + React Native Web (web, iOS, Android from one codebase), Next.js advertiser panel, Supabase, Cloudflare Stream, Stripe. Mobile app first (founder decision 2026-10-06); the website stays as showcase, feed and Explore without payments. Supabase schema is specified but not created yet (free plan already has 2 projects).
 * Before building: 3 week validation test (paid concierge reports + weekly trailer list).
 
 ## Team and skills
