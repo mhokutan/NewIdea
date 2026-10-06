@@ -107,8 +107,10 @@ def reel(p, first):
     if c.get("perk"):
         tags.append(f'<button type="button" class="tag-perk" data-sheet="perk"><svg><use href="/icons.svg#i-gift"/></svg><span data-i18n="perk_tag">{t("perk_tag")}</span></button>')
     tags.append(f'<span class="tag-lang" data-lang-chip hidden>{e(ui[p["lang"]]["lang_name"])}</span>')
+    if c.get("cta", {}).get("android") == "soon":
+        tags.append(f'<span class="tag-soon" data-i18n="tag_android_soon">{t("tag_android_soon")}</span>')
     if p.get("link"):
-        key = "cta_shop" if p.get("linkKind") == "shop" else "cta_etsy"
+        key = {"shop": "cta_shop", "appstore": "cta_appstore"}.get(p.get("linkKind"), "cta_etsy")
         cta = f'<a class="btn btn-small btn-ghost" href="{e(p["link"])}" target="_blank" rel="sponsored noopener"><span data-i18n="{key}">{t(key)}</span> <svg class="ext"><use href="/icons.svg#i-arrow-up-right"/></svg></a>'
     elif c.get("cta", {}).get("type") == "notify":
         cta = f'<button type="button" class="btn btn-small" data-sheet="notify" data-i18n="cta_notify">{t("cta_notify")}</button>'
@@ -214,6 +216,8 @@ def build_profile(cid, c):
         box = ""
     if c.get("link"):
         links = f'<a class="plink" href="{e(c["link"]["url"])}" target="_blank" rel="sponsored noopener">{e(c["link"]["label"])} <svg aria-hidden="true"><use href="/icons.svg#i-arrow-up-right"/></svg></a>'
+        if c.get("cta", {}).get("android") == "soon":
+            links += f'<span class="plink plink-soon" data-i18n="tag_android_soon">{t("tag_android_soon")}</span>'
     elif c.get("status") == "soon":
         links = f'<span class="plink plink-soon" data-i18n="tag_soon">{t("tag_soon")}</span>'
     else:

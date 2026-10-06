@@ -27,6 +27,20 @@
       "link": {"url": "https://nicheable.etsy.com", "label": "nicheable.etsy.com"},
       "perk": "nicheable",
       "disclosure": "founder_shop"
+    },
+    "poleris": {
+      "name": "Poleris",
+      "avatar": {"img": "/media/poleris-icon.jpg"},
+      "kind": {"en": "Wellness app", "es": "App de bienestar", "tr": "Sağlıklı yaşam uygulaması"},
+      "banner": "poleris-poster.jpg",
+      "bio": {
+        "en": "A calm daily practice for manifestation. Write one intention, then take a two minute ritual each day: read your affirmation, give thanks, see it. Includes a 21 day journey, breathing and guided meditation.",
+        "es": "Una práctica diaria y tranquila para manifestar. Escribe una intención y haz un ritual de dos minutos cada día: lee tu afirmación, agradece y visualízalo. Incluye un viaje de 21 días, respiración y meditación guiada.",
+        "tr": "Niyet ve manifest için sakin bir günlük pratik. Bir niyet yaz, sonra her gün iki dakikalık ritüelini yap: olumlamanı oku, şükret, gör. 21 günlük yolculuk, nefes egzersizi ve rehberli meditasyon da var."
+      },
+      "link": {"url": "https://apps.apple.com/us/app/poleris-manifest-rituals/id6792844860", "label": "App Store"},
+      "cta": {"type": "store", "android": "soon"},
+      "disclosure": "founder_made"
     }
   },
   "promos": [
@@ -104,6 +118,42 @@
      "title": {"en": "Undated planners for focus, budget and life", "es": "Planificadores sin fecha para enfoque, presupuesto y vida", "tr": "Odak, bütçe ve günlük hayat için tarihsiz planlayıcılar"},
      "desc": {"en": "A daily focus planner, a budget and debt payoff tracker and more, as hyperlinked PDFs for E-Ink tablets.",
               "es": "Un planificador diario de enfoque, un control de presupuesto y deudas y más, en PDF con enlaces para tabletas E-Ink.",
-              "tr": "Günlük odak planlayıcı, bütçe ve borç kapatma takibi ve daha fazlası. E-Ink tabletler için bağlantılı PDF olarak."}}
+              "tr": "Günlük odak planlayıcı, bütçe ve borç kapatma takibi ve daha fazlası. E-Ink tabletler için bağlantılı PDF olarak."}},
+    {"id": "poleris", "creator": "poleris", "lang": "en", "video": "poleris", "dur": 32,
+     "link": "https://apps.apple.com/us/app/poleris-manifest-rituals/id6792844860", "linkKind": "appstore",
+     "title": {"en": "Your daily manifestation ritual", "es": "Tu ritual diario de manifestación", "tr": "Günlük manifest ritüelin"},
+     "desc": {"en": "One intention, a two minute ritual each day, a 21 day journey, breathing, badges and a ritual calendar.",
+              "es": "Una intención, un ritual de dos minutos al día, un viaje de 21 días, respiración, insignias y un calendario de rituales.",
+              "tr": "Tek bir niyet, her gün iki dakikalık ritüel, 21 günlük yolculuk, nefes egzersizi, rozetler ve ritüel takvimi."}},
+    {"id": "poleris-tr", "creator": "poleris", "lang": "tr", "video": "poleris-tr", "dur": 32,
+     "link": "https://apps.apple.com/us/app/poleris-manifest-rituals/id6792844860", "linkKind": "appstore",
+     "title": {"en": "Your daily manifestation ritual", "es": "Tu ritual diario de manifestación", "tr": "Günlük manifest ritüelin"},
+     "desc": {"en": "One intention, a two minute ritual each day, a 21 day journey, breathing, badges and a ritual calendar.",
+              "es": "Una intención, un ritual de dos minutos al día, un viaje de 21 días, respiración, insignias y un calendario de rituales.",
+              "tr": "Tek bir niyet, her gün iki dakikalık ritüel, 21 günlük yolculuk, nefes egzersizi, rozetler ve ritüel takvimi."}},
+    {"id": "poleris-21-day", "creator": "poleris", "lang": "en", "video": "poleris-21-day", "dur": 15,
+     "link": "https://apps.apple.com/us/app/poleris-manifest-rituals/id6792844860", "linkKind": "appstore",
+     "title": {"en": "One intention, 21 days", "es": "Una intención, 21 días", "tr": "Tek niyet, 21 gün"},
+     "desc": {"en": "Follow the 21 day journey week by week and mark each day complete.",
+              "es": "Sigue el viaje de 21 días semana a semana y marca cada día como completado.",
+              "tr": "21 günlük yolculuğu hafta hafta takip et, her günü tamamlandı olarak işaretle."}},
+    {"id": "poleris-21-day-tr", "creator": "poleris", "lang": "tr", "video": "poleris-21-day-tr", "dur": 15,
+     "link": "https://apps.apple.com/us/app/poleris-manifest-rituals/id6792844860", "linkKind": "appstore",
+     "title": {"en": "One intention, 21 days", "es": "Una intención, 21 días", "tr": "Tek niyet, 21 gün"},
+     "desc": {"en": "Follow the 21 day journey week by week and mark each day complete.",
+              "es": "Sigue el viaje de 21 días semana a semana y marca cada día como completado.",
+              "tr": "21 günlük yolculuğu hafta hafta takip et, her günü tamamlandı olarak işaretle."}},
+    {"id": "poleris-calm", "creator": "poleris", "lang": "en", "video": "poleris-calm", "dur": 17,
+     "link": "https://apps.apple.com/us/app/poleris-manifest-rituals/id6792844860", "linkKind": "appstore",
+     "title": {"en": "Breathe, visualize, rest", "es": "Respira, visualiza, descansa", "tr": "Nefes al, hayal et, dinlen"},
+     "desc": {"en": "The Calm tab: box breathing and guided meditations when you need a quiet minute.",
+              "es": "La pestaña Calma: respiración cuadrada y meditaciones guiadas para cuando necesitas un minuto de calma.",
+              "tr": "Sakinlik sekmesi: sakin bir dakikaya ihtiyacın olduğunda kutu nefesi ve rehberli meditasyonlar."}},
+    {"id": "poleris-calm-tr", "creator": "poleris", "lang": "tr", "video": "poleris-calm-tr", "dur": 17,
+     "link": "https://apps.apple.com/us/app/poleris-manifest-rituals/id6792844860", "linkKind": "appstore",
+     "title": {"en": "Breathe, visualize, rest", "es": "Respira, visualiza, descansa", "tr": "Nefes al, hayal et, dinlen"},
+     "desc": {"en": "The Calm tab: box breathing and guided meditations when you need a quiet minute.",
+              "es": "La pestaña Calma: respiración cuadrada y meditaciones guiadas para cuando necesitas un minuto de calma.",
+              "tr": "Sakinlik sekmesi: sakin bir dakikaya ihtiyacın olduğunda kutu nefesi ve rehberli meditasyonlar."}}
   ]
 }
