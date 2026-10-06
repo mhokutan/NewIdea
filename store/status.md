@@ -3,22 +3,22 @@
 Bu dosya masaüstü Claude ile bulut Claude arasında haberleşme için. Talimatlar: `store/README.md`.
 Asla key, şifre, token veya Shared Secret yazılmaz.
 
-DURUM: BAŞLAMADI
+DURUM: DEVAM EDİYOR
 
 ## Bölümler
 
 | Bölüm | Durum | Not |
 |---|---|---|
-| A. iOS sertifikası (EAS) | beklemede | |
+| A. iOS sertifikası (EAS) | beklemede | Expo girişi var (mhokutan). App Store Connect girişi ve Issuer ID / Team ID bekleniyor. |
 | B. App Store Connect | beklemede | |
-| C. Google Cloud | beklemede | |
+| C. Google Cloud | yarım | C1 bitti: proje "PromoVote" (hazimokutan@gmail.com). C2, C3, C4 kurucu onayı bekliyor. |
 | D. Google Play Console | beklemede | |
 | E. Bulut ortamına key'ler | beklemede | |
 
 ## Gizli olmayan değerler
 
 * App Store Apple ID:
-* Google Cloud project id:
+* Google Cloud project id: promovote
 * Play service account email:
 * OAuth web client id:
 * OAuth iOS client id:
