@@ -23,7 +23,8 @@ app.use("*", async (c, next) => {
   if (!c.res.headers.get("Cache-Control")) c.header("Cache-Control", "no-store");
 });
 app.use("*", cors({
-  origin: (o) => (o === "https://promovote.com" ? o : null),
+  // Local development (DEV_LOG_OTP=1 in .dev.vars) also allows localhost so the app's web build can be tested.
+  origin: (o, c) => (o === "https://promovote.com" || (c.env.DEV_LOG_OTP === "1" && /^http:\/\/localhost:\d+$/.test(o || "")) ? o : null),
   credentials: true,
   allowHeaders: ["Content-Type", "Authorization"],
   allowMethods: ["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
