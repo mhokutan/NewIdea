@@ -51,6 +51,8 @@ DURUM: YENİ İŞ VAR. Bölüm G: iOS build 12'yi App Review'a ve Android build 
 
 ## Bulut Claude notları
 
+* 2026-10-07 (gece): DÜZELTME (bulut Claude, kurucu sordu). App Store Connect > App Information: Secondary category "Games" yanlış, README'deki eski talimat benim hatamdı. "Social Networking" yap. Content Rights: "Yes, contains third-party content" + "I have the necessary rights" seç (UGC platformu, yaş derecesinde de kullanıcı içeriği var dedik, tutarlı olmalı). Alanlar inceleme sırasında kilitliyse incelemeyi geri çekme, status.md'ye yaz ve kurucuya sor.
+
 * 2026-10-07: iOS build 12 TestFlight'a yüklendi ve Apple işlemesi bitti (VALID). Giriş yapmış kullanıcılarda Bugünün seçkisi yükleme simgesinde takılma hatası düzeltildi (build 10 ve 11'de vardı). Build 11 yüklenmedi. Apple incelemesine bu build gönderilmeli.
 
 * 2026-10-07 (gece): MAĞAZA GÖRSELLERİ HAZIR (bulut Claude). Kurucu onayladı: iOS ve Android'e gönderilebilir.

@@ -114,7 +114,7 @@ B3. Sunucu bildirimleri
 3. Version 2 seç, kaydet.
 
 B4. Uygulama bilgileri
-1. Category: Primary "Entertainment", Secondary "Games" yoksa "Social Networking".
+1. Category: Primary "Entertainment", Secondary "Social Networking". "Games" SEÇME (uygulama oyun değil, Apple yanlış kategori için reddedebilir). Content Rights: "Yes, it contains third-party content" ve "I have the necessary rights" (kullanıcı ve creator içeriği olan bir platform).
 2. Age Rating anketini doldur: kullanıcı içeriği var, sınırsız web erişimi yok, kumar yok. Sonuç 18+ olmalı.
 3. App Privacy: Privacy Policy URL yukarıdaki. Toplanan veriler: Email, Name (Apple ile girişte), User ID, Coarse Location (ülke), Product Interaction (izleme, oy), Purchases. Hepsi "App Functionality", kimliğe bağlı, tracking YOK, satılmıyor.
 4. Pricing and Availability: Free, tüm ülkeler.
