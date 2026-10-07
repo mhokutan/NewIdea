@@ -2,7 +2,7 @@
 import { Linking, Pressable, StyleSheet, Text, View } from 'react-native';
 import { t } from '@/lib/i18n';
 import { openMail } from '@/lib/mail';
-import { C } from '@/lib/theme';
+import { C, themed } from '@/lib/theme';
 
 const LINKS: [Parameters<typeof t>[0], string][] = [
   ['help_contact', 'support@promovote.com'],
@@ -25,10 +25,10 @@ export function LegalLinks() {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => ({
   box: { marginTop: 28, gap: 2 },
   h: { color: C.muted, fontSize: 13, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 6 },
   row: { minHeight: 48, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: C.line },
   text: { color: C.text, fontSize: 16 },
   arrow: { color: C.muted, fontSize: 22 },
-});
+}));

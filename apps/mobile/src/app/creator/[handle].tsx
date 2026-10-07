@@ -7,7 +7,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { api, type Perk, type Profile } from '@/lib/api';
 import { t } from '@/lib/i18n';
-import { C, F } from '@/lib/theme';
+import { C, F, themed } from '@/lib/theme';
 import { categoryLabel, ctaLabel, ctaVisible, linkName } from '@/lib/categories';
 import { asMember } from '@/lib/gate';
 import { useMe } from '@/lib/use-me';
@@ -48,7 +48,7 @@ export default function CreatorScreen() {
     Share.share(Platform.OS === 'ios' ? { message: p?.name || handle, url } : { message: `${p?.name || handle} ${url}` }).catch(() => {});
   };
   if (error) return <View style={styles.center}><Text style={styles.text}>{t('error')}</Text><View style={{ width: 200, marginTop: 16 }}><Button label={t('retry')} onPress={() => { setError(false); load(); }} /></View></View>;
-  if (!p) return <View style={styles.center}><ActivityIndicator color={C.lime} /></View>;
+  if (!p) return <View style={styles.center}><ActivityIndicator color={C.accent} /></View>;
 
   const tileW = (width - 32 - 16) / 3;
   const main = p.primaryCta?.url && ctaVisible(p.primaryCta.kind, Platform.OS) ? p.primaryCta : null;
@@ -73,7 +73,7 @@ export default function CreatorScreen() {
           <View style={{ flex: 1, paddingBottom: 6 }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
               <Text style={styles.name} numberOfLines={1}>{p.name}</Text>
-              {p.verified ? <Icon name="check" size={18} color={C.lime} /> : null}
+              {p.verified ? <Icon name="check" size={18} color={C.accent} /> : null}
             </View>
             <Text style={styles.handle}>@{p.handle}{p.followers != null ? `  ·  ${p.followers} ${t('followers')}` : ''}</Text>
             {p.newCreator && !p.verified ? <Text style={styles.newChip}>{t('new_creator')}</Text> : null}
@@ -96,7 +96,7 @@ export default function CreatorScreen() {
           {(p.links || []).map((l) => (
             <Pressable key={l.url} onPress={() => { api.linkTap(handle, l.url).catch(() => {}); Linking.openURL(l.url); }} style={styles.link} accessibilityRole="link">
               <Text style={styles.linkText}>{linkName(l.platform, l.url, l.label)}</Text>
-              <Icon name="link" size={14} />
+              <Icon name="link" size={14} color={C.text} />
             </Pressable>
           ))}
           {p.releaseStatus === 'soon' ? <Text style={styles.soonCaption}>{t('soon')}</Text> : null}
@@ -104,7 +104,7 @@ export default function CreatorScreen() {
         </View>
         {perk && !p.viewer?.isMe ? (
           <Pressable onPress={() => setGift(true)} style={styles.gift} accessibilityRole="button" accessibilityLabel={`${t('gift')}: ${perk.title}`}>
-            <Icon name="gift" size={22} color={C.lime} />
+            <Icon name="gift" size={22} color={C.accent} />
             <View style={{ flex: 1 }}>
               <Text style={styles.giftKicker}>{t('gift')}</Text>
               <Text style={styles.linkText} numberOfLines={1}>{perk.title}</Text>
@@ -132,31 +132,31 @@ export default function CreatorScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => ({
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: C.bg },
   text: { color: C.text2 },
   pad: { paddingHorizontal: 16 },
   topRight: { position: 'absolute', right: 12, flexDirection: 'row', gap: 8 },
   round: { width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(20,20,31,0.72)', alignItems: 'center', justifyContent: 'center' },
   actions: { flexDirection: 'row', gap: 10, marginTop: 16 },
-  newChip: { alignSelf: 'flex-start', marginTop: 6, color: C.text2, fontSize: 12, fontWeight: '700', borderWidth: 1, borderColor: 'rgba(255,255,255,0.3)', borderRadius: 99, paddingHorizontal: 8, paddingVertical: 2, overflow: 'hidden' },
+  newChip: { alignSelf: 'flex-start', marginTop: 6, color: C.text2, fontSize: 12, fontWeight: '700', borderWidth: 1, borderColor: C.line, borderRadius: 99, paddingHorizontal: 8, paddingVertical: 2, overflow: 'hidden' },
   back: { position: 'absolute', left: 12, width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(20,20,31,0.72)', alignItems: 'center', justifyContent: 'center' },
   head: { flexDirection: 'row', alignItems: 'flex-end', gap: 14, marginTop: -48 },
   avatarWrap: { borderWidth: 4, borderColor: C.bg, borderRadius: 30 },
   name: { color: C.text, fontSize: 26, ...F.display, flexShrink: 1 },
-  handle: { color: '#c9c6d8', fontSize: 14, marginTop: 2 },
-  kind: { color: C.text2, fontSize: 13, fontWeight: '600', marginTop: 12, alignSelf: 'flex-start', borderWidth: 1, borderColor: 'rgba(255,255,255,0.18)', borderRadius: 99, paddingVertical: 4, paddingHorizontal: 10 },
+  handle: { color: C.text2, fontSize: 14, marginTop: 2 },
+  kind: { color: C.text2, fontSize: 13, fontWeight: '600', marginTop: 12, alignSelf: 'flex-start', borderWidth: 1, borderColor: C.line, borderRadius: 99, paddingVertical: 4, paddingHorizontal: 10 },
   bio: { color: C.text2, fontSize: 16, lineHeight: 23, marginTop: 18 },
   links: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginTop: 14 },
-  link: { flexDirection: 'row', alignItems: 'center', gap: 6, minHeight: 44, paddingVertical: 8, paddingHorizontal: 12, borderRadius: 10, backgroundColor: C.surface, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)', overflow: 'hidden' },
+  link: { flexDirection: 'row', alignItems: 'center', gap: 6, minHeight: 44, paddingVertical: 8, paddingHorizontal: 12, borderRadius: 10, backgroundColor: C.surface, borderWidth: 1, borderColor: C.line, overflow: 'hidden' },
   linkText: { color: C.text, fontWeight: '600', fontSize: 14 },
-  soonCaption: { color: C.lime, fontSize: 13, fontWeight: '700', alignSelf: 'center' },
-  soon: { color: C.lime, borderColor: 'rgba(198,255,61,0.35)', fontWeight: '600', fontSize: 14 },
-  gift: { flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 16, padding: 14, minHeight: 56, borderRadius: 14, borderWidth: 1.5, borderStyle: 'dashed', borderColor: 'rgba(198,255,61,0.55)', backgroundColor: 'rgba(198,255,61,0.06)' },
-  giftKicker: { color: C.lime, fontSize: 12, fontWeight: '700' },
+  soonCaption: { color: C.accent, fontSize: 13, fontWeight: '700', alignSelf: 'center' },
+  soon: { color: C.accent, borderColor: C.accent, fontWeight: '600', fontSize: 14 },
+  gift: { flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 16, padding: 14, minHeight: 56, borderRadius: 14, borderWidth: 1.5, borderStyle: 'dashed', borderColor: C.accent, backgroundColor: 'rgba(198,255,61,0.06)' },
+  giftKicker: { color: C.accent, fontSize: 12, fontWeight: '700' },
   disc: { color: C.muted, fontSize: 13, marginTop: 14 },
   h2: { color: C.text, fontSize: 18, ...F.display, marginTop: 28, marginBottom: 12 },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   tile: { borderRadius: 10, overflow: 'hidden', backgroundColor: C.surface },
   dur: { position: 'absolute', top: 6, right: 6, color: '#fff', fontSize: 11, fontWeight: '600', backgroundColor: 'rgba(8,8,12,0.7)', borderRadius: 6, paddingHorizontal: 5, paddingVertical: 2, overflow: 'hidden' },
-});
+}));

@@ -13,7 +13,7 @@ import { AccessibilityInfo, Linking, Platform, Pressable, Share, StyleSheet, Tex
 import { api, ApiError, type Call, type Promo } from '@/lib/api';
 import { asMember, asScout } from '@/lib/gate';
 import { lang, outcomeText, t } from '@/lib/i18n';
-import { C, F } from '@/lib/theme';
+import { D, F } from '@/lib/theme';
 import { setBlocked, setCall, setFollowing, setSaved, useViewerState } from '@/lib/viewer-state';
 import { Avatar } from './Avatar';
 import { Icon, type IconName } from './Icon';
@@ -176,7 +176,7 @@ export function PromoReel({ promo, active, height, muted, onSeen, bottomInset = 
         </Link>
         {promo.hasPerk ? (
           <Pressable onPress={() => { tap(); setGift(true); }} style={({ pressed }) => [styles.gift, pressed && styles.pressed]} accessibilityRole="button" hitSlop={4}>
-            <Icon name="ticket" size={14} color={C.ink} />
+            <Icon name="ticket" size={14} color={D.ink} />
             <Text maxFontSizeMultiplier={1.35} style={styles.giftText}>{t('gift')}</Text>
           </Pressable>
         ) : null}
@@ -207,7 +207,7 @@ export function PromoReel({ promo, active, height, muted, onSeen, bottomInset = 
         {promo.cta?.url && ctaVisible(promo.cta.kind, Platform.OS) ? (
           <Pressable onPress={openCta} style={({ pressed }) => [styles.cta, pressed && styles.pressed]} accessibilityRole="link">
             <Text maxFontSizeMultiplier={1.35} style={styles.ctaText}>{t(ctaLabel(promo.cta.kind))}</Text>
-            <Icon name="link" size={14} color={C.ink} />
+            <Icon name="link" size={14} color={D.ink} />
           </Pressable>
         ) : null}
       </View>
@@ -223,11 +223,11 @@ export function PromoReel({ promo, active, height, muted, onSeen, bottomInset = 
         {call ? (
           <Animated.View entering={FadeInDown.springify().damping(16)} style={[styles.ticket, done && call.outcome === 'correct' && styles.ticketWin]} accessible accessibilityLabel={`${t('called')}: ${t(call.choice)}. ${sub}`}>
             <View style={[styles.ticketIcon, call.choice === 'will_blow_up' ? styles.ticketUp : styles.ticketDown]}>
-              <Icon name={call.choice === 'will_blow_up' ? 'chevrons' : 'down'} size={18} color={call.choice === 'will_blow_up' ? C.ink : '#fff'} />
+              <Icon name={call.choice === 'will_blow_up' ? 'chevrons' : 'down'} size={18} color={call.choice === 'will_blow_up' ? D.ink : '#fff'} />
             </View>
             <View style={{ flex: 1 }}>
               <Text maxFontSizeMultiplier={1.35} style={styles.ticketTitle} numberOfLines={1}>{t('called')}: {t(call.choice)}</Text>
-              <Text maxFontSizeMultiplier={1.35} style={[styles.ticketSub, done && call.outcome === 'correct' && { color: C.lime, fontWeight: '700' }]} numberOfLines={1}>{sub}</Text>
+              <Text maxFontSizeMultiplier={1.35} style={[styles.ticketSub, done && call.outcome === 'correct' && { color: D.lime, fontWeight: '700' }]} numberOfLines={1}>{sub}</Text>
             </View>
           </Animated.View>
         ) : (
@@ -238,7 +238,7 @@ export function PromoReel({ promo, active, height, muted, onSeen, bottomInset = 
             </Pressable>
             <Pressable onPress={() => vote('will_blow_up')} disabled={busy} accessibilityRole="button" accessibilityLabel={t('will_blow_up')} android_ripple={{ color: 'rgba(0,0,0,0.15)' }}
               style={({ pressed }) => [styles.callBtn, styles.callYes, pressed && styles.pressed]}>
-              <Icon name="chevrons" size={18} color={C.ink} />
+              <Icon name="chevrons" size={18} color={D.ink} />
               <Text maxFontSizeMultiplier={1.35} style={styles.callYesText}>{t('will_blow_up')}</Text>
             </Pressable>
           </>
@@ -259,7 +259,7 @@ function RailButton({ icon, label, onPress, on }: { icon: IconName; label: strin
     <Pressable onPress={onPress} style={({ pressed }) => [styles.railBtn, pressed && styles.pressed]} accessibilityRole="button"
       accessibilityLabel={label} accessibilityState={{ selected: !!on }} hitSlop={6} android_ripple={{ color: 'rgba(255,255,255,0.2)', borderless: true }}>
       <View style={[styles.railIcon, on && { backgroundColor: '#fff' }]}>
-        <Icon name={icon} color={on ? C.ink : '#fff'} />
+        <Icon name={icon} color={on ? D.ink : '#fff'} />
       </View>
       <View style={styles.railLabelPill}><Text maxFontSizeMultiplier={1.35} style={styles.railLabel} numberOfLines={1}>{label}</Text></View>
     </Pressable>
@@ -278,18 +278,18 @@ const styles = StyleSheet.create({
   who: { flexDirection: 'row', alignItems: 'center', gap: 10, alignSelf: 'flex-start', minHeight: 44 },
   whoName: { color: '#fff', fontWeight: '700', fontSize: 16 },
   whoKind: { color: '#d4d1e2', fontSize: 13 },
-  gift: { alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: C.lime, borderRadius: 99, paddingHorizontal: 10, minHeight: 28, marginTop: 6 },
-  giftText: { color: C.ink, fontWeight: '800', fontSize: 12 },
+  gift: { alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: D.lime, borderRadius: 99, paddingHorizontal: 10, minHeight: 28, marginTop: 6 },
+  giftText: { color: D.ink, fontWeight: '800', fontSize: 12 },
   title: { color: '#fff', ...F.display, fontSize: 18, marginTop: 8, marginBottom: 2 },
-  desc: { color: C.text2, fontSize: 14, lineHeight: 20 },
+  desc: { color: D.text2, fontSize: 14, lineHeight: 20 },
   more: { color: '#fff', fontSize: 13, fontWeight: '700', marginTop: 2, opacity: 0.85 },
   tags: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginTop: 8 },
   hashtag: { color: '#fff', fontWeight: '600', fontSize: 13, paddingVertical: 11, paddingRight: 4 },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 8 },
-  chip: { color: C.lime, fontSize: 12, fontWeight: '600', paddingVertical: 5, paddingHorizontal: 10, borderRadius: 99, borderWidth: 1, borderColor: 'rgba(198,255,61,0.45)', overflow: 'hidden' },
+  chip: { color: D.lime, fontSize: 12, fontWeight: '600', paddingVertical: 5, paddingHorizontal: 10, borderRadius: 99, borderWidth: 1, borderColor: 'rgba(198,255,61,0.45)', overflow: 'hidden' },
   cta: { alignSelf: 'flex-start', marginTop: 10, borderRadius: 12, backgroundColor: '#fff', minHeight: 44, paddingHorizontal: 14, flexDirection: 'row', alignItems: 'center', gap: 6 },
   ctaDone: { backgroundColor: 'rgba(20,20,31,0.82)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.3)' },
-  ctaText: { color: C.ink, fontWeight: '700', fontSize: 14 },
+  ctaText: { color: D.ink, fontWeight: '700', fontSize: 14 },
   rail: { position: 'absolute', right: 8, gap: 12, alignItems: 'center' },
   railBtn: { width: 68, alignItems: 'center', gap: 4 },
   railIcon: { width: 48, height: 48, borderRadius: 24, backgroundColor: 'rgba(20,20,31,0.72)', alignItems: 'center', justifyContent: 'center' },
@@ -299,12 +299,12 @@ const styles = StyleSheet.create({
   callBtn: { flex: 1, minHeight: 52, borderRadius: 16, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 6 },
   callNo: { backgroundColor: 'rgba(20,20,31,0.82)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.22)' },
   callNoText: { color: '#fff', fontWeight: '700', fontSize: 15 },
-  callYes: { backgroundColor: C.lime },
-  callYesText: { color: C.ink, fontWeight: '800', fontSize: 15 },
+  callYes: { backgroundColor: D.lime },
+  callYesText: { color: D.ink, fontWeight: '800', fontSize: 15 },
   ticket: { flex: 1, minHeight: 52, borderRadius: 16, backgroundColor: 'rgba(20,20,31,0.9)', borderWidth: 1, borderColor: 'rgba(198,255,61,0.45)', flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 12 },
   ticketIcon: { width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
-  ticketWin: { borderColor: C.lime },
-  ticketUp: { backgroundColor: C.lime },
+  ticketWin: { borderColor: D.lime },
+  ticketUp: { backgroundColor: D.lime },
   ticketDown: { backgroundColor: 'rgba(255,255,255,0.15)' },
   ticketTitle: { color: '#fff', ...F.display, fontSize: 14 },
   ticketSub: { color: '#c9c6d8', fontSize: 12, marginTop: 1 },

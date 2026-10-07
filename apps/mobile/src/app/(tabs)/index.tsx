@@ -8,11 +8,12 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { ActivityIndicator, FlatList, Platform, Pressable, ScrollView, StyleSheet, Text, View, type ViewToken } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { setStatusBarStyle } from 'expo-status-bar';
 
 import { api, type Promo } from '@/lib/api';
 import { nextRound } from '@/lib/fair-queue';
 import { lang, t } from '@/lib/i18n';
-import { C, F } from '@/lib/theme';
+import { D, theme, F } from '@/lib/theme';
 import { reminderOn, turnOnReminder } from '@/lib/reminder';
 import { useMe } from '@/lib/use-me';
 import { useViewerState, viewerStateLoaded } from '@/lib/viewer-state';
@@ -49,7 +50,11 @@ export default function Feed() {
   const [active, setActive] = useState(0);
   const [muted, setMuted] = useState(true);
   const [focused, setFocused] = useState(true);
-  useFocusEffect(useCallback(() => { setFocused(true); return () => setFocused(false); }, []));
+  // The feed is always dark (video), so the status bar stays light here even in the light theme.
+  useFocusEffect(useCallback(() => {
+    setFocused(true); setStatusBarStyle('light');
+    return () => { setFocused(false); setStatusBarStyle(theme.scheme === 'light' ? 'dark' : 'light'); };
+  }, []));
   const vs = useViewerState();
   const { me, loading: meLoading } = useMe();
   const blocked = vs.blocked;
@@ -144,7 +149,7 @@ export default function Feed() {
     <GestureDetector gesture={swipe}>
     <View style={styles.root} onLayout={(e) => setHeight(e.nativeEvent.layout.height)}>
       {!all || !height ? (
-        <View style={styles.center}><ActivityIndicator color={C.lime} /></View>
+        <View style={styles.center}><ActivityIndicator color={D.lime} /></View>
       ) : !items.length ? (
         <View style={styles.center}><Text style={styles.msg}>{t(EMPTY[tab])}</Text></View>
       ) : (
@@ -227,7 +232,7 @@ function EndCard({ height, calls, size, guest, onMore, onExplore }: {
   const line = guest ? t('drop_done_guest') : calls ? t('drop_done_calls').replace('{n}', String(calls)).replace('{size}', String(size)) : t('drop_done_zero');
   return (
     <View style={[styles.end, { height }]}>
-      <Icon name="chevrons" size={44} color={C.lime} />
+      <Icon name="chevrons" size={44} color={D.lime} />
       <Text style={styles.endTitle} accessibilityRole="header">{t('drop_done_t')}</Text>
       <Text style={styles.endText}>{line}</Text>
       {!guest && calls ? <Text style={styles.endText}>{t('drop_done_p')}</Text> : null}
@@ -246,8 +251,8 @@ function EndCard({ height, calls, size, guest, onMore, onExplore }: {
 const shadow = { textShadowColor: 'rgba(0,0,0,0.6)', textShadowRadius: 4 } as const;
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: '#000' },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: C.bg, padding: 32 },
-  msg: { color: C.text2, fontSize: 16, lineHeight: 23, textAlign: 'center', maxWidth: 320 },
+  center: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: D.bg, padding: 32 },
+  msg: { color: D.text2, fontSize: 16, lineHeight: 23, textAlign: 'center', maxWidth: 320 },
   top: { position: 'absolute', top: 0, left: 0, right: 0, paddingHorizontal: 12 },
   bar: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   tabs: { gap: 18, paddingHorizontal: 4, alignItems: 'center' },
@@ -255,14 +260,14 @@ const styles = StyleSheet.create({
   tabText: { color: 'rgba(255,255,255,0.85)', fontSize: 16, fontWeight: '600', ...shadow },
   tabOn: { color: '#fff', fontWeight: '800' },
   dot: { marginTop: 5, width: 18, height: 3, borderRadius: 2, backgroundColor: 'transparent' },
-  dotOn: { backgroundColor: C.lime },
+  dotOn: { backgroundColor: D.lime },
   sound: { marginLeft: 'auto', width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(20,20,31,0.72)', alignItems: 'center', justifyContent: 'center' },
   progress: { flexDirection: 'row', gap: 4, marginTop: 6, paddingHorizontal: 4 },
   seg: { flex: 1, height: 3, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.28)' },
-  segOn: { backgroundColor: C.lime },
-  end: { alignItems: 'center', justifyContent: 'center', backgroundColor: C.bg, padding: 32, gap: 8 },
-  endTitle: { color: C.text, fontSize: 28, ...F.display, textAlign: 'center', marginTop: 8 },
-  endText: { color: C.text2, fontSize: 16, lineHeight: 23, textAlign: 'center', maxWidth: 320 },
+  segOn: { backgroundColor: D.lime },
+  end: { alignItems: 'center', justifyContent: 'center', backgroundColor: D.bg, padding: 32, gap: 8 },
+  endTitle: { color: D.text, fontSize: 28, ...F.display, textAlign: 'center', marginTop: 8 },
+  endText: { color: D.text2, fontSize: 16, lineHeight: 23, textAlign: 'center', maxWidth: 320 },
   note: { alignSelf: 'flex-start', marginTop: 8, marginLeft: 4, maxWidth: 320, color: '#fff', fontSize: 12, fontWeight: '600', backgroundColor: 'rgba(10,10,15,0.78)', borderRadius: 10, paddingHorizontal: 10, paddingVertical: 6, overflow: 'hidden' },
   scrim: { position: 'absolute', top: 0, left: 0, right: 0 },
 });

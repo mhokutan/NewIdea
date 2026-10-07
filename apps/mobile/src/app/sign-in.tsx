@@ -5,13 +5,13 @@ import * as AppleAuthentication from 'expo-apple-authentication';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { KeyboardAvoidingView, Linking, Platform, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { KeyboardAvoidingView, Linking, Platform, Pressable, Text, TextInput, View } from 'react-native';
 
 import { api } from '@/lib/api';
 import { authClient } from '@/lib/auth';
 import { t } from '@/lib/i18n';
 import { appleAvailable, EMAIL_LOGIN, googleAvailable, type Result, signInWithApple, signInWithGoogle } from '@/lib/social-sign-in';
-import { C, F } from '@/lib/theme';
+import { C, F, themed, theme } from '@/lib/theme';
 import { refreshMe } from '@/lib/use-me';
 import { Icon } from '@/ui/Icon';
 import { Button } from '@/ui/Pill';
@@ -50,7 +50,7 @@ export default function SignIn() {
         <View style={styles.values}>
           {([['chevrons', 'value_call'], ['ticket', 'value_result'], ['save', 'value_save']] as const).map(([icon, key]) => (
             <View key={key} style={styles.value}>
-              <View style={styles.valueIcon}><Icon name={icon} size={16} color={C.lime} /></View>
+              <View style={styles.valueIcon}><Icon name={icon} size={16} color={C.accent} /></View>
               <Text style={styles.valueText}>{t(key)}</Text>
             </View>
           ))}
@@ -58,7 +58,7 @@ export default function SignIn() {
         {apple ? (
           <AppleAuthentication.AppleAuthenticationButton
             buttonType={AppleAuthentication.AppleAuthenticationButtonType.CONTINUE}
-            buttonStyle={AppleAuthentication.AppleAuthenticationButtonStyle.WHITE}
+            buttonStyle={theme.scheme === 'light' ? AppleAuthentication.AppleAuthenticationButtonStyle.BLACK : AppleAuthentication.AppleAuthenticationButtonStyle.WHITE}
             cornerRadius={14}
             style={{ height: 52 }}
             onPress={async () => { setBusy(true); setErr(''); done(await signInWithApple()); }}
@@ -119,7 +119,7 @@ function EmailCode({ onDone }: { onDone: (r: Result) => void }) {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => ({
   root: { flex: 1, backgroundColor: C.bg, justifyContent: 'center' },
   box: { padding: 24, gap: 14 },
   close: { position: 'absolute', top: Platform.OS === 'ios' ? 16 : 40, right: 16, minHeight: 44, justifyContent: 'center', paddingHorizontal: 8, zIndex: 2 },
@@ -141,4 +141,4 @@ const styles = StyleSheet.create({
   emailLinkText: { color: C.text2, fontSize: 15, fontWeight: '600', textDecorationLine: 'underline' },
   fineLink: { color: C.text2, textDecorationLine: 'underline' },
   fine: { color: C.muted, fontSize: 12, lineHeight: 17, marginTop: 6 },
-});
+}));

@@ -9,7 +9,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { api, type Creator, type Promo } from '@/lib/api';
 import { EXPLORE_CATEGORIES } from '@/lib/categories';
 import { t } from '@/lib/i18n';
-import { C, F } from '@/lib/theme';
+import { C, F, themed } from '@/lib/theme';
 import { Avatar } from '@/ui/Avatar';
 import { Icon } from '@/ui/Icon';
 import { Pill } from '@/ui/Pill';
@@ -118,7 +118,7 @@ export default function Explore() {
       </ScrollView>
 
       <View style={[styles.pad, styles.grid]}>
-        {promos === null ? <ActivityIndicator color={C.lime} style={{ marginTop: 40, flex: 1 }} /> : promos.length === 0 ? (
+        {promos === null ? <ActivityIndicator color={C.accent} style={{ marginTop: 40, flex: 1 }} /> : promos.length === 0 ? (
           <Text style={styles.empty}>{t('nothing')}</Text>
         ) : columns.map((col, ci) => (
           <View key={ci} style={{ width: colW, gap: 8 }}>
@@ -138,29 +138,29 @@ export default function Explore() {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => ({
   pad: { paddingHorizontal: 16 },
   search: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: C.surface, borderRadius: 14, paddingHorizontal: 14, borderWidth: 1, borderColor: C.line },
   input: { flex: 1, color: C.text, fontSize: 16, paddingVertical: 13 },
   row: { paddingHorizontal: 16, paddingTop: 14, paddingBottom: 4, gap: 8 },
   story: { width: 76, alignItems: 'center', gap: 6 },
   storyName: { color: C.text2, fontSize: 12, fontWeight: '600' },
-  tag: { paddingVertical: 7, paddingHorizontal: 12, borderRadius: 10, backgroundColor: C.surface, borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)' },
+  tag: { paddingVertical: 7, paddingHorizontal: 12, borderRadius: 10, backgroundColor: C.surface, borderWidth: 1, borderColor: C.line },
   tagOn: { backgroundColor: C.lime, borderColor: C.lime },
   tagText: { color: C.text2, fontWeight: '600', fontSize: 14 },
   grid: { flexDirection: 'row', gap: 8, marginTop: 14 },
   empty: { color: C.text2, paddingVertical: 28 },
   tile: { borderRadius: 14, overflow: 'hidden', backgroundColor: C.surface, justifyContent: 'flex-end', padding: 10 },
   tileShade: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 },
-  tileWho: { color: '#c9c6d8', fontSize: 12, fontWeight: '600' },
+  tileWho: { color: C.text2, fontSize: 12, fontWeight: '600' },
   tileTitle: { color: '#fff', fontSize: 14, fontWeight: '700', marginTop: 2 },
-  charts: { padding: 16, borderRadius: 18, backgroundColor: C.surface, borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)' },
-  bar: { height: 6, borderRadius: 3, backgroundColor: 'rgba(255,255,255,0.12)', marginTop: 10, overflow: 'hidden' },
+  charts: { padding: 16, borderRadius: 18, backgroundColor: C.surface, borderWidth: 1, borderColor: C.line },
+  bar: { height: 6, borderRadius: 3, backgroundColor: C.line, marginTop: 10, overflow: 'hidden' },
   barFill: { height: 6, borderRadius: 3, backgroundColor: C.lime },
   rank: { width: 150, padding: 12, borderRadius: 14, backgroundColor: C.surface2, gap: 4 },
-  rankNo: { color: C.lime, fontSize: 22, ...F.display },
+  rankNo: { color: C.accent, fontSize: 22, ...F.display },
   rankFounder: { color: C.muted, fontSize: 11, marginTop: 2 },
   rankTitle: { color: C.text, fontSize: 14, fontWeight: '700' },
   h2: { color: C.text, fontSize: 20, ...F.display },
   chartsText: { color: C.text2, fontSize: 15, marginTop: 6 },
-});
+}));

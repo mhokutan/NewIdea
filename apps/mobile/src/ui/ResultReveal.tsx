@@ -3,13 +3,13 @@
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
-import { Modal, Platform, Pressable, Share, StyleSheet, Text, View } from 'react-native';
+import { Modal, Platform, Pressable, Share, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { api, type ScoutSummary } from '@/lib/api';
 import { outcomeText, t } from '@/lib/i18n';
 import { getLocal, setLocal } from '@/lib/store';
-import { C, F, R } from '@/lib/theme';
+import { C, F, R, themed } from '@/lib/theme';
 import { useMe } from '@/lib/use-me';
 import { useViewerState, viewerStateLoaded } from '@/lib/viewer-state';
 import { Icon } from './Icon';
@@ -107,16 +107,16 @@ export function ResultReveal({ enabled }: { enabled: boolean }) {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => ({
   backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)' },
   sheet: { backgroundColor: C.surface, borderTopLeftRadius: R.lg, borderTopRightRadius: R.lg, paddingHorizontal: 20, paddingTop: 10, gap: 12 },
-  grab: { alignSelf: 'center', width: 40, height: 5, borderRadius: 3, backgroundColor: 'rgba(255,255,255,0.25)' },
+  grab: { alignSelf: 'center', width: 40, height: 5, borderRadius: 3, backgroundColor: C.line },
   title: { color: C.text, fontSize: 24, ...F.display },
   ticket: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 12, borderRadius: 16, borderWidth: 1.5, borderStyle: 'dashed', borderColor: C.line, backgroundColor: C.surface2 },
   ticketWin: { borderColor: C.lime },
   thumb: { width: 56, height: 84, borderRadius: 10, backgroundColor: C.bg },
   promo: { color: C.text, fontSize: 16, ...F.displayBold },
-  points: { color: C.lime, fontSize: 30, ...F.display },
+  points: { color: C.accent, fontSize: 30, ...F.display },
   small: { color: C.muted, fontSize: 13 },
   text: { color: C.text2, fontSize: 15, lineHeight: 21 },
-});
+}));

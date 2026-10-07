@@ -11,7 +11,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { api, ApiError } from '@/lib/api';
 import { CATEGORIES, CTA_OPTIONS, ctaVisible } from '@/lib/categories';
 import { t } from '@/lib/i18n';
-import { C, F } from '@/lib/theme';
+import { C, F, themed } from '@/lib/theme';
 import { refreshMe, useMe } from '@/lib/use-me';
 import { Avatar } from '@/ui/Avatar';
 import { Button, Pill } from '@/ui/Pill';
@@ -82,7 +82,7 @@ export default function EditProfile() {
 
   const toggleSecondary = (id: string) => setSecondary((s) => (s.includes(id) ? s.filter((x) => x !== id) : s.length < 2 ? [...s, id] : s));
 
-  if (!loaded) return <View style={[styles.root, { alignItems: 'center', justifyContent: 'center' }]}><ActivityIndicator color={C.lime} /></View>;
+  if (!loaded) return <View style={[styles.root, { alignItems: 'center', justifyContent: 'center' }]}><ActivityIndicator color={C.accent} /></View>;
   return (
     <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.root}>
       <ScrollView contentContainerStyle={{ padding: 16, paddingTop: Platform.OS === 'ios' ? 20 : insets.top + 16, paddingBottom: insets.bottom + 40, gap: 16 }} keyboardShouldPersistTaps="handled">
@@ -153,7 +153,7 @@ export default function EditProfile() {
         ) : null}
 
         {err ? <Text style={{ color: C.danger }} accessibilityLiveRegion="polite">{err}</Text> : null}
-        {ok ? <Text style={{ color: C.lime }} accessibilityLiveRegion="polite">{t('saved_ok')}</Text> : null}
+        {ok ? <Text style={{ color: C.accent }} accessibilityLiveRegion="polite">{t('saved_ok')}</Text> : null}
         <Button label={busy === 'save' ? '...' : t('save_changes')} onPress={save} disabled={!!busy || !name.trim() || (isCreator && !category)} />
       </ScrollView>
     </KeyboardAvoidingView>
@@ -164,7 +164,7 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   return <View style={{ gap: 8 }}><Text style={styles.label}>{label}</Text>{children}</View>;
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => ({
   root: { flex: 1, backgroundColor: C.bg },
   top: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   cancel: { color: C.text2, fontSize: 16, width: 60 },
@@ -173,7 +173,7 @@ const styles = StyleSheet.create({
   bannerHint: { backgroundColor: 'rgba(0,0,0,0.45)', padding: 10, alignItems: 'center' },
   hintText: { color: '#fff', fontWeight: '700' },
   avatarBusy: { position: 'absolute', inset: 0, borderRadius: 22, backgroundColor: 'rgba(0,0,0,0.5)', alignItems: 'center', justifyContent: 'center' } as any,
-  label: { color: '#c9c6d8', fontSize: 14, fontWeight: '600' },
+  label: { color: C.text2, fontSize: 14, fontWeight: '600' },
   input: { backgroundColor: C.surface, color: C.text, fontSize: 16, borderRadius: 12, borderWidth: 1, borderColor: C.line, paddingHorizontal: 14, paddingVertical: 12 },
   small: { color: C.muted, fontSize: 12, alignSelf: 'flex-end' },
   text: { color: C.text2, fontSize: 15, lineHeight: 21 },
@@ -182,4 +182,4 @@ const styles = StyleSheet.create({
   box: { width: 24, height: 24, borderRadius: 6, borderWidth: 2, borderColor: C.muted, alignItems: 'center', justifyContent: 'center' },
   linkRow: { flexDirection: 'row', gap: 10, alignItems: 'flex-start', backgroundColor: C.surface, borderRadius: 14, padding: 10 },
   remove: { minHeight: 44, justifyContent: 'center', paddingHorizontal: 4 },
-});
+}));

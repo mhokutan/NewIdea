@@ -2,12 +2,12 @@
 // One active gift per creator; starting a new one ends the old one. Gifts can never ask for votes or follows.
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { api, ApiError } from '@/lib/api';
 import { t } from '@/lib/i18n';
-import { C, F } from '@/lib/theme';
+import { C, F, themed } from '@/lib/theme';
 import { Button, Pill } from '@/ui/Pill';
 
 const KINDS = [['code', 'k_code'], ['discount', 'k_discount'], ['beta_invite', 'k_beta']] as const;
@@ -62,14 +62,14 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   return <View style={{ gap: 8 }}><Text style={styles.label}>{label}</Text>{children}</View>;
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => ({
   root: { flex: 1, backgroundColor: C.bg },
   top: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   cancel: { color: C.text2, fontSize: 16, width: 60 },
   title: { color: C.text, fontSize: 18, ...F.display },
-  label: { color: '#c9c6d8', fontSize: 14, fontWeight: '600' },
+  label: { color: C.text2, fontSize: 14, fontWeight: '600' },
   input: { backgroundColor: C.surface, color: C.text, fontSize: 16, borderRadius: 12, borderWidth: 1, borderColor: C.line, paddingHorizontal: 14, paddingVertical: 12 },
   text: { color: C.text2, fontSize: 15, lineHeight: 21 },
   small: { color: C.muted, fontSize: 12 },
   wrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-});
+}));

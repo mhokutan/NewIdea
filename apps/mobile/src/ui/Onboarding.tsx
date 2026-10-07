@@ -3,12 +3,12 @@
 // and the main button. One request creates the whole profile (POST /v1/onboarding).
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useEffect, useRef, useState } from 'react';
-import { Platform, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Platform, Pressable, Text, TextInput, View } from 'react-native';
 
 import { api, ApiError } from '@/lib/api';
 import { CATEGORIES, CTA_OPTIONS, ctaVisible } from '@/lib/categories';
 import { lang, t } from '@/lib/i18n';
-import { C, F } from '@/lib/theme';
+import { C, F, themed } from '@/lib/theme';
 import { useMe } from '@/lib/use-me';
 import { Icon } from './Icon';
 import { Button, Pill } from './Pill';
@@ -249,7 +249,7 @@ export function Onboarding({ onDone }: { onDone: () => void }) {
 function TypeCard({ title, text, icon, onPress }: { title: string; text: string; icon: 'chevrons' | 'ticket'; onPress: () => void }) {
   return (
     <Pressable onPress={onPress} style={({ pressed }) => [styles.card, pressed && { opacity: 0.8 }]} accessibilityRole="button">
-      <View style={styles.typeIcon}><Icon name={icon} size={22} color={C.lime} /></View>
+      <View style={styles.typeIcon}><Icon name={icon} size={22} color={C.accent} /></View>
       <View style={{ flex: 1, gap: 4 }}>
         <Text style={styles.h2}>{title}</Text>
         <Text style={styles.text}>{text}</Text>
@@ -263,12 +263,12 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   return <View style={{ gap: 8 }}><Text style={styles.label}>{label}</Text>{children}</View>;
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => ({
   h1: { color: C.text, fontSize: 26, ...F.display },
   h2: { color: C.text, fontSize: 18, ...F.display },
   text: { color: C.text2, fontSize: 15, lineHeight: 21 },
   small: { color: C.muted, fontSize: 13 },
-  label: { color: '#c9c6d8', fontSize: 14, fontWeight: '600' },
+  label: { color: C.text2, fontSize: 14, fontWeight: '600' },
   input: { backgroundColor: C.surface, color: C.text, fontSize: 16, borderRadius: 12, borderWidth: 1, borderColor: C.line, paddingHorizontal: 14, paddingVertical: 12 },
   dateField: { flex: 1, minWidth: 0, width: 0, textAlign: 'center' },
   dateBox: { alignSelf: 'flex-start' },
@@ -283,4 +283,4 @@ const styles = StyleSheet.create({
   boxOn: { backgroundColor: C.lime, borderColor: C.lime },
   tick: { color: C.ink, fontWeight: '800' },
   remove: { minWidth: 44, minHeight: 44, alignItems: 'center', justifyContent: 'center' },
-});
+}));

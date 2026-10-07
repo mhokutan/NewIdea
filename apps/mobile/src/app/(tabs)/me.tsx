@@ -11,7 +11,7 @@ import * as Clipboard from 'expo-clipboard';
 import { api, type Perk, type ScoutSummary, type Studio, type WalletItem } from '@/lib/api';
 import { CATEGORIES } from '@/lib/categories';
 import { lang, outcomeText, t } from '@/lib/i18n';
-import { C, F } from '@/lib/theme';
+import { C, F, themed, setThemePref, theme, type SchemePref } from '@/lib/theme';
 import { openMail } from '@/lib/mail';
 import { reminderOn, turnOffReminder, turnOnReminder } from '@/lib/reminder';
 import { signOut, useMe } from '@/lib/use-me';
@@ -32,11 +32,13 @@ export default function MeScreen() {
   const next = useRef<(() => void) | null>(null);
   const closeSettings = (then?: () => void) => { next.current = then || null; setSettings(false); };
   const [reminder, setReminder] = useState(false);
+  const [themeSheet, setThemeSheet] = useState(false);
+  const pickTheme = (pref: SchemePref) => { setThemeSheet(false); setTimeout(() => { setThemePref(pref); setTimeout(() => router.navigate('/me'), 60); }, 350); };
   const openSettings = () => { reminderOn().then(setReminder).catch(() => {}); setSettings(true); };
   useEffect(() => { refresh(); }, [refresh]);
 
   let body;
-  if (loading) body = <ActivityIndicator color={C.lime} style={{ marginTop: 80 }} />;
+  if (loading) body = <ActivityIndicator color={C.accent} style={{ marginTop: 80 }} />;
   else if (!me) body = (
     <View style={styles.card}>
       <Text style={styles.h1}>{t('guest_t')}</Text>
@@ -67,10 +69,16 @@ export default function MeScreen() {
         onDismissed={() => { const n = next.current; next.current = null; n?.(); }} actions={[
         { label: t('edit_profile'), tone: 'primary', onPress: () => closeSettings(() => router.push('/edit-profile')) },
         ...(Platform.OS !== 'web' ? [{ label: reminder ? t('reminder_off') : t('reminder_turn_on'), onPress: () => closeSettings(() => { (reminder ? turnOffReminder() : turnOnReminder()).catch(() => {}); }) }] : []),
+        { label: `${t('appearance')}: ${t(theme.pref === 'light' ? 'theme_light' : theme.pref === 'dark' ? 'theme_dark' : 'theme_system')}`, onPress: () => closeSettings(() => setThemeSheet(true)) },
         { label: t('sign_out'), onPress: () => closeSettings(async () => { await signOut(); refresh(); }) },
         { label: t('delete_account'), tone: 'danger', onPress: () => closeSettings(confirmDelete) },
         { label: t('cancel'), onPress: () => closeSettings() },
       ]} />
+      <Sheet visible={themeSheet} title={t('appearance')} onClose={() => setThemeSheet(false)} actions={(['system', 'light', 'dark'] as const).map((k) => ({
+        label: `${theme.pref === k ? '✓  ' : ''}${t(k === 'light' ? 'theme_light' : k === 'dark' ? 'theme_dark' : 'theme_system')}`,
+        tone: theme.pref === k ? 'primary' as const : undefined,
+        onPress: () => pickTheme(k),
+      }))} />
     </ScrollView>
   );
 }
@@ -85,7 +93,7 @@ function Header({ name, handle, avatar, sub, onSettings }: { name: string; handl
         <Text style={styles.text} numberOfLines={1}>@{handle}  ·  {sub}</Text>
       </View>
       <Pressable onPress={onSettings} style={styles.gear} accessibilityRole="button" accessibilityLabel={t('settings')} hitSlop={6}>
-        <Icon name="more" size={20} />
+        <Icon name="more" size={20} color={C.text} />
       </Pressable>
     </View>
   );
@@ -139,12 +147,12 @@ function ScoutHome({ onSettings }: { onSettings: () => void }) {
       <View style={styles.segment} accessibilityRole="tablist">
         {(['open', 'saved', 'following', 'gifts'] as const).map((k) => (
           <Pressable key={k} onPress={() => setTab(k)} style={[styles.segBtn, tab === k && styles.segOn]} accessibilityRole="tab" accessibilityState={{ selected: tab === k }}>
-            <Text style={[styles.segText, tab === k && { color: C.ink }]}>{t(k === 'open' ? 'tab_calls' : k === 'saved' ? 'tab_saved' : k === 'gifts' ? 'tab_gifts' : 'tab_following')}</Text>
+            <Text style={[styles.segText, tab === k && { color: C.bg }]}>{t(k === 'open' ? 'tab_calls' : k === 'saved' ? 'tab_saved' : k === 'gifts' ? 'tab_gifts' : 'tab_following')}</Text>
           </Pressable>
         ))}
       </View>
 
-      {!data ? <ActivityIndicator color={C.lime} /> : tab === 'open' ? (<>
+      {!data ? <ActivityIndicator color={C.accent} /> : tab === 'open' ? (<>
         {data.results.length ? <Text style={styles.h2}>{t('tab_results')}{data.accuracy != null ? `  ·  ${t('accuracy')} ${data.accuracy}%` : ''}</Text> : null}
         {data.results.map((o) => (
           <Pressable key={'r' + o.promo.id} onPress={() => router.push({ pathname: '/play/[handle]', params: { handle: o.promo.creator.handle, start: o.promo.slug } })} style={[styles.callRow, o.outcome === 'correct' && { borderColor: C.lime }]} accessibilityRole="button">
@@ -152,7 +160,7 @@ function ScoutHome({ onSettings }: { onSettings: () => void }) {
             <View style={{ flex: 1 }}>
               <Text style={styles.rowTitle} numberOfLines={1}>{o.promo.title}</Text>
               <Text style={styles.small} numberOfLines={1}>{t(o.choice)}</Text>
-              <Text style={[styles.small, o.outcome === 'correct' && { color: C.lime, fontWeight: '700' }]} numberOfLines={2}>
+              <Text style={[styles.small, o.outcome === 'correct' && { color: C.accent, fontWeight: '700' }]} numberOfLines={2}>
                 {outcomeText(o.outcome, o.points, o.resolvedAt || '', undefined)}
               </Text>
             </View>
@@ -170,7 +178,7 @@ function ScoutHome({ onSettings }: { onSettings: () => void }) {
           </Pressable>
         )) : data.results.length ? null : <Empty text={t('no_open_calls')} />}
       </>) : tab === 'gifts' ? (
-        !wallet ? <ActivityIndicator color={C.lime} /> : wallet.length ? wallet.map((w) => <WalletRow key={w.id} item={w} />) : <Empty text={t('no_gifts')} />
+        !wallet ? <ActivityIndicator color={C.accent} /> : wallet.length ? wallet.map((w) => <WalletRow key={w.id} item={w} />) : <Empty text={t('no_gifts')} />
       ) : tab === 'saved' ? (
         data.saved.length ? (
           <View style={styles.grid}>
@@ -208,11 +216,11 @@ function WalletRow({ item }: { item: WalletItem }) {
         {item.code ? (
           <Pressable onPress={copy} style={styles.walletCode} accessibilityRole="button" accessibilityLabel={`${t('your_code')} ${item.code}. ${t('copy')}`}>
             <Text style={styles.walletCodeText} selectable>{item.code}</Text>
-            <Text style={{ color: C.lime, fontWeight: '700' }}>{copied ? t('copied') : t('copy')}</Text>
+            <Text style={{ color: C.accent, fontWeight: '700' }}>{copied ? t('copied') : t('copy')}</Text>
           </Pressable>
         ) : null}
         <Text style={styles.small}>{ended ? t('gift_none') : fmt(t('gift_ends'), { date: shortDate(item.endsAt) })}</Text>
-        {item.redeemUrl && !ended ? <Pressable onPress={() => Linking.openURL(item.redeemUrl!)} accessibilityRole="link" hitSlop={8}><Text style={{ color: C.lime, fontWeight: '700' }}>{t('open_link')} ›</Text></Pressable> : null}
+        {item.redeemUrl && !ended ? <Pressable onPress={() => Linking.openURL(item.redeemUrl!)} accessibilityRole="link" hitSlop={8}><Text style={{ color: C.accent, fontWeight: '700' }}>{t('open_link')} ›</Text></Pressable> : null}
       </View>
     </View>
   );
@@ -281,7 +289,7 @@ function CreatorHome({ onSettings }: { onSettings: () => void }) {
             <Pill label={t('last28')} active={range === 'd28'} onPress={() => setRange('d28')} />
           </View>
         </View>
-        {!data ? <ActivityIndicator color={C.lime} /> : !data.stats.d28.views && !data.promos.length ? (
+        {!data ? <ActivityIndicator color={C.accent} /> : !data.stats.d28.views && !data.promos.length ? (
           <Text style={styles.text}>{t('stats_zero')}</Text>
         ) : (
           <>
@@ -304,7 +312,7 @@ function CreatorHome({ onSettings }: { onSettings: () => void }) {
 
       <View style={styles.card}>
         <Text style={styles.h2}>{gift ? t('perk_active') : t('perk_t')}</Text>
-        {gift === undefined ? <ActivityIndicator color={C.lime} /> : gift ? (
+        {gift === undefined ? <ActivityIndicator color={C.accent} /> : gift ? (
           <>
             <Text style={styles.rowTitle}>{gift.title}</Text>
             <Text style={styles.small}>
@@ -357,13 +365,13 @@ function Empty({ text }: { text: string }) {
 // ------------------------------------------------------------------ onboarding: type, then details
 
 
-const styles = StyleSheet.create({
-  card: { backgroundColor: C.surface, borderRadius: 18, padding: 18, gap: 10, borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)' },
+const styles = themed(() => ({
+  card: { backgroundColor: C.surface, borderRadius: 18, padding: 18, gap: 10, borderWidth: 1, borderColor: C.line },
   h1: { color: C.text, fontSize: 26, ...F.display },
   h2: { color: C.text, fontSize: 18, ...F.display },
   text: { color: C.text2, fontSize: 15, lineHeight: 21 },
   small: { color: C.muted, fontSize: 13, lineHeight: 18 },
-  label: { color: '#c9c6d8', fontSize: 14, fontWeight: '600' },
+  label: { color: C.text2, fontSize: 14, fontWeight: '600' },
   input: { backgroundColor: C.surface, color: C.text, fontSize: 16, borderRadius: 12, borderWidth: 1, borderColor: C.line, paddingHorizontal: 14, paddingVertical: 12 },
   dateField: { flex: 1, minWidth: 0 },
   dateBox: { alignSelf: 'flex-start', backgroundColor: C.surface, borderRadius: 12, padding: 6 },
@@ -373,9 +381,9 @@ const styles = StyleSheet.create({
   gear: { width: 44, height: 44, borderRadius: 22, backgroundColor: C.surface, alignItems: 'center', justifyContent: 'center' },
   banner: { height: 120, borderRadius: 16, marginBottom: -4 },
   scoreCard: { backgroundColor: C.surface, borderRadius: 20, padding: 18, gap: 6, borderWidth: 1, borderColor: 'rgba(198,255,61,0.25)' },
-  score: { color: C.lime, fontSize: 44, ...F.display },
+  score: { color: C.accent, fontSize: 44, ...F.display },
   levelChip: { color: C.text, backgroundColor: C.surface2, borderWidth: 1, borderColor: C.line, fontWeight: '800', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 99, overflow: 'hidden', marginBottom: 10 },
-  bar: { height: 6, borderRadius: 3, backgroundColor: 'rgba(255,255,255,0.12)', overflow: 'hidden', marginVertical: 4 },
+  bar: { height: 6, borderRadius: 3, backgroundColor: C.line, overflow: 'hidden', marginVertical: 4 },
   barFill: { height: 6, borderRadius: 3, backgroundColor: C.lime },
   statRow: { flexDirection: 'row', gap: 8, marginTop: 8 },
   statGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
@@ -399,7 +407,7 @@ const styles = StyleSheet.create({
   followRow: { flexDirection: 'row', gap: 12, alignItems: 'center', paddingVertical: 6, minHeight: 56 },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   tile: { borderRadius: 12, overflow: 'hidden', backgroundColor: C.surface },
-  empty: { padding: 24, borderRadius: 16, borderWidth: 1, borderStyle: 'dashed', borderColor: 'rgba(255,255,255,0.15)' },
+  empty: { padding: 24, borderRadius: 16, borderWidth: 1, borderStyle: 'dashed', borderColor: C.line },
   checkRow: { flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 44 },
   checkDot: { width: 26, height: 26, borderRadius: 13, borderWidth: 2, borderColor: C.muted, alignItems: 'center', justifyContent: 'center' },
-});
+}));

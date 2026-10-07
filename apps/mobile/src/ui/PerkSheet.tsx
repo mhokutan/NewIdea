@@ -2,13 +2,13 @@
 // or follows (server rule in services/api, "perks").
 import * as Clipboard from 'expo-clipboard';
 import { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Linking, Modal, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Linking, Modal, Platform, Pressable, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { api, type Perk } from '@/lib/api';
 import { asMember } from '@/lib/gate';
 import { lang, t } from '@/lib/i18n';
-import { C, R, F } from '@/lib/theme';
+import { C, R, F, themed } from '@/lib/theme';
 import { useMe } from '@/lib/use-me';
 import { Button } from './Pill';
 
@@ -51,7 +51,7 @@ export function PerkSheet({ handle, name, visible, onClose, onReopen }: { handle
       <View style={[styles.sheet, { paddingBottom: insets.bottom + 16 }]} accessibilityViewIsModal>
         <View style={styles.grab} />
         <Text style={styles.kicker}>{fmt(t('gift_t'), { name })}</Text>
-        {perk === undefined ? <ActivityIndicator color={C.lime} style={{ marginVertical: 24 }} /> : !perk ? (
+        {perk === undefined ? <ActivityIndicator color={C.accent} style={{ marginVertical: 24 }} /> : !perk ? (
           <Text style={styles.text}>{t('gift_none')}</Text>
         ) : (
           <>
@@ -82,16 +82,16 @@ export function PerkSheet({ handle, name, visible, onClose, onReopen }: { handle
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => ({
   backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.55)' },
   sheet: { backgroundColor: C.surface, borderTopLeftRadius: R.lg, borderTopRightRadius: R.lg, paddingHorizontal: 20, paddingTop: 10, gap: 8 },
-  grab: { alignSelf: 'center', width: 40, height: 5, borderRadius: 3, backgroundColor: 'rgba(255,255,255,0.25)', marginBottom: 10 },
-  kicker: { color: C.lime, fontWeight: '700', fontSize: 13 },
+  grab: { alignSelf: 'center', width: 40, height: 5, borderRadius: 3, backgroundColor: C.line, marginBottom: 10 },
+  kicker: { color: C.accent, fontWeight: '700', fontSize: 13 },
   title: { color: C.text, fontSize: 22, ...F.display },
   text: { color: C.text2, fontSize: 15, lineHeight: 21 },
   small: { color: C.muted, fontSize: 13 },
   code: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderWidth: 2, borderStyle: 'dashed', borderColor: C.lime, borderRadius: 14, paddingHorizontal: 16, minHeight: 56 },
   codeText: { color: C.text, fontSize: 22, fontWeight: '800', letterSpacing: 2 },
-  copy: { color: C.lime, fontWeight: '700' },
+  copy: { color: C.accent, fontWeight: '700' },
   rule: { color: C.muted, fontSize: 12, marginTop: 8 },
-});
+}));

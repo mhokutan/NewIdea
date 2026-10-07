@@ -1,12 +1,13 @@
 // One creator's promos as a vertical player (opened from the creator page grid). iOS edge back works as usual.
-import { router, useLocalSearchParams } from 'expo-router';
+import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View, type ViewToken } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { setStatusBarStyle } from 'expo-status-bar';
 
 import { api, type Promo } from '@/lib/api';
 import { t } from '@/lib/i18n';
-import { C } from '@/lib/theme';
+import { D, theme } from '@/lib/theme';
 import { Icon } from '@/ui/Icon';
 import { PromoReel } from '@/ui/PromoReel';
 import { Fade } from '@/ui/Fade';
@@ -19,6 +20,7 @@ export default function CreatorPlayer() {
   const [height, setHeight] = useState(0);
   const [active, setActive] = useState(0);
   const [muted, setMuted] = useState(true);
+  useFocusEffect(useCallback(() => { setStatusBarStyle('light'); return () => setStatusBarStyle(theme.scheme === 'light' ? 'dark' : 'light'); }, []));
 
   useEffect(() => {
     let alive = true;
@@ -40,7 +42,7 @@ export default function CreatorPlayer() {
 
   return (
     <View style={styles.root} onLayout={(e) => setHeight(e.nativeEvent.layout.height)}>
-      {!promos || !height ? <View style={styles.center}><ActivityIndicator color={C.lime} /></View> : !promos.length ? (
+      {!promos || !height ? <View style={styles.center}><ActivityIndicator color={D.lime} /></View> : !promos.length ? (
         <View style={styles.center}><Text style={styles.msg}>{t('no_promos')}</Text></View>
       ) : (
         <FlatList
@@ -72,8 +74,8 @@ export default function CreatorPlayer() {
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: '#000' },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: C.bg },
-  msg: { color: C.text2, fontSize: 16 },
+  center: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: D.bg },
+  msg: { color: D.text2, fontSize: 16 },
   scrim: { position: 'absolute', top: 0, left: 0, right: 0 },
   top: { position: 'absolute', left: 12, right: 12, flexDirection: 'row', alignItems: 'center', gap: 10 },
   round: { width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(20,20,31,0.72)', alignItems: 'center', justifyContent: 'center' },
