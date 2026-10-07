@@ -10,14 +10,14 @@ DURUM: DEVAM EDİYOR
 | Bölüm | Durum | Not |
 |---|---|---|
 | A. iOS sertifikası (EAS) | bitti | Kurucu çalıştırdı: 'All credentials are ready to build @mhokutan/promovote (com.miapera.promovote)'. Mevcut dağıtım sertifikası yeniden kullanıldı, yeni provisioning profile. Capability: Sign in with Apple, Associated Domains, IAP. Team ID 6WRT42YG28 (Individual). |
-| B. App Store Connect | beklemede | |
+| B. App Store Connect | yarım | B1 bitti: uygulama kaydı (SKU promovote-ios, Full Access). B3 bitti (API ile): Production ve Sandbox URL https://api.promovote.com/v1/webhooks/apple, V2. B4.1 bitti: Entertainment + Games. Kalan: B2 IAP key, B4.2 yaş derecesi (kurucu cevabı bekleniyor), B4.3 App Privacy, B4.4 fiyat/ülkeler, B4.5 sözleşme kontrolü, B4.6 Small Business Program. |
 | C. Google Cloud | yarım | C1, C3, C4 bitti (topic play-rtdn, Publisher yetkisi kurucu tarafından verildi, push subscription play-rtdn-push, never expire). C2: branding ve 3 client bitti; Audience Production'a alındı (kurucu); Play App Signing SHA-1 ile ikinci Android client Bölüm D sonrası. Destek emaili Google kuralı gereği hazimokutan@gmail.com. |
 | D. Google Play Console | beklemede | |
 | E. Bulut ortamına key'ler | beklemede | |
 
 ## Gizli olmayan değerler
 
-* App Store Apple ID:
+* App Store Apple ID: 6819894584
 * Google Cloud project id: promovote
 * Play service account email: play-api@promovote.iam.gserviceaccount.com
 * OAuth web client id: 506724718671-t1g7ehas8tssjdjs3vhsvdgo60g4pini.apps.googleusercontent.com
