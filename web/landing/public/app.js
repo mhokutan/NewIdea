@@ -174,7 +174,7 @@
   });
 
   document.getElementById("share")?.addEventListener("click", async () => {
-    const data = { title: "PromoVote", text: "The social media of ads. Where new creators get discovered first.", url: "https://promovote.com" };
+    const data = { title: "PromoVote", text: "The social network for promos. Where new creators get discovered first.", url: "https://promovote.com" };
     if (navigator.share) {
       try { await navigator.share(data); } catch {}
     } else {
