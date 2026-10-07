@@ -10,9 +10,8 @@
   "d1_databases": [
     { "binding": "DB", "database_name": "promovote-db", "database_id": "b6a6a86f-5e7e-48fe-9ad1-2a29b1222a31", "migrations_dir": "migrations" }
   ],
-  // Profile photos. Uncomment after R2 is enabled in the Cloudflare dashboard and the bucket exists:
-  //   npx wrangler r2 bucket create promovote-media
-  // "r2_buckets": [{ "binding": "MEDIA", "bucket_name": "promovote-media" }],
+  // Profile photos and banners (R2 enabled 2026-10-07, bucket created with the Cloudflare connector).
+  "r2_buckets": [{ "binding": "MEDIA", "bucket_name": "promovote-media" }],
   "triggers": { "crons": ["17 4 * * *", "7 * * * *"] },
   // 60 writes per minute per IP on /v1 (votes, saves, follows, events, reports).
   "ratelimits": [{ "name": "WRITE_LIMIT", "namespace_id": "1001", "simple": { "limit": 60, "period": 60 } }],
