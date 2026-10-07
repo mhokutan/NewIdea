@@ -1,0 +1,129 @@
+# Mobile Product Design review (2026-10-07)
+
+Reviewer: Mobile Product Design lead. Domain score: **Visual design and UX quality**.
+Inputs: all 13 screenshots in `docs/review/screens/`, the code in `apps/mobile/src/`, `services/api/src/index.js`, `docs/03-profiles-spec.md`, the project design skills (design-taste-frontend, high-end-visual-design, redesign-existing-projects, web-design-guidelines, design-references) and five brand references: `spotify` (dark media app), `pinterest` (discovery grid and social), `playstation` (games store), `airbnb` (host profile and onboarding forms), `x.ai` (near black canvas). Patterns borrowed, nothing copied.
+
+## Scores
+
+| # | Area | Score | Evidence (one sentence) |
+|---|------|-------|-------------------------|
+| 1 | Retention | 4/10 | Nothing pulls a user back tomorrow: no "called it" result, no saved list, no streak, no perk wallet, and the profile after signup is a name plus Sign out (screen 13). |
+| 2 | Session time | 5/10 | The fair rotation feed never ends and video plays well, but dead taps on vote/save break the loop, there is no path from a promo into more of that creator except a small avatar link, and Top is a black screen with one sentence (screen 04). |
+| 3 | Originality | 4/10 | Full screen vertical video + right rail of round icon buttons + bottom left avatar/title/"more" + "For you" tab + lime story rings on Explore is the TikTok/Reels/Instagram layout; only the vote labels are PromoVote's own. |
+| 4 | Trademark and trade dress safety | 6/10 | Name, logo and colors are clean, but "For you" is TikTok's signature tab name and, combined with the right rail and story circle rings, the overall look moves closer to TikTok and Instagram trade dress than it needs to. |
+| 5 | Visual design and UX quality | 4/10 | Basic dark system is coherent, but there are P0 UX bugs (silent taps, DOB overflow, expanded caption that hides the creator name on light videos, screen 02), the creator page lacks almost everything a creator needs, and onboarding ends on an empty screen. |
+
+Not legal advice on item 4.
+
+## What I saw, screen by screen
+
+**Feed (01, 02, 03, 05)**
+* Overlay legibility depends on the video. On the white Nicheable poster the creator name disappears when expanded and the title overlaps the poster (02). The shade is a 34% / 70% linear gradient (`ui/PromoReel.tsx` `shade`, `shadeOpen`) that is too weak over bright frames, and on web it may not render at all (`experimental_backgroundImage`).
+* The right rail sits at `bottom: 110` and collides with the caption block and the CTA zone. Rail labels are 11 px white with a 2 px shadow; "Will blow up" and "Not for me" are hard to read over light frames (01) and over the video's own text (03, 05, where the label overlaps "4 min").
+* Text stack competes with the video's own burned in text: the video headline plus our title plus our description plus the CTA plus the rail labels gives five text layers (03, 05). The "Picked by the PromoVote team" note sits directly on top of the video's headline (05).
+* The CTA ("Visit the shop", "Download on the App Store") is a ghost button with the same weight as the rail. It should be the one strong action besides the vote.
+* No tap feedback anywhere: `RailButton` has no pressed style, no haptic, no animation, no count. When the user is not an onboarded Scout, `needAccount()` calls `router.push('/me')`, which with NativeTabs does nothing visible. Creators tapping vote get the same silence (they cannot vote, but nobody tells them).
+* Vote state mismatch: the UI lets you switch between Will blow up and Not for me, but `POST /v1/calls` is insert or ignore and returns 409 on a second vote, and the client swallows the error. The screen then lies about the stored vote.
+* Share: `Share.share` is called correctly; on device it reportedly does nothing. With no pressed state the user cannot tell if the tap registered. Needs a device check (see P0.1).
+
+**Top empty state (04)**: a black screen with one centered sentence. It looks broken, not intentional.
+
+**Explore (06)**: good structure (story circles, category pills, hashtags, masonry). Problems: tile caption shade does not draw, so creator name and title sit unreadable on top of the video's own UI text; all three story rings are the same lime ring, which reads as "Instagram stories" and carries no meaning; three chip rows stacked (circles, categories, hashtags) push the grid below the fold.
+
+**Creator page (07, 08)**: the strongest screen. Banner is a blurred poster, square avatar, verified check, follow, bio, a "Coming soon" chip that looks like a tappable button but is not. Missing versus `docs/03-profiles-spec.md` section 3.2: links row (none rendered for Hauling Empire), stats row, perks callout, Notify me CTA for an unreleased game, tabs (Promos, Rankings, About), titles on promo tiles, and for the owner an **Edit profile** entry (when `viewer.isMe` the follow button just vanishes and nothing replaces it). Duration label `0:${seconds}` breaks for promos of 60 s or more (paid uploads up to 60 s).
+
+**Guest profile (09)**: one card, then a black screen. No preview of what you get (Called it history, saved, perks).
+
+**Sign in (10)**: no brand mark, top half empty, title and copy only. On iOS the Apple button appears; the composition still looks unfinished.
+
+**Onboarding (11, 12)**: type choice uses the heading "Join PromoVote" again; cards have no icon, no example, no visual difference. The form is one long page: username, display name (empty even though Apple gave us a name), DOB as three text fields (overflows on web: RN Web TextInput has an intrinsic width so `flex: 1` cannot shrink it; YYYY is cut off), category pills, a checkbox, a disabled button that is a dimmed lime with black text (looks enabled), and a gray Cancel. No progress, no avatar, no bio, no link. After submit the user lands on screen 13.
+
+**Account after signup (13)**: name, handle, Sign out, Delete account. This is the founder's "everything is missing".
+
+## Brand reference comparison (patterns to borrow, not copy)
+
+| Reference | Pattern worth borrowing | Where in PromoVote |
+|-----------|-------------------------|--------------------|
+| Spotify (dark media) | Content first darkness: UI is achromatic, one functional accent. Pill and circle geometry for touch. Dense, app like spacing, not marketing whitespace. | Keep lime strictly for "your call" and the primary action. Today lime is used for avatars, rings, tabs, chips, verified icon, and buttons, so it means nothing. |
+| Pinterest (discovery) | The image is the card: no padding, one overlay pill anchored to a corner, avatar + name at bottom left of the tile. Active filter chip flips fully inverted. Two radius system. | Explore tiles: replace the failing two line caption with one corner pill ("Game", "Perk", "New") and a small creator row under the tile, not on top of the video UI. |
+| PlayStation (games store) | Imagery does 60 to 90% of the work, copy lives in a small editorial slot; one commerce color reserved for store actions only; game tile = key art + title + platform tag. | Feed CTA gets its own reserved style (filled, store specific), separate from vote and rail. Creator promo tiles get title + platform tag. Platform chips derived from verified links. |
+| Airbnb (host profile, forms) | Host card: avatar, name, badge, one trust stat, one action. Stepwise account flow with one question per screen and a sticky bottom primary button. Rating display card as a hero stat. | Creator header stats row and perk card; onboarding as 3 short steps with a sticky Continue. Scout "Called it" number as the hero stat on the scout profile. |
+| x.ai (near black canvas) | White hairline pill outlines on near black, tracked mono captions for metadata. | Metadata (duration, "pending", "resolves Sunday") in a small tracked caption style to separate system info from creator copy. |
+
+## How to make it look like PromoVote, not a TikTok skin
+
+The product's unique verb is **calling it**. Make the call the visual identity.
+
+1. **Replace the right rail of four circles with a "Call bar".** One wide two sided control at the bottom, above the caption: left half "Not for me", right half "Will blow up", with the double up chevron from the logo on the right half. Save and Share become two small icons at the top right of the caption block. No other app has a split call bar; it is one handed (thumb zone) and makes voting the main act instead of liking.
+2. **The "called" moment.** After a call: the bar morphs into a ticket chip "Called at #37 of 112 scouts, result Sunday" with a short spring and a light haptic. The ticket shape (notched corners) becomes a brand motif used again for perks and on the scout profile.
+3. **Gradient ring means something.** The pink to violet ring from the logo goes only around creators with a live perk or a new drop this week. No ring otherwise. This replaces the generic lime story ring and is meaningful, not decorative.
+4. **Brand type.** Use the website's display face (Bricolage Grotesque) for titles, creator names and numbers via `expo-font`; keep the system face for body. Tabular numbers for counts.
+5. **Rename the home tabs.** "For you" to "Drop" (the fair rotation is literally a drop of every creator), keep "New", rename "Top" to "Charts" (matches Explore spec), keep "Featured" as "Team picks". This removes the most recognizable TikTok string.
+6. **Lime discipline.** Lime only for: your call, primary button, active tab marker. Avatars without a picture get a neutral surface with the brand gradient letter, not a lime block.
+
+## Horizontal swipe: what it should do
+
+* **Swipe left / right on the feed = move between home tabs** (Drop, New, Charts, Team picks) with a pager (`react-native-pager-view` or a Reanimated horizontal pager; gesture handler and Reanimated are already in `package.json`). The tab indicator follows the finger. This is the founder's expectation and is a common, non distinctive pattern.
+* **Swipe left on the creator row or tap it = open the creator page** as a push with native back swipe. Do not make full screen swipe left open the profile (that is TikTok's signature gesture).
+* **Do not map votes to swipes.** Accidental horizontal flicks would create votes, which breaks "Skip is free" and pollutes the data the Charts depend on; swipe to judge cards also has a patent and litigation history (Match Group). Not legal advice.
+* Edge swipe back on the creator page and sign in stays native.
+
+## Prioritized changes (minimum to reach 8 on every score)
+
+### P0: before App Store submission
+
+**P0.1 Every tap answers within 100 ms** (Visual/UX, Session, Retention)
+* What: `RailButton` (or the new Call bar) gets a pressed scale 0.92 + `expo-haptics` light impact, an animated filled state, and a count once data exists. Replace `needAccount()` in `ui/PromoReel.tsx` and `toggleFollow` in `app/creator/[handle].tsx` with a bottom sheet: guest gets "Sign in to call it" with Apple/Google buttons inline; signed in but not onboarded gets "Finish your profile (30 s)" that opens onboarding as a modal route (`app/onboarding.tsx`, presentation modal), then returns to the same promo and applies the pending action; creator gets "Creators cannot vote. Scouts call the hits." Lock the vote after the first call and show a 3 s Undo snackbar before sending, matching the server's one vote rule; surface 409 and network errors as a toast.
+* Share: verify on device; pass `{ message, url }` (iOS uses `url` for the link preview), show pressed state, and log the `Share.share` result. If it still fails inside the paged FlatList, call it after `requestAnimationFrame`.
+* Done when: on TestFlight, tapping each of vote, save, share, follow as guest, as un-onboarded user, as creator and as scout always shows a visible response in under 100 ms (screen recording at 60 fps), and no vote state disagrees with `GET /v1/me` data.
+
+**P0.2 Onboarding: Apple sign in to a finished profile in 3 short steps** (Visual/UX, Retention)
+* What: move onboarding out of `app/(tabs)/me.tsx` into its own modal stack. Step 1 "How will you use PromoVote": two large cards with an icon and one example each (Scout: "Call hits before they blow up"; Creator: "Post promos for your game, app or shop"). Step 2 "You": display name prefilled from Apple/Google, handle suggested from the name and checked live, DOB as one native date picker field (`@react-native-community/datetimepicker`, spinner on iOS) which also fixes the screen 12 overflow; 18+ and terms in one line under the button. Step 3 creator only: logo (required), banner (optional), category, one main link (website/App Store/Steam/Etsy). Sticky bottom Continue button; disabled state as a gray surface, not dim lime. Progress dots at top. Finish lands on the user's own profile with a "Complete your page" checklist (logo, banner, bio, links, first promo, first perk), not on the Sign out screen.
+* Interim fix if the stack takes longer: on the current DOB row add `minWidth: 0` (and `width: 0` with `flex`) on each TextInput.
+* Done when: a fresh Apple account reaches a filled profile in under 60 s and under 8 taps, nothing overflows at 320 pt width or at the largest Dynamic Type size.
+
+**P0.3 Own profile is a real page, with Edit profile** (Visual/UX, Retention)
+* What: `Account` in `app/(tabs)/me.tsx` renders the same layout as the public creator page for creators (header, stats, links, perks, promos) with an "Edit profile" and "Share page" pair where Follow would be. Edit profile screen: logo, banner, display name, bio (600 chars, no links, the server already enforces it), links (max 8, one per platform, website max 2, per spec 3.2.3), category. Account settings (language, email preferences, Sign out, Delete account) move behind a gear icon. Scout profile: Scout Score block (provisional), tabs Called it, Saved, Following, with honest empty states.
+* API gap (for the CTO): `PATCH /v1/me` only takes displayName, bio, language and email flags. Needed: media upload for avatar/banner (R2, `media_assets` table already exists), CRUD for `profile_links` (table exists), and perks (spec says P0).
+* Done when: the founder can set logo, banner, bio, website and a link from the phone and see them on `/creator/<handle>` and on promovote.com.
+
+**P0.4 Feed overlay clarity** (Visual/UX, Originality)
+* What in `ui/PromoReel.tsx`: stronger bottom scrim (solid 0.85 at the bottom 15%, eased to 0 at 45%) drawn with `expo-linear-gradient` so it works on every platform; expanded details open as a bottom sheet over a dimmed video, not as a taller text stack over the frame; caption block max 3 lines collapsed (creator row, title, one line description); move the rail up so it never overlaps the caption or CTA; rail labels 12 pt semibold with a real backing; the Team picks note goes into the tab label area, not on the video. CTA becomes a filled pill in a reserved commerce style.
+* Done when: on all 13 seed promos (light and dark frames) the creator name, title, CTA and labels pass 4.5:1 contrast against the frame behind them, checked with screenshots.
+
+**P0.5 Empty states that look intentional** (Visual/UX, Session)
+* What: one shared `EmptyState` component (icon or illustration, title, one line, one action). Top/Charts: "Charts open when scouts start calling. Paying never buys a spot." + button "Start calling in New" that switches tab. Featured: "No team picks this week yet" + "Back to Drop". Explore no results: "No promos for #tag yet" + clear filter. Creator with no promos (owner): "Post your first promo" (or "Uploads open soon"). Saved, Called it, Following, Perks: each with a reason and one action. Guest profile: preview of the scout profile (blurred Called it card) with Sign in.
+* Done when: no screen in the app is ever a plain sentence on black.
+
+### P1: before public launch
+
+**P1.1 Horizontal pager between home tabs** in `app/(tabs)/index.tsx` (see swipe section). Done when: swipe changes tab with the indicator following the finger, vertical scroll still works, and the For you round state is kept when you come back.
+
+**P1.2 Call bar and "called" ticket** replacing the round rail (originality section items 1 and 2). Done when: 5 testers shown a muted screenshot do not name TikTok first.
+
+**P1.3 Tab renames and lime discipline**: "For you" to "Drop", "Top" to "Charts", "Featured" to "Team picks" in `lib/i18n.ts` (en, es, tr); lime limited to call, primary, active marker; gradient ring only for creators with a live perk or new drop (`app/(tabs)/explore.tsx` `ring`). Done when: no "For you" string remains in app or web.
+
+**P1.4 Creator page completeness** in `app/creator/[handle].tsx`: links row with platform icons and verified check; stats row (followers, promos, best chart badge when it exists); perk card in the ticket shape with "Get perk" (never tied to votes or follows); Notify me CTA for `releaseStatus === 'soon'` instead of the passive "Coming soon" chip; tabs Promos / About; promo tiles with title and a correct `m:ss` duration; real banner image upload instead of a blurred poster. Done when: the page matches the order in `docs/03-profiles-spec.md` section 3.2.
+
+**P1.5 Brand type and sign in polish**: load Bricolage Grotesque via `expo-font` for display; sign in screen gets the gradient ring logo, a short looping montage of real promos in the top half, and the three value lines (Call hits, Save promos, Claim perks). Done when: the sign in screen is recognizable as PromoVote with the logo covered.
+
+**P1.6 Explore tiles**: corner pill + creator row under the tile instead of text on top of the video UI; collapse hashtags into the search field suggestions to bring the grid above the fold. Done when: first grid row is visible without scrolling on a 393 x 852 screen.
+
+### P2: later
+
+* Weekly "Drop day" moment: Sunday results screen ("You called 3 of 4"), shareable scout card image.
+* Skeleton loaders that match feed and grid shapes instead of a centered spinner.
+* Dynamic Type and VoiceOver pass: rail and call bar as one accessible group with a clear value ("Your call: Will blow up, pending").
+* Reduced motion: replace springs with fades when the OS setting is on.
+
+## Expected scores after P0 + P1
+
+| Area | Now | After P0 | After P0 + P1 |
+|------|-----|----------|---------------|
+| Retention | 4 | 6 | 8 (Called it results and perks wallet need the P2 drop day for 9) |
+| Session time | 5 | 7 | 8 |
+| Originality | 4 | 5 | 8 |
+| Trademark and trade dress | 6 | 6 | 8 |
+| Visual design and UX quality | 4 | 7 | 8 to 9 |
+
+Originality and trade dress cannot reach 8 without P1.2 and P1.3; I recommend pulling those two into the App Store build if time allows, because the first public screenshots set how people see the product.
