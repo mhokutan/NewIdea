@@ -24,7 +24,8 @@ export function authOptions(env, database, sendCode) {
     basePath: "/api/auth",
     secret: env?.BETTER_AUTH_SECRET,
     database,
-    trustedOrigins: TRUSTED_ORIGINS,
+    // Local development (DEV_LOG_OTP=1) also trusts the app's web build on localhost.
+    trustedOrigins: env?.DEV_LOG_OTP === "1" ? [...TRUSTED_ORIGINS, "http://localhost:8081"] : TRUSTED_ORIGINS,
     // Native sign in only: the app gets an ID token from Apple or Google and the server verifies it
     // (signature, issuer, audience). No client secret is needed for that, so none is stored.
     socialProviders: socialProviders(env),
