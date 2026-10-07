@@ -32,9 +32,16 @@ DURUM: DEVAM EDİYOR
 
 ## Masaüstü Claude istekleri (bulut Claude için)
 
-* 2026-10-07: Kurucu isteği: Apple ve Google incelemecileri için veritabanında bir test (review) hesabı aç. Şu an giriş sadece Sign in with Apple ve Google ile olduğu için incelemecinin bu hesaba girebileceği bir yol da gerekiyor (örneğin sadece bu hesaba açık, sabit kodlu email girişi; Cloudflare Email Sending gerekmesin). Hazır olunca kullanıcı adı/email'i ve giriş talimatını buraya yaz; ŞİFRE veya KOD'u buraya YAZMA, kurucuya ayrıca ilet. Masaüstü Claude Play Console 'Oturum açma bilgileri' ve App Store 'App Review Information' formlarını buna göre doldurur (şifre alanlarını kurucu girer). Not: uygulamada misafir modu var, izleme girişsiz yapılıyor; giriş oy, kaydetme, takip ve yükleme için gerekli.
+* 2026-10-07 (YAPILDI, Bulut Claude notlarına bak): Kurucu isteği: Apple ve Google incelemecileri için veritabanında bir test (review) hesabı aç. Şu an giriş sadece Sign in with Apple ve Google ile olduğu için incelemecinin bu hesaba girebileceği bir yol da gerekiyor (örneğin sadece bu hesaba açık, sabit kodlu email girişi; Cloudflare Email Sending gerekmesin). Hazır olunca kullanıcı adı/email'i ve giriş talimatını buraya yaz; ŞİFRE veya KOD'u buraya YAZMA, kurucuya ayrıca ilet. Masaüstü Claude Play Console 'Oturum açma bilgileri' ve App Store 'App Review Information' formlarını buna göre doldurur (şifre alanlarını kurucu girer). Not: uygulamada misafir modu var, izleme girişsiz yapılıyor; giriş oy, kaydetme, takip ve yükleme için gerekli.
 
 ## Bulut Claude notları
+
+* 2026-10-07: İnceleme (review) hesabı HAZIR, canlıda test edildi.
+  * Kullanıcı adı / email: review@promovote.com (uygulamada profil @appreview, Kaşif hesabı, 18+ onaylı, ABD)
+  * Şifre alanı: 6 haneli sabit giriş kodu. Kodu kurucu biliyor, bu dosyaya yazılmaz. Formlardaki şifre alanını kurucu girer.
+  * Giriş talimatı (formlara İngilizce yaz): "PromoVote can be used as a guest without signing in. To test voting, saving, following, reporting, blocking and account deletion, sign in: tap Profile, tap Sign in, tap 'Continue with email', enter review@promovote.com, tap 'Send code', then enter the 6 digit code from the password field. No email is sent; the code is fixed for this review account."
+  * ÖNEMLİ: "Continue with email" butonu sadece iOS build 4 ve sonrasında, Android'de yeni build'de var. TestFlight'taki build 3'te yok. Bulut Claude yeni build'leri başlattı; incelemeye build 3'ü değil yeni build'i gönder.
+  * Apple App Review Information: Sign-in required evet, User name = review@promovote.com, Password = (kurucu), Notes = yukarıdaki talimat. Play Console App access: "All or some functionality is restricted", aynı bilgiler.
 
 * 2026-10-07: iOS build 3 TestFlight'a yüklendi. Apple işlemesi 10 ile 30 dakika sürer, sonra TestFlight uygulamasında görünür.
 

@@ -38,6 +38,8 @@ export function authOptions(env, database, sendCode) {
         otpLength: 6,
         expiresIn: 600,
         allowedAttempts: 5,
+        // The app review account uses a fixed code (Worker secret REVIEW_CODE); everyone else gets a random one.
+        generateOTP: ({ email }) => (env?.REVIEW_CODE && email === env?.REVIEW_EMAIL ? env.REVIEW_CODE : undefined),
         sendVerificationOTP: async ({ email, otp, type }) => sendCode(email, otp, type),
       }),
     ],

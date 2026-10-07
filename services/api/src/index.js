@@ -32,6 +32,7 @@ app.use("*", cors({
 
 function sendCodeFor(env) {
   return async (email, otp) => {
+    if (env.REVIEW_EMAIL && email === env.REVIEW_EMAIL) return; // fixed code, nothing to send
     if (env.EMAIL) {
       await env.EMAIL.send({
         from: { email: "login@promovote.com", name: "PromoVote" },
@@ -52,6 +53,17 @@ function authFor(c) {
   if (!auth) { auth = createAuth(c.env, sendCodeFor(c.env)); c.set("auth", auth); }
   return auth;
 }
+// Until email sending is enabled, email codes only work for the app review account.
+app.post("/api/auth/email-otp/send-verification-otp", async (c) => {
+  if (!c.env.EMAIL && c.env.DEV_LOG_OTP !== "1") {
+    const body = await c.req.raw.clone().json().catch(() => ({}));
+    const email = String(body?.email || "").trim().toLowerCase();
+    if (!c.env.REVIEW_EMAIL || email !== c.env.REVIEW_EMAIL) {
+      return c.json({ code: "EMAIL_LOGIN_SOON", message: "Email sign in is not open yet. Please continue with Apple or Google." }, 403);
+    }
+  }
+  return authFor(c).handler(c.req.raw);
+});
 app.on(["GET", "POST"], "/api/auth/*", (c) => authFor(c).handler(c.req.raw));
 
 // Loads the signed in user, their private row and profile. Returns null for guests.
