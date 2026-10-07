@@ -192,7 +192,7 @@ G1. App Store (iOS build 12)
 4. Promotional Text: "Today's Drop is 7 fresh promos a day. Call the next big hit."
    Description: yukarıdaki UZUN AÇIKLAMA, aynen.
    Keywords: indie games,game trailers,new apps,discover,predict,hits,promos,creators,scout,trends
-   Support URL: https://promovote.com (destek emaili support@promovote.com sayfanın altında)  Marketing URL: https://promovote.com
+   Support URL: https://promovote.com/support  Marketing URL: https://promovote.com
    Copyright: 2026 Hazim Okutan
 5. Ürün sayfası header (Apple'ın yeni görsel alanı) ve arama sonucu görseli: bu alanlar App Store Connect'te görünüyorsa store/assets/header/header-3840x1646.png ve store/assets/header/search-3840x2560.png yükle. Alan yoksa veya kabul etmezse atla, gönderimi bekletme, status.md'ye yaz.
 6. App Review Information: Sign-in required evet, User name review@promovote.com, Password alanını kurucu girer (kodu kimseye yazma). Notes: yukarıdaki APP REVIEW NOTES, aynen. İletişim bilgileri zaten girili.
