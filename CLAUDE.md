@@ -35,6 +35,7 @@ Status: validation stage. **promovote.com landing page is LIVE** (waitlist).
 2. `docs/01-team-verdict.md`: decisions of the 8-expert team. **This is the current source of truth.**
 3. `docs/debate/`: full round 1 and round 2 texts.
 4. `docs/02-next-session-handoff.md`: Cloudflare setup plan and current account state.
+5. `docs/07-todo.md`: to do list agreed with the founder (what to do when the apps are approved, next versions). Update it when items are done.
 
 ## Current decisions (short)
 * First niche: indie game trailers. Users: players who like discovering new games.
