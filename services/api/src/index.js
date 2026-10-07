@@ -11,6 +11,8 @@ const LANGS = ["en", "es", "tr"];
 const CATEGORIES = ["games", "apps", "streams", "videos", "shops", "brands", "local"];
 const KIND_BY_CATEGORY = { games: "game_dev", apps: "app_maker", streams: "streamer", videos: "short_video", shops: "shop", brands: "brand", local: "local_business" };
 const CTA_KINDS = ["website", "app_store", "google_play", "steam", "itch", "shop", "etsy", "watch", "watch_live", "notify"];
+// Names and bios may not pose as PromoVote staff (impersonation is the most common scam on new platforms).
+const STAFF_NAME = /\b(promo ?vote|admin(istrator)?|moderator|official support|support team|trust (and|&) safety)\b/i;
 const HANDLE_RE = /^[a-z][a-z0-9_]{2,23}$/;
 const TERMS_VERSION = "2026-10-02";
 const now = () => new Date().toISOString();
@@ -411,7 +413,7 @@ app.get("/v1/me", async (c) => {
   const v = await viewer(c);
   if (!v) return fail(c, 401, "auth_required", "Sign in first.");
   return c.json({
-    user: { id: v.user.id, email: v.user.email, emailVerified: !!v.user.emailVerified },
+    user: { id: v.user.id, email: v.user.email, emailVerified: !!v.user.emailVerified, name: v.user.name || null },
     account: v.priv && { type: v.priv.account_type, language: v.priv.language, country: v.priv.country_code, perkEmails: !!v.priv.perk_email_opt_in, followEmails: !!v.priv.follow_email_opt_in },
     profile: v.profile && { handle: v.profile.handle, name: v.profile.display_name, bio: v.profile.bio, type: v.profile.type, status: v.profile.status, avatar: v.profile.avatar_url },
     needsOnboarding: !v.profile,
@@ -441,6 +443,7 @@ app.post("/v1/onboarding", async (c) => {
   if (!HANDLE_RE.test(handle) || handle.includes("__") || handle.endsWith("_")) return fail(c, 400, "bad_handle", "Handles use 3 to 24 lowercase letters, numbers or _ and start with a letter.");
   const name = String(b.displayName || "").trim().slice(0, 80);
   if (!name) return fail(c, 400, "bad_name", "Enter a display name.");
+  if (STAFF_NAME.test(name)) return fail(c, 400, "reserved_name", "That name looks like PromoVote staff. Please choose another.");
   const lang = LANGS.includes(b.language) ? b.language : "en";
   const country = /^[A-Z]{2}$/.test(b.country || "") ? b.country : (c.req.raw.cf?.country || null);
   let category = null, kind = null;
@@ -482,10 +485,12 @@ app.patch("/v1/me", async (c) => {
   if (typeof b.displayName === "string") {
     const name = b.displayName.trim().slice(0, 80);
     if (!name) return fail(c, 400, "bad_name", "Enter a display name.");
+    if (STAFF_NAME.test(name) && !v.profile.is_verified) return fail(c, 400, "reserved_name", "That name looks like PromoVote staff. Please choose another.");
     stmts.push(db.prepare("update profiles set display_name = ?, updated_at = ? where id = ?").bind(name, now(), v.profile.id));
   }
   if (typeof b.bio === "string") {
     const bio = b.bio.trim().slice(0, 600);
+    if (STAFF_NAME.test(bio)) return fail(c, 400, "reserved_name", "Your bio cannot say you are PromoVote staff.");
     if (/https?:\/\/|www\.|\b[a-z0-9-]+\.(com|net|org|io|app|gg|ly)\b/i.test(bio)) return fail(c, 400, "bio_links", "Links go in the links section, not the bio.");
     stmts.push(db.prepare("update profiles set bio = ?, updated_at = ? where id = ?").bind(bio || null, now(), v.profile.id));
   }
@@ -759,7 +764,7 @@ app.get("/v1/me/studio", async (c) => {
   const d7 = new Date(Date.now() - 7 * 864e5).toISOString().slice(0, 10);
   const d28 = new Date(Date.now() - 28 * 864e5).toISOString().slice(0, 10);
   const pid = v.profile.id;
-  const [prof, links, promos, views7, views28, clicks7, clicks28, saves, follows, calls] = await db.batch([
+  const [prof, links, promos, views7, views28, clicks7, clicks28, saves, follows, linkTaps, calls] = await db.batch([
     db.prepare("select p.display_name, p.bio, p.avatar_url, p.banner_url, p.follower_count, d.category, d.secondary_categories, d.primary_cta, d.release_status from profiles p join creator_details d on d.profile_id = p.id where p.id = ?").bind(pid),
     db.prepare("select platform, canonical_url, label from profile_links where profile_id = ? order by position").bind(pid),
     db.prepare(PROMO_SELECT + " and pr.creator_profile_id = ? order by pr.live_at desc limit 60").bind(pid),
@@ -769,11 +774,12 @@ app.get("/v1/me/studio", async (c) => {
     db.prepare("select count(*) as n from click_events e join promos pr on pr.id = e.promo_id where pr.creator_profile_id = ? and e.day >= ? and e.is_boost = 0").bind(pid, d28),
     db.prepare("select count(*) as n, sum(s.created_at >= ?2) as n7, sum(s.created_at >= ?3) as n28 from saves s join promos pr on pr.id = s.promo_id where pr.creator_profile_id = ?1").bind(pid, d7, d28),
     db.prepare("select sum(created_at >= ?2) as n7, sum(created_at >= ?3) as n28 from follows where creator_profile_id = ?1").bind(pid, d7, d28),
+    db.prepare("select sum(day >= ?2) as n7, sum(day >= ?3) as n28 from link_click_events where profile_id = ?1").bind(pid, d7, d28),
     db.prepare("select count(*) as n, sum(choice = 'will_blow_up') as up from calls ca join promos pr on pr.id = ca.promo_id where pr.creator_profile_id = ? and ca.is_valid = 1").bind(pid),
   ]);
   const p = prof.results[0] || {};
-  const sv = saves.results[0] || {}, fw = follows.results[0] || {};
-  const stat = (v, cl, saved, followed) => ({ saves: saved || 0, follows: followed || 0, views: v.n || 0, completion: v.n ? Math.round((100 * (v.done || 0)) / v.n) : 0, avgSeconds: Math.round(v.secs || 0), clicks: cl.n || 0, ctr: v.n ? Math.round((1000 * (cl.n || 0)) / v.n) / 10 : 0 });
+  const sv = saves.results[0] || {}, fw = follows.results[0] || {}, lt = linkTaps.results[0] || {};
+  const stat = (v, cl, saved, followed, taps) => ({ saves: saved || 0, follows: followed || 0, linkTaps: taps || 0, views: v.n || 0, completion: v.n ? Math.round((100 * (v.done || 0)) / v.n) : 0, avgSeconds: Math.round(v.secs || 0), clicks: cl.n || 0, ctr: v.n ? Math.round((1000 * (cl.n || 0)) / v.n) / 10 : 0 });
   const cl = calls.results[0] || {};
   const checklist = {
     logo: !!p.avatar_url, banner: !!p.banner_url, bio: !!p.bio, links: links.results.length > 0, promo: promos.results.length > 0,
@@ -784,7 +790,7 @@ app.get("/v1/me/studio", async (c) => {
       category: p.category, secondaryCategories: json(p.secondary_categories) || [], primaryCta: p.primary_cta, releaseStatus: p.release_status },
     links: links.results.map((l) => ({ platform: l.platform, url: l.canonical_url, label: l.label })),
     checklist,
-    stats: { d7: stat(views7.results[0] || {}, clicks7.results[0] || {}, sv.n7, fw.n7), d28: stat(views28.results[0] || {}, clicks28.results[0] || {}, sv.n28, fw.n28), saves: sv.n || 0, followers: p.follower_count || 0 },
+    stats: { d7: stat(views7.results[0] || {}, clicks7.results[0] || {}, sv.n7, fw.n7, lt.n7), d28: stat(views28.results[0] || {}, clicks28.results[0] || {}, sv.n28, fw.n28, lt.n28), saves: sv.n || 0, followers: p.follower_count || 0 },
     // The vote split is shown to the owner only after 30 calls, so a few early votes do not mislead.
     calls: (cl.n || 0) >= 30 ? { total: cl.n, blowUpPct: Math.round((100 * (cl.up || 0)) / cl.n) } : { total: cl.n || 0, blowUpPct: null },
     promos: promos.results.map((r) => promoOut(r, lang)),
@@ -967,6 +973,21 @@ async function trackEvent(c, table) {
   await db.prepare("insert or ignore into click_events (promo_id, viewer_key, day, is_guest) values (?, ?, ?, ?)").bind(promo.id, key, today(), guest).run();
   return c.json({ ok: true });
 }
+// Profile link taps: one per viewer per link per day; the owner's own taps do not count.
+app.post("/v1/events/link", async (c) => {
+  const b = await c.req.json().catch(() => ({}));
+  const v = await viewer(c);
+  const key = v?.profile ? `p:${v.profile.id}` : DEVICE_RE.test(b.deviceId || "") ? `d:${b.deviceId}` : null;
+  if (!key) return fail(c, 400, "bad_device", "Missing device id.");
+  const db = c.env.DB;
+  const link = await db.prepare(
+    "select l.profile_id, l.canonical_url from profile_links l join profiles p on p.id = l.profile_id where p.handle = ? and p.status = 'active' and l.canonical_url = ? and l.safety_status = 'safe'",
+  ).bind(String(b.handle || "").toLowerCase(), String(b.url || "").replace(/[?&]utm_(source|medium|campaign)=[^&]*/g, "").replace(/\?$/, "")).first();
+  if (!link) return c.json({ ok: true, counted: false });
+  if (v?.profile?.id === link.profile_id) return c.json({ ok: true, counted: false });
+  const r = await db.prepare("insert or ignore into link_click_events (profile_id, url, viewer_key, day) values (?, ?, ?, ?)").bind(link.profile_id, link.canonical_url, key, today()).run();
+  return c.json({ ok: true, counted: !!r.meta.changes });
+});
 app.post("/v1/events/view", (c) => trackEvent(c, "view_events"));
 app.post("/v1/events/click", (c) => trackEvent(c, "click_events"));
 

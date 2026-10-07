@@ -23,7 +23,7 @@ export type Profile = {
   viewer?: { following: boolean; isMe: boolean }; primaryCta?: { kind: string; url: string | null } | null;
 };
 export type Me = {
-  user: { id: string; email: string };
+  user: { id: string; email: string; name?: string | null };
   account: { type: 'scout' | 'creator'; language: string } | null;
   profile: { handle: string; name: string; type: 'scout' | 'creator'; status: string } | null;
   needsOnboarding: boolean;
@@ -45,7 +45,7 @@ export type ScoutSummary = {
   results: { promo: Promo; choice: Call['choice']; outcome: 'correct' | 'incorrect' | 'void'; points: number; resolvedAt: string | null }[];
   saved: Promo[]; following: { handle: string; name: string; avatar: string | null; mono: string | null }[];
 };
-type Stat = { views: number; completion: number; avgSeconds: number; clicks: number; ctr: number; saves: number; follows: number };
+type Stat = { views: number; completion: number; avgSeconds: number; clicks: number; ctr: number; saves: number; follows: number; linkTaps: number };
 export type Studio = {
   profile: { name: string; bio: string | null; avatar: string | null; banner: string | null; followers: number; category: string;
     secondaryCategories: string[]; primaryCta: string | null; releaseStatus: string };
@@ -99,6 +99,7 @@ export const api = {
   save: (promoId: string, on: boolean) => call('/v1/saves/' + promoId, { method: on ? 'POST' : 'DELETE' }),
   view: async (promoId: string, seconds: number, completed: boolean) =>
     call('/v1/events/view', { method: 'POST', body: JSON.stringify({ promoId, seconds, completed, deviceId: await deviceId() }) }),
+  linkTap: async (handle: string, url: string) => call('/v1/events/link', { method: 'POST', body: JSON.stringify({ handle, url, deviceId: await deviceId() }) }),
   click: async (promoId: string) => call('/v1/events/click', { method: 'POST', body: JSON.stringify({ promoId, deviceId: await deviceId() }) }),
   report: (targetType: string, targetId: string, reason: string) => call('/v1/reports', { method: 'POST', body: JSON.stringify({ targetType, targetId, reason }) }),
   deleteAccount: () => call('/v1/me', { method: 'DELETE' }),

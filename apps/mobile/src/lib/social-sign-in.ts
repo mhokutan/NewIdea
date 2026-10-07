@@ -20,7 +20,10 @@ export async function signInWithApple(): Promise<Result> {
       requestedScopes: [AppleAuthentication.AppleAuthenticationScope.FULL_NAME, AppleAuthentication.AppleAuthenticationScope.EMAIL],
     });
     if (!cred.identityToken) return { ok: false, message: 'No token from Apple' };
-    const r = await authClient.signIn.social({ provider: 'apple', idToken: { token: cred.identityToken } });
+    // Apple shares the name only on the very first sign in, so it is passed along to prefill the profile.
+    const name = cred.fullName?.givenName || cred.fullName?.familyName
+      ? { firstName: cred.fullName?.givenName || undefined, lastName: cred.fullName?.familyName || undefined } : undefined;
+    const r = await authClient.signIn.social({ provider: 'apple', idToken: { token: cred.identityToken, user: name ? { name } : undefined } });
     return r.error ? { ok: false, message: r.error.message } : { ok: true };
   } catch (e: any) {
     return { ok: false, cancelled: e?.code === 'ERR_REQUEST_CANCELED', message: e?.message };

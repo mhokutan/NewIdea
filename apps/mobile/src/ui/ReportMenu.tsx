@@ -5,6 +5,7 @@ import { useRef, useState } from 'react';
 import { api } from '@/lib/api';
 import { asMember } from '@/lib/gate';
 import { t } from '@/lib/i18n';
+import { openMail } from '@/lib/mail';
 import { useMe } from '@/lib/use-me';
 import { Sheet } from './Sheet';
 
@@ -47,6 +48,7 @@ export function ReportMenu({ visible, onClose, kind, id, handle, onBlocked, onEr
     title: t('report_t'),
     actions: [
       ...REASONS.filter(([code]) => kind === 'promo' || PROFILE_REASONS.has(code)).map(([code, key]) => ({ label: t(key), onPress: () => report(code) })),
+      ...(!me?.profile ? [{ label: t('report_email'), onPress: () => close(() => openMail('support@promovote.com', `Report ${kind} ${kind === 'promo' ? id : '@' + handle}`)) }] : []),
       { label: t('cancel'), onPress: () => close() },
     ],
   } : {

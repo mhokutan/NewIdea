@@ -285,6 +285,7 @@ function CreatorHome({ onSettings }: { onSettings: () => void }) {
               <Stat n={`${s?.ctr ?? 0}%`} label={t('st_ctr')} />
               <Stat n={s?.saves ?? 0} label={t('st_saves')} />
               <Stat n={s?.follows ?? 0} label={t('st_follows')} />
+              <Stat n={s?.linkTaps ?? 0} label={t('st_link_taps')} />
             </View>
             <Text style={styles.small}>
               {data.calls.blowUpPct != null ? fmt(t('calls_split'), { p: data.calls.blowUpPct, n: data.calls.total }) : fmt(t('calls_wait'), { n: data.calls.total })}
@@ -346,11 +347,17 @@ function Empty({ text }: { text: string }) {
 }
 
 // ------------------------------------------------------------------ onboarding: type, then details
+// Handles start with a letter (server rule), so leading digits and symbols are dropped.
+const handleFrom = (v: string) => v.toLowerCase().normalize('NFKD').replace(/[^a-z0-9]/g, '').replace(/^[^a-z]+/, '').slice(0, 20);
+
 function Onboarding({ onDone }: { onDone: () => void }) {
+  const { me } = useMe();
+  // Apple and Google give us the name on first sign in; it is only a suggestion the user can change.
+  const given = (me?.user.name || '').trim().slice(0, 80);
   const [type, setType] = useState<'scout' | 'creator' | null>(null);
-  const [handle, setHandle] = useState('');
+  const [handle, setHandle] = useState(() => handleFrom(given));
   const [handleState, setHandleState] = useState<'idle' | 'ok' | 'bad'>('idle');
-  const [name, setName] = useState('');
+  const [name, setName] = useState(given);
   const [dob, setDob] = useState<Date | null>(null);
   const [d, setD] = useState({ day: '', month: '', year: '' });
   const [category, setCategory] = useState('');
@@ -360,7 +367,7 @@ function Onboarding({ onDone }: { onDone: () => void }) {
 
   // Suggest a handle from the name until the user types their own: the clean name first, then a short suffix.
   const [handleEdited, setHandleEdited] = useState(false);
-  const base = useRef('');
+  const base = useRef(handleFrom(given));
   const tries = useRef(0);
   useEffect(() => {
     if (handle.length < 3) return;
@@ -378,8 +385,7 @@ function Onboarding({ onDone }: { onDone: () => void }) {
   const onName = (v: string) => {
     setName(v);
     if (handleEdited) return;
-    // Handles start with a letter (server rule), so leading digits and symbols are dropped.
-    base.current = v.toLowerCase().normalize('NFKD').replace(/[^a-z0-9]/g, '').replace(/^[^a-z]+/, '').slice(0, 20);
+    base.current = handleFrom(v);
     tries.current = 0;
     setHandle(base.current);
   };

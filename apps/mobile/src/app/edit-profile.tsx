@@ -9,7 +9,7 @@ import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, ScrollVie
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { api, ApiError } from '@/lib/api';
-import { CATEGORIES, CTA_OPTIONS } from '@/lib/categories';
+import { CATEGORIES, CTA_OPTIONS, ctaVisible } from '@/lib/categories';
 import { t } from '@/lib/i18n';
 import { C } from '@/lib/theme';
 import { refreshMe, useMe } from '@/lib/use-me';
@@ -119,7 +119,7 @@ export default function EditProfile() {
               <View style={styles.wrap}>{CATEGORIES.filter((k) => k.id !== category).map((k) => <Pill key={k.id} label={t(k.label)} active={secondary.includes(k.id)} onPress={() => toggleSecondary(k.id)} />)}</View>
             </Field>
             <Field label={t('main_button')}>
-              <View style={styles.wrap}>{CTA_OPTIONS.map((k) => <Pill key={k.id} label={t(k.label)} active={cta === k.id} onPress={() => setCta(cta === k.id ? null : k.id)} />)}</View>
+              <View style={styles.wrap}>{CTA_OPTIONS.filter((k) => ctaVisible(k.id, Platform.OS)).map((k) => <Pill key={k.id} label={t(k.label)} active={cta === k.id} onPress={() => setCta(cta === k.id ? null : k.id)} />)}</View>
             </Field>
             <Pressable onPress={() => setSoon(!soon)} style={styles.check} accessibilityRole="checkbox" accessibilityState={{ checked: soon }}>
               <View style={[styles.box, soon && { backgroundColor: C.lime, borderColor: C.lime }]}>{soon ? <Text style={{ color: C.ink, fontWeight: '800' }}>✓</Text> : null}</View>

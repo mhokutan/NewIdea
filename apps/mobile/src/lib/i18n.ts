@@ -61,6 +61,7 @@ const en = {
   st_follows: "New followers", stats_zero: "Your free stats start when your first promo goes live: valid views, completion, button taps, saves and new followers. Delivery numbers stay free forever.",
   reminder_t: "Today's Drop is ready", reminder_p: "7 new promos. Make your calls before the crowd does.", reminder_channel: "Daily drop", remind_me: "Remind me when the next drop lands", remind_on: "Done. We will remind you at 6 pm. Turn it off any time in Settings.", remind_denied: "Notifications are off. You can turn them on in your phone settings.",
   reminder_off: "Turn off daily reminder", reminder_turn_on: "Turn on daily reminder",
+  st_link_taps: "Link taps", report_email: "Report by email instead",
 };
 type Key = keyof typeof en;
 const es: Partial<Record<Key, string>> = {
@@ -123,6 +124,7 @@ const es: Partial<Record<Key, string>> = {
   st_follows: "Nuevos seguidores", stats_zero: "Tus estadísticas gratis empiezan cuando tu primer promo esté publicado: vistas válidas, finalización, toques en el botón, guardados y nuevos seguidores. Siempre gratis.",
   reminder_t: "El Drop de hoy está listo", reminder_p: "7 promos nuevos. Haz tus predicciones antes que la multitud.", reminder_channel: "Drop diario", remind_me: "Avísame cuando llegue el próximo drop", remind_on: "Listo. Te avisamos a las 18:00. Puedes desactivarlo en Ajustes.", remind_denied: "Las notificaciones están desactivadas. Puedes activarlas en los ajustes del teléfono.",
   reminder_off: "Desactivar recordatorio diario", reminder_turn_on: "Activar recordatorio diario",
+  st_link_taps: "Toques en enlaces", report_email: "Reportar por email",
 };
 const tr: Partial<Record<Key, string>> = {
   tab_feed: 'Akış', tab_explore: 'Keşfet', tab_me: 'Profil',
@@ -184,6 +186,7 @@ const tr: Partial<Record<Key, string>> = {
   st_follows: "Yeni takipçi", stats_zero: "Ücretsiz istatistiklerin ilk tanıtımın yayına girince başlar: geçerli izlenme, tamamlama, buton tıklaması, kaydetme ve yeni takipçi. Bu sayılar hep ücretsiz.",
   reminder_t: "Bugünün seçkisi hazır", reminder_p: "7 yeni tanıtım. Kalabalıktan önce tahminini yap.", reminder_channel: "Günlük seçki", remind_me: "Yeni seçki gelince bana hatırlat", remind_on: "Tamam. Saat 18:00'de hatırlatacağız. Ayarlardan istediğin zaman kapatabilirsin.", remind_denied: "Bildirimler kapalı. Telefon ayarlarından açabilirsin.",
   reminder_off: "Günlük hatırlatmayı kapat", reminder_turn_on: "Günlük hatırlatmayı aç",
+  st_link_taps: "Link tıklaması", report_email: "Email ile bildir",
 };
 
 const DICTS = { en, es, tr } as const;

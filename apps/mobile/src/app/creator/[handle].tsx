@@ -86,13 +86,13 @@ export default function CreatorScreen() {
         ) : (
           <View style={styles.actions}>
             <View style={{ flex: 1 }}><Button label={p.viewer?.following ? t('following') : t('follow')} ghost={!!p.viewer?.following} onPress={toggleFollow} /></View>
-            {main ? <View style={{ flex: 1 }}><Button label={t(ctaLabel(main.kind))} ghost onPress={() => Linking.openURL(main.url!)} /></View> : null}
+            {main ? <View style={{ flex: 1 }}><Button label={t(ctaLabel(main.kind))} ghost onPress={() => { api.linkTap(handle, main.url!).catch(() => {}); Linking.openURL(main.url!); }} /></View> : null}
           </View>
         )}
         {p.bio ? <Text style={styles.bio}>{p.bio}</Text> : null}
         <View style={styles.links}>
           {(p.links || []).map((l) => (
-            <Pressable key={l.url} onPress={() => Linking.openURL(l.url)} style={styles.link} accessibilityRole="link">
+            <Pressable key={l.url} onPress={() => { api.linkTap(handle, l.url).catch(() => {}); Linking.openURL(l.url); }} style={styles.link} accessibilityRole="link">
               <Text style={styles.linkText}>{linkName(l.platform, l.url, l.label)}</Text>
               <Icon name="link" size={14} />
             </Pressable>
