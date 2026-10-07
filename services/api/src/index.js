@@ -38,7 +38,7 @@ app.use("/v1/*", async (c, next) => {
   if (c.req.method === "GET" || c.req.method === "OPTIONS") return next();
   // Photo uploads check their own (larger) limit in the route.
   if (c.req.path !== "/v1/me/media" && +(c.req.header("Content-Length") || 0) > 16384) return c.json({ error: { code: "too_large", message: "Request too large." } }, 413);
-  if (c.env.WRITE_LIMIT) {
+  if (c.env.WRITE_LIMIT && !c.req.path.startsWith("/v1/events/")) {
     const { success } = await c.env.WRITE_LIMIT.limit({ key: c.req.header("CF-Connecting-IP") || "unknown" });
     if (!success) return c.json({ error: { code: "rate_limited", message: "Too many requests. Wait a minute." } }, 429);
   }
@@ -120,7 +120,8 @@ const pick = (map, lang, fallback) => (map && (map[lang] || map.en)) || fallback
 
 // ------------------------------------------------------------------ shapes
 const PROMO_SELECT = `
-  select pr.id, pr.slug, pr.lang, pr.title, pr.description, pr.i18n, pr.cta_kind, pr.cta_url, pr.has_perk, pr.live_at,
+  select pr.id, pr.slug, pr.lang, pr.title, pr.description, pr.i18n, pr.cta_kind, pr.cta_url, pr.live_at,
+         (pr.has_perk or exists (select 1 from perks k where k.creator_profile_id = pr.creator_profile_id and k.status = 'active' and k.ends_at > strftime('%Y-%m-%dT%H:%M:%fZ', 'now') and (k.stock_left is null or k.stock_left > 0))) as has_perk,
          pr.public_view_bucket,
          v.mp4_url, v.webm_url, v.poster_url, v.stream_uid, v.duration_ms, v.width, v.height,
          p.handle, p.display_name, p.avatar_url, p.i18n as p_i18n, p.is_verified,
@@ -131,6 +132,26 @@ const PROMO_SELECT = `
   join creator_details d on d.profile_id = p.id
   left join promo_videos v on v.promo_id = pr.id and v.label = 'A'
   where pr.status = 'live' and p.status = 'active'`;
+
+// Outbound links carry utm tags so creators see PromoVote traffic in their own analytics.
+// Store links stay untouched (Apple and Google use their own campaign parameters).
+const NO_UTM = /(^|\.)(apps\.apple\.com|play\.google\.com|store\.steampowered\.com|steamcommunity\.com)$/;
+function withUtm(raw, campaign) {
+  try {
+    const u = new URL(raw);
+    if (u.protocol !== "https:" || NO_UTM.test(u.hostname) || u.searchParams.has("utm_source")) return raw;
+    u.searchParams.set("utm_source", "promovote");
+    u.searchParams.set("utm_medium", "referral");
+    if (campaign) u.searchParams.set("utm_campaign", campaign);
+    return u.toString();
+  } catch { return raw; }
+}
+// Which link platforms can back each main button type (first match in the creator's link order wins).
+const CTA_PLATFORMS = {
+  website: ["website"], app_store: ["app_store"], google_play: ["google_play"], steam: ["steam"], itch: ["itch"],
+  shop: ["shopify", "amazon", "etsy", "website"], etsy: ["etsy"], watch: ["youtube", "tiktok", "instagram"],
+  watch_live: ["twitch", "kick", "youtube"], notify: [],
+};
 
 function promoOut(r, lang) {
   const i = json(r.i18n) || {};
@@ -147,7 +168,7 @@ function promoOut(r, lang) {
       hls: r.stream_uid ? `https://videodelivery.net/${r.stream_uid}/manifest/video.m3u8` : null,
       durationMs: r.duration_ms, width: r.width, height: r.height,
     },
-    cta: r.cta_kind ? { kind: r.cta_kind, url: r.cta_url } : null,
+    cta: r.cta_kind ? { kind: r.cta_kind, url: r.cta_url ? withUtm(r.cta_url, r.slug) : r.cta_url } : null,
     hasPerk: !!r.has_perk,
     views: r.public_view_bucket,
     liveAt: r.live_at,
@@ -161,7 +182,10 @@ function promoOut(r, lang) {
 }
 
 // ------------------------------------------------------------------ public reads
-app.get("/health", (c) => c.json({ ok: true, time: now() }));
+app.get("/health", async (c) => {
+  const { results } = await c.env.DB.prepare("select name, ran_at from job_runs").all().catch(() => ({ results: [] }));
+  return c.json({ ok: true, time: now(), jobs: Object.fromEntries(results.map((r) => [r.name, r.ran_at])) });
+});
 
 // Live promos. The app runs the fair rotation per viewer (same rules as the website) until it moves server side.
 app.get("/v1/feed", async (c) => {
@@ -176,7 +200,7 @@ app.get("/v1/feed", async (c) => {
 // plus 3 points per valid "will blow up" call. A promo needs at least
 // TOP_MIN_VIEWS weighted views to show up, so the tab stays honestly empty until real data exists (docs/04).
 const TOP_MIN_VIEWS = 50;
-const CHARTS_GOAL = 50; // scouts calling in the last 7 days before Charts feel alive
+const CHARTS_GOAL = 20; // scouts calling in the last 7 days before Charts feel alive
 app.get("/v1/home", async (c) => {
   const lang = langOf(c);
   const tab = c.req.query("tab");
@@ -187,6 +211,13 @@ app.get("/v1/home", async (c) => {
   } else if (tab === "featured") {
     ({ results: rows } = await db.prepare(PROMO_SELECT + " and pr.featured_at is not null order by pr.featured_at desc, pr.live_at desc limit 30").all());
   } else if (tab === "top") {
+    // Charts open only when enough scouts call promos this week (one gate for the list and the progress card).
+    const weekAgo = new Date(Date.now() - 7 * 864e5).toISOString();
+    const sc = await db.prepare("select count(distinct scout_profile_id) as n from calls where created_at >= ?").bind(weekAgo).first();
+    if ((sc?.n || 0) < CHARTS_GOAL) {
+      c.header("Cache-Control", "public, max-age=60");
+      return c.json({ tab, promos: [], progress: { scouts: sc?.n || 0, goal: CHARTS_GOAL } });
+    }
     const since = new Date(Date.now() - 6 * 864e5).toISOString().slice(0, 10);
     const { results: scores } = await db.prepare(
       `select promo_id, count(*) as views from view_events
@@ -221,6 +252,7 @@ app.get("/v1/home", async (c) => {
 // Today's Drop: the same 7 promos for everyone today (per language), picked fairly across creators.
 // Viewer language first, then English; game promos lead so a first session opens on a trailer.
 const DROP_SIZE = 7;
+const DROP_POOL = 21;
 function seeded(seed) {
   let h = 2166136261;
   for (const ch of seed) h = Math.imul(h ^ ch.charCodeAt(0), 16777619);
@@ -230,22 +262,22 @@ app.get("/v1/drop", async (c) => {
   const lang = langOf(c);
   const day = today();
   const { results } = await c.env.DB.prepare(PROMO_SELECT + " order by pr.live_at desc limit 300").all();
-  const rnd = seeded(`${day}:${lang}`);
+  // Each promo gets its own random rank for the day (hash of day, language and promo id), so adding a new
+  // promo never reshuffles the rest and the drop stays the same all day.
+  const rank = (r) => seeded(`${day}:${lang}:${r.id}`)();
   const langRank = (r) => (r.lang === lang ? 0 : r.lang === "en" ? 1 : 2);
   const byCreator = new Map();
-  for (const r of results.map((r) => [rnd(), r]).sort((a, b) => a[0] - b[0]).map(([, r]) => r)) {
+  for (const r of [...results].sort((a, b) => rank(a) - rank(b))) {
     if (!byCreator.has(r.handle)) byCreator.set(r.handle, []);
     byCreator.get(r.handle).push(r);
   }
   const lists = [...byCreator.values()].map((l) => l.sort((a, b) => langRank(a) - langRank(b)))
     .sort((a, b) => (a[0].category === "games" ? 0 : 1) - (b[0].category === "games" ? 0 : 1) || langRank(a[0]) - langRank(b[0]));
+  // Round robin across creators, viewer language and English only. The app takes the first 7 the viewer has
+  // not called yet, so a pool of up to DROP_POOL keeps tomorrow's drop fresh for returning scouts.
   const out = [];
-  for (let i = 0; out.length < DROP_SIZE && lists.some((l) => l[i]); i++) {
-    for (const l of lists) if (l[i] && out.length < DROP_SIZE && langRank(l[i]) < 2) out.push(l[i]);
-  }
-  // Not enough promos in the viewer's language or English: fill with the rest.
-  for (let i = 0; out.length < DROP_SIZE && lists.some((l) => l[i]); i++) {
-    for (const l of lists) if (l[i] && out.length < DROP_SIZE && !out.includes(l[i])) out.push(l[i]);
+  for (let i = 0; out.length < DROP_POOL && lists.some((l) => l[i]); i++) {
+    for (const l of lists) if (l[i] && out.length < DROP_POOL && langRank(l[i]) < 2) out.push(l[i]);
   }
   c.header("Cache-Control", "public, max-age=300");
   return c.json({ day, size: DROP_SIZE, promos: out.map((r) => promoOut(r, lang)) });
@@ -290,7 +322,8 @@ app.get("/v1/creators", async (c) => {
   const cat = c.req.query("cat");
   const args = [];
   let sql = `select p.handle, p.display_name, p.avatar_url, p.i18n, p.is_verified, p.follower_count, d.category
-             from profiles p join creator_details d on d.profile_id = p.id where p.status = 'active'`;
+             from profiles p join creator_details d on d.profile_id = p.id where p.status = 'active'
+             and exists (select 1 from promos x where x.creator_profile_id = p.id and x.status = 'live')`;
   if (CATEGORIES.includes(cat)) { sql += " and d.category = ?"; args.push(cat); }
   const { results } = await c.env.DB.prepare(sql + " order by p.follower_count desc, p.created_at limit 50").bind(...args).all();
   return c.json({
@@ -317,7 +350,7 @@ app.get("/v1/profiles/:handle", async (c) => {
   const handle = c.req.param("handle").toLowerCase().replace(/^@/, "");
   const db = c.env.DB;
   const p = await db.prepare(
-    `select p.*, s.show_follower_count, s.show_calls, d.kind, d.category, d.release_status, d.android_status, d.ios_status, d.founder_owned, d.founding_creator
+    `select p.*, s.show_follower_count, s.show_calls, d.kind, d.category, d.release_status, d.android_status, d.ios_status, d.founder_owned, d.founding_creator, d.primary_cta
      from profiles p left join profile_settings s on s.profile_id = p.id left join creator_details d on d.profile_id = p.id
      where p.handle = ? and p.status = 'active'`,
   ).bind(handle).first();
@@ -339,7 +372,13 @@ app.get("/v1/profiles/:handle", async (c) => {
       founderOwned: !!p.founder_owned, foundingCreator: !!p.founding_creator,
       followers: p.show_follower_count && p.follower_count >= 10 ? p.follower_count : null,
       newCreator: p.follower_count < 10,
-      links: links.results.map((l) => ({ platform: l.platform, url: l.canonical_url, label: l.label })),
+      links: links.results.map((l) => ({ platform: l.platform, url: withUtm(l.canonical_url, "profile"), label: l.label })),
+      primaryCta: (() => {
+        if (!p.primary_cta) return null;
+        if (p.primary_cta === "notify") return { kind: "notify", url: null };
+        const l = links.results.find((x) => (CTA_PLATFORMS[p.primary_cta] || []).includes(x.platform));
+        return l ? { kind: p.primary_cta, url: withUtm(l.canonical_url, "profile") } : null;
+      })(),
       promos: promos.results.map((r) => promoOut(r, lang)),
     });
   } else {
@@ -480,8 +519,8 @@ const LINK_HOSTS = [
   ["tiktok", /(^|\.)tiktok\.com$/], ["instagram", /(^|\.)instagram\.com$/], ["x", /(^|\.)(x\.com|twitter\.com)$/],
   ["steam", /(^|\.)(store\.steampowered\.com|steamcommunity\.com)$/], ["app_store", /(^|\.)apps\.apple\.com$/],
   ["google_play", /(^|\.)play\.google\.com$/], ["etsy", /(^|\.)etsy\.com$/], ["discord", /(^|\.)(discord\.gg|discord\.com)$/],
-  ["itch", /(^|\.)itch\.io$/], ["amazon", /(^|\.)amazon\.[a-z.]+$/], ["shopify", /(^|\.)myshopify\.com$/],
-  ["google_maps", /(^|\.)(maps\.google\.[a-z.]+|maps\.app\.goo\.gl)$/],
+  ["itch", /(^|\.)itch\.io$/], ["amazon", /(^|\.)amazon\.(com|co\.uk|de|fr|it|es|ca|com\.mx|com\.br|co\.jp|in|com\.tr|nl|se|pl|com\.au)$/], ["shopify", /(^|\.)myshopify\.com$/],
+  ["google_maps", /^(maps\.google\.com|www\.google\.com|maps\.app\.goo\.gl)$/],
 ];
 const BAD_HOSTS = /(^|\.)(bit\.ly|tinyurl\.com|t\.co|goo\.gl|ow\.ly|is\.gd|buff\.ly|rebrand\.ly|cutt\.ly|shorturl\.at|linktr\.ee|beacons\.ai|lnk\.bio|taplink\.cc|linkin\.bio)$/;
 function checkLink(raw) {
@@ -507,14 +546,24 @@ app.put("/v1/me/links", async (c) => {
   for (const [i, l] of list.entries()) {
     const r = checkLink(l?.url);
     if (r.error) return fail(c, 400, "bad_link", `${r.error} (${String(l?.url || "").slice(0, 60)})`);
-    rows.push({ ...r, label: l?.label ? String(l.label).trim().slice(0, 40) : null, position: i });
+    const label = l?.label ? String(l.label).trim().slice(0, 40) : null;
+    // A custom label may not pretend to be a store or platform the link is not.
+    const PLATFORM_WORDS = /(app ?store|google ?play|steam|youtube|twitch|kick|tiktok|instagram|etsy|amazon|discord|itch)/i;
+    if (label && PLATFORM_WORDS.test(label) && !new RegExp(r.platform.replace("_", " ?"), "i").test(label.replace(/\s/g, " "))) {
+      return fail(c, 400, "bad_label", `The label "${label}" names a different platform than the link.`);
+    }
+    rows.push({ ...r, label, position: i });
   }
   const db = c.env.DB, t = now();
+  // A link a moderator blocked or flagged keeps that status when saved again (no laundering by re-saving).
+  const { results: prev } = await db.prepare("select canonical_url, safety_status, click_count from profile_links where profile_id = ?").bind(v.profile.id).all();
+  const prevBy = Object.fromEntries(prev.map((p) => [p.canonical_url, p]));
+  if (rows.some((r) => prevBy[r.url]?.safety_status === "blocked")) return fail(c, 400, "link_blocked", "One of these links was removed by our team and cannot be added again.");
   await db.batch([
     db.prepare("delete from profile_links where profile_id = ?").bind(v.profile.id),
     ...rows.map((r) => db.prepare(
-      "insert into profile_links (id, profile_id, platform, url_input, canonical_url, label, position, safety_status, last_scanned_at) values (?, ?, ?, ?, ?, ?, ?, 'safe', ?)",
-    ).bind(uuid(), v.profile.id, r.platform, r.url, r.url, r.label, r.position, t)),
+      "insert into profile_links (id, profile_id, platform, url_input, canonical_url, label, position, safety_status, last_scanned_at, click_count) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+    ).bind(uuid(), v.profile.id, r.platform, r.url, r.url, r.label, r.position, prevBy[r.url]?.safety_status || "safe", t, prevBy[r.url]?.click_count || 0)),
   ]);
   return c.json({ ok: true, links: rows.map((r) => ({ platform: r.platform, url: r.url, label: r.label })) });
 });
@@ -532,8 +581,16 @@ app.post("/v1/me/media", async (c) => {
   if (!MEDIA_LIMITS[kind]) return fail(c, 400, "bad_kind", "Choose avatar or banner.");
   const type = (c.req.header("Content-Type") || "").split(";")[0].trim();
   if (!MEDIA_TYPES[type]) return fail(c, 400, "bad_type", "Use a JPEG, PNG or WebP image.");
+  const declared = +(c.req.header("Content-Length") || 0);
+  if (!declared || declared > MEDIA_LIMITS[kind]) return fail(c, 413, "too_large", "That image is too large.");
   const body = await c.req.arrayBuffer();
   if (!body.byteLength || body.byteLength > MEDIA_LIMITS[kind]) return fail(c, 413, "too_large", "That image is too large.");
+  // Trust the file bytes, not the header: JPEG FF D8 FF, PNG 89 50 4E 47, WebP "RIFF....WEBP".
+  const h = new Uint8Array(body.slice(0, 12));
+  const isJpeg = h[0] === 0xff && h[1] === 0xd8 && h[2] === 0xff;
+  const isPng = h[0] === 0x89 && h[1] === 0x50 && h[2] === 0x4e && h[3] === 0x47;
+  const isWebp = String.fromCharCode(...h.slice(0, 4)) === "RIFF" && String.fromCharCode(...h.slice(8, 12)) === "WEBP";
+  if (!((type === "image/jpeg" && isJpeg) || (type === "image/png" && isPng) || (type === "image/webp" && isWebp))) return fail(c, 400, "bad_type", "Use a JPEG, PNG or WebP image.");
   const id = uuid();
   const key = `profiles/${v.profile.id}/${kind}-${id}.${MEDIA_TYPES[type]}`;
   await c.env.MEDIA.put(key, body, { httpMetadata: { contentType: type, cacheControl: "public, max-age=31536000, immutable" } });
@@ -558,18 +615,127 @@ app.get("/media/*", async (c) => {
   return new Response(obj.body, { headers: { "Content-Type": obj.httpMetadata?.contentType || "image/jpeg", "Cache-Control": "public, max-age=31536000, immutable", "X-Content-Type-Options": "nosniff" } });
 });
 
+// ------------------------------------------------------------------ perks (gifts)
+// A creator offers one active gift at a time (v1): a shared code, a discount or a beta invite.
+// RULE: claiming a perk never depends on calls, follows, saves or watch time. Any signed in person can claim it.
+// The claim handler below reads only the perk and the claimer's user id; do not add votes or follows to it.
+// Codes are stored encrypted (AES-GCM, key derived from BETTER_AUTH_SECRET).
+const PERK_KINDS = ["code", "discount", "beta_invite"];
+async function perkKey(env) {
+  const base = await crypto.subtle.importKey("raw", new TextEncoder().encode(env.BETTER_AUTH_SECRET || "dev-secret"), "HKDF", false, ["deriveKey"]);
+  return crypto.subtle.deriveKey({ name: "HKDF", hash: "SHA-256", salt: new TextEncoder().encode("promovote-perks"), info: new Uint8Array() }, base, { name: "AES-GCM", length: 256 }, false, ["encrypt", "decrypt"]);
+}
+const b64 = (u8) => btoa(String.fromCharCode(...u8));
+const unb64 = (s) => Uint8Array.from(atob(s), (c) => c.charCodeAt(0));
+async function sealCode(env, code) {
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const ct = new Uint8Array(await crypto.subtle.encrypt({ name: "AES-GCM", iv }, await perkKey(env), new TextEncoder().encode(code)));
+  return `${b64(iv)}.${b64(ct)}`;
+}
+async function openCode(env, sealed) {
+  const [iv, ct] = sealed.split(".");
+  return new TextDecoder().decode(await crypto.subtle.decrypt({ name: "AES-GCM", iv: unb64(iv) }, await perkKey(env), unb64(ct)));
+}
+const perkOut = (k) => ({
+  id: k.id, kind: k.kind, title: k.title, description: k.description, redeemUrl: k.redeem_url,
+  endsAt: k.ends_at, stockLeft: k.stock_left, status: k.status,
+});
+
+app.post("/v1/me/perks", async (c) => {
+  const [v, err] = await requireProfile(c, "creator");
+  if (err) return err;
+  const b = await c.req.json().catch(() => ({}));
+  const title = String(b.title || "").trim();
+  if (title.length < 3 || title.length > 60) return fail(c, 400, "bad_title", "Title must be 3 to 60 characters.");
+  const kind = PERK_KINDS.includes(b.kind) ? b.kind : "code";
+  const code = String(b.code || "").trim();
+  if (code.length < 2 || code.length > 64) return fail(c, 400, "bad_code", "Enter the code people will use (2 to 64 characters).");
+  const description = b.description ? String(b.description).trim().slice(0, 200) : null;
+  if (description && /(vote|follow|like|subscribe)/i.test(description)) return fail(c, 400, "no_conditions", "Gifts cannot ask for votes, follows or likes.");
+  let redeem = null;
+  if (b.redeemUrl) { const r = checkLink(b.redeemUrl); if (r.error) return fail(c, 400, "bad_link", r.error); redeem = r.url; }
+  const days = Math.max(1, Math.min(90, Math.floor(+b.days || 30)));
+  const stock = b.stock ? Math.max(1, Math.min(10000, Math.floor(+b.stock))) : null;
+  const db = c.env.DB, id = uuid(), t = now();
+  const ends = new Date(Date.now() + days * 864e5).toISOString();
+  await db.batch([
+    db.prepare("update perks set status = 'ended' where creator_profile_id = ? and status = 'active'").bind(v.profile.id),
+    db.prepare(`insert into perks (id, creator_profile_id, kind, mode, title, description, redeem_url, stock_total, stock_left, starts_at, ends_at, status)
+                values (?, ?, ?, 'shared', ?, ?, ?, ?, ?, ?, ?, 'active')`).bind(id, v.profile.id, kind, title, description, redeem, stock, stock, t, ends),
+    db.prepare("insert into perk_codes (id, perk_id, code_encrypted) values (?, ?, ?)").bind(uuid(), id, await sealCode(c.env, code)),
+  ]);
+  return c.json({ ok: true, id }, 201);
+});
+
+app.delete("/v1/me/perks/:id", async (c) => {
+  const [v, err] = await requireProfile(c, "creator");
+  if (err) return err;
+  await c.env.DB.prepare("update perks set status = 'ended' where id = ? and creator_profile_id = ?").bind(c.req.param("id"), v.profile.id).run();
+  return c.json({ ok: true });
+});
+
+// The active gift of a creator, public (no code).
+app.get("/v1/creators/:handle/perk", async (c) => {
+  const k = await c.env.DB.prepare(
+    `select k.* from perks k join profiles p on p.id = k.creator_profile_id where p.handle = ? and k.status = 'active'
+     and k.ends_at > ? and (k.stock_left is null or k.stock_left > 0) order by k.created_at desc limit 1`,
+  ).bind(c.req.param("handle").toLowerCase(), now()).first();
+  return c.json({ perk: k ? perkOut(k) : null });
+});
+
+// Claim: needs a signed in account, nothing else (see RULE above).
+app.post("/v1/perks/:id/claim", async (c) => {
+  const v = await viewer(c);
+  if (!v) return fail(c, 401, "auth_required", "Sign in to get this gift.");
+  const db = c.env.DB, id = c.req.param("id");
+  const k = await db.prepare("select * from perks where id = ? and status = 'active' and ends_at > ?").bind(id, now()).first();
+  if (!k) return fail(c, 404, "perk_ended", "This gift has ended.");
+  const prior = await db.prepare("select 1 from perk_claims where perk_id = ? and user_id = ?").bind(id, v.user.id).first();
+  if (!prior) {
+    if (k.stock_left !== null) {
+      const r = await db.prepare("update perks set stock_left = stock_left - 1 where id = ? and stock_left > 0").bind(id).run();
+      if (!r.meta.changes) return fail(c, 410, "perk_gone", "All gifts have been claimed.");
+    }
+    await db.prepare("insert or ignore into perk_claims (perk_id, user_id) values (?, ?)").bind(id, v.user.id).run();
+  }
+  const code = await db.prepare("select code_encrypted from perk_codes where perk_id = ? limit 1").bind(id).first();
+  return c.json({ ok: true, perk: perkOut(k), code: code ? await openCode(c.env, code.code_encrypted) : null });
+});
+
+// Wallet: gifts this person claimed (with codes). Creators also get their own gifts with claim counts.
+app.get("/v1/me/perks", async (c) => {
+  const v = await viewer(c);
+  if (!v) return fail(c, 401, "auth_required", "Sign in first.");
+  const db = c.env.DB;
+  const { results: claimed } = await db.prepare(
+    `select k.*, p.handle, p.display_name, p.avatar_url, cl.claimed_at, pc.code_encrypted from perk_claims cl
+     join perks k on k.id = cl.perk_id join profiles p on p.id = k.creator_profile_id
+     left join perk_codes pc on pc.perk_id = k.id where cl.user_id = ? order by cl.claimed_at desc limit 100`,
+  ).bind(v.user.id).all();
+  const wallet = [];
+  for (const r of claimed) wallet.push({ ...perkOut(r), creator: { handle: r.handle, name: r.display_name, avatar: r.avatar_url }, claimedAt: r.claimed_at, code: r.code_encrypted ? await openCode(c.env, r.code_encrypted) : null });
+  let own = [];
+  if (v.profile?.type === "creator") {
+    const { results } = await db.prepare("select k.*, (select count(*) from perk_claims cl where cl.perk_id = k.id) as claims from perks k where k.creator_profile_id = ? order by k.created_at desc limit 20").bind(v.profile.id).all();
+    own = results.map((k) => ({ ...perkOut(k), claims: k.claims }));
+  }
+  c.header("Cache-Control", "no-store");
+  return c.json({ wallet, own });
+});
+
 // ------------------------------------------------------------------ own profile summaries
 // Scout: Scout Score (reputation only, no cash value), level, open calls with their result date, saved, following.
 app.get("/v1/me/scout", async (c) => {
   const [v, err] = await requireProfile(c, "scout");
   if (err) return err;
   const lang = langOf(c), db = c.env.DB;
-  const [stats, open, done, saved, following] = await db.batch([
+  const [stats, open, done, saved, following, recent] = await db.batch([
     db.prepare("select * from scout_stats where profile_id = ?").bind(v.profile.id),
     db.prepare(PROMO_SELECT.replace("select pr.id,", "select ca.choice as call_choice, ca.created_at as call_at, ca.voter_ordinal as call_rank, pr.id,").replace("from promos pr", "from calls ca join promos pr on pr.id = ca.promo_id") + " and ca.scout_profile_id = ? and ca.outcome = 'pending' order by ca.created_at desc limit 50").bind(v.profile.id),
     db.prepare("select count(*) as n, sum(outcome = 'correct') as right, sum(is_called_it) as called_it from calls where scout_profile_id = ? and outcome in ('correct', 'incorrect')").bind(v.profile.id),
     db.prepare(PROMO_SELECT.replace("from promos pr", "from saves sv join promos pr on pr.id = sv.promo_id") + " and sv.scout_profile_id = ? order by sv.created_at desc limit 60").bind(v.profile.id),
     db.prepare("select p.handle, p.display_name, p.avatar_url, p.i18n from follows f join profiles p on p.id = f.creator_profile_id where f.follower_profile_id = ? and p.status = 'active' order by f.created_at desc limit 100").bind(v.profile.id),
+    db.prepare(PROMO_SELECT.replace("select pr.id,", "select ca.choice as call_choice, ca.outcome as call_outcome, ca.score_delta as call_delta, ca.resolved_at as call_resolved, pr.id,").replace("from promos pr", "from calls ca join promos pr on pr.id = ca.promo_id") + " and ca.scout_profile_id = ? and ca.outcome in ('correct', 'incorrect', 'void') order by ca.resolved_at desc limit 20").bind(v.profile.id),
   ]);
   const st = stats.results[0] || { scout_score: 0, level: 1, current_streak_weeks: 0 };
   const d = done.results[0] || {};
@@ -578,6 +744,8 @@ app.get("/v1/me/scout", async (c) => {
     score: st.scout_score, level: st.level, nextLevelAt: st.level * 100, streakWeeks: st.current_streak_weeks,
     resolved: d.n || 0, right: d.right || 0, calledIt: d.called_it || 0,
     open: open.results.map((r) => ({ promo: promoOut(r, lang), choice: r.call_choice, rank: r.call_rank, resolvesAt: new Date(new Date(r.call_at).getTime() + CALL_DAYS * 864e5).toISOString() })),
+    accuracy: d.n ? Math.round((100 * (d.right || 0)) / d.n) : null,
+    results: recent.results.map((r) => ({ promo: promoOut(r, lang), choice: r.call_choice, outcome: r.call_outcome, points: r.call_delta || 0, resolvedAt: r.call_resolved })),
     saved: saved.results.map((r) => promoOut(r, lang)),
     following: following.results.map((r) => ({ handle: r.handle, name: r.display_name, avatar: r.avatar_url, mono: (json(r.i18n) || {}).mono || null })),
   });
@@ -591,19 +759,21 @@ app.get("/v1/me/studio", async (c) => {
   const d7 = new Date(Date.now() - 7 * 864e5).toISOString().slice(0, 10);
   const d28 = new Date(Date.now() - 28 * 864e5).toISOString().slice(0, 10);
   const pid = v.profile.id;
-  const [prof, links, promos, views7, views28, clicks7, clicks28, saves, calls] = await db.batch([
+  const [prof, links, promos, views7, views28, clicks7, clicks28, saves, follows, calls] = await db.batch([
     db.prepare("select p.display_name, p.bio, p.avatar_url, p.banner_url, p.follower_count, d.category, d.secondary_categories, d.primary_cta, d.release_status from profiles p join creator_details d on d.profile_id = p.id where p.id = ?").bind(pid),
     db.prepare("select platform, canonical_url, label from profile_links where profile_id = ? order by position").bind(pid),
     db.prepare(PROMO_SELECT + " and pr.creator_profile_id = ? order by pr.live_at desc limit 60").bind(pid),
     db.prepare("select count(*) as n, sum(completed) as done, avg(max_seconds) as secs from view_events v join promos pr on pr.id = v.promo_id where pr.creator_profile_id = ? and v.day >= ? and v.is_boost = 0").bind(pid, d7),
     db.prepare("select count(*) as n, sum(completed) as done, avg(max_seconds) as secs from view_events v join promos pr on pr.id = v.promo_id where pr.creator_profile_id = ? and v.day >= ? and v.is_boost = 0").bind(pid, d28),
-    db.prepare("select count(*) as n from click_events e join promos pr on pr.id = e.promo_id where pr.creator_profile_id = ? and e.day >= ?").bind(pid, d7),
-    db.prepare("select count(*) as n from click_events e join promos pr on pr.id = e.promo_id where pr.creator_profile_id = ? and e.day >= ?").bind(pid, d28),
-    db.prepare("select count(*) as n from saves s join promos pr on pr.id = s.promo_id where pr.creator_profile_id = ?").bind(pid),
+    db.prepare("select count(*) as n from click_events e join promos pr on pr.id = e.promo_id where pr.creator_profile_id = ? and e.day >= ? and e.is_boost = 0").bind(pid, d7),
+    db.prepare("select count(*) as n from click_events e join promos pr on pr.id = e.promo_id where pr.creator_profile_id = ? and e.day >= ? and e.is_boost = 0").bind(pid, d28),
+    db.prepare("select count(*) as n, sum(s.created_at >= ?2) as n7, sum(s.created_at >= ?3) as n28 from saves s join promos pr on pr.id = s.promo_id where pr.creator_profile_id = ?1").bind(pid, d7, d28),
+    db.prepare("select sum(created_at >= ?2) as n7, sum(created_at >= ?3) as n28 from follows where creator_profile_id = ?1").bind(pid, d7, d28),
     db.prepare("select count(*) as n, sum(choice = 'will_blow_up') as up from calls ca join promos pr on pr.id = ca.promo_id where pr.creator_profile_id = ? and ca.is_valid = 1").bind(pid),
   ]);
   const p = prof.results[0] || {};
-  const stat = (v, cl) => ({ views: v.n || 0, completion: v.n ? Math.round((100 * (v.done || 0)) / v.n) : 0, avgSeconds: Math.round(v.secs || 0), clicks: cl.n || 0, ctr: v.n ? Math.round((1000 * (cl.n || 0)) / v.n) / 10 : 0 });
+  const sv = saves.results[0] || {}, fw = follows.results[0] || {};
+  const stat = (v, cl, saved, followed) => ({ saves: saved || 0, follows: followed || 0, views: v.n || 0, completion: v.n ? Math.round((100 * (v.done || 0)) / v.n) : 0, avgSeconds: Math.round(v.secs || 0), clicks: cl.n || 0, ctr: v.n ? Math.round((1000 * (cl.n || 0)) / v.n) / 10 : 0 });
   const cl = calls.results[0] || {};
   const checklist = {
     logo: !!p.avatar_url, banner: !!p.banner_url, bio: !!p.bio, links: links.results.length > 0, promo: promos.results.length > 0,
@@ -614,7 +784,7 @@ app.get("/v1/me/studio", async (c) => {
       category: p.category, secondaryCategories: json(p.secondary_categories) || [], primaryCta: p.primary_cta, releaseStatus: p.release_status },
     links: links.results.map((l) => ({ platform: l.platform, url: l.canonical_url, label: l.label })),
     checklist,
-    stats: { d7: stat(views7.results[0] || {}, clicks7.results[0] || {}), d28: stat(views28.results[0] || {}, clicks28.results[0] || {}), saves: saves.results[0]?.n || 0, followers: p.follower_count || 0 },
+    stats: { d7: stat(views7.results[0] || {}, clicks7.results[0] || {}, sv.n7, fw.n7), d28: stat(views28.results[0] || {}, clicks28.results[0] || {}, sv.n28, fw.n28), saves: sv.n || 0, followers: p.follower_count || 0 },
     // The vote split is shown to the owner only after 30 calls, so a few early votes do not mislead.
     calls: (cl.n || 0) >= 30 ? { total: cl.n, blowUpPct: Math.round((100 * (cl.up || 0)) / cl.n) } : { total: cl.n || 0, blowUpPct: null },
     promos: promos.results.map((r) => promoOut(r, lang)),
@@ -712,10 +882,12 @@ app.post("/v1/calls", async (c) => {
   const db = c.env.DB;
   const promo = await livePromo(db, b.promoId);
   if (!promo) return fail(c, 404, "not_found", "Promo not found.");
+  // Only the first SCORED_CALLS_PER_DAY calls of a scout per UTC day can earn points.
   const r = await db.prepare(
-    `insert or ignore into calls (id, scout_profile_id, promo_id, choice, voter_ordinal)
-     values (?, ?, ?, ?, (select count(*) + 1 from calls where promo_id = ?))`,
-  ).bind(uuid(), v.profile.id, promo.id, b.choice, promo.id).run();
+    `insert or ignore into calls (id, scout_profile_id, promo_id, choice, voter_ordinal, score_eligible)
+     values (?, ?, ?, ?, (select count(*) + 1 from calls where promo_id = ?),
+       (select count(*) < ? from calls where scout_profile_id = ? and score_eligible = 1 and created_at >= ?))`,
+  ).bind(uuid(), v.profile.id, promo.id, b.choice, promo.id, SCORED_CALLS_PER_DAY, v.profile.id, today() + "T00:00:00.000Z").run();
   const info = await callInfo(db, promo.id, v.profile.id);
   if (!r.meta.changes) return c.json({ error: { code: "already_voted", message: "You already called this promo." }, call: info }, 409);
   return c.json({ ok: true, call: info }, 201);
@@ -816,8 +988,19 @@ app.post("/v1/reports", async (c) => {
   // two different people report it as a minor within 7 days, so one person cannot take down an account.
   if (b.reason === "minor" && targetProfile) {
     const since = new Date(Date.now() - 7 * 864e5).toISOString();
-    const r = await db.prepare("select count(distinct reporter_user_id) as n from reports where target_profile_id = ? and reason = 'minor' and created_at >= ?").bind(targetProfile, since).first();
-    if ((r?.n || 0) >= 2) await db.prepare("update profiles set status = 'limited' where id = ? and status = 'active'").bind(targetProfile).run();
+    // Only reporters whose own profile is at least 7 days old count. Verified and founder owned profiles are
+    // never limited automatically; a moderator decides.
+    const old = new Date(Date.now() - 7 * 864e5).toISOString();
+    const r = await db.prepare(
+      `select count(distinct r.reporter_user_id) as n from reports r join profiles rp on rp.owner_user_id = r.reporter_user_id
+       where r.target_profile_id = ? and r.reason = 'minor' and r.created_at >= ? and rp.created_at < ?`,
+    ).bind(targetProfile, since, old).first();
+    if ((r?.n || 0) >= 2) {
+      await db.prepare(
+        `update profiles set status = 'limited' where id = ? and status = 'active' and is_verified = 0
+         and not exists (select 1 from creator_details d where d.profile_id = profiles.id and d.founder_owned = 1)`,
+      ).bind(targetProfile).run();
+    }
   }
   return c.json({ ok: true }, 201);
 });
@@ -874,58 +1057,95 @@ app.onError((e, c) => {
 });
 
 // ------------------------------------------------------------------ daily jobs
-// Resolves calls 7 days after they were made, by the crowd that came after them (per call, so new scouts can
-// be right too). Beta rule while traffic is small: at least RESOLVE_MIN_LATER later valid calls, otherwise void.
-// "Will blow up" is right when at least half of the later calls agree; "Not for me" when fewer than half do.
-// Points: right "Will blow up" = 10 x early multiplier (first 10 scouts x3, first 50 x2); right "Not for me" = 5.
-// A wrong call never costs points. Scout Score is reputation only, never cash.
+// Resolves calls by the crowd that came after them (per call, so new scouts can be right too).
+// Rules (expert review round 2):
+// * A call is checked 7 days after it was made. If fewer than RESOLVE_MIN_LATER later valid calls exist, it stays
+//   open and is checked again daily, up to RESOLVE_MAX_DAYS; then it is void ("not enough scouts, no points lost").
+// * "Will blow up" is right when the promo's later "will blow up" share is at or above the bar: the median share of
+//   the promos resolved in the last 7 days (at least BAR_MIN_PROMOS of them), else 50%. This stops "yes to
+//   everything" from winning. "Not for me" is right when the share is below the bar.
+// * Only score eligible calls earn points (the first 7 calls per scout per UTC day). Every call still gets a result.
+// * Early multiplier by percentile among all valid calls on that promo: first 10% x3, next 20% x2, else x1.
+//   Right "Will blow up" = 10 x multiplier, right "Not for me" = 5. A wrong call never costs points.
+// Scout Score is reputation only, never cash.
 const RESOLVE_MIN_LATER = 10;
+const RESOLVE_MAX_DAYS = 21;
+const BAR_MIN_PROMOS = 10;
+const SCORED_CALLS_PER_DAY = 7;
+async function crowdBar(db) {
+  const since = new Date(Date.now() - 7 * 864e5).toISOString();
+  const { results } = await db.prepare(
+    `select promo_id, avg(choice = 'will_blow_up') as share from calls where is_valid = 1 and created_at >= ?
+     group by promo_id having count(*) >= ?`,
+  ).bind(since, RESOLVE_MIN_LATER).all();
+  if (results.length < BAR_MIN_PROMOS) return 0.5;
+  const shares = results.map((r) => r.share).sort((a, b) => a - b);
+  const mid = Math.floor(shares.length / 2);
+  return shares.length % 2 ? shares[mid] : (shares[mid - 1] + shares[mid]) / 2;
+}
 async function resolveCalls(db) {
-  const cutoff = new Date(Date.now() - CALL_DAYS * 864e5).toISOString();
-  const { results: due } = await db.prepare(
-    "select id, scout_profile_id, promo_id, choice, voter_ordinal, created_at from calls where outcome = 'pending' and is_valid = 1 and created_at < ? limit 500",
-  ).bind(cutoff).all();
-  for (const call of due) {
-    const later = await db.prepare(
-      "select count(*) as n, sum(choice = 'will_blow_up') as up from calls where promo_id = ? and is_valid = 1 and created_at > ? and id != ?",
-    ).bind(call.promo_id, call.created_at, call.id).first();
-    const n = later?.n || 0, share = n ? (later.up || 0) / n : 0;
-    let outcome = "void", delta = 0, mult = null;
-    if (n >= RESOLVE_MIN_LATER) {
-      const right = call.choice === "will_blow_up" ? share >= 0.5 : share < 0.5;
-      outcome = right ? "correct" : "incorrect";
-      if (right && call.choice === "will_blow_up") { mult = call.voter_ordinal && call.voter_ordinal <= 10 ? 3 : call.voter_ordinal && call.voter_ordinal <= 50 ? 2 : 1; delta = 10 * mult; }
-      else if (right) delta = 5;
+  const due = new Date(Date.now() - CALL_DAYS * 864e5).toISOString();
+  const expire = new Date(Date.now() - RESOLVE_MAX_DAYS * 864e5).toISOString();
+  const bar = await crowdBar(db);
+  let done = 0;
+  for (let round = 0; round < 10; round++) {
+    const { results: batch } = await db.prepare(
+      `select id, scout_profile_id, promo_id, choice, voter_ordinal, score_eligible, created_at from calls
+       where outcome = 'pending' and is_valid = 1 and created_at < ? and (resolved_at is null or resolved_at < ?) limit 200`,
+    ).bind(due, new Date(Date.now() - 20 * 3600e3).toISOString()).all();
+    if (!batch.length) break;
+    for (const call of batch) {
+      const [later, total] = await db.batch([
+        db.prepare("select count(*) as n, sum(choice = 'will_blow_up') as up from calls where promo_id = ? and is_valid = 1 and created_at > ? and id != ?").bind(call.promo_id, call.created_at, call.id),
+        db.prepare("select count(*) as n from calls where promo_id = ? and is_valid = 1").bind(call.promo_id),
+      ]);
+      const n = later.results[0]?.n || 0, share = n ? (later.results[0].up || 0) / n : 0;
+      if (n < RESOLVE_MIN_LATER && call.created_at >= expire) {
+        // Not enough later scouts yet: check again tomorrow (resolved_at marks the last check).
+        await db.prepare("update calls set resolved_at = ? where id = ?").bind(now(), call.id).run();
+        continue;
+      }
+      let outcome = "void", delta = 0, mult = null;
+      if (n >= RESOLVE_MIN_LATER) {
+        const right = call.choice === "will_blow_up" ? share >= bar : share < bar;
+        outcome = right ? "correct" : "incorrect";
+        const pct = (call.voter_ordinal || 1) / Math.max(1, total.results[0]?.n || 1);
+        mult = pct <= 0.1 ? 3 : pct <= 0.3 ? 2 : 1;
+        if (right && call.score_eligible) delta = call.choice === "will_blow_up" ? 10 * mult : 5;
+      }
+      const calledIt = outcome === "correct" && call.choice === "will_blow_up" && mult === 3 ? 1 : 0;
+      const stmts = [
+        db.prepare("update calls set outcome = ?, score_delta = ?, multiplier = ?, is_called_it = ?, resolved_at = ? where id = ?").bind(outcome, delta, mult, calledIt, now(), call.id),
+      ];
+      if (outcome !== "void") {
+        stmts.push(db.prepare("insert or ignore into scout_stats (profile_id) values (?)").bind(call.scout_profile_id));
+        stmts.push(db.prepare(
+          `update scout_stats set scout_score = scout_score + ?, level = 1 + cast((scout_score + ?) / 100 as integer),
+             calls_resolved_wbu = calls_resolved_wbu + ?, calls_correct_wbu = calls_correct_wbu + ?, called_it_count = called_it_count + ?, updated_at = ?
+           where profile_id = ?`,
+        ).bind(delta, delta, call.choice === "will_blow_up" ? 1 : 0, call.choice === "will_blow_up" && outcome === "correct" ? 1 : 0, calledIt, now(), call.scout_profile_id));
+        if (delta) stmts.push(db.prepare("insert into score_events (profile_id, delta, reason, call_id) values (?, ?, 'call_correct', ?)").bind(call.scout_profile_id, delta, call.id));
+      }
+      await db.batch(stmts);
+      done++;
     }
-    const calledIt = outcome === "correct" && call.choice === "will_blow_up" && mult === 3 ? 1 : 0;
-    const stmts = [
-      db.prepare("update calls set outcome = ?, score_delta = ?, multiplier = ?, is_called_it = ?, resolved_at = ? where id = ?").bind(outcome, delta, mult, calledIt, now(), call.id),
-    ];
-    if (outcome !== "void") {
-      stmts.push(db.prepare("insert or ignore into scout_stats (profile_id) values (?)").bind(call.scout_profile_id));
-      stmts.push(db.prepare(
-        `update scout_stats set scout_score = scout_score + ?, level = 1 + cast((scout_score + ?) / 100 as integer),
-           calls_resolved_wbu = calls_resolved_wbu + ?, calls_correct_wbu = calls_correct_wbu + ?, called_it_count = called_it_count + ?, updated_at = ?
-         where profile_id = ?`,
-      ).bind(delta, delta, call.choice === "will_blow_up" ? 1 : 0, call.choice === "will_blow_up" && outcome === "correct" ? 1 : 0, calledIt, now(), call.scout_profile_id));
-      if (delta) stmts.push(db.prepare("insert into score_events (profile_id, delta, reason, call_id) values (?, ?, 'call_correct', ?)").bind(call.scout_profile_id, delta, call.id));
-    }
-    await db.batch(stmts);
   }
-  return due.length;
+  await db.prepare("insert into job_runs (name, ran_at, info) values ('resolve_calls', ?, ?) on conflict (name) do update set ran_at = excluded.ran_at, info = excluded.info")
+    .bind(now(), JSON.stringify({ resolved: done, bar })).run().catch(() => {});
+  return done;
 }
 
 async function daily(env) {
   const db = env.DB;
-  await resolveCalls(db).catch((e) => console.error("resolve_calls_failed", e?.message));
   const cutoff = new Date(Date.now() - 30 * 864e5).toISOString();
   // Hard delete accounts whose 30 day grace has ended (cascades to profile, follows, saves, calls).
   const { results } = await db.prepare(
     "select dr.user_id from data_requests dr where dr.kind = 'delete_account' and dr.status = 'pending' and dr.created_at < ?",
   ).bind(cutoff).all();
   for (const r of results) {
+    const req = await db.prepare("select min(created_at) as at from data_requests where user_id = ? and kind = 'delete_account'").bind(r.user_id).first();
     await db.batch([
-      db.prepare("update data_requests set status = 'done', completed_at = ? where user_id = ? and kind = 'delete_account'").bind(now(), r.user_id),
+      db.prepare("insert into deletion_log (user_id, requested_at, completed_at) values (?, ?, ?)").bind(r.user_id, req?.at || null, now()),
       db.prepare('delete from "user" where id = ?').bind(r.user_id),
     ]);
   }
@@ -934,10 +1154,14 @@ async function daily(env) {
     db.prepare('delete from "verification" where expiresAt < ?').bind(now()),
     db.prepare('delete from "session" where expiresAt < ?').bind(now()),
     db.prepare("delete from view_events where day < ?").bind(new Date(Date.now() - 400 * 864e5).toISOString().slice(0, 10)),
+    db.prepare("insert into job_runs (name, ran_at) values ('daily', ?) on conflict (name) do update set ran_at = excluded.ran_at").bind(now()),
   ]);
 }
 
 export default {
   fetch: app.fetch,
-  scheduled: (_event, env, ctx) => ctx.waitUntil(daily(env)),
+  // Hourly: resolve calls (so "Result Oct 14" is true in every time zone). Daily (04:17 UTC): cleanup and deletions.
+  scheduled: (event, env, ctx) => ctx.waitUntil(
+    event.cron === "17 4 * * *" ? Promise.all([daily(env), resolveCalls(env.DB)]) : resolveCalls(env.DB).catch((e) => console.error("resolve_calls_failed", e?.message)),
+  ),
 };

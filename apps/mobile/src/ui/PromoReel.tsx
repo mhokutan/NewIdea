@@ -17,6 +17,7 @@ import { useMe } from '@/lib/use-me';
 import { setBlocked, setCall, setSaved, useViewerState } from '@/lib/viewer-state';
 import { Avatar } from './Avatar';
 import { Icon, type IconName } from './Icon';
+import { PerkSheet } from './PerkSheet';
 import { Sheet } from './Sheet';
 
 const CTA_LABEL: Record<string, Parameters<typeof t>[0]> = {
@@ -46,6 +47,7 @@ export function PromoReel({ promo, active, height, muted, onSeen, bottomInset = 
   const [busy, setBusy] = useState(false);
   const [menu, setMenu] = useState<null | 'menu' | 'report' | 'done'>(null);
   const [note, setNote] = useState('');
+  const [gift, setGift] = useState(false);
   const watched = useRef(0);
   const reported = useRef(false);
 
@@ -146,6 +148,12 @@ export function PromoReel({ promo, active, height, muted, onSeen, bottomInset = 
             </View>
           </Pressable>
         </Link>
+        {promo.hasPerk ? (
+          <Pressable onPress={() => { tap(); setGift(true); }} style={({ pressed }) => [styles.gift, pressed && styles.pressed]} accessibilityRole="button" hitSlop={4}>
+            <Icon name="ticket" size={14} color={C.ink} />
+            <Text style={styles.giftText}>{t('gift')}</Text>
+          </Pressable>
+        ) : null}
         {/* Collapsed by default so the video stays visible. Tapping the text opens the full details. */}
         <Pressable onPress={() => setOpen(!open)} accessibilityRole="button" accessibilityState={{ expanded: open }} hitSlop={4}>
           <Text style={styles.title} numberOfLines={open ? undefined : 1}>{promo.title}</Text>
@@ -211,6 +219,7 @@ export function PromoReel({ promo, active, height, muted, onSeen, bottomInset = 
 
       {note ? <View style={[styles.toast, { bottom: bottom + 70 }]} pointerEvents="none"><Text style={styles.toastText}>{note}</Text></View> : null}
 
+      {promo.hasPerk ? <PerkSheet handle={c.handle} name={c.name} visible={gift} onClose={() => setGift(false)} /> : null}
       <Sheet visible={menu === 'menu'} onClose={() => setMenu(null)} actions={[
         { label: t('report'), onPress: () => setMenu('report') },
         { label: `${t('block')} @${c.handle}`, tone: 'danger', onPress: block },
@@ -247,6 +256,8 @@ const styles = StyleSheet.create({
   who: { flexDirection: 'row', alignItems: 'center', gap: 10, alignSelf: 'flex-start', minHeight: 44 },
   whoName: { color: '#fff', fontWeight: '700', fontSize: 16 },
   whoKind: { color: '#d4d1e2', fontSize: 13 },
+  gift: { alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: C.lime, borderRadius: 99, paddingHorizontal: 10, minHeight: 28, marginTop: 6 },
+  giftText: { color: C.ink, fontWeight: '800', fontSize: 12 },
   title: { color: '#fff', fontWeight: '800', fontSize: 18, marginTop: 8, marginBottom: 2 },
   desc: { color: C.text2, fontSize: 14, lineHeight: 20 },
   more: { color: '#fff', fontSize: 13, fontWeight: '700', marginTop: 2, opacity: 0.85 },

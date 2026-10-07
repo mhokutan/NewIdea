@@ -35,6 +35,8 @@ export type Call = {
 };
 export type ViewerState = { calls: Record<string, Call>; saves: string[]; following: string[]; blocked: string[] };
 
+export type Perk = { id: string; kind: 'code' | 'discount' | 'beta_invite'; title: string; description: string | null; redeemUrl: string | null; endsAt: string; stockLeft: number | null; status: string };
+export type WalletItem = Perk & { creator: { handle: string; name: string; avatar: string | null }; claimedAt: string; code: string | null };
 export type Link = { platform: string; url: string; label: string | null };
 export type ScoutSummary = {
   score: number; level: number; nextLevelAt: number; streakWeeks: number; resolved: number; right: number; calledIt: number;
@@ -77,6 +79,11 @@ export const api = {
   profile: (handle: string) => call<{ profile: Profile }>('/v1/profiles/' + encodeURIComponent(handle)),
   me: () => call<Me>('/v1/me'),
   scout: () => call<ScoutSummary>('/v1/me/scout'),
+  creatorPerk: (handle: string) => call<{ perk: Perk | null }>('/v1/creators/' + encodeURIComponent(handle) + '/perk'),
+  claimPerk: (id: string) => call<{ ok: true; perk: Perk; code: string | null }>('/v1/perks/' + id + '/claim', { method: 'POST' }),
+  myPerks: () => call<{ wallet: WalletItem[]; own: (Perk & { claims: number })[] }>('/v1/me/perks'),
+  createPerk: (b: Record<string, unknown>) => call<{ ok: true; id: string }>('/v1/me/perks', { method: 'POST', body: JSON.stringify(b) }),
+  endPerk: (id: string) => call('/v1/me/perks/' + id, { method: 'DELETE' }),
   studio: () => call<Studio>('/v1/me/studio'),
   updateMe: (b: Record<string, unknown>) => call<{ ok: true }>('/v1/me', { method: 'PATCH', body: JSON.stringify(b) }),
   setLinks: (links: { url: string; label?: string | null }[]) => call<{ ok: true; links: Link[] }>('/v1/me/links', { method: 'PUT', body: JSON.stringify({ links }) }),

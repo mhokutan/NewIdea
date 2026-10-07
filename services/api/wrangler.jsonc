@@ -13,7 +13,7 @@
   // Profile photos. Uncomment after R2 is enabled in the Cloudflare dashboard and the bucket exists:
   //   npx wrangler r2 bucket create promovote-media
   // "r2_buckets": [{ "binding": "MEDIA", "bucket_name": "promovote-media" }],
-  "triggers": { "crons": ["17 4 * * *"] },
+  "triggers": { "crons": ["17 4 * * *", "7 * * * *"] },
   // 60 writes per minute per IP on /v1 (votes, saves, follows, events, reports).
   "ratelimits": [{ "name": "WRITE_LIMIT", "namespace_id": "1001", "simple": { "limit": 60, "period": 60 } }],
   "vars": {
