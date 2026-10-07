@@ -16,6 +16,18 @@ Not: bu belgedeki vergi ve hukuk notları hukuki veya mali tavsiye değildir. Mu
   * **Pro istatistik:** İleride gelecek, aylık abonelik olabilir. Bu, firmaya satılan bir araçtır. İzleyiciye para verme anlamına gelmez.
 * Fiyatlar Apple ve Google'ın sabit fiyat basamaklarından seçilir. Örnek: $4.99, $9.99, $19.99.
 
+### 1.1 Ürünler ve sürüm (kurucu kararı 2026-10-07)
+
+* Uygulama içi satın alma **2. sürümde** gelir. İlk sürüm tamamen ücretsiz çıkar.
+* Fiyatlar onaylandı (hepsi consumable):
+
+| Product ID | Ürün | Fiyat |
+|---|---|---|
+| `com.miapera.promovote.boost.1d` | Boost 1 gün | $4.99 |
+| `com.miapera.promovote.boost.3d` | Boost 3 gün | $9.99 |
+| `com.miapera.promovote.boost.7d` | Boost 7 gün | $19.99 |
+| `com.miapera.promovote.trailertest` | Trailer Test raporu | $49.99 |
+
 ## 2. Komisyon ve maliyet
 
 | | Apple | Google |
