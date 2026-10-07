@@ -185,3 +185,55 @@ Inputs: `docs/review/brief-r2.md`, all 19 screenshots in `docs/review/screens-r2
 | Visual design and UX quality | 7 | 8 | 9 |
 
 P0 items 1 to 6 are each under an hour of work and bring my domain score to 8. Retention and Session time depend on the planned P1 features (reminder, result reveal, swipe), not on more polish.
+
+## Round 3 (2026-10-07, night)
+
+Inputs: `docs/review/brief-r3.md`, all 18 screenshots in `docs/review/screens-r3/`, the commits c885a37 to db91c30 and the current code (`ui/PromoReel.tsx`, `ui/ResultReveal.tsx`, `app/(tabs)/index.tsx`, `app/(tabs)/me.tsx`, `app/(tabs)/explore.tsx`, `app/creator/[handle].tsx`, `app/play/[handle].tsx`, `app/sign-in.tsx`, `lib/theme.ts`, `lib/i18n.ts`). Yardstick as before: design-taste-frontend, high-end-visual-design, web-design-guidelines, and the spotify, pinterest, playstation and airbnb references. Note: the floating Feed/Explore/Profile pill in the screens is the web tab bar; where it covers a title (09, 10, 14, 15, search field in 05) I did not count it against the iPhone build.
+
+### Scores
+
+| # | Area | R2 | R3 | Evidence (one sentence) |
+|---|------|----|----|-------------------------|
+| 1 | Retention | 6 | 7 | The loop is now complete on paper (results with accuracy, one time reveal sheet, weekly streak with dots, gifts wallet, opt in 18:00 reminder after the first drop), but the reveal (13) is a generic text sheet that names no promo, has no ticket shape and no share, and the profile shows "1 Right calls" next to "0 Called it" right after a "You called it!" sheet, which muddles the reward. |
+| 2 | Session time | 7 | 8 | Swipe between Today's Drop, New and Team picks, the creator grid opening a vertical player ("Hauling Empire 1 / 11", screen 07), "Keep watching" from the end card and a 21 promo pool give enough paths to keep watching; the ceiling is now content (3 creators), not design. |
+| 3 | Originality | 7 | 8 | Bricolage Grotesque on titles, names, Scout Score and ticket, the branded sign in with the gradient ring mark and three value lines (08), the call bar and ticket (11), and the dashed gift ticket (16 to 18) now read as PromoVote; the right rail with three circles and the bottom left creator block are the only generic short video parts left. |
+| 4 | Trademark and trade dress | 8 | 8 | No "For you", no story rings, lime arcs not used anywhere as a ring, own tab names and own call bar; the remaining right rail is a common pattern, not a distinctive one. Not legal advice. |
+| 5 | Visual design and UX quality | 7 | 7 | All six round 2 P0 items are fixed (Team picks note on a solid backing, "No promos yet", Edit profile and Share for the owner, no legal list in onboarding, clean handle "mayalin", return to the promo after onboarding), but the first screen of the app (01, 03, 11) shows the home tab labels colliding with the video's own burned in headline, and a handful of visible polish gaps remain (list below). |
+
+### Round 2 list, status
+
+* Done: items 1 to 6 (all P0), 7 swipe, 8 reveal and reminder (basic), 9 sign in, 10 brand font, 12 one trust label (`newCreator && !verified`), 13 Charts progress card (05), 14 guest end card copy.
+* Partly done: 11 lime discipline. Level pill and mono avatars are neutral now, but the active segment tab on the Scout profile (14, 18), the Saved rail icon when on, the gift chip, the verified check, the "Coming soon" chip and the right result row border are all lime, so lime still means six things.
+* Not visible in screens: 15 studio polish (checklist collapse, "Your promos" grid in the studio).
+
+### What still keeps a score below 8 (smallest change first)
+
+**P0 (before App Store submission, each under an hour)**
+
+1. **Home tab labels are unreadable over bright or text heavy videos** (01, 03, 11, 13: "Today's Drop New Team picks" sits on top of "You run the business" and "Pick loads. Plan routes."). `app/(tabs)/index.tsx` line 168 draws a 0.6 to 0 scrim; that is too weak for burned in trailer titles. Use a 3 stop scrim (0.85 at the top, 0.55 at the tab row, 0 at about 180 pt) and add a text shadow (`textShadowColor: rgba(0,0,0,0.6)`, radius 6) on the tab labels and the mute button. Done when: tab labels pass 4.5:1 on all seed promos, checked on device screenshots. This alone takes Visual/UX to 8.
+2. **Scout stats contradict the reveal** (13 then 14). The sheet says "You called it! 1 right", the card shows "Called it 0". `called_it` in `lib/i18n.ts` means an early 3x hit (`services/api/src/index.js` line 1139). Rename it "Early hits" (es "Aciertos tempranos", tr "Erken isabet") or drop the third tile and show "Accuracy 50%" there instead. Also trim the result row copy "You called it right. Points added. +30 points" to "Right call  +30" (`outcome_right`).
+3. **Reveal sheet is a missed moment** (13, `ui/ResultReveal.tsx`). Keep the one time logic, but render the result as the ticket: thumbnail of the best resolved promo, "Will blow up. Right.", "+30" in the display face, Scout rank if any, and a Share action next to See my results. Still one sheet, still respects the iOS modal rule. This is the variable reward of the whole loop and today it looks like a settings dialog. Lifts Retention to 8 from the design side.
+
+**P1 (before public launch)**
+
+4. **Lime discipline, last step**: active segment tab on the Scout profile becomes a white pill with ink text (`app/(tabs)/me.tsx` `segOn`, line 521); Saved rail icon on state becomes white fill with ink icon (`ui/PromoReel.tsx` `RailButton`); verified check white. Keep lime for the call, the primary button, progress and the gift ticket outline.
+5. **"Coming soon" still looks like a button** (06, `app/creator/[handle].tsx` line 41 and `styles.soon`). It has the same size, border and placement as a link button but does nothing. Either make it the planned "Notify me" action or render it as a small non interactive caption next to the category chip ("Indie game · Coming soon").
+6. **Onboarding type cards** (09): no icon, no visual difference, and both descriptions end on a negative ("You cannot post promos", "You cannot vote"). Add the call chevron and a creator icon, lead with the benefit ("Call hits before they blow up" / "Post promos for your game, app or shop"), and move the restriction to a smaller second line.
+7. **Explore tile captions over video UI** (05, Poleris tile): the tile shade starts at 45% and is 0.92 only at the very bottom, so "Your daily manifestation ritual" sits on the promo's own UI text. Use the round 1 Pinterest pattern: title and creator under the tile on the page background, or raise the shade to 0.6 at 55%.
+8. **Creator page header**: still no stats row (followers, promos) and links do not render for Hauling Empire (06). The page leans on one huge lime Follow button; a quieter Follow next to a stats row would match the Airbnb host card pattern from round 1.
+9. **Right rail**: three 48 pt circles with labels for Save, Share and More. With the call bar now carrying the identity, collapse Save and Share into two small icons at the right of the creator row and keep More in the top right. This removes the last TikTok layout cue and frees the right edge of the video.
+
+### What only real users or content can close
+
+* Retention above 7 to 8 and Session time above 8 depend on more than 3 creators: a 7 promo drop that repeats the same 3 brands every day will feel thin by day 4 no matter how good the reveal is. That is supply and outreach, not code.
+* The reveal and streak only become motivating when results arrive from a real crowd; with a handful of scouts most calls will be "void" or decided by very few votes. Expect to tune copy after the first 2 weeks of real results.
+
+### Expected scores after this list
+
+| Area | R3 | After P0 | After P0 + P1 |
+|------|----|----------|---------------|
+| Retention | 7 | 8 | 8 (9 needs real results and more creators) |
+| Session time | 8 | 8 | 8 (9 needs more content) |
+| Originality | 8 | 8 | 9 (item 9) |
+| Trademark and trade dress | 8 | 8 | 8 |
+| Visual design and UX quality | 7 | 8 | 9 |
