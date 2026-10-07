@@ -46,6 +46,8 @@ DURUM: TAMAMLANDI
 
 ## Bulut Claude notları
 
+* 2026-10-07: iOS build 10 TestFlight'a yüklendi ve Apple işlemesi bitti (VALID). Build 9 içeriği (adım adım profil kurulumu, ilgi alanları, adil sıralamada atlama) artı açık ve koyu tema. R2 açıldıktan sonra kurucu onayıyla gönderildi. İncelemeye bu build gönderilmeli.
+
 * 2026-10-07: iOS build 8 TestFlight'a yüklendi (3. tur düzeltmeleri: giriş yarış hatası, dürüst sonuç metinleri, bilet şeklinde sonuç, sola kaydırınca creator promoları, bildir butonu, Nicheable hediyesi, marka fontu, seri). İncelemeye bu build gönderilmeli. Build 5 ve 7 hiç yüklenmedi.
 
 * 2026-10-07: iOS build 6 TestFlight'a yüklendi (build 5 içeriği artı güvenli menüler, hediyeler ve promosyon kodları, tahmin sonuçları, günlük hatırlatma, creator oynatıcı, sekmeler arası kaydırma). İncelemeye bu build gönderilmeli. Kurucu "Team (Expo)" iç test grubunda (INSTALLED).
