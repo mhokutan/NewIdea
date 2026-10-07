@@ -1,15 +1,14 @@
 // Profile tab: guest card, onboarding in short steps, then the scout profile or the creator studio.
 // Scouts see Scout Score (reputation only), open calls with result dates, saved promos and who they follow.
 // Creators see a setup checklist, free stats and their promos. Settings (edit, sign out, delete) sit behind a gear.
-import DateTimePicker from '@react-native-community/datetimepicker';
 import { Image } from 'expo-image';
 import { Link, router, useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Alert, Linking, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View, useWindowDimensions } from 'react-native';
+import { ActivityIndicator, Alert, Linking, Platform, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import * as Clipboard from 'expo-clipboard';
-import { api, ApiError, type Perk, type ScoutSummary, type Studio, type WalletItem } from '@/lib/api';
+import { api, type Perk, type ScoutSummary, type Studio, type WalletItem } from '@/lib/api';
 import { CATEGORIES } from '@/lib/categories';
 import { lang, outcomeText, t } from '@/lib/i18n';
 import { C, F } from '@/lib/theme';
@@ -20,6 +19,7 @@ import { Avatar } from '@/ui/Avatar';
 import { Icon } from '@/ui/Icon';
 import { LegalLinks } from '@/ui/LegalLinks';
 import { Button, Pill } from '@/ui/Pill';
+import { Onboarding } from '@/ui/Onboarding';
 import { Sheet } from '@/ui/Sheet';
 
 const shortDate = (iso: string) => new Date(iso).toLocaleDateString(lang, { day: 'numeric', month: 'short' });
@@ -355,139 +355,7 @@ function Empty({ text }: { text: string }) {
 }
 
 // ------------------------------------------------------------------ onboarding: type, then details
-// Handles start with a letter (server rule), so leading digits and symbols are dropped.
-const handleFrom = (v: string) => v.toLowerCase().normalize('NFKD').replace(/[^a-z0-9]/g, '').replace(/^[^a-z]+/, '').slice(0, 20);
 
-function Onboarding({ onDone }: { onDone: () => void }) {
-  const { me } = useMe();
-  // Apple and Google give us the name on first sign in; it is only a suggestion the user can change.
-  const given = (me?.user.name || '').trim().slice(0, 80);
-  const [type, setType] = useState<'scout' | 'creator' | null>(null);
-  const [handle, setHandle] = useState(() => handleFrom(given));
-  const [handleState, setHandleState] = useState<'idle' | 'ok' | 'bad'>('idle');
-  const [name, setName] = useState(given);
-  const [dob, setDob] = useState<Date | null>(null);
-  const [d, setD] = useState({ day: '', month: '', year: '' });
-  const [category, setCategory] = useState('');
-  const [terms, setTerms] = useState(false);
-  const [busy, setBusy] = useState(false);
-  const [err, setErr] = useState('');
-
-  // Suggest a handle from the name until the user types their own: the clean name first, then a short suffix.
-  const [handleEdited, setHandleEdited] = useState(false);
-  const base = useRef(handleFrom(given));
-  const tries = useRef(0);
-  useEffect(() => {
-    if (handle.length < 3) return;
-    const id = setTimeout(() => api.handle(handle).then((r) => {
-      if (!r.available && !handleEdited && base.current.length >= 3 && tries.current < 4) {
-        tries.current += 1;
-        setHandle(`${base.current.slice(0, 20)}${10 + Math.floor(Math.random() * 90)}`);
-        return;
-      }
-      setHandleState(r.available ? 'ok' : 'bad');
-    }).catch(() => {}), 300);
-    return () => clearTimeout(id);
-  }, [handle, handleEdited]);
-  const handleStatus = handle.length < 3 ? 'idle' : handleState;
-  const onName = (v: string) => {
-    setName(v);
-    if (handleEdited) return;
-    base.current = handleFrom(v);
-    tries.current = 0;
-    setHandle(base.current);
-  };
-
-  const web = Platform.OS === 'web';
-  const birth = web ? { day: +d.day, month: +d.month, year: +d.year } : dob ? { day: dob.getDate(), month: dob.getMonth() + 1, year: dob.getFullYear() } : null;
-  const birthOk = !!birth && birth.year > 1900 && birth.month >= 1 && birth.month <= 12 && birth.day >= 1 && birth.day <= 31;
-
-  const submit = async () => {
-    setBusy(true); setErr('');
-    try {
-      await api.onboarding({
-        accountType: type, handle, displayName: name, birthDay: birth!.day, birthMonth: birth!.month, birthYear: birth!.year,
-        category: type === 'creator' ? category : undefined, acceptTerms: terms, language: lang,
-      });
-      onDone();
-      api.event('onboarding_done');
-      if (type === 'creator') router.push('/edit-profile');
-    } catch (e) {
-      setErr(e instanceof ApiError ? e.message : t('error'));
-    } finally { setBusy(false); }
-  };
-
-  if (!type) return (
-    <View style={{ gap: 14 }}>
-      <Text style={styles.small}>{fmt(t('onb_step'), { n: 1, total: 2 })}</Text>
-      <Text style={styles.h1}>{t('onb_type_t')}</Text>
-      <TypeCard title={t('scout')} text={t('scout_p')} icon="chevrons" onPress={() => setType('scout')} />
-      <TypeCard title={t('creator')} text={t('creator_p')} icon="ticket" onPress={() => setType('creator')} />
-    </View>
-  );
-  const maxDate = new Date(); maxDate.setFullYear(maxDate.getFullYear() - 18);
-  return (
-    <View style={{ gap: 14 }}>
-      <Text style={styles.small}>{fmt(t('onb_step'), { n: 2, total: 2 })}</Text>
-      <Text style={styles.h1}>{type === 'scout' ? t('scout') : t('creator')}</Text>
-      <Field label={t('name')}>
-        <TextInput value={name} onChangeText={onName} style={styles.input} maxLength={80} accessibilityLabel={t('name')} />
-      </Field>
-      <Field label={t('handle')}>
-        <TextInput value={handle} onChangeText={(v) => { setHandleEdited(true); setHandle(v.toLowerCase().replace(/[^a-z0-9_]/g, '').slice(0, 24)); }} style={styles.input}
-          autoCapitalize="none" autoCorrect={false} placeholder="yourname" placeholderTextColor={C.muted} accessibilityLabel={t('handle')} />
-        <Text style={{ color: handleStatus === 'ok' ? C.lime : handleStatus === 'bad' ? C.danger : C.muted, marginTop: 6 }}>
-          {handleStatus === 'ok' ? '✓ ' : handleStatus === 'bad' ? '✗ ' : ''}{t('handle_hint')}{handle || 'yourname'}
-        </Text>
-      </Field>
-      <Field label={t('birth')}>
-        {web ? (
-          <View style={{ flexDirection: 'row', gap: 8 }}>
-            <TextInput value={d.day} onChangeText={(v) => setD({ ...d, day: v })} placeholder="DD" placeholderTextColor={C.muted} keyboardType="number-pad" maxLength={2} style={[styles.input, styles.dateField]} accessibilityLabel={t('day')} />
-            <TextInput value={d.month} onChangeText={(v) => setD({ ...d, month: v })} placeholder="MM" placeholderTextColor={C.muted} keyboardType="number-pad" maxLength={2} style={[styles.input, styles.dateField]} accessibilityLabel={t('month')} />
-            <TextInput value={d.year} onChangeText={(v) => setD({ ...d, year: v })} placeholder="YYYY" placeholderTextColor={C.muted} keyboardType="number-pad" maxLength={4} style={[styles.input, styles.dateField, { flex: 1.5 }]} accessibilityLabel={t('year')} />
-          </View>
-        ) : (
-          <View style={styles.dateBox}>
-            <DateTimePicker value={dob || maxDate} maximumDate={maxDate} minimumDate={new Date(1920, 0, 1)} mode="date"
-              display={Platform.OS === 'ios' ? 'compact' : 'default'} themeVariant="dark" onChange={(_, v) => v && setDob(v)} accessibilityLabel={t('birth')} />
-          </View>
-        )}
-      </Field>
-      {type === 'creator' ? (
-        <Field label={t('category')}>
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-            {CATEGORIES.map((k) => <Pill key={k.id} label={t(k.label)} active={category === k.id} onPress={() => setCategory(k.id)} />)}
-          </View>
-        </Field>
-      ) : null}
-      <Pressable onPress={() => setTerms(!terms)} style={styles.check} accessibilityRole="checkbox" accessibilityState={{ checked: terms }}>
-        <View style={[styles.box, terms && { backgroundColor: C.lime, borderColor: C.lime }]}>{terms ? <Text style={{ color: C.ink, fontWeight: '800' }}>✓</Text> : null}</View>
-        <Text style={[styles.text, { flex: 1 }]}>{t('terms')}</Text>
-      </Pressable>
-      {err ? <Text style={{ color: C.danger }}>{err}</Text> : null}
-      <Button label={t('create')} onPress={submit} disabled={busy || handleStatus !== 'ok' || !name || !terms || !birthOk || (type === 'creator' && !category)} />
-      <Pressable onPress={() => setType(null)} style={{ paddingVertical: 12 }}><Text style={{ color: C.muted, textAlign: 'center' }}>{t('back')}</Text></Pressable>
-    </View>
-  );
-}
-
-function TypeCard({ title, text, icon, onPress }: { title: string; text: string; icon: 'chevrons' | 'ticket'; onPress: () => void }) {
-  return (
-    <Pressable onPress={onPress} style={({ pressed }) => [styles.card, { flexDirection: 'row', alignItems: 'center', gap: 14 }, pressed && { opacity: 0.8 }]} accessibilityRole="button">
-      <View style={styles.typeIcon}><Icon name={icon} size={22} color={C.lime} /></View>
-      <View style={{ flex: 1, gap: 4 }}>
-        <Text style={styles.h2}>{title}</Text>
-        <Text style={styles.text}>{text}</Text>
-      </View>
-      <Text style={{ color: C.muted, fontSize: 22 }}>›</Text>
-    </Pressable>
-  );
-}
-
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return <View style={{ gap: 6 }}><Text style={styles.label}>{label}</Text>{children}</View>;
-}
 
 const styles = StyleSheet.create({
   card: { backgroundColor: C.surface, borderRadius: 18, padding: 18, gap: 10, borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)' },

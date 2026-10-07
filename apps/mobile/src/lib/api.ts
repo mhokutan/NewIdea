@@ -25,7 +25,7 @@ export type Profile = {
 export type Me = {
   user: { id: string; email: string; name?: string | null };
   account: { type: 'scout' | 'creator'; language: string } | null;
-  profile: { handle: string; name: string; type: 'scout' | 'creator'; status: string } | null;
+  profile: { handle: string; name: string; type: 'scout' | 'creator'; status: string; interests?: string[] } | null;
   needsOnboarding: boolean;
 };
 

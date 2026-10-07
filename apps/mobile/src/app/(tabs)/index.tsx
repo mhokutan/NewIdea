@@ -60,12 +60,14 @@ export default function Feed() {
   const stateReady = !meLoading && (!me?.profile || viewerStateLoaded());
   const bottomInset = TAB_BAR ? TAB_BAR + insets.bottom : 0;
   const seen = useRef<Record<string, number>>({});
+  const interestsRef = useRef<string[]>([]);
+  useEffect(() => { interestsRef.current = me?.profile?.interests || []; }, [me]);
   const round = useRef(0);
 
   const append = useCallback((pool: Promo[], first?: Promo) => {
     setItems((prev) => {
       const last = prev[prev.length - 1]?.promo?.creator.handle;
-      let next = nextRound(pool, seen.current, lang, last);
+      let next = nextRound(pool, seen.current, lang, last, interestsRef.current);
       if (first) next = [first, ...next.filter((p) => p.id !== first.id)];
       round.current += 1;
       return [...prev, ...next.map((p) => ({ key: `${round.current}-${p.id}`, promo: p }))];

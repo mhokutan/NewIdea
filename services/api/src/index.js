@@ -426,7 +426,7 @@ app.get("/v1/me", async (c) => {
   return c.json({
     user: { id: v.user.id, email: v.user.email, emailVerified: !!v.user.emailVerified, name: v.user.name || null },
     account: v.priv && { type: v.priv.account_type, language: v.priv.language, country: v.priv.country_code, perkEmails: !!v.priv.perk_email_opt_in, followEmails: !!v.priv.follow_email_opt_in },
-    profile: v.profile && { handle: v.profile.handle, name: v.profile.display_name, bio: v.profile.bio, type: v.profile.type, status: v.profile.status, avatar: v.profile.avatar_url },
+    profile: v.profile && { handle: v.profile.handle, name: v.profile.display_name, bio: v.profile.bio, type: v.profile.type, status: v.profile.status, avatar: v.profile.avatar_url, interests: json(v.profile.interests) || [] },
     needsOnboarding: !v.profile,
   });
 });
@@ -463,6 +463,26 @@ app.post("/v1/onboarding", async (c) => {
     if (!category) return fail(c, 400, "bad_category", "Choose a category.");
     kind = KIND_BY_CATEGORY[category];
   }
+  // The rest of the profile comes in the same request, so nobody ends up with a half empty page.
+  const bio = typeof b.bio === "string" ? b.bio.trim().slice(0, type === "creator" ? 300 : 160) : "";
+  if (type === "creator" && bio.length < 20) return fail(c, 400, "bio_required", "Tell scouts what you make in at least 20 characters.");
+  if (bio && STAFF_NAME.test(bio)) return fail(c, 400, "reserved_name", "Your bio cannot say you are PromoVote staff.");
+  if (bio && BIO_LINKS.test(bio)) return fail(c, 400, "bio_links", "Links go in the links section, not the bio.");
+  const interests = Array.isArray(b.interests) ? [...new Set(b.interests.filter((x) => CATEGORIES.includes(x)))].slice(0, 7) : [];
+  if (type === "scout" && !interests.length) return fail(c, 400, "interests_required", "Pick at least one thing you like to discover.");
+  let links = [], secondary = [], primaryCta = null;
+  const releaseStatus = b.releaseStatus === "soon" ? "soon" : "live";
+  if (type === "creator") {
+    const checked = validateLinks(b.links || []);
+    if (checked.error) return fail(c, 400, checked.code, checked.error);
+    links = checked.rows;
+    if (!links.length) return fail(c, 400, "link_required", "Add at least one link: your website, store or channel.");
+    secondary = Array.isArray(b.secondaryCategories) ? [...new Set(b.secondaryCategories.filter((x) => CATEGORIES.includes(x) && x !== category))].slice(0, 2) : [];
+    if (b.primaryCta != null) {
+      if (!CTA_KINDS.includes(b.primaryCta)) return fail(c, 400, "bad_cta", "Unknown button type.");
+      primaryCta = b.primaryCta;
+    }
+  }
   const db = c.env.DB;
   const blocked = await db.batch([
     db.prepare("select 1 from profiles where handle = ?").bind(handle),
@@ -473,11 +493,18 @@ app.post("/v1/onboarding", async (c) => {
   const stmts = [
     db.prepare(`insert into account_private (user_id, account_type, birth_year, age_confirmed_at, country_code, language, terms_accepted_at, terms_version)
                 values (?, ?, ?, ?, ?, ?, ?, ?)`).bind(v.user.id, type, dob.getUTCFullYear(), t, country, lang, t, TERMS_VERSION),
-    db.prepare("insert into profiles (id, owner_user_id, type, handle, display_name) values (?, ?, ?, ?, ?)").bind(pid, v.user.id, type, handle, name),
+    db.prepare("insert into profiles (id, owner_user_id, type, handle, display_name, bio, interests) values (?, ?, ?, ?, ?, ?, ?)").bind(pid, v.user.id, type, handle, name, bio || null, interests.length ? JSON.stringify(interests) : null),
     db.prepare("insert into profile_settings (profile_id) values (?)").bind(pid),
   ];
   if (type === "scout") stmts.push(db.prepare("insert into scout_stats (profile_id) values (?)").bind(pid));
-  else stmts.push(db.prepare("insert into creator_details (profile_id, kind, category) values (?, ?, ?)").bind(pid, kind, category));
+  else {
+    stmts.push(db.prepare("insert into creator_details (profile_id, kind, category, secondary_categories, primary_cta, release_status) values (?, ?, ?, ?, ?, ?)")
+      .bind(pid, kind, category, JSON.stringify(secondary), primaryCta, releaseStatus));
+    for (const r of links) {
+      stmts.push(db.prepare("insert into profile_links (id, profile_id, platform, url_input, canonical_url, label, position, safety_status, last_scanned_at) values (?, ?, ?, ?, ?, ?, ?, 'safe', ?)")
+        .bind(uuid(), pid, r.platform, r.url, r.url, r.label, r.position, t));
+    }
+  }
   try {
     await db.batch(stmts);
   } catch (e) {
@@ -502,7 +529,7 @@ app.patch("/v1/me", async (c) => {
   if (typeof b.bio === "string") {
     const bio = b.bio.trim().slice(0, 600);
     if (STAFF_NAME.test(bio)) return fail(c, 400, "reserved_name", "Your bio cannot say you are PromoVote staff.");
-    if (/https?:\/\/|www\.|\b[a-z0-9-]+\.(com|net|org|io|app|gg|ly)\b/i.test(bio)) return fail(c, 400, "bio_links", "Links go in the links section, not the bio.");
+    if (BIO_LINKS.test(bio)) return fail(c, 400, "bio_links", "Links go in the links section, not the bio.");
     stmts.push(db.prepare("update profiles set bio = ?, updated_at = ? where id = ?").bind(bio || null, now(), v.profile.id));
   }
   if (v.profile.type === "creator") {
@@ -519,6 +546,10 @@ app.patch("/v1/me", async (c) => {
       stmts.push(db.prepare("update creator_details set primary_cta = ? where profile_id = ?").bind(b.primaryCta, v.profile.id));
     }
     if (["live", "soon"].includes(b.releaseStatus)) stmts.push(db.prepare("update creator_details set release_status = ? where profile_id = ?").bind(b.releaseStatus, v.profile.id));
+  }
+  if (Array.isArray(b.interests)) {
+    const list = [...new Set(b.interests.filter((x) => CATEGORIES.includes(x)))].slice(0, 7);
+    stmts.push(db.prepare("update profiles set interests = ?, updated_at = ? where id = ?").bind(list.length ? JSON.stringify(list) : null, now(), v.profile.id));
   }
   if (LANGS.includes(b.language)) stmts.push(db.prepare("update account_private set language = ?, updated_at = ? where user_id = ?").bind(b.language, now(), v.user.id));
   if (typeof b.perkEmails === "boolean") stmts.push(db.prepare("update account_private set perk_email_opt_in = ? where user_id = ?").bind(+b.perkEmails, v.user.id));
@@ -551,25 +582,34 @@ function checkLink(raw) {
   const platform = (LINK_HOSTS.find(([, re]) => re.test(host)) || ["website"])[0];
   return { platform, url: u.toString().slice(0, 500) };
 }
+// Validates a list of {url, label}: up to 8, https, no shorteners, labels may not name another platform.
+function validateLinks(raw) {
+  const list = Array.isArray(raw) ? raw.slice(0, 9) : null;
+  if (!list) return { code: "bad_links", error: "Send a list of links." };
+  if (list.length > 8) return { code: "too_many_links", error: "You can add up to 8 links." };
+  const rows = [];
+  for (const [i, l] of list.entries()) {
+    const r = checkLink(l?.url);
+    if (r.error) return { code: "bad_link", error: `${r.error} (${String(l?.url || "").slice(0, 60)})` };
+    const label = l?.label ? String(l.label).trim().slice(0, 40) : null;
+    const PLATFORM_WORDS = /(app ?store|google ?play|steam|youtube|twitch|kick|tiktok|instagram|etsy|amazon|discord|itch|shopify|maps)/i;
+    if (label && PLATFORM_WORDS.test(label) && !new RegExp(r.platform.replace("_", " ?"), "i").test(label.replace(/\s/g, " "))) {
+      return { code: "bad_label", error: `The label "${label}" names a different platform than the link.` };
+    }
+    if (rows.some((x) => x.url === r.url)) continue;
+    rows.push({ ...r, label, position: rows.length });
+  }
+  return { rows };
+}
+const BIO_LINKS = /https?:\/\/|www\.|\b[a-z0-9-]+\.(com|net|org|io|app|gg|ly)\b/i;
+
 app.put("/v1/me/links", async (c) => {
   const [v, err] = await requireProfile(c, "creator");
   if (err) return err;
   const b = await c.req.json().catch(() => ({}));
-  const list = Array.isArray(b.links) ? b.links.slice(0, 9) : null;
-  if (!list) return fail(c, 400, "bad_links", "Send a list of links.");
-  if (list.length > 8) return fail(c, 400, "too_many_links", "You can add up to 8 links.");
-  const rows = [];
-  for (const [i, l] of list.entries()) {
-    const r = checkLink(l?.url);
-    if (r.error) return fail(c, 400, "bad_link", `${r.error} (${String(l?.url || "").slice(0, 60)})`);
-    const label = l?.label ? String(l.label).trim().slice(0, 40) : null;
-    // A custom label may not pretend to be a store or platform the link is not.
-    const PLATFORM_WORDS = /(app ?store|google ?play|steam|youtube|twitch|kick|tiktok|instagram|etsy|amazon|discord|itch)/i;
-    if (label && PLATFORM_WORDS.test(label) && !new RegExp(r.platform.replace("_", " ?"), "i").test(label.replace(/\s/g, " "))) {
-      return fail(c, 400, "bad_label", `The label "${label}" names a different platform than the link.`);
-    }
-    rows.push({ ...r, label, position: i });
-  }
+  const checked = validateLinks(b.links);
+  if (checked.error) return fail(c, 400, checked.code, checked.error);
+  const rows = checked.rows;
   const db = c.env.DB, t = now();
   // A link a moderator blocked or flagged keeps that status when saved again (no laundering by re-saving).
   const { results: prev } = await db.prepare("select canonical_url, safety_status, click_count from profile_links where profile_id = ?").bind(v.profile.id).all();

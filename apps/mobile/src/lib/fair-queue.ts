@@ -6,7 +6,9 @@ import type { Promo } from './api';
 const SLOTS_PER_CREATOR = 2;
 const shuffle = <T,>(a: T[]) => { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
 
-export function nextRound(all: Promo[], seen: Record<string, number>, lang: string, prevCreator?: string): Promo[] {
+// interests: categories the scout picked at signup; their creators come first inside each round (never extra slots).
+export function nextRound(all: Promo[], seen: Record<string, number>, lang: string, prevCreator?: string, interests: string[] = []): Promo[] {
+  const liked = (l: Promo[]) => (l[0] && interests.includes(l[0].creator.category) ? 0 : 1);
   const langRank = (p: Promo) => (p.lang === lang ? 0 : p.lang === 'en' ? 1 : 2);
   const byCreator = new Map<string, Promo[]>();
   for (const p of shuffle([...all])) {
@@ -21,12 +23,12 @@ export function nextRound(all: Promo[], seen: Record<string, number>, lang: stri
   const fresh = [...byCreator.values()].map((l) => shuffle(l.filter((p) => !seen[p.id] && langRank(p) < 2)));
   const out: Promo[] = [];
   for (let i = 0; out.length < budget && fresh.some((l) => l[i]); i++) {
-    for (const l of shuffle([...fresh])) if (l[i] && out.length < budget) out.push(l[i]);
+    for (const l of shuffle([...fresh]).sort((a, b) => liked(a) - liked(b))) if (l[i] && out.length < budget) out.push(l[i]);
   }
   // Nothing new left: the usual fair round (same slots per creator, least seen first).
   if (!out.length) {
     for (let slot = 0; slot < SLOTS_PER_CREATOR; slot++) {
-      for (const l of shuffle([...byCreator.values()])) if (l[slot]) out.push(l[slot]);
+      for (const l of shuffle([...byCreator.values()]).sort((a, b) => liked(a) - liked(b))) if (l[slot]) out.push(l[slot]);
     }
   }
   // Never the same creator twice in a row when another order exists.

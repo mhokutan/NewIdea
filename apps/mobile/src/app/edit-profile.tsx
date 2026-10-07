@@ -32,6 +32,7 @@ export default function EditProfile() {
   const [cta, setCta] = useState<string | null>(null);
   const [soon, setSoon] = useState(false);
   const [links, setLinks] = useState<LinkRow[]>([]);
+  const [interests, setInterests] = useState<string[]>([]);
   const [busy, setBusy] = useState<'' | 'avatar' | 'banner' | 'save'>('');
   const [err, setErr] = useState('');
   const [ok, setOk] = useState(false);
@@ -45,7 +46,7 @@ export default function EditProfile() {
         setSecondary(s.profile.secondaryCategories || []); setCta(s.profile.primaryCta); setSoon(s.profile.releaseStatus === 'soon');
         setLinks(s.links.map((l) => ({ url: l.url, label: l.label || '' })));
       })
-      : api.profile(handle).then((r) => { setName(r.profile.name || ''); setBio(r.profile.bio || ''); setAvatar(r.profile.avatar); });
+      : api.profile(handle).then((r) => { setName(r.profile.name || ''); setBio(r.profile.bio || ''); setAvatar(r.profile.avatar); setInterests(me.profile?.interests || []); });
     load.catch(() => {}).finally(() => setLoaded(true));
   }, [me, isCreator]);
 
@@ -67,6 +68,7 @@ export default function EditProfile() {
     setBusy('save'); setErr(''); setOk(false);
     try {
       const body: Record<string, unknown> = { displayName: name, bio };
+      if (!isCreator) body.interests = interests;
       if (isCreator) Object.assign(body, { category, secondaryCategories: secondary, primaryCta: cta, releaseStatus: soon ? 'soon' : 'live' });
       await api.updateMe(body);
       if (isCreator) await api.setLinks(links.filter((l) => l.url.trim()).map((l) => ({ url: l.url.trim(), label: l.label.trim() || null })));
@@ -110,6 +112,11 @@ export default function EditProfile() {
           <Text style={styles.small}>{bio.length} / {isCreator ? 300 : 160}</Text>
         </Field>
 
+        {!isCreator ? (
+          <Field label={t('onb_interests_t')}>
+            <View style={styles.wrap}>{CATEGORIES.map((k) => <Pill key={k.id} label={t(k.label)} active={interests.includes(k.id)} onPress={() => setInterests((s) => (s.includes(k.id) ? s.filter((x) => x !== k.id) : [...s, k.id]))} />)}</View>
+          </Field>
+        ) : null}
         {isCreator ? (
           <>
             <Field label={t('category')}>
