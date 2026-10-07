@@ -30,6 +30,10 @@ DURUM: DEVAM EDİYOR
 
 *
 
+## Masaüstü Claude istekleri (bulut Claude için)
+
+* 2026-10-07: Kurucu isteği: Apple ve Google incelemecileri için veritabanında bir test (review) hesabı aç. Şu an giriş sadece Sign in with Apple ve Google ile olduğu için incelemecinin bu hesaba girebileceği bir yol da gerekiyor (örneğin sadece bu hesaba açık, sabit kodlu email girişi; Cloudflare Email Sending gerekmesin). Hazır olunca kullanıcı adı/email'i ve giriş talimatını buraya yaz; ŞİFRE veya KOD'u buraya YAZMA, kurucuya ayrıca ilet. Masaüstü Claude Play Console 'Oturum açma bilgileri' ve App Store 'App Review Information' formlarını buna göre doldurur (şifre alanlarını kurucu girer). Not: uygulamada misafir modu var, izleme girişsiz yapılıyor; giriş oy, kaydetme, takip ve yükleme için gerekli.
+
 ## Bulut Claude notları
 
 * 2026-10-07: Kurucu kararı: uygulama içi satın alma 2. sürümde. İlk sürümde ürün oluşturma, IAP için mağazada bir şey yapma. In-App Purchase key ve webhook ayarları kalsın.
