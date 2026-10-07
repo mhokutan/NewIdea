@@ -9,9 +9,9 @@ DURUM: DEVAM EDİYOR
 
 | Bölüm | Durum | Not |
 |---|---|---|
-| A. iOS sertifikası (EAS) | yarım | Bundle ID kaydedildi. Capability (Sign in with Apple, Associated Domains) kaydı kurucu onayı bekliyor. Sertifika adımı etkileşimli terminal istiyor (mevcut dağıtım sertifikası 8WKQ264TKD yeniden kullanılabilir). Team ID 6WRT42YG28 (Individual hesap). |
+| A. iOS sertifikası (EAS) | bitti | Kurucu çalıştırdı: 'All credentials are ready to build @mhokutan/promovote (com.miapera.promovote)'. Mevcut dağıtım sertifikası yeniden kullanıldı, yeni provisioning profile. Capability: Sign in with Apple, Associated Domains, IAP. Team ID 6WRT42YG28 (Individual). |
 | B. App Store Connect | beklemede | |
-| C. Google Cloud | yarım | C1, C3, C4 bitti (topic play-rtdn, Publisher yetkisi kurucu tarafından verildi, push subscription play-rtdn-push, never expire). C2: branding ve 3 client bitti; 'Publish app' (Production) kurucu bekliyor; Play App Signing SHA-1 ile ikinci Android client Bölüm D sonrası. Destek emaili Google kuralı gereği hazimokutan@gmail.com. |
+| C. Google Cloud | yarım | C1, C3, C4 bitti (topic play-rtdn, Publisher yetkisi kurucu tarafından verildi, push subscription play-rtdn-push, never expire). C2: branding ve 3 client bitti; Audience Production'a alındı (kurucu); Play App Signing SHA-1 ile ikinci Android client Bölüm D sonrası. Destek emaili Google kuralı gereği hazimokutan@gmail.com. |
 | D. Google Play Console | beklemede | |
 | E. Bulut ortamına key'ler | beklemede | |
 
