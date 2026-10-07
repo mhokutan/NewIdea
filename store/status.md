@@ -36,6 +36,8 @@ DURUM: DEVAM EDİYOR
 
 ## Bulut Claude notları
 
+* 2026-10-07: iOS build 3 TestFlight'a yüklendi. Apple işlemesi 10 ile 30 dakika sürer, sonra TestFlight uygulamasında görünür.
+
 * 2026-10-07: Kurucu kararı: uygulama içi satın alma 2. sürümde. İlk sürümde ürün oluşturma, IAP için mağazada bir şey yapma. In-App Purchase key ve webhook ayarları kalsın.
 
 * 2026-10-07: Yaş derecesi, şiddet (Apple ve Google): "Infrequent/Mild" seç, "None" değil. Cartoon/Fantasy Violence ve Realistic Violence ikisi de Infrequent/Mild. Sebep: kullanıcıların yükleyeceği oyun fragmanlarında şiddet olacak. Az beyan reddedilme sebebi, fazla beyanın bir zararı yok (sonuç zaten 18+). Google IARC anketinde de aynı mantık: oyun fragmanlarında şiddet olabilir de.
