@@ -113,3 +113,65 @@ Hedef: her uzmanın her notu en az 8. Bugün hiçbir uzman bu hedefte değil. Uz
 * Cloudflare panelinde **Workers & Pages** sayfasını bir kez aç (günlük görev ve 30 günlük hesap silme için).
 * Poleris videosundaki **"Calm"** başlığını başka bir isimle değiştir (Calm.com'un markası).
 * İstersen raporun 7.2 bölümündeki 1 saatlik marka ön aramasını kendin yap (USPTO sitesi buradan açılmadı).
+
+## 6. Tur 3 sonuçları (2026-10-07 gece)
+
+12 uzmanın 3. tur notları (R2'den R3'e). Not: bu notlar, aşağıdaki düzeltmelerden ÖNCEKİ koda verildi.
+
+| Uzman | Geri dönüş | Oturum süresi | Özgünlük | Marka güvenliği | Kendi alanı |
+|---|---|---|---|---|---|
+| Ürün stratejisti | 7 | 7 | 8 | 8 | 7 (aktivasyon) |
+| Büyüme psikoloğu | 7 | 7 | 8 | 8 | 7 (alışkanlık döngüsü) |
+| Pazar ekonomisti | 7 | 6 | 8 | 8 | 6 (likidite) |
+| Reklam uzmanı | 6 | 7 | 8 | 8 | 7 (işletme hazırlığı) |
+| Creator ekonomisi | 7 | 7 | 8 | 8 | 7 (creator değeri) |
+| CTO | 7 | 8 | 8 | 8 | 7 (backend) |
+| Güvenlik ve hukuk | 7 | 6 | 8 | 8 | 7 (mağaza kuralları) |
+| Şüpheci yatırımcı | 7 | 6 | 8 | 7 | 7 (farklılaşma) |
+| Mobil mühendis | 7 | 7 | 8 | 8 | 7 (mühendislik) |
+| Ürün tasarımcısı | 7 | 8 | 8 | 8 | 7 (görsel kalite) |
+| Tasarımcı 2 (erişilebilirlik) | 8 | 7 | 8 | 8 | 7 (erişilebilirlik) |
+| Marka uzmanı | 8 | 8 | 8 | 8 | 8 (marka koruma) |
+
+**Özgünlük ve marka güvenliği: 12 uzmanın 11'inde 8.** Yatırımcının marka notu 7, sebebi yapılmamış USPTO ön araması.
+
+### Tur 3'ten sonra hemen düzeltilenler (commit 84a4149, 9acd6d0)
+* **Tahmin sonuçlandırma işi baştan yazıldı.** Önceki hali ücretsiz Cloudflare planında (çağrı başına 50 sorgu) 8 ile 15 tahminde duruyordu. Şimdi her çalışmada yaklaşık 10 sorgu kullanıyor. Günlük iş ayrı çalışıyor. `/health` artık hata ve gecikmeyi gösteriyor.
+* **Puanlama adil hale getirildi.**
+  * Doğru "Not for me" de artık 10 x çarpan alıyor, yani her şeye "Will blow up" demek en iyi strateji değil.
+  * Beta döneminde sonuç için 5 sonraki tahmin yetiyor.
+  * Tek doğru erken tahmin seviye 2 yapıyor.
+* **Hediye kodu kuralları sıkılaştı.**
+  * Hediyeyi sadece yayında tanıtımı olan ya da onaylı firmalar açabiliyor.
+  * Başlık veya açıklama oy, takip, yorum ya da paylaşım isteyemiyor.
+  * Nicheable'ın NEWIDEA25 kodu artık gerçek bir hediye.
+  * Kurucu sayfalarında ana butonlar var: App Store, Etsy, "Çıkınca haber ver".
+* **Engellenen linkler hiçbir profilde geri eklenemiyor.** Link tıklamaları artık doğru sayılıyor.
+* **Huni ölçümü eklendi** (`app_events`): uygulama açılışından hediye almaya kadar her adım. D7 ölçümü buradan yapılacak.
+* **Uygulama tarafı:**
+  * Girişten sonra ekranın tepki vermeme hatası (iOS) düzeltildi.
+  * Seçki, kaşifin tahminleri yüklenmeden seçilmiyor.
+  * "Doğru tahmin" ekranı bilet şeklinde, puan ve paylaş butonuyla geliyor.
+  * Puan alınmadıysa "puan eklendi" yazmıyor. Sonuç tarihi geçince "daha fazla kaşif bekleniyor" yazıyor.
+  * Bildirim artık sahte sayı söylemiyor.
+* **Kaydırma ve yönlendirme:**
+  * Sola kaydırma, aynı firmanın diğer tanıtımlarını açıyor (CLAUDE.md'deki kurucu kararı). Sekmeler dokunarak değişiyor.
+  * Bütün tanıtım kutucukları firma oynatıcısını açıyor.
+* **Görünüm:** Üst karartma güçlendi. Lime renk sadece tahmin ve ilerleme için kullanılıyor.
+* **Web:** Gizlilik politikası ve kullanım şartları artık uygulamayı da kapsıyor. Bunlar avukat incelemesi için taslak. Paylaşılan linkler iPhone'da uygulamayı açabiliyor (apple-app-site-association).
+* **store/README.md:** v1 ücretsiz ve video yükleme kapalı olarak düzeltildi. App Review notları ve uzun açıklama yazıldı.
+
+### Kodla kapanmayan, 8'in altında kalan tek büyük sebep: içerik ve gerçek kullanıcı
+Bütün uzmanlar aynı şeyi söylüyor:
+* **İçerik az.** 3 kurucu firmasının yaklaşık 9 İngilizce tanıtımı var. Her gün gelen bir kaşifin 2. veya 3. günde izleyecek yeni tanıtımı kalmıyor.
+* **Hedef:** lansmandan önce en az 10 firmadan yaklaşık 30 İngilizce tanıtım. Sonra her hafta 15 ile 20 yeni tanıtım.
+* **Gerçek kaşif gerekiyor.** Tahminlerin sonuçlanması için aynı hafta en az 15 ile 20 kaşif lazım. İlk TestFlight grubunu aynı hafta içinde topla.
+* **Ölçülmeden 8 olmaz.** Geri dönüş ve oturum süresi için 8, ancak D7 (7. gün geri dönüş) gerçek kullanıcılarla ölçülünce verilebilir.
+
+### Kurucunun yapacakları (güncel)
+* **Cloudflare R2'yi panelden aç.** Bu olunca fotoğraf ve video yükleme açılır. Creator değeri ve creator tarafında geri dönüş 8'e ancak bununla çıkar.
+* **Sign in with Apple anahtarı oluştur.** Hesap silinince Apple bağlantısını da kesmek için gerekiyor (Apple kuralı).
+* **Poleris'teki "Calm" başlığını değiştir.** Marka notunu 8'de tutan tek madde bu.
+* **USPTO ön araması ve sosyal medya hesap adları.** promovote.app alan adını da almak lazım.
+* **App Store Connect'te gizlilik formlarını güncelle.** App Privacy ve Play Data safety yeni gizlilik politikasına uymalı: cihaz kimliği eklenecek, satın alma geçmişi v2'ye kadar kaldırılacak.
+* **Build 8'i test et.** Hazır olunca TestFlight'tan cihazda dene. Liste: misafir, yeni Apple hesabı, creator ve inceleme hesabı.
