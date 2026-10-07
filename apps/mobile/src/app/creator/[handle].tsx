@@ -17,6 +17,7 @@ import { ReportMenu } from '@/ui/ReportMenu';
 import { Avatar } from '@/ui/Avatar';
 import { Icon } from '@/ui/Icon';
 import { Button } from '@/ui/Pill';
+import { Fade } from '@/ui/Fade';
 
 export default function CreatorScreen() {
   const { handle } = useLocalSearchParams<{ handle: string }>();
@@ -54,8 +55,8 @@ export default function CreatorScreen() {
   return (
     <ScrollView style={{ flex: 1, backgroundColor: C.bg }} contentContainerStyle={{ paddingBottom: 48 }}>
       <View style={{ height: 180 + insets.top }}>
-        {p.banner ? <Image source={{ uri: p.banner }} style={StyleSheet.absoluteFill} contentFit="cover" /> : <View style={[StyleSheet.absoluteFill, styles.noBanner]} />}
-        <View style={[StyleSheet.absoluteFill, styles.bannerShade]} />
+        {p.banner ? <Image source={{ uri: p.banner }} style={StyleSheet.absoluteFill} contentFit="cover" /> : <Fade colors={['#1d1830', '#0a0a0f']} horizontal style={StyleSheet.absoluteFill} />}
+        <Fade colors={['rgba(10,10,15,0.35)', 'rgba(10,10,15,0)', 'rgba(10,10,15,0.6)']} locations={[0, 0.4, 1]} style={StyleSheet.absoluteFill} />
         <Pressable onPress={() => router.back()} style={[styles.back, { top: insets.top + 8 }]} accessibilityRole="button" accessibilityLabel={t('back')}>
           <Icon name="back" size={20} />
         </Pressable>
@@ -115,7 +116,7 @@ export default function CreatorScreen() {
         <View style={styles.grid}>
           {!(p.promos || []).length ? <Text style={styles.text}>{p.viewer?.isMe ? t('no_promos_owner') : t('no_promos')}</Text> : null}
           {(p.promos || []).map((pr) => (
-            <Pressable key={pr.id} onPress={() => router.push({ pathname: '/', params: { v: pr.slug } })} style={[styles.tile, { width: tileW, height: tileW * 16 / 9 }]} accessibilityRole="button" accessibilityLabel={pr.title}>
+            <Pressable key={pr.id} onPress={() => router.push({ pathname: '/play/[handle]', params: { handle, start: pr.slug } })} style={[styles.tile, { width: tileW, height: tileW * 16 / 9 }]} accessibilityRole="button" accessibilityLabel={pr.title}>
               {pr.video.poster ? <Image source={{ uri: pr.video.poster }} style={StyleSheet.absoluteFill} contentFit="cover" /> : null}
               <Text style={styles.dur}>0:{String(Math.round(pr.video.durationMs / 1000)).padStart(2, '0')}</Text>
             </Pressable>
@@ -133,8 +134,6 @@ const styles = StyleSheet.create({
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: C.bg },
   text: { color: C.text2 },
   pad: { paddingHorizontal: 16 },
-  noBanner: { experimental_backgroundImage: 'linear-gradient(135deg, #1d1830, #0a0a0f)' } as any,
-  bannerShade: { experimental_backgroundImage: 'linear-gradient(to bottom, rgba(10,10,15,0.35), rgba(10,10,15,0) 40%, rgba(10,10,15,0.6))' } as any,
   topRight: { position: 'absolute', right: 12, flexDirection: 'row', gap: 8 },
   round: { width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(20,20,31,0.72)', alignItems: 'center', justifyContent: 'center' },
   actions: { flexDirection: 'row', gap: 10, marginTop: 16 },

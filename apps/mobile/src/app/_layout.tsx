@@ -2,6 +2,7 @@ import { DarkTheme, Stack, ThemeProvider } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import { GateHost } from '@/lib/gate';
 import { C } from '@/lib/theme';
@@ -13,16 +14,19 @@ const theme = { ...DarkTheme, colors: { ...DarkTheme.colors, background: C.bg, c
 export default function RootLayout() {
   useEffect(() => { SplashScreen.hideAsync(); }, []);
   return (
+    <GestureHandlerRootView style={{ flex: 1, backgroundColor: C.bg }}>
     <ThemeProvider value={theme}>
       <StatusBar style="light" />
       <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: C.bg } }}>
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="creator/[handle]" />
+        <Stack.Screen name="play/[handle]" />
         <Stack.Screen name="sign-in" options={{ presentation: 'modal' }} />
         <Stack.Screen name="edit-profile" options={{ presentation: 'modal' }} />
         <Stack.Screen name="perk" options={{ presentation: 'modal' }} />
       </Stack>
       <GateHost />
     </ThemeProvider>
+    </GestureHandlerRootView>
   );
 }

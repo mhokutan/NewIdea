@@ -3,7 +3,9 @@
 // "keep watching" into the fair rotation (same rules as the website). New and Team picks are server lists.
 // Team picks are chosen by the PromoVote team and never paid. Charts live in Explore.
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
+import * as Haptics from 'expo-haptics';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { ActivityIndicator, FlatList, Platform, Pressable, ScrollView, StyleSheet, Text, View, type ViewToken } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -17,6 +19,7 @@ import { useViewerState } from '@/lib/viewer-state';
 import { Button } from '@/ui/Pill';
 import { Icon } from '@/ui/Icon';
 import { PromoReel } from '@/ui/PromoReel';
+import { Fade } from '@/ui/Fade';
 
 type Item = { key: string; promo: Promo; end?: false } | { key: string; end: true; promo?: undefined };
 // On web, NativeTabs draws the app menu as a floating bar at the top; keep the home tabs below it.
@@ -110,6 +113,15 @@ export default function Feed() {
   const keepWatching = () => { if (all) append(all); };
   const dropCalls = items.filter((i) => i.promo && vs.calls[i.promo.id]).length;
 
+  // Swipe left or right anywhere on the feed to move between Today's Drop, New and Team picks.
+  // Vertical moves fail the gesture right away, so paging through promos is never blocked.
+  // The React Compiler memoizes this per tab.
+  const swipe = Gesture.Pan().runOnJS(true).activeOffsetX([-24, 24]).failOffsetY([-14, 14]).onEnd((e) => {
+    const i = TABS.findIndex((x) => x.id === tab);
+    const next = e.translationX < -60 || e.velocityX < -600 ? i + 1 : e.translationX > 60 || e.velocityX > 600 ? i - 1 : i;
+    if (next !== i && TABS[next]) { if (Platform.OS !== 'web') Haptics.selectionAsync().catch(() => {}); selectTab(TABS[next].id); }
+  });
+
   const onSeen = useCallback((id: string) => { seen.current[id] = (seen.current[id] || 0) + 1; }, []);
 
   if (error) {
@@ -121,6 +133,7 @@ export default function Feed() {
     );
   }
   return (
+    <GestureDetector gesture={swipe}>
     <View style={styles.root} onLayout={(e) => setHeight(e.nativeEvent.layout.height)}>
       {!all || !height ? (
         <View style={styles.center}><ActivityIndicator color={C.lime} /></View>
@@ -150,7 +163,7 @@ export default function Feed() {
           maxToRenderPerBatch={2}
         />
       )}
-      <View style={[styles.scrim, { height: insets.top + WEB_MENU + 120 }]} pointerEvents="none" />
+      <Fade colors={['rgba(0,0,0,0.6)', 'rgba(0,0,0,0)']} style={[styles.scrim, { height: insets.top + WEB_MENU + 120 }]} />
       <View style={[styles.top, { paddingTop: insets.top + 6 + WEB_MENU }]} pointerEvents="box-none">
         <View style={styles.bar} pointerEvents="box-none">
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tabs} accessibilityRole="tablist">
@@ -184,6 +197,7 @@ export default function Feed() {
         ) : null}
       </View>
     </View>
+    </GestureDetector>
   );
 }
 
@@ -239,5 +253,5 @@ const styles = StyleSheet.create({
   endTitle: { color: C.text, fontSize: 28, fontWeight: '800', textAlign: 'center', marginTop: 8 },
   endText: { color: C.text2, fontSize: 16, lineHeight: 23, textAlign: 'center', maxWidth: 320 },
   note: { alignSelf: 'flex-start', marginTop: 8, marginLeft: 4, maxWidth: 320, color: '#fff', fontSize: 12, fontWeight: '600', backgroundColor: 'rgba(10,10,15,0.78)', borderRadius: 10, paddingHorizontal: 10, paddingVertical: 6, overflow: 'hidden' },
-  scrim: { position: 'absolute', top: 0, left: 0, right: 0, experimental_backgroundImage: 'linear-gradient(to bottom, rgba(0,0,0,0.6), rgba(0,0,0,0))' } as any,
+  scrim: { position: 'absolute', top: 0, left: 0, right: 0 },
 });

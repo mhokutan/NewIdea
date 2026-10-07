@@ -19,6 +19,7 @@ import { Icon, type IconName } from './Icon';
 import { PerkSheet } from './PerkSheet';
 import { ReportMenu } from './ReportMenu';
 import { ctaLabel, ctaVisible } from '@/lib/categories';
+import { Fade } from './Fade';
 
 const tap = () => { if (Platform.OS !== 'web') Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {}); };
 const shortDate = (iso: string) => new Date(iso).toLocaleDateString(lang, { day: 'numeric', month: 'short' });
@@ -123,7 +124,7 @@ export function PromoReel({ promo, active, height, muted, onSeen, bottomInset = 
       <Pressable style={StyleSheet.absoluteFill} onPress={() => setPaused(!paused)} accessibilityRole="button" accessibilityLabel={paused ? t('play') : t('pause')} />
       {paused ? <View style={styles.paused} pointerEvents="none"><Icon name="play" size={34} /></View> : null}
 
-      <View style={[styles.shade, open && styles.shadeOpen]} pointerEvents="none" />
+      <Fade colors={['rgba(6,6,10,0)', 'rgba(6,6,10,0.82)', 'rgba(6,6,10,0.96)']} locations={[0, 0.55, 1]} style={[styles.shade, open && styles.shadeOpen]} />
 
       <View style={[styles.info, { bottom: bottom + 64 }]} pointerEvents="box-none">
         <Link href={`/creator/${c.handle}`} asChild>
@@ -227,7 +228,7 @@ const styles = StyleSheet.create({
   // Explicit size: on web the <video> element ignores left/right/top/bottom and would draw at its natural size.
   video: { position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' },
   paused: { position: 'absolute', top: '50%', left: '50%', width: 76, height: 76, marginLeft: -38, marginTop: -38, borderRadius: 38, backgroundColor: 'rgba(8,8,12,0.55)', alignItems: 'center', justifyContent: 'center' },
-  shade: { position: 'absolute', left: 0, right: 0, bottom: 0, height: '55%', backgroundColor: 'transparent', experimental_backgroundImage: 'linear-gradient(to top, rgba(6,6,10,0.96) 0%, rgba(6,6,10,0.85) 38%, rgba(6,6,10,0))' } as any,
+  shade: { position: 'absolute', left: 0, right: 0, bottom: 0, height: '55%' },
   shadeOpen: { height: '80%' },
   pressed: { transform: [{ scale: 0.94 }], opacity: 0.85 },
   info: { position: 'absolute', left: 16, right: 84 },

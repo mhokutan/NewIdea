@@ -13,6 +13,7 @@ import { C } from '@/lib/theme';
 import { Avatar } from '@/ui/Avatar';
 import { Icon } from '@/ui/Icon';
 import { Pill } from '@/ui/Pill';
+import { Fade } from '@/ui/Fade';
 
 const CATS = [{ id: 'all', label: 'all' as const }, ...EXPLORE_CATEGORIES];
 
@@ -79,6 +80,7 @@ export default function Explore() {
                 <Pressable key={p.id} onPress={() => router.push({ pathname: '/', params: { v: p.slug } })} style={styles.rank} accessibilityRole="button" accessibilityLabel={`${i + 1}. ${p.title}`}>
                   <Text style={styles.rankNo}>{i + 1}</Text>
                   <Text style={styles.rankTitle} numberOfLines={2}>{p.title}</Text>
+                  {p.creator.founderOwned ? <Text style={styles.rankFounder} numberOfLines={1}>{t('founder_made')}</Text> : null}
                 </Pressable>
               ))}
             </ScrollView>
@@ -123,7 +125,7 @@ export default function Explore() {
             {col.map(({ p, h }) => (
               <Pressable key={p.id} onPress={() => router.push({ pathname: '/', params: { v: p.slug } })} style={[styles.tile, { height: h }]} accessibilityRole="button" accessibilityLabel={p.title}>
                 {p.video.poster ? <Image source={{ uri: p.video.poster }} style={StyleSheet.absoluteFill} contentFit="cover" transition={150} /> : null}
-                <View style={styles.tileShade} />
+                <Fade colors={['rgba(6,6,10,0)', 'rgba(6,6,10,0)', 'rgba(6,6,10,0.92)']} locations={[0, 0.45, 1]} style={styles.tileShade} />
                 <Text style={styles.tileWho} numberOfLines={1}>{p.creator.name}</Text>
                 <Text style={styles.tileTitle} numberOfLines={2}>{p.title}</Text>
               </Pressable>
@@ -149,7 +151,7 @@ const styles = StyleSheet.create({
   grid: { flexDirection: 'row', gap: 8, marginTop: 14 },
   empty: { color: C.text2, paddingVertical: 28 },
   tile: { borderRadius: 14, overflow: 'hidden', backgroundColor: C.surface, justifyContent: 'flex-end', padding: 10 },
-  tileShade: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, experimental_backgroundImage: 'linear-gradient(to top, rgba(6,6,10,0.92), rgba(6,6,10,0) 55%)' } as any,
+  tileShade: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 },
   tileWho: { color: '#c9c6d8', fontSize: 12, fontWeight: '600' },
   tileTitle: { color: '#fff', fontSize: 14, fontWeight: '700', marginTop: 2 },
   charts: { padding: 16, borderRadius: 18, backgroundColor: C.surface, borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)' },
@@ -157,6 +159,7 @@ const styles = StyleSheet.create({
   barFill: { height: 6, borderRadius: 3, backgroundColor: C.lime },
   rank: { width: 150, padding: 12, borderRadius: 14, backgroundColor: C.surface2, gap: 4 },
   rankNo: { color: C.lime, fontSize: 22, fontWeight: '800' },
+  rankFounder: { color: C.muted, fontSize: 11, marginTop: 2 },
   rankTitle: { color: C.text, fontSize: 14, fontWeight: '700' },
   h2: { color: C.text, fontSize: 20, fontWeight: '800' },
   chartsText: { color: C.text2, fontSize: 15, marginTop: 6 },
