@@ -224,3 +224,83 @@ Margin is near 100%, but the absolute amount is tiny until there are thousands o
 | Marketplace liquidity and user side value | 3 | 5 | 8 |
 
 Retention, session time and liquidity cannot reach 8 with code alone; they need P1 item 8 (real supply). That is the honest bottleneck: the app is now ahead of its catalog.
+
+## Round 2 (2026-10-07)
+
+Read: `docs/review/brief-r2.md`, commits 1fd6aba, dd9bdee, 71a08cb, 7424e9f, `resolveCalls` and `/v1/drop` in `services/api/src/index.js`, `apps/mobile/src/lib/fair-queue.ts`, `web/landing/public/feed.js`, the Drop and Charts code in `apps/mobile/src/app/(tabs)/index.tsx` and `explore.tsx`, screenshots `docs/review/screens-r2/01..19`. Live production D1 today: 3 creators (all founder), 21 live promos, 9 in English, 0 calls, 0 scouts.
+
+### R2.1 What I checked and what I found
+
+**Language first fix (mobile and web).** Correct. Both files now sort by language tier first, then least seen. I re-ran the 2,000 run simulation:
+
+| Viewer | Non viewer language promos in the first 20 (R1 / R2) | First repeat slot, median (R1 / R2) | Unique promos in the first 30 |
+|---|---|---|---|
+| English | 7.7 / **0** | 14 / **8** | 9 |
+| Turkish | not measured / **0** | not measured / **11** | 15 |
+
+Side effect: an English viewer now hits the first repeat sooner, because Hauling Empire has only 2 English promos but still gets 2 slots every round, so the same 2 truck promos come back every 6 slots. Repeating is better than a foreign video, but a small rule removes it (P1 item 6).
+
+**Today's Drop (`/v1/drop`).** Good design: the same 7 promos per language per day for everyone, which concentrates calls on the same promos, and that is exactly what the per call resolution needs. Games first, end card, then Keep watching. One problem: with 9 English promos and a drop of 7, **two consecutive daily drops share 5.6 of 7 promos on average (minimum 5)** in my simulation. A returning scout opens "Today's Drop" on day 2 and finds about 5 promos they already called. The name promises something new; the content is mostly yesterday's.
+
+**Per call crowd resolution (`resolveCalls`).** Right direction: each call resolves 7 days after it was made, so late joiners can be right, wrong calls cost nothing, and the split is returned only after voting (no herding before the call). Three economic problems:
+
+1. **"Always Will blow up" is the best strategy.** The bar is an absolute 50% share of later calls, a right "Will blow up" pays 10 x multiplier, a right "Not for me" pays 5, a wrong call costs 0, and there is no limit on scored calls. Let q be the chance that later scouts reach 50% "Will blow up" (rating systems lean positive, so q is likely above 0.5):
+
+| Strategy (q = 0.6) | Expected points per call |
+|---|---|
+| Always "Will blow up", early (x3) | 0.6 x 30 = **18** |
+| Always "Will blow up", late (x1) | 0.6 x 10 = 6 |
+| Always "Not for me" | 0.4 x 5 = 2 |
+
+"Will blow up" beats "Not for me" whenever q is above 1 / (2m + 1), which is 0.33 at x1 and 0.14 at x3. So the best play is to tap the lime button on everything, as early as possible. Scout Score then measures volume and speed, not taste, which empties the "called it" reputation of its meaning.
+
+2. **The first scouts will mostly be voided.** Production has 0 scouts. A call needs 10 later calls within its 7 day window. Early adopters, the most valuable Scout #1 users, will see "void" on most of their first calls, which is the worst possible first reveal.
+
+3. **Multiplier inflation in beta.** "First 10 x3, first 50 x2" by absolute position means that while promos have fewer than 50 voters in total, every right call is x2 or x3 and most right calls count as "Called it". The badge becomes common exactly when it should feel rare.
+
+**Charts progress card.** The card says Charts open at 50 scouts calling this week (`CHARTS_GOAL = 50`), but the list itself opens when any promo has 50 weighted signed in views in 7 days (`TOP_MIN_VIEWS`, views counted once per viewer per day). About 8 signed in daily viewers can open the chart while the bar shows something like "8 of 50". Screenshot 07 already shows a chart with one item and no progress card. The honesty promise ("charts money cannot buy, open when real scouts vote") needs one gate, not two.
+
+### R2.2 Scores
+
+| Area | R1 | R2 | Evidence |
+|---|---|---|---|
+| Retention | 3 | **6** | The loop now exists (call ticket with result date, open calls, Scout Score, resolution job), but the daily drop repeats 5.6 of 7 promos from yesterday, there is no reminder yet, and the incentive rewards spamming one button. |
+| Session time | 4 | **6** | The drop, progress segments, end card and Keep watching give a clean session shape with 0 foreign promos, but there are still only 9 English promos (180 s) and the first repeat comes at slot 8. |
+| Originality (user view) | 5 | **8** | Today's Drop, the call bar that turns into a "Scout #1, result Oct 14" ticket, "Team picks, never paid" and the honest Charts card are PromoVote's own patterns, no longer a TikTok copy. |
+| Trademark and trade dress (wording, patterns) | 6 | **8** | "For you" and the story rings are gone, the creator circles are now rounded squares and the vote is a bottom bar with the brand chevron; Save, Share and More on the right rail is a common pattern. |
+| Marketplace liquidity and user side value | 3 | **5** | The mechanics now serve the user side, but supply is unchanged (3 founder creators, 9 English promos, perks not built) and the scoring rule does not yet reward real taste. |
+
+### R2.3 What still keeps scores below 8 (smallest change first)
+
+**P0 (before App Store submission, all small server changes)**
+
+| # | What | Where | Why | How we know it worked |
+|---|---|---|---|---|
+| 1 | One gate for Charts: return the list only when `progress.scouts >= CHARTS_GOAL`, and lower the goal to 20 for beta if 50 is too far | `/v1/home` tab top, `CHARTS_GOAL` in `services/api/src/index.js` | The card and the list must tell the same truth | With 8 viewers and 3 scouts the card shows "3 of 20" and no list |
+| 2 | Extend instead of void: if fewer than 10 later calls, keep the call pending until 21 days, void only after that | `resolveCalls` (the `n >= RESOLVE_MIN_LATER` branch, `CALL_DAYS`) | Early adopters must not open a wall of "void" | Share of resolved calls that are void stays under 30% in the first month |
+| 3 | Scored calls cap: only the first 7 calls per scout per day are `score_eligible` (the column already exists); later calls still show a ticket and count toward the crowd, they just do not add points | `/v1/calls` insert, `resolveCalls` reads `score_eligible` | Equal volume for active scouts, so score differences come from accuracy | No scout earns more than 7 scored calls per day; score correlates with accuracy |
+| 4 | Relative bar: a "Will blow up" is right when the promo's later share is at or above the median later share of promos resolved that week in its category (keep the 50% rule only while fewer than 10 promos resolve that week) | `resolveCalls` | Removes the "always tap lime" strategy: a random caller drops to about 50% accuracy, a skilled one stays above | In week 1 data, "always Will blow up" accounts score at or below the median |
+| 5 | Fresh drop: rank drop candidates by days since they were last in a drop (deterministic per day and language), and on the client put promos the scout already called after the fresh ones, with honest copy when fewer than 7 are fresh ("3 new for you today") | `/v1/drop`, `app/(tabs)/index.tsx` (drop list and EndCard) | "Today's" must mean new; today 5.6 of 7 repeat | Overlap of consecutive drops falls from 5.6 to 0 to 2 while the catalog has at least 14 promos per language |
+
+**P1 (before public launch)**
+
+| # | What | Where | Why | How we know it worked |
+|---|---|---|---|---|
+| 6 | Fair skip: if a creator has no unseen promo in the viewer's language or English this round, give its slot to a creator that has one, until every creator is exhausted | `lib/fair-queue.ts` `nextRound`, `web/landing/public/feed.js` | Removes the slot 8 repeat without breaking fairness | Simulation: the first repeat for an English viewer moves from slot 8 to slot 10 (after all 9 English promos) |
+| 7 | Percentile multiplier: compute early position at resolution time as a share of all valid voters (first 10% x3, next 20% x2), as in `docs/03-profiles-spec.md` | `resolveCalls` | Keeps "Called it" rare in beta | Under 15% of correct calls are "Called it" |
+| 8 | Collusion guard: count later calls only from scouts whose accounts are at least 3 days old, one per device cluster | `resolveCalls` later calls query | Ten friends can confirm each other's x3 calls today | Coordinated test accounts cannot move an outcome |
+| 9 | Supply: 12+ creators and 60 English promos, at least 9 not the founder (already known) | Ops, seed | With 60 English promos and the fresh drop rule, about 8 days of new drops; with 9, about 1 | D7 at least 15% |
+| 10 | Daily reminder and a "results today" notification (already planned) | Expo notifications | Reveal Day only works if the user knows it is today | D1 at least 30% |
+| 11 | Perks and the scout perk wallet (already planned) | `perks` tables, new endpoints, `PromoReel.tsx` | The concrete reason for shoppers to open the app | Perk claim rate per perk impression |
+
+### R2.4 Expected scores
+
+| Area | R2 | After P0 | After P1 |
+|---|---|---|---|
+| Retention | 6 | 7 | 8 |
+| Session time | 6 | 7 | 8 |
+| Originality | 8 | 8 | 9 |
+| Trademark and trade dress | 8 | 8 | 8 |
+| Marketplace liquidity and user side value | 5 | 6 | 8 |
+
+The engineering is now ahead of the catalog. The P0 items protect the integrity of the reputation loop for about a day of server work; reaching 8 on retention, session time and liquidity still depends on real supply (P1 item 9).

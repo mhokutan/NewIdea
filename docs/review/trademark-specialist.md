@@ -197,3 +197,54 @@ Stories specific (when built): Report and Block must be reachable from the story
 * [Apple App Review Guidelines](https://developer.apple.com/app-store/review/guidelines/)
 * [New USPTO trademark fees effective 2025-01-18 (Fish & Richardson)](https://www.fr.com/insights/thought-leadership/blogs/new-uspto-trademark-fees-go-into-effect-january-18-2025/)
 * App Store search: iTunes Search API, US storefront, terms "promovote" and "promova" (run 2026-10-07).
+
+## Round 2 (2026-10-07)
+
+This is still not legal advice. I checked `docs/review/brief-r2.md`, `apps/mobile/src/lib/i18n.ts` (en, es, tr), `apps/mobile/src/app/sign-in.tsx`, `apps/mobile/src/app/(tabs)/explore.tsx`, screenshots `docs/review/screens-r2/01, 03, 07, 09, 10, 13`, `store/README.md`, and the live API (`GET /v1/explore`, `GET /v1/creators`).
+
+### What I verified
+
+| Round 1 item | Round 2 status | Evidence |
+|---|---|---|
+| "For you" tab | Fixed | No "For you", "Para ti" or "Sana özel" label left in `i18n.ts`. Tabs: Today's Drop / New / Team picks (es: Drop de hoy / Nuevo / Elegidos, tr: Bugünün seçkisi / Yeni / Ekibin seçimi). The empty Top tab is gone. |
+| New tab names | Clear | "Today's Drop", "Team picks", "Called it", "Scout Score" are ordinary words that nobody owns in this field; I found no live US mark "TODAY'S DROP" or "DAILY DROP" for apps (only an unrelated UK "The Sunday Drop"). Low risk. Do not stylize "Drop" like a sneaker brand's drop calendar. |
+| Story rings | Fixed | `explore.tsx` now draws `Avatar ... radius={18}` (rounded squares, no ring). Screenshot 07 confirms. |
+| Report and Block | Fixed | Screenshot 03: "More" sheet with Report and "Block @handle"; brief says 7 report reasons and blocked creators disappear. Meets Guideline 1.2 report and block. |
+| Contact info | Fixed | Screenshot 09: "Help and legal" with Contact support, Terms of Use, Privacy Policy, Community Guidelines, visible to guests. Sign in has tappable Terms and Privacy (screenshot 10). `promovote.com/delete-account` returns 200. |
+| Sign in buttons | Good | Apple uses the official `AppleAuthenticationButton` (CONTINUE, WHITE). Google uses the branding spec (white, `#747775` border, standard G image, "Continue with Google"). The web screenshot only shows email, which is expected on web. |
+| Vote layout | Much more original | Screenshot 01 and 13: bottom call bar (Not for me / Will blow up with the logo chevron) turning into a ticket "Called: Will blow up. Result Oct 14. Scout #1". This is now the product's signature and does not exist on TikTok, Reels or Product Hunt. |
+| "Unlock perks" | Removed | Sign in copy now "Sign in to call promos, save them and follow creators." |
+| Store framing (3.2.2(iii)) | Partly | Short description in `store/README.md` line 46 is good ("Discover, vote and rank the best game trailers and app promos."). Long description and App Review notes are not written yet. |
+| "Calm" in Poleris promo | **Not fixed** | Live `GET /v1/explore` returns promo slug `poleris-calm`, description "The Calm tab: box breathing and guided meditations", tag `calm`; the video shows a "Calm" header and a "CALM" nav tab. In screenshot 07 it is the #1 Charts card and the first Explore tile. |
+| "Open in App Store" | Small wording issue | Apple's App Store Marketing Guidelines say to write "the App Store" (with "the"), never translate "App Store", never use it as a verb. "Open in App Store" misses "the". Spanish "Abrir en App Store" also misses the article ("en el App Store"). Turkish "App Store'da aç" is fine. "Open in Google Play" is fine. |
+| Trademark filing and handles | Not done | No serial numbers in `CLAUDE.md`; handles not listed in `store/status.md`. |
+
+Two smaller watch items:
+* The 7 progress segments at the top of Today's Drop (screenshot 01) look like Instagram Stories progress bars. A segmented progress bar is functional and not protectable on its own, so legal risk is low, but combined with a 7 item daily sequence it reads as "Stories". Optional: use a numbered counter ("3 / 7") or a ticket stub row in the lime brand color instead of thin white bars.
+* Screenshot 07 shows "Test Studio" and "Pixel F..." creators. The live `GET /v1/creators` returns only the 3 founder creators, so this is the test environment. Keep test accounts out of production (Guideline 2.1 placeholder content).
+
+### Scores, round 2
+
+| # | Area | R1 | R2 | Evidence |
+|---|---|---|---|---|
+| 1 | Retention | 5 | 7 | A daily drop plus calls that resolve in 7 days give a real reason to come back, but there is no reminder notification or streak yet, so the return depends on memory. |
+| 2 | Session time | 6 | 8 | Every tap now answers (gate sheet, haptics, toasts), the 7 promo drop has a clear end card and "Keep watching" continues into the rotation. |
+| 3 | Originality | 6 | 8 | The call bar and ticket, Today's Drop, Team picks and rounded square creator tiles make a screenshot recognizable as PromoVote; the remaining borrowed pieces are the right rail and story-like progress bars. |
+| 4 | Trademark and trade dress safety | 7 | 8 | "For you" and story rings are gone and the new labels are clear, but the "Calm" promo is still live and featured. |
+| 5 | Brand protection and App Store readiness | 5 | 8 | Report, Block, contact links, delete account page and official sign in buttons now meet Guidelines 1.2, 4.8 and 5.1.1(v); the US filing, handle reservations and App Review notes are still open. |
+
+Only Retention stays below 8. It is mainly a product item, listed below because the fix also touches policy (notification permission wording).
+
+### Remaining items (smallest first)
+
+**P0 (before App Store submission)**
+1. **Fix the "Calm" promo.** Rename the section in the Poleris app (for example "Unwind" or "Rest"), re-export the video and poster, and in `web/landing/content/promos.json` change slug `poleris-calm`, the description "The Calm tab" and the tag `calm` (lowercase `#calm` as a plain hashtag word is fine, but not as the name of a tab). Then run `python3 web/landing/build.py`, regenerate the seed with `services/api/scripts/gen-seed-sql.py`, deploy, and confirm that `GET /v1/explore` no longer contains "Calm tab". Why: Guideline 5.2.1 and Calm.com, Inc.'s CALM marks for meditation apps. It is the top Charts card, so a reviewer sees it first.
+2. **Write the App Review notes and long description** in `store/README.md` (then App Store Connect): "a community where scouts discover and call game trailers, app promos and creator videos; creators are verified; Report and Block on every promo; reviewer account email and fixed code". Avoid "watch ads", "ad network", "For you". Why: Guideline 3.2.2(iii). Done when the text is in App Store Connect and has none of those words.
+
+**P1 (before public launch)**
+3. **"Open in the App Store".** In `apps/mobile/src/lib/i18n.ts` set `cta_app_store` to "Open in the App Store" (en) and "Abrir en el App Store" (es); keep tr. Same on the website if the label is there. Why: Apple App Store Marketing Guidelines.
+4. **Daily reminder (retention to 8).** Local notification "Today's Drop is ready" plus "Your call on X resolved" (already planned in the brief). Ask permission after the first drop end card, not at launch, with plain wording. Done when Day 1 to Day 7 return can be measured.
+5. **File the US trademarks** (word PROMOVOTE and the logo, classes 9, 35, 42) and **reserve handles plus promovote.app**, as in round 1 items 6 and 7. Record serial numbers in `CLAUDE.md` and the handle list in `store/status.md` (no passwords).
+6. **Optional originality polish:** replace the white segmented bars on Today's Drop with a numbered counter or lime ticket stubs (`apps/mobile/src/app/(tabs)/index.tsx`).
+
+Sources added in round 2: [Apple App Store Marketing Guidelines](https://developer.apple.com/app-store/marketing/guidelines/), [UK IPO journal, The Sunday Drop UK00004354196](https://www.ipo.gov.uk/t-tmj/tm-journals/2026-013/UK00004354196.html), live API responses from `api.promovote.com` (2026-10-07).

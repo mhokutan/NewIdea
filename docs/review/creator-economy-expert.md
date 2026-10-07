@@ -294,3 +294,56 @@ A creator whose links or videos point to a closed category is rejected at first 
 * Value: at least 60% of live promos get one or more button clicks in their first 7 days, and creators can see that number.
 
 With P0 done the domain score moves from 2 to about 6 (identity and links exist, but no self serve posting). With P1 done (upload, stats, perks) it reaches 8, and retention and originality on the creator side move with it to 8 because creators now have a weekly loop and the verdict, fair turns and proof links are visible.
+
+---
+
+# Round 2 (2026-10-07)
+
+Inputs: `docs/review/brief-r2.md`, screenshots `docs/review/screens-r2/15` to `19`, `apps/mobile/src/app/(tabs)/me.tsx` (`CreatorHome`), `apps/mobile/src/app/edit-profile.tsx`, `apps/mobile/src/app/creator/[handle].tsx`, `services/api/src/index.js` (`/v1/me/studio`, `PUT /v1/me/links`, `POST /v1/me/media`, `PATCH /v1/me`, `GET /v1/profiles/:handle`), `services/api/migrations/0006_profiles_categories.sql`.
+
+## R2.1 What improved
+
+Nearly every round 1 P0 for the creator side shipped, and it shipped well:
+
+* **Creator studio** (screenshot 17): banner, logo, Edit profile, View public page, a 5 step setup checklist with a progress bar, a "Your numbers" card with 7 and 28 days, scout verdict after 30 calls, and an honest "email your first trailer" bridge. This is the creator home I asked for.
+* **Edit profile** (16): logo and banner resized on the phone and stored on R2, bio with a counter (47 / 300), primary category plus "Also fits (up to 2)", main button from a fixed list (Open website, App Store, Google Play, Wishlist on Steam, Visit the shop, Watch live, Watch), "Not released yet", up to 8 links.
+* **Links** (`checkLink`, index.js 478 to 498): https only, platform detected from the host (15 platforms including Amazon, Shopify, Google Maps for Local), shorteners and link in bio pages rejected with a clear message. Public page shows proper names ("Steam", "pixelfox.games").
+* **Taxonomy**: the 7 categories (Games, Apps, Streams, Videos, Shops, Brands, Local) are live in onboarding (15) and edit. Migration 0006 moved the category, kind and platform lists out of CHECK constraints into the API, so new values never need another table rebuild. Good call, better than my 0003 proposal.
+* **Public page** (19): real banner, "New creator" chip instead of "0 followers", share button, Report and Block in the menu.
+* **Stats are free forever** (comment at index.js 586), boost impressions are excluded from views. Matches the paywall rule.
+
+## R2.2 Scores
+
+| # | Area | R1 | R2 | Evidence |
+|---|---|---|---|---|
+| 1 | Retention | 4 | 6 | A creator now has a page to finish and numbers to check, but cannot post a promo themselves and gets no weekly nudge, so after setup there is still no reason to open the app every week. |
+| 2 | Session time | 5 | 6 | Setup and edit take a real 3 to 5 minutes, but a finished creator with no promo sees a wall of six zeros and a mailto button. |
+| 3 | Originality | 6 | 7 | The scout verdict in the studio, the call ticket, "Team picks, never paid" and the honest drop end card are clearly PromoVote's own; the creator page itself is still a generic banner, avatar and grid. |
+| 4 | Trademark and trade dress safety | 8 | 8 | "For you" is gone, circles are rounded squares, link chips use text names, not platform logos; button labels such as "Open in App Store" follow store wording. |
+| 5 | Creator / advertiser value | 2 | 6 | Identity, links, categories and free stats now exist; posting, perks and link tap counts, the 3 things a small creator measures value by, are still missing. |
+
+## R2.3 What still keeps scores below 8 (smallest change first)
+
+### P0 (before App Store submission, all small)
+
+1. **Public empty state copy is wrong.** `apps/mobile/src/app/creator/[handle].tsx` line 100 uses `t('nothing')` = "Nothing matches yet." (a search string, screenshot 19). Use "No promos live yet. Follow to see the first one." for visitors and, when `viewer.isMe`, "Post your first promo" with the email trailer button. Done when: screenshot 19 shows the new copy in en, es, tr.
+2. **"Main button" is saved but never shown.** `primary_cta` is written by `PATCH /v1/me` (index.js 462) and read only by the studio. `GET /v1/profiles/:handle` (index.js 320 to 344) does not return it and the public page does not render it. A creator picks "Wishlist on Steam" and nothing changes: the same "tap does nothing" problem the founder hit in round 1. Fix: return `primaryCta` and render one full width button under the bio that opens the first link matching that kind (Steam link for `steam`, store link by device for `app_store` / `google_play`, falling back to Notify when `release_status = 'soon'`). Hide the button if no matching link exists and show the owner a hint in edit ("Add a Steam link for this button"). Done when: a creator who picks Wishlist on Steam and adds a Steam link sees that button on their public page.
+3. **mailto can silently fail.** `me.tsx` lines 175 and 244 call `Linking.openURL('mailto:...')`. On an iPhone without the Mail app set up this does nothing or throws. Check `Linking.canOpenURL` first; otherwise copy `support@promovote.com` and show a toast "Email copied. Send your trailer to support@promovote.com". Done when: tapping on a device without Mail shows the toast.
+4. **Zero wall in stats.** Before the first live promo, replace the six zero tiles (screenshot 18) with one line: "Your numbers start when your first promo is live. Views, watch time, button taps and saves, free forever." Show the grid only when `promos.length > 0`. Also: "Saves" ignores the 7 / 28 day toggle (index.js 602 has no date filter while the tile sits in a ranged grid); filter `s.created_at` by the range. Add a Followers tile with the 7 day delta from `follows.created_at`. Done when: a new creator sees one clear sentence, and an active creator's saves change when switching 7 and 28 days.
+
+### P1 (before public launch)
+
+5. **Link taps.** `profile_links.click_count` exists but nothing increments it. Add `POST /v1/events/link` (or a `/out/:linkId` redirect) from the public page and a "Link taps" tile in the studio, per link. This is the number a Linktree user compares us with. Done when: tapping "Steam" on a public page raises the count in the owner's studio.
+6. **Self serve promo upload** (known, blocked on R2). This is the single change that moves Creator value and creator Retention to 8. Flow as in section 3.4: pick, trim check, 720p on device, cover frame, details, button, rights checkbox, `in_review`, push on approval and rejection. Until it ships, keep the email bridge and answer within 24 h.
+7. **Perks v1** (known): shared code per promo or page, separate "Get perk" button, My Perks for scouts, claim route never reads calls or follows (unit test). Shops and app makers measure value by claims.
+8. **Weekly creator push** (Expo push, free): Monday "Your week: views, button taps, new followers, scout verdict" plus a push when a promo is approved. This is the creator's weekly return trigger. Done when: week 4 creator return reaches 40%.
+9. **Secondary categories do nothing in Explore.** They are stored in `creator_details.secondary_categories`, but the Explore creator query filters only `d.category = ?` (index.js 268 and 294). Add `or exists (select 1 from json_each(d.secondary_categories) where value = ?)` to the creator list (promos keep their own single category). Done when: a Games creator with Streams as a second category shows in the Streams creator row.
+10. **Trust before uploads open.** Links are saved as `safety_status = 'safe'` without any scan or redirect check (index.js 516), and logos and banners are saved as `approved` with no review (index.js 544). Fine for a closed beta of hand picked creators, not for open signup: a scam link or offensive logo goes public instantly on a page we invite people to share. Add a redirect follow plus Google Web Risk lookup on save, and an admin list of new logos and banners from the last 24 h with a one tap remove. Done when: a known phishing test URL is rejected and new images appear in the admin queue.
+11. **Website verification** (meta tag or `/.well-known/promovote.txt`) and a small lime check on verified links. This is the "proof links" signature from section 4 and the cheapest originality win on the creator page.
+12. **Creator only player** (known, "swipe left"): tapping a tile on a creator page should play that creator's promos, not jump into the main feed (`creator/[handle].tsx` and `me.tsx` line 235 push `/` with `v`).
+
+### Expected scores after these
+
+* After P0 (items 1 to 4, about one day of work): Creator value 7, Session time 7, Retention 6.
+* After P1 items 5 to 8 (link taps, upload, perks, weekly push): Creator value 8, Retention 8, Session time 8.
+* Originality reaches 8 with items 11 and 12 plus the scout verdict being visible once real calls arrive.

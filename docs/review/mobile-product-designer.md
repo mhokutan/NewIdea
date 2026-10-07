@@ -127,3 +127,61 @@ The product's unique verb is **calling it**. Make the call the visual identity.
 | Visual design and UX quality | 4 | 7 | 8 to 9 |
 
 Originality and trade dress cannot reach 8 without P1.2 and P1.3; I recommend pulling those two into the App Store build if time allows, because the first public screenshots set how people see the product.
+
+## Round 2 (2026-10-07)
+
+Inputs: `docs/review/brief-r2.md`, all 19 screenshots in `docs/review/screens-r2/`, and the changed code (`ui/PromoReel.tsx`, `lib/gate.tsx`, `ui/Sheet.tsx`, `app/(tabs)/index.tsx`, `app/(tabs)/me.tsx`, `app/edit-profile.tsx`, `app/creator/[handle].tsx`, `app/(tabs)/explore.tsx`).
+
+### Scores
+
+| # | Area | R1 | R2 | Evidence (one sentence) |
+|---|------|----|----|-------------------------|
+| 1 | Retention | 4 | 6 | Today's Drop, the call ticket with a result date and the Scout Score card with open calls give a real reason to come back, but the daily reminder is missing and so is the "your call came true" reveal screen (results only change a number on the profile), so nothing pulls the user back on day 2 or day 8. |
+| 2 | Session time | 5 | 7 | The 7 promo drop with progress segments, an end card and "Keep watching" into the fair rotation is a good loop, but there is still no horizontal swipe anywhere, and the creator page and Explore are thin with 3 real creators. |
+| 3 | Originality | 4 | 7 | The call bar, the ticket ("Called: Will blow up. Result Oct 14. Scout #1"), the drop segments and the rounded square creator tiles are PromoVote's own; the right rail, the bottom left creator block and the system font still read as a generic short video app. |
+| 4 | Trademark and trade dress | 6 | 8 | "For you" and the story rings are gone; the tab names, call bar and ticket are original; the segment bar is a generic progress pattern. Not legal advice. |
+| 5 | Visual design and UX quality | 4 | 7 | Every tap now answers (pressed scale, haptics, gate sheets, toasts, 409 handled), and the scout profile, creator studio and edit profile are solid; a set of small but visible flaws remains (list below). |
+
+### What improved (verified in code and screens)
+
+* `lib/gate.tsx` keeps the tapped action and runs it after sign in and onboarding; creators get a clear "Creators can't vote" sheet (screen 02). This closes my round 1 P0.1.
+* Call bar and ticket (`ui/PromoReel.tsx` lines 182 to 210, screens 01 and 13): the main action sits in the thumb zone and the vote is now the visual identity. Rail labels have a backing pill; the CTA is a filled white button.
+* Onboarding is 2 steps with a suggested handle, a native date picker on device and the link preview "promovote.com/@name" (screens 11, 12, 15). The DOB overflow is gone.
+* Scout profile (screen 14): Scout Score, level bar, "Reputation only. No cash value.", Open calls with result dates, Saved, Following.
+* Creator studio (17, 18): setup checklist, free 7/28 day numbers, honest "scout verdict after 30 calls", "Email your trailer" until uploads open. Edit profile (16): logo, banner, bio counter, category plus 2, main button, release status, up to 8 links.
+* Drop end card (05) is clear and on brand (double chevron mark).
+
+### Still keeping a score below 8 (smallest change first)
+
+**P0 (before App Store submission)**
+
+1. **Team picks note sits on top of the video's headline** (screen 06). `app/(tabs)/index.tsx` line 164 draws `featured_note` as text over the video. Move it into a one time toast or a small "i" next to the tab label, or give it a solid backing. Done when: no app text overlaps video text on any Team picks promo.
+2. **Wrong empty copy on a creator page** (screen 19). `app/creator/[handle].tsx` line 100 reuses the search string "Nothing matches yet." Use "No promos yet" for visitors, and for the owner "Post your first promo" with the Email your trailer action. Add the string in `lib/i18n.ts` (en, es, tr).
+3. **Owner on own public page has no Edit button** (screen 19). When `p.viewer?.isMe`, the Follow button disappears and nothing replaces it (line 80). Show "Edit profile" + "Share page" there. Done when: the owner can reach Edit profile from the public page in one tap.
+4. **Help and legal list inside onboarding** (screens 11, 12, 15). `app/(tabs)/me.tsx` line 59 renders `LegalLinks` under every state. Hide it during onboarding steps (Terms and Guidelines are already linked in the checkbox line; make those words tappable). Keep it for guest, scout and creator profiles. Done when: onboarding screens end at the Create profile and Back buttons.
+5. **Handle suggestions with long random numbers** (maya183182, pixelfox9877). Try the clean name first (`maya`, `mayalin`, `maya_lin`), then a 2 digit suffix, before 6 digits. Also do not copy the number into the display name ("Pixel Fox 9877" in screens 15 to 19 looks like a test account). Done when: a new Apple user named Maya Lin gets a suggestion with at most 2 digits.
+6. **"Finish your profile" does not return to the promo.** `lib/gate.tsx` line 64 navigates to `/me`; after Create profile the queued call runs while the user is on Profile, so they never see the ticket appear. After onboarding, `router.back()` (or navigate to the Feed tab with `v=<promo>`) before running the action, then show the ticket. Done when: guest taps Will blow up, signs in, finishes the profile and lands back on the same promo with the ticket visible.
+
+**P1 (before public launch)**
+
+7. **Horizontal swipe between home tabs** (founder request, still missing): Today's Drop, New, Team picks as a pager in `app/(tabs)/index.tsx` (gesture handler and Reanimated are already installed). Keep "swipe left for the same creator's other promos" as planned, but only on the creator row or after a short edge pull so it never fights the tab pager. Do not map votes to swipes. Lifts Session time to 8.
+8. **Result reveal and daily reminder** (Retention to 8): when a call resolves, open the app on a full screen result card in the ticket shape ("You called it. Hauling Empire, +30 points, Scout #1 of 23") with a share action, and add the planned local reminder "Today's drop is ready, 7 promos". Without these two, results are invisible and Retention stays at 6 or 7.
+9. **Sign in screen is still unbranded** (screen 10, unchanged since round 1). Add the gradient ring logo, three short value lines (Call hits early, Save promos, Follow creators) and a muted loop of real promos in the empty top half. `app/sign-in.tsx`.
+10. **Brand display font** (Originality to 8): load Bricolage Grotesque with `expo-font` for titles, creator names, Scout Score and ticket text. Today every screen is the system font, which is the main reason the app still looks generic.
+11. **Lime discipline**: lime now marks the Will blow up button, ticket, Level pill, active profile tab, checklist ticks, progress bars, mono avatars and the New creator chip. Keep it for the call, the primary button and progress; make the Level pill, active segmented tab and mono avatar neutral (surface with a white or gradient letter). This also makes the ticket stand out more.
+12. **"New creator" chip next to a verified badge** (Poleris, screen 08): show only one trust label. Prefer verified; hide New creator when `verified` is true.
+13. **Explore**: creator tiles "Test Studio" and "Pixel Fox" render with no logo (screen 07, test data, but the empty tile must fall back to the mono avatar); the Charts card with one entry looks unfinished, so show it as "Charts open at 10 calls" with the progress bar until there are at least 3 entries.
+14. **Drop end card for guests** (screen 05): "You made 0 of 7 calls" for a guest should read "Sign in to make your calls. Results come in 7 days." with Sign in as the primary button.
+15. **Creator studio polish**: collapse finished checklist items into "4 of 5 done"; add a "Your promos" grid so the owner sees their content from the studio.
+
+### Expected scores after the list
+
+| Area | R2 | After P0 | After P0 + P1 |
+|------|----|----------|---------------|
+| Retention | 6 | 6 | 8 (items 8 and the planned streak) |
+| Session time | 7 | 7 | 8 (item 7) |
+| Originality | 7 | 7 | 8 (items 9, 10, 11) |
+| Trademark and trade dress | 8 | 8 | 8 |
+| Visual design and UX quality | 7 | 8 | 9 |
+
+P0 items 1 to 6 are each under an hour of work and bring my domain score to 8. Retention and Session time depend on the planned P1 features (reminder, result reveal, swipe), not on more polish.

@@ -213,3 +213,71 @@ Expected after the P0 and P1 list: Retention 8, Session time 8, Originality 8, T
 Legal notes are not legal advice.
 
 Sources: [Meta ads benchmarks 2026 (ContentStudio)](https://contentstudio.io/blog/meta-ads-benchmarks), [Ad cost comparison across platforms 2026 (Stackmatix)](https://stackmatix.com/blog/ad-cost-comparison-across-platforms-2026), [2026 TikTok ad benchmarks (Hubfluence)](https://www.hubfluence.io/resources/tiktok-cpm-rates), [Instagram ads cost 2026 (Top Growth Marketing)](https://topgrowthmarketing.com/instagram-ads-cost/), [Is Meta Verified worth it in 2026 (CreatorFlow)](https://creatorflow.so/blog/is-meta-verified-worth-it/), [Meta Verified pricing 2026 (Alejandro Rioja)](https://alejandrorioja.com/blog/get-facebook-verified/).
+
+---
+
+# Round 2 (2026-10-07)
+
+Inputs: `docs/review/brief-r2.md`, screens `screens-r2/08, 15, 16, 17, 18, 19`, `services/api/src/index.js` (onboarding, `PATCH /v1/me`, `PUT /v1/me/links`, `POST /v1/me/media`, `GET /v1/me/studio`, `GET /v1/profiles/:handle`), `apps/mobile/src/app/creator/[handle].tsx`, `apps/mobile/src/lib/categories.ts`.
+
+## What got better
+
+Most of my round 1 P0 list is done. Edit profile has logo, banner, bio, a main category plus 2 more, a main button, release status and up to 8 links. Link platforms now include Amazon, Shopify and Google Maps, and shorteners and link-in-bio pages are blocked. Onboarding has 7 categories, including Shops, Brands and Local. The studio has a setup checklist, free 7 and 28 day numbers with boosted views excluded, the scout verdict after 30 calls, and an "email your trailer" bridge. The public page shows the real banner without blur, a "New creator" chip, Share and Report/Block. Story rings are gone and creators use rounded squares. A business can now set up a page it would not be ashamed of.
+
+## Scores
+
+| # | Area | R1 | R2 | Evidence |
+|---|---|---|---|---|
+| 1 | Retention | 4 | 6 | The checklist and numbers give owners a reason to come back once, but they cannot post a promo or a perk, so after setup the numbers stay at 0 (screen 18). |
+| 2 | Session time | 5 | 6 | The studio and edit screens add real minutes, but a new creator's public page ends at "Nothing matches yet." (screen 19) and the promo tiles still have no title or chips. |
+| 3 | Originality | 7 | 8 | The call ticket, Today's Drop, the scout verdict in the studio and "delivery numbers free forever" make this its own product, not a Reels or Linktree clone. |
+| 4 | Trademark and trade dress | 7 | 8 | No story rings, rounded square avatars, and "For you" and the Top tab are gone; nothing I see borrows another app's look. |
+| 5 | Advertiser and business readiness | 3 | 6 | Setup is complete, but the chosen main button never appears on the public page, a link label can pretend to be "App Store" or "Amazon", and there are still no perks or UTM tags. |
+
+## Still blocking 8 (smallest change first)
+
+### P0 (before App Store submission)
+
+1. **Show the main button on the public page.** The owner picks "Wishlist on Steam" in Edit (screen 16), but the public page shows only small link chips (screen 19). `GET /v1/profiles/:handle` (around line 329 to 345 of `index.js`) never returns `primary_cta`, and `[handle].tsx` lines 80 to 95 never render one. Fix: return `primaryCta` plus the matching link URL (for example the first `steam` link for `wishlist_steam`), and render a full width button under Follow. On iOS show App Store and on Android show Google Play. Track taps through `click_events` or a new link event. Set Poleris to "Open in App Store". Done when screen 19 shows a "Wishlist on Steam" button that opens the Steam link.
+2. **Stop link spoofing (brand safety).** This bug matters for trust:
+   * `categories.ts` line 23: `label || PLATFORM_NAMES[platform] || hostname`. A free text label always wins, so `https://evil.example` labeled "App Store" shows as "App Store".
+   * `index.js` line 483: `["amazon", /(^|\.)amazon\.[a-z.]+$/]` also matches `amazon.evil.com`, which then gets the "Amazon" name.
+   * Line 484 has the same problem for `maps.google.[a-z.]+`.
+
+   Fix:
+   * Anchor these to real TLDs, for example `/(^|\.)amazon\.(com|co\.uk|de|fr|it|es|ca|com\.mx|co\.jp|in|com\.au|com\.br|nl|se|pl|com\.tr|ae|sa|sg)$/`. Treat `google_maps` the same way.
+   * Reject a custom label that equals a platform name (App Store, Google Play, Steam, Amazon, Etsy, Shopify, YouTube, Twitch and so on) unless the detected platform matches.
+   * For `website` links, always show the domain next to any custom label.
+
+   Done when a test link `https://amazon.evil.com` saves as "evil.com" style website and the label "App Store" on a website link is refused.
+3. **Honest empty state on profiles.** `[handle].tsx` line 100 uses the generic `t('nothing')`, which reads "Nothing matches yet." on a profile. Fix:
+   * Visitors see: "No promos yet. Follow to see the first one."
+   * Owners see: "Your first promo shows here. Email us your trailer."
+
+   Done when screen 19 shows the new copy.
+4. **Make the free numbers exact.** These figures are what we sell trust with, so they must be right. In `GET /v1/me/studio` (lines 600 to 602):
+   * Clicks do not filter `is_boost = 0` while views do, so the tap rate mixes boosted clicks into organic views.
+   * Saves are counted for all time while shown under the 7 / 28 day toggle.
+
+   Fix: filter clicks by `is_boost = 0` and window saves by `created_at`. Add "Follows gained" (the `follows` table already has `created_at`). Done when every number on screen 18 changes with the 7 / 28 day toggle and matches a manual D1 query.
+5. **UTM tags on outbound links** (carried over from round 1). Add `utm_source=promovote&utm_medium=promo|profile&utm_campaign={slug or handle}` server side in `promoOut` (line 150) and in the profile links output. Use `pt`/`ct` for App Store and `referrer` for Google Play. Done when a test tap on a Nicheable promo arrives in Etsy stats as `promovote`.
+
+### P1 (before public launch)
+
+6. **Perks, minimal version** (already planned): one single code perk per creator, a "Get perk" card on the profile, a Perk chip on tiles, and the My Perks wallet. The claim path must never read `calls` or `follows`, backed by a unit test. This is the change that moves Retention and Business readiness to 8 together with uploads.
+7. **Video upload** (already planned, waits on R2). Without it every business number stays 0 unless the founder posts for them.
+8. **Profile link taps.** `profile_links.click_count` exists, but nothing writes it. Add `POST /v1/events/link` and a "Link taps" line in the studio. For a shop with no promo yet, this is the only proof the page works.
+9. **Real link safety scan.** `PUT /v1/me/links` inserts every link as `safety_status = 'safe'` with no check (line 516). Add Google Web Risk and a redirect check before uploads open, and rescan weekly. Brands will not sit next to a phishing page.
+10. **Banner legibility.** On the Poleris seed page (screen 08), the busy banner screenshot shows text ("Day Journey") right behind the name. Add a stronger bottom gradient in `styles.bannerShade`, or put the name fully below the banner.
+11. **Weekly creator digest** (push or opt in email) with views, completion, taps and new follows. Done when creator week 4 return rate is 40% or higher.
+12. **Verified business flow** (domain meta tag, DNS or `.well-known`) and a tooltip on the check mark: "PromoVote confirmed this account owns {domain}. Not an endorsement."
+
+### Membership and stories (v1.1, founder decision)
+
+No change to my round 1 view. One plan at $9.99 per month or $99.99 per year, Creator accounts only. Stories go to followers only, behind a lime ring, never a gradient. Free creators get 1 story per week. The badge is never sold, and a unit test must keep the membership flag out of the feed, charts and Hit Score code.
+
+## Expected after this list
+
+If P0 items 1 to 5 are done: Business readiness 7, Originality 8, Trademark 8.
+
+If P1 items 6 to 8 are also done (perks, uploads, link taps): Retention 8, Session time 8, Business readiness 8.

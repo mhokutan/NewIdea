@@ -280,3 +280,69 @@ Cloudflare Stream when video traffic grows; per vote App Attest assertions if fr
 | Backend completeness and safety | 4 | 8 | 9 | P0 items 1 to 8 close every missing write API and the two live abuse holes; P1 adds attestation and weighting before charts open. |
 
 Legal notes in this report are not legal advice.
+
+---
+
+# Round 2 (2026-10-07)
+
+Inputs: `docs/review/brief-r2.md`, commits 9e92933, 1fd6aba, dd9bdee, 71a08cb, 7424e9f, current `services/api/src/index.js` (943 lines), `src/auth.js`, `migrations/0006_profiles_categories.sql`, `wrangler.jsonc`, `apps/mobile/src/app/edit-profile.tsx` (image resize).
+
+## R2.1 What was fixed from round 1
+
+| Round 1 item | Status | Evidence |
+|---|---|---|
+| S1 Top gameable by guest ids | Fixed | Top counts only `is_guest = 0` views (`index.js` 191 to 194); seconds capped at video length plus 1 s (786 to 787). |
+| S4 more than 100 bound params | Fixed | `json_each(?)` (205). |
+| S2 one "minor" report limits a profile | Partly fixed | Now needs 2 distinct reporters in 7 days (817 to 821). See R2.3 B5. |
+| S3 no rate limits, S8 no body cap | Partly fixed | `WRITE_LIMIT` 60 per minute per IP and 16 KB cap on `/v1` writes (37 to 46). See R2.3 B6. |
+| S6 `exp://` in production | Fixed | `auth.js` 7 to 8. |
+| S7 RevenueCat webhook | Fixed | Removed (847 to 848). The file header comment on line 3 still mentions RevenueCat; cosmetic. |
+| Viewer state after restart | Fixed | `GET /v1/me/state` (725 to 745), scoped to the session profile, limit 500 per list. |
+| Category taxonomy and CHECK rebuild | Fixed | 0006 rebuilds `creator_details` and `profile_links` without enum CHECKs; `CATEGORIES` and `KIND_BY_CATEGORY` in the API (11 to 12). |
+| Profile edit, links, media, studio, scout profile | Built | 437 to 622. |
+| Call resolution job | Built | `resolveCalls` (882 to 916). |
+
+Security check of the new routes: every new write uses `requireProfile` with the right type (`/v1/me/links` creator, `/v1/me/studio` creator, `/v1/me/scout` scout, `/v1/me/media` any profile). All SQL is bound and scoped to `v.profile.id` or `v.user.id`; ids never come from the body. The `${kind}` column names in `/v1/me/media` come from a fixed whitelist, not user input. `/media/*` only serves keys that match a strict regex, with `nosniff`. **No IDOR and no SQL injection found.** `resolveCalls` is idempotent (only `outcome = 'pending'`), each call is one atomic batch, and the level formula is correct (`scout_score` on the right side of the UPDATE is the old value).
+
+## R2.2 Scores
+
+| # | Area | R1 | R2 | Evidence |
+|---|---|---|---|---|
+| 1 | Retention | 5 | 7 | State, Today's Drop, results after 7 days and the scout profile give real reasons to come back. But results only arrive if the daily cron runs, and the workers.dev subdomain is still listed as not enabled (`docs/02` line 38). At low traffic most calls will also resolve as "void" (10 later calls rule). |
+| 2 | Session time | 6 | 8 | 7 promo Drop, then the endless fair rotation, plus Saved, Following, open calls and studio stats give enough surfaces per visit. |
+| 3 | Originality | 7 | 8 | Calls that resolve, an early multiplier, "Called it" and a daily Drop are clearly our own mechanic, not a feed clone. |
+| 4 | Trademark and trade dress | 8 | 8 | "Today's Drop", "Team picks" and "Calls" are our own words; "For you" is gone; no third party marks in routes or data. |
+| 5 | Backend completeness and platform safety | 4 | 7 | Big step and no IDOR, but the cron is unverified, the Drop can change in the middle of a day, links can get around moderation, and media has no content check before R2 goes on. |
+
+## R2.3 What still keeps a score below 8
+
+### P0 (before App Store submission), smallest first
+
+| # | What | Where | Why | Done when |
+|---|---|---|---|---|
+| B1 | **Make the Drop stable for the whole day.** Today `rnd()` runs in list order (`live_at desc`), so one new live promo shifts every random number and the whole Drop changes in the middle of the day. A scout who made 3 of 7 calls sees a different set. Rank by a per promo hash instead: `score = hash(day + ":" + lang + ":" + promo.id)`. Or store the first result of the day in a small `drops(day, lang, promo_ids)` table with `insert or ignore`. | `index.js` 233 to 236 | Breaks "you made N of 7 calls" and the daily ritual. | Add a promo with `live_at = now`, call `/v1/drop` again: same 7 ids. |
+| B2 | **Links cannot get around moderation.** `PUT /v1/me/links` deletes all rows and inserts them again as `safe`, so a link a moderator set to `blocked` comes back on the next save. Keep a blocked list (canonical URL and host, global and per profile, for example `link_scans.verdict = 'blocked'`) and refuse those links. Keep the status of links that did not change. | `index.js` 499 to 518 | Malware or scam links are the top store and legal risk for a link-out product. | Block a link in D1, save the same link again from the app: refused with a clear message. |
+| B3 | **Harden "minor" reports.** Count only reporters who have a profile at least 7 days old (today a signed in user with no profile counts), and never auto limit `founder_owned` or verified profiles (moderator only). Two free Apple or Google accounts can still hide any creator today. | `index.js` 803 to 821 | Abuse lever against creators, including the founder's 3. | Two fresh accounts report `haulingempire` as "minor": the status stays `active` and 2 priority 1 reports wait in the queue. |
+| B4 | **Media guard before the founder turns on R2.** Reject when `Content-Length` is missing or above the limit before calling `arrayBuffer()`. Today a 100 MB body is read into memory first. Check magic bytes (JPEG `FFD8FF`, PNG `89504E47`, WebP `RIFF....WEBP`) instead of trusting the Content-Type header, so `api.promovote.com` cannot host any file type under our domain (this hurts our Safe Browsing reputation). The app re-encodes with `manipulateAsync`, which drops EXIF, but a modified client can skip that. Reject JPEGs that have an APP1 Exif segment, or strip it. | `index.js` 527 to 536 | The upload returns 503 today, so it is safe now. This must ship before or together with the R2 switch. | A `.zip` sent as `image/png` gets 400; a JPEG with GPS EXIF gets 400 or comes back stripped. |
+| B5 | **Cron live and visible.** The founder opens Workers and Pages once (creates the workers.dev subdomain), then we redeploy and confirm the trigger in the dashboard. Add a `job_runs` row per run, plus `lastDailyRun` and `callsResolved` on `/health`. Also fix the `data_requests` cascade, which still deletes the audit row it just marked done (0006 did not change it). | `wrangler.jsonc` 18, `index.js` 918 to 943, migration 0007 | Every call ticket says "Result Oct 14". If the cron does not run, no result ever arrives and the core loop breaks. Apple's 30 day deletion promise also depends on it. | `/health` shows a run in the last 26 h; a test call backdated 8 days is resolved after the next run. |
+
+### P1 (before public launch)
+
+| # | What | Where | Why |
+|---|---|---|---|
+| B6 | Rate limit key = profile id when signed in, IP only for guests; raise the per IP limit (for example 300 per minute). Mobile carriers put thousands of users behind one IP (CGNAT), so 60 per minute per IP will give false 429s on views and calls at launch. Also refuse writes without `Content-Length` (chunked bodies skip the 16 KB check). | `index.js` 37 to 46 | False errors look like "buttons do nothing" again. |
+| B7 | Fewer "void" results at low traffic: if a call has fewer than 10 later calls at day 7, keep it pending and check daily up to day 28, then void. Skip calls from profiles that are not `active`. Loop the job until no due calls are left (today the cap is 500 per day, so a backlog can build up). Show void as "Not enough scouts yet, no points lost". | `index.js` 882 to 916 | A first week full of "void" tickets kills the reason to come back. |
+| B8 | Website link scan (Web Risk or Cloudflare URL Scanner) with `pending` until clean, plus a daily rescan. Known platform hosts stay instant. | `index.js` 487 to 518, `daily()` | Today any https site is public at once. |
+| B9 | Display name rules: block "PromoVote", "official", "verified", check mark lookalikes, zero width chars, and names whose confusable skeleton matches a verified creator. | `index.js` 403 to 404, 443 to 447 | Today anyone can be "Hauling Empire" with a near identical handle. |
+| B10 | Image moderation (Workers AI check, grey zone to the queue) and media served from an R2 custom domain or through `caches.default`. Today each avatar view is one Worker request and counts against the free 100k per day. | `index.js` 527 to 559 | Store guideline 1.2 and free tier headroom. |
+| B11 | Device attestation and vote weights before Charts open. Resolution grades a call by the later crowd, so sock accounts that vote after you can make your own early calls "right" and farm x3 "Called it". | new `devices` routes, `calls.weight` | Leaderboard and Scout Score trust. |
+| B12 | Housekeeping before uploads: `promos.cta_kind` still has the old CHECK (no `steam`, `itch`, `watch_live`, which `CTA_KINDS` already allows), so it needs a rebuild in the upload migration. `weekly_upload_limit` is stale (the decision is monthly). The follow count update is still not batched. The line 3 comment still says RevenueCat. | `0002_core.sql` 152, `0006`, `index.js` 3, 665 to 666 | Prevents surprise 500s when uploads open. |
+
+Not repeated here because they are known and planned (`brief-r2.md`): video upload, perks, stories, Apple token revoke.
+
+## R2.4 Path to 8
+
+* **Retention 7 to 8:** B5 (the cron really runs and is visible) and B7 (fewer voids). Then the "Result in 7 days" promise actually comes true.
+* **Backend completeness and safety 7 to 8:** B1 to B5. Each is under half a day; all five together take about 1.5 working days.
+
+Legal notes in this report are not legal advice.

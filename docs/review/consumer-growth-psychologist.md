@@ -180,3 +180,87 @@ Honest note: Retention reaches 8 only when the reveal loop runs with real data (
 * Vote split on perk versus non perk promos (integrity check).
 
 Legal notes in this report are not legal advice.
+
+---
+
+# Round 2 (2026-10-07)
+
+Read: `docs/review/brief-r2.md`, screenshots `docs/review/screens-r2/01, 05, 13, 14` and others, `apps/mobile/src/app/(tabs)/index.tsx`, `apps/mobile/src/ui/PromoReel.tsx`, `apps/mobile/src/app/(tabs)/me.tsx`, `apps/mobile/src/lib/i18n.ts`, `services/api/src/index.js` (`/v1/drop`, `/v1/calls`, `callInfo`, `/v1/me/state`, `/v1/me/scout`, `resolveCalls`, `daily`).
+
+## R2.1 What got much better
+
+* **The loop now exists on screen.** Today's Drop with 7 progress segments, a finite end card, and Keep watching after it (screen 05). This is the BeReal / Product Hunt daily ritual we wanted, and it turns a small catalog into a feature.
+* **The call ticket is the best idea in the app.** "Called: Will blow up. Result Oct 14. Scout #1" (screen 13) gives a commitment, a date to come back and an early status, all in one bar. The crowd split appears only after the scout calls, so it does not drive herding. This is PromoVote's own pattern, not TikTok's.
+* **Every tap answers.** Gate sheet, haptics (`PromoReel.tsx` line 29 and 83), state loaded from `/v1/me/state`, and the 409 returns the existing call. The founder's "buttons just sit there" problem is fixed in code.
+* **The profile is no longer empty.** Scout Score card with "Reputation only. No cash value.", level, Open calls with result dates, Saved, Following (screen 14). Open calls are exactly the "open loops" metric from round 1.
+* **Calls resolve.** `resolveCalls` exists, wrong calls cost nothing, "Not for me" can be right too, there is a beta threshold of 10 later calls, and the early multiplier rewards being first. Every change goes into `score_events`.
+* **Identity and trade dress.** "For you" and the empty Top tab are gone; the tabs are Today's Drop, New, Team picks, and the creator circles are rounded squares.
+
+## R2.2 Scores
+
+| # | Area | R1 | R2 | Evidence |
+|---|---|---|---|---|
+| 1 | Retention | 3 | **6** | The drop, the ticket date and Open calls give real reasons to come back, but the result is never shown when it lands, there is no reminder, and the drop repeats already called promos from day 2 on. |
+| 2 | Session time | 4 | **7** | A 7 promo drop plus Keep watching fits the realistic 3 to 5 minute target; the limit now is the catalog of about 18 promos, not the design. |
+| 3 | Originality | 5 | **8** | The bottom call bar that turns into a dated ticket, plus the finite daily drop and Scout Score, read as their own product, not as Reels or Product Hunt. |
+| 4 | Trademark and trade dress safety | 6 | **8** | "For you" is gone, the right rail now has only Save, Share and More, and the circles are rounded squares instead of story rings (not legal advice). |
+| 5 | Engagement loop and habit design | 2 | **6** | Action and investment are now strong, but the trigger (reminder) is missing, the variable reward at reveal is invisible, and the scoring rule can be gamed by calling "Will blow up" on everything. |
+
+## R2.3 What still keeps scores below 8 (smallest change first)
+
+### P0 (before App Store submission)
+
+**1. Guest end card says "You made 0 of 7 calls".**
+Where: `apps/mobile/src/app/(tabs)/index.tsx` `EndCard` (around line 175). For guests and for 0 calls, show "Sign in to make your calls. Results come in 7 days." with the existing gate sheet, instead of a 0 score that feels like failure. Worked when: end card to sign in tap rate is measurable and above 10% for guests.
+
+**2. Make sure the resolver actually runs, and runs on time.**
+Where: `services/api/src/index.js` `daily()` and `wrangler.toml` cron. CLAUDE.md still lists "open Workers dashboard once (workers.dev subdomain needed for the daily cron)" as a pending founder action. If the cron never fires, no call ever resolves and the ticket date becomes a broken promise. Also run `resolveCalls` hourly (it is cheap), so "Result Oct 14" is true on Oct 14 in every time zone, and add `lastResolveRun` to `/health`. Worked when: `/health` shows a run in the last 2 hours; first beta calls resolve on their date.
+
+**3. Show the result where the promise was made (the opening reward).**
+Today `outcome` comes back in `/v1/me/state` but nothing displays it. The ticket keeps saying "Result Oct 14" after Oct 14, and the profile only increments a counter.
+* Ticket (`apps/mobile/src/ui/PromoReel.tsx` around lines 185 to 195): when `outcome` is `correct` show "Right. +30 (3x early)"; when `incorrect` show "Not this time. No points lost."; when `void` show "Not enough scouts called it. No result."
+* Profile (`apps/mobile/src/app/(tabs)/me.tsx`): a "New results" card at the top for calls resolved since the last profile visit (keep the last seen time on the device), with a Share button, and a "Results" tab next to Open calls (spec 3.3.9 "Called it" list).
+* API (`/v1/me/scout`): add `recent` = last 20 resolved calls with `outcome`, `score_delta`, `multiplier`, `resolved_at`. Also return `accuracy` for the owner (provisional before 10 results).
+* Why: the reveal is the variable reward that drives D7. Right now day 7 is silent.
+* Worked when: at least 50% of scouts with a new result open the card; D7 of scouts with at least one result is clearly higher than of those without.
+
+**4. Close the "always Will blow up" exploit.**
+In `resolveCalls` (lines 882 to 899) a wrong call costs 0, a right "Will blow up" pays 10 to 30 and a right "Not for me" pays only 5, and "right" means at least 50% of later calls agree. The best strategy is to call "Will blow up" on everything. That inflates Scout Score into meaninglessness and, worse, biases the scout verdict that creators see in the studio and later pay for in the Trailer Test.
+Smallest fix that keeps the decided "wrong never costs points" rule:
+* Score eligible calls only for promos in that day's drop, max 7 per day (set `calls.score_eligible` in `POST /v1/calls`; `resolveCalls` gives points only when it is 1). Calls in New, Team picks and Keep watching still count for the crowd and the creator, just not for score.
+* Make "Will blow up" right only when the later share beats the typical promo, not a flat 50%: right when the later share is at least `max(0.5, median later share of calls resolved in the last 14 days)`.
+* Show owner accuracy on the profile (from item 3), so spraying "Will blow up" visibly lowers your own number.
+Worked when: across scouts the share of "Will blow up" calls stays under about 70%; the median Scout Score does not grow faster than the share of correct calls.
+
+**5. A personal drop that never repeats a called promo.**
+Where: `services/api/src/index.js` `/v1/drop` (lines 229 to 252) is the same 7 for every viewer per language per day with public cache. With about 18 promos, a daily scout sees mostly already called tickets by day 2 or 3, so the D1 return lands on nothing to do.
+* For signed in scouts, drop promos they already called and use `Cache-Control: private`. For guests, the app filters promos it has already shown in the last 3 drops (stored on the device).
+* If fewer than 7 fresh promos are left, show an honest short drop ("4 new today") instead of padding with repeats. Until weekly new promos pass about 35, consider `DROP_SIZE = 5`.
+* When the scout reopens the app, start the drop at the first promo they have not called yet (`index.tsx` sets `setActive(0)` on every load).
+Worked when: no promo the scout already called appears in their drop; drop completion on day 2 is not lower than on day 1.
+
+**6. One daily local reminder (still listed as not done).**
+Same as round 1 item 5: after the first finished drop, a soft prompt "Get tomorrow's drop at 7 pm?", then the iOS permission dialog, then a local `expo-notifications` schedule. Allowed copy only: "Today's drop is ready." Plus, once results exist, the same notification can say "2 of your calls have results" on that day (local, scheduled from the known `resolvesAt` dates, no server push needed). Where: new `apps/mobile/src/lib/reminders.ts`, `EndCard`, settings on Profile. Worked when: opt in rate of 45% or more among scouts who saw the prompt; D1 of opted in scouts at least 10 points higher.
+
+### P1 (before public launch)
+
+7. **First level up should come fast.** Linear `level * 100` means Level 2 needs several right calls, and screen 14 shows an empty bar. Put Level 2 at 30 points (one right early call) and keep the gaps growing after that (spec 3.3.2). Where: `resolveCalls` level formula, `/v1/me/scout` `nextLevelAt`.
+8. **Weekly forgiving streak** (3 drops in a week, automatic freeze, no loss copy). The columns already exist in `scout_stats`.
+9. **Monday ritual**: charts in Explore plus a top scouts list and a share card, once the progress bar fills.
+10. **Share carries the call**: "I called Will blow up on X. Result Oct 14." with `&by=handle`, and an "I called it" card after a right result.
+11. **Content supply**: the plan of 12+ creators and 60 English promos is the ceiling for both retention and session time. A daily scout needs about 35 to 50 fresh promos per week.
+12. **Perks as surprise**, never tied to calls, follows or reviews.
+
+## R2.4 Expected scores after the P0 list
+
+| Area | R2 now | After P0 |
+|---|---|---|
+| Retention | 6 | 8 (provisional until real D7 is measured) |
+| Session time | 7 | 8 once the personal drop and more content remove repeats |
+| Originality | 8 | 8 |
+| Trademark and trade dress | 8 | 8 |
+| Engagement loop and habit design | 6 | 8 |
+
+Items 1, 2 and 5 are small. Items 3 and 4 decide whether Scout Score means something. Item 6 is the only external trigger the app will have at launch.
+
+Legal notes in this report are not legal advice.

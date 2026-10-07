@@ -151,3 +151,76 @@ P1, before public launch:
 
 P2, later:
 10. Player pool for active plus or minus 1, pre blurred posters, Cloudflare Stream HLS, remove the RevenueCat webhook, server side upload limits with Stream duration checks.
+
+## Round 2 (2026-10-07)
+
+Read: commits 1fd6aba, dd9bdee, 71a08cb, 7424e9f (diffs and current code), `lib/gate.tsx`, `lib/viewer-state.ts`, `ui/PromoReel.tsx`, `ui/Sheet.tsx`, `app/sign-in.tsx`, `app/(tabs)/index.tsx`, `app/(tabs)/me.tsx`, `app/creator/[handle].tsx`, API middleware, `/v1/me/media`, `/v1/me/state`, screenshots `screens-r2/01..19`.
+`npx tsc --noEmit`: clean. `npx expo lint`: clean.
+
+### Round 1 root causes: status in code
+
+| Round 1 finding | Status | Where |
+|---|---|---|
+| Vote and Save silently `router.push('/me')` for non scouts | **Fixed.** `asScout()` opens a sheet with the reason (guest, finish profile, creator) and replays the queued action after sign in and onboarding. | `lib/gate.tsx:19-55`, `ui/PromoReel.tsx:74-99` |
+| Errors swallowed, 409 invisible, state lost on unmount | **Fixed.** Optimistic state with rollback and toast, 409 adopts the server call, state loaded from `GET /v1/me/state` into a shared store. | `ui/PromoReel.tsx:80-97`, `lib/viewer-state.ts` |
+| `router.replace('/me')` out of the sign in modal (duplicate tabs, Share broken) | **Fixed.** `router.dismiss()` or `navigate('/')`. | `app/sign-in.tsx:29-32` |
+| Share swallowed errors, no `url` on iOS | **Fixed.** | `ui/PromoReel.tsx:100-104` |
+| `timeUpdate` never fired | **Fixed.** `timeUpdateEventInterval = 0.5`. | `ui/PromoReel.tsx:42` |
+| `crypto.randomUUID` on Hermes | **Fixed.** `expo-crypto`. | `lib/api.ts:115-117` |
+| Video plays behind other tabs | **Fixed.** `useFocusEffect` gates `active`. | `app/(tabs)/index.tsx:45-46, 124` |
+| CTA under the iOS tab bar | **Fixed in intent.** `bottomInset = 49 + insets.bottom`. Needs a device check (see P0 2). | `app/(tabs)/index.tsx:24, 49` |
+| `removeClippedSubviews` | **Removed.** | `app/(tabs)/index.tsx` |
+| DOB overflow | **Fixed.** Native date picker with max date 18 years ago; web keeps fields. | `app/(tabs)/me.tsx` |
+| Delete account swallowed errors | **Fixed** (per brief, error and 30 day notice). | `app/(tabs)/me.tsx` |
+| 1.2 Report and Block, legal links | **Fixed.** More menu on reel and creator page, LegalLinks on Profile, tappable Terms and Privacy on sign in. | `ui/PromoReel.tsx:214-221`, `ui/LegalLinks.tsx` |
+| RevenueCat webhook | **Removed.** | API |
+| `GestureHandlerRootView` | Not done (no gestures yet, fine until swipe ships). | `app/_layout.tsx` |
+
+### New risk found: modal to modal handoff on iOS (same "tap does nothing" symptom)
+
+`ui/Sheet.tsx` is a React Native `Modal`. On iOS a `Modal` is a presented view controller, and UIKit refuses to present a second controller while the first is still animating out ("Attempt to present ... while a presentation is in progress"), silently. Three places do exactly that in one tick:
+
+1. `lib/gate.tsx:60`: "Sign in" does `setReason(null); router.push('/sign-in')`. The gate Modal starts dismissing and the native stack `sign-in` modal is presented at the same moment. Likely result on iPhone: the sheet closes and the sign in screen never appears. This is the founder's original complaint coming back in a new place.
+2. `app/(tabs)/me.tsx:61`: Settings sheet "Edit profile" does `setSettings(false); router.push('/edit-profile')` (also a modal). Same pattern.
+3. `ui/PromoReel.tsx:214-221` and `app/creator/[handle].tsx:109-120`: Report is three separate `Sheet` Modals; tapping Report hides Modal A and shows Modal B in the same render. On iOS B often does not present, so the reason list never shows. That breaks the 1.2 Report flow during App Review.
+
+Web screenshots cannot show this (02 and 03 look right) because the web Modal is a div.
+
+Fix, smallest first:
+* Sheet: keep one `Modal` per owner and swap its content (`menu` to `report` to `done`) while `visible` stays true. One component change in `PromoReel` and `creator/[handle]`.
+* For sheet to route handoffs, navigate after the Modal is gone: add `onDismiss` to `Sheet` (RN `Modal.onDismiss`, iOS) and run the pending `router.push` there, or as a fallback `setTimeout(..., 350)`.
+* Verify on TestFlight: as a guest tap Will blow up, then Sign in: the sign in screen must open. Tap More, Report: the reason list must open. Settings, Edit profile: the editor must open.
+
+### Smaller code notes
+
+* `lib/gate.tsx:16, 38`: until `/v1/me` returns, `current.reason` is `'guest'`, so a signed in user who taps in the first second gets "Sign in to make your call". Treat `loading` as "wait": ignore the tap or queue it without opening a sheet.
+* `lib/gate.tsx:40`: after sign in the onboarding sheet opens via `queueMicrotask` while the sign in modal is still dismissing: same iOS presentation race as above. Open it from `Sheet`/screen focus instead, or delay until `sign-in` has dismissed.
+* `app/(tabs)/index.tsx:24`: `TAB_BAR = 49` is the classic tab bar. Inside native tabs `insets.bottom` may already include the tab bar on some iOS versions, and the iOS 26 floating bar is taller. Check on device that the call bar sits just above the bar with no big gap; if the gap is large use `insets.bottom` alone.
+* API write limit 60 per minute per IP (`services/api/src/index.js:41`) also counts view and click events. Behind a shared IP (office Wi Fi, carrier NAT, Apple's review network) votes can hit 429. Exempt `/v1/events/*` or key signed in users by user id.
+* `app/(tabs)/me.tsx` handle suggestion can start with a digit ("2pac"), which the server rejects; strip leading digits.
+* New native modules (`@react-native-community/datetimepicker`, `expo-haptics`, `expo-crypto`, `expo-image-picker`, `expo-image-manipulator`) need build 5; an OTA update to build 4 would crash. Do not ship these via `eas update` to old builds.
+
+### Scores, round 2
+
+| # | Area | R1 | R2 | Evidence |
+|---|------|----|----|----------|
+| 1 | Retention | 4 | 6 | Today's Drop, call tickets with a result date and resolution 7 days later give a reason to come back, but there is no reminder notification or streak yet and the first payoff is a week away. |
+| 2 | Session time | 5 | 7 | Bounded 7 promo drop with progress and end card, then Keep watching; video pauses off screen; still no horizontal navigation and only a few creators. |
+| 3 | Originality | 5 | 8 | Bottom call bar that becomes a ticket, daily drop, rounded square creator tiles and Scout Score make it its own product. |
+| 4 | Trademark and trade dress | 7 | 8 | "For you" gone, vote moved off the TikTok rail, no story rings; the remaining Save, Share, More rail is generic. |
+| 5 | Engineering and App Store readiness | 4 | 7 | Every round 1 root cause is fixed and type check and lint are clean, but the iOS modal handoff can still make Sign in and Report do nothing on a real device, and nothing has been verified on build 5 yet. |
+
+### Remaining blockers to 8 (smallest change first)
+
+P0, before submission:
+1. Single Modal with swapped content for the promo and creator menus (`ui/PromoReel.tsx:214-221`, `app/creator/[handle].tsx:109-120`). Raises engineering; protects 1.2.
+2. Navigate only after the gate or settings Modal is dismissed (`lib/gate.tsx:60, 64`, `app/(tabs)/me.tsx:61`, `ui/Sheet.tsx` add `onDismiss`). Raises engineering.
+3. Gate waits for `useMe` loading (`lib/gate.tsx:38`). Raises engineering.
+4. Device pass on build 5 with three accounts (guest, new Apple id, creator, plus the review account): every rail and call bar button, Report, Block, Sign in from the gate, Edit profile, call bar position above the tab bar. Record it in `store/status.md`. Engineering goes to 8 when this passes.
+
+P1, before public launch:
+5. Exempt `/v1/events/*` from the IP write limit or key by user (`services/api/src/index.js:37-45`).
+6. Daily local reminder for the new drop (`expo-notifications`, local schedule only, ask permission after the first completed drop) and a forgiving weekly streak. Raises retention to 8.
+7. Early feedback before day 7: show the crowd split on the ticket as soon as 5 calls exist (already coded) and a "your calls" result inbox on Profile. Raises retention.
+8. Horizontal pager between Today's Drop, New and Team picks plus swipe to the same creator's other promos (`react-native-pager-view`, `GestureHandlerRootView` in `app/_layout.tsx`). Raises session time to 8.
+9. Enable R2 (`services/api/wrangler.jsonc:14-15`) so logo and banner upload work instead of "not available yet"; then video upload.

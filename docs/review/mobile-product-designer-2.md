@@ -229,3 +229,53 @@ Proposal: **Drops row**, collapsed by default.
 | A11y, platform, motion, gestures | 3 | 7 | 9 |
 
 Note: legal remarks above (trade dress, Google branding, Apple guidelines) are design observations, not legal advice.
+
+## Round 2 (2026-10-07)
+
+Judged from `docs/review/screens-r2/01..19`, the commits 1fd6aba, dd9bdee, 71a08cb, 7424e9f and the current code in `apps/mobile/src` (PromoReel, Sheet, gate, index, explore, creator, me, edit-profile, app.json). Angle unchanged: accessibility, touch targets, motion and haptics, gestures, IA.
+
+### Scores
+
+| # | Area | R1 | R2 | Evidence (one sentence) |
+|---|------|----|----|-------------------------|
+| 1 | Retention | 4 | 7 | Today's Drop is a finite daily ritual with progress segments and an end card ("You made N of 7 calls, results in 7 days"), and the ticket plus Open calls on the Scout profile give a dated reason to return; there is still no reminder and no result reveal moment to pull people back on day 7. |
+| 2 | Session time | 5 | 7 | "Keep watching" after the drop, the CTA and the expanded details keep people in, but a creator's grid tile still jumps to the Feed tab (`creator/[handle].tsx` line 102) and there is no way to go deeper into one creator from the player. |
+| 3 | Originality | 5 | 8 | The bottom call bar that turns into a "Called: Will blow up. Result Oct 14. Scout #1" ticket, the double chevron, and the daily drop with an end card are PromoVote's own; nothing in TikTok, Reels or Product Hunt looks or works like this. |
+| 4 | Trademark and trade dress | 6 | 8 | "For you" is gone, creator circles are rounded squares with no story ring, the Google button uses the official G asset, and the vote is no longer on a TikTok style rail; the remaining right rail (Save, Share, More) is generic. |
+| 5 | My domain (a11y, platform, motion, gestures) | 3 | 6 | Every tap now answers (haptics, pressed scale, rail ripple, gate sheets, toasts with VoiceOver announcements), the call buttons are 52 pt in the thumb zone and DOB uses a native picker on device; still open: English only labels, no reel summary or custom actions, no Dynamic Type caps, 40 pt buttons on creator pages, missing top scrim (screen 06), no call animation, predictive back off, no horizontal gesture. |
+
+### What got better (verified)
+
+* Founder issue 3 is solved in code: `gate.tsx` keeps the tapped action and runs it after sign in and onboarding; creators get an explanation instead of silence. Haptics: light impact on every tap, success notification after the server confirms a call (`PromoReel.tsx` lines 29, 83).
+* Call bar (screens 01, 13): two 52 pt buttons at the bottom, lime "Will blow up" on the right under the thumb, "Not for me" outlined on the left. This is the best change of the round for reach and identity.
+* Rail labels sit in a dark pill (screen 01), readable on any frame. CTA is a white 44 pt button. Creator row has `minHeight: 44`.
+* Report and Block are 2 taps from any promo and creator page (screen 03), sheets have `accessibilityViewIsModal` and titled headers.
+* DOB is a native date picker on iOS and Android (`me.tsx` line 339); the web build keeps three fields, which now fit (screen 12).
+* Top removed from the Feed, Charts live in Explore with honest progress (screen 07). Explore circles lost the meaningless rings. Delete account moved behind the profile menu.
+
+### Still holding my domain below 8 (smallest change first)
+
+**P0 (before App Store submission)**
+
+1. **Hard coded English accessibility labels.** `ui/PromoReel.tsx` line 134 (`'Play' / 'Pause'`), `app/(tabs)/index.tsx` sound button (`'Sound on' / 'Sound off'`), `app/creator/[handle].tsx` line 59 (`'Back'`), `ui/Sheet.tsx` line 14 (`'Close'`), `me.tsx` web DOB fields (`'Day' / 'Month' / 'Year'`). Move to `i18n.ts`. Done when: VoiceOver in Turkish reads no English.
+2. **40 pt buttons on creator pages.** `creator/[handle].tsx` styles `back` and `round` (lines 132, 134): 40 to 44. Done when: Accessibility Inspector shows no small target warning on screens 08 and 19.
+3. **Top scrim behind the feed header.** Screen 06: "Picked by the PromoVote team. Never paid. The founder makes some of these promos." is printed on top of the video's own title and is unreadable. Add a gradient view (black 60 percent to 0, about 140 pt) behind `styles.top` in `index.tsx`, and set inactive `tabText` to 80 percent white. Done when: screen 06 re shot has a legible note and tabs.
+4. **Bottom scrim must cover the info block.** Screen 06 again: the creator name, "Made by the PromoVote founder" and title are mixed with the promo's own burned in tab bar. The shade is 40 percent tall with its solid stop at 25 percent, but the text block starts about 35 percent from the bottom (call bar plus info). Change `shade` in `PromoReel.tsx` line 243 to height 52 percent with the 0.95 stop at 40 percent. Done when: Poleris promos (which all end with an app tab bar) show readable creator and title text.
+5. **Dynamic Type caps on overlays.** No `maxFontSizeMultiplier` anywhere. At the largest text sizes "Will blow up" and "Not for me" overflow the 52 pt buttons and the title covers the video. Add `maxFontSizeMultiplier={1.35}` to call bar texts, ticket texts, rail labels, reel title, desc, "more", feed tabs and the drop progress. Leave profile, studio, onboarding and sign in fully scalable. Done when: at AX5 on an iPhone SE the call bar stays one line per button and the video is still visible.
+6. **One summary element per reel with custom actions.** Make the reel container `accessible` with a label ("Hauling Empire. Hauling Empire on a bigger screen. Promo 1 of 7.") and `accessibilityActions` for Will blow up, Not for me, Save, Share, More, Open creator, handled in `onAccessibilityAction`. On page change, `AccessibilityInfo.setAccessibilityFocus` on the new reel. Done when: a VoiceOver user can make a call from the Actions rotor without hunting for the button.
+
+**P1 (before public launch)**
+
+7. **Android feedback parity.** `android_ripple` exists only on rail buttons; add it to the call buttons (`PromoReel.tsx` lines 199, 203), `Sheet` actions, `Pill`, `Button`, the creator round buttons and Explore tiles. Done when: every pressable on a Pixel shows a ripple.
+8. **Hashtag targets.** `PromoReel.tsx` `hashtag` has `paddingVertical: 6` (about 30 pt). Use 11, or `hitSlop={8}`. Same for Explore hashtag chips.
+9. **Call moment motion.** The bar swaps to the ticket instantly. Use Reanimated (installed) `FadeInDown.springify()` on the ticket and a one time scale pulse on the chevron icon, skipped when `useReducedMotion()` is true. Small code, big "it worked" signal. Done when: the swap is visible in a 60 fps screen recording and absent with Reduce Motion on.
+10. **Creator only player.** Grid tiles on `creator/[handle].tsx` line 102 push `/` and switch the user to the Feed tab. Open a stack screen that plays only this creator's promos (vertical), with iOS edge back intact. This is also where the planned "swipe left for the same creator" can start, with Android 24 dp edge exclusions as in section 5.3.
+11. **Predictive back.** `app.json` `predictiveBackGestureEnabled: false`. Turn on and test the creator page, edit profile and sign in modal before targeting API 36.
+12. **Empty creator page copy.** Screen 19 says "Nothing matches yet." under Promos (`creator/[handle].tsx` line 100 reuses the search string). Use "No promos yet" for visitors and "Email your first trailer" for the owner.
+13. **Avatar fallback.** Screen 07: "Test Studio" and "Pixel Fox" circles in Explore render empty. When `uri` fails, `Avatar` should fall back to the mono letter (`expo-image` `onError`).
+14. **Brand fonts.** Load Bricolage Grotesque for titles, Scout Score and the ticket (`expo-font` is installed; files in `web/landing/public/fonts/`).
+15. **Universal links.** Still no `apple-app-site-association` or `assetlinks.json` route in `web/landing/src/index.js`, so shared promo links open the website, not the app.
+
+### Expected after the P0 list
+
+My domain moves to 8 after items 1 to 6 (all small, about one day). Retention and Session time reach 8 with the planned daily reminder and result reveal (retention) and item 10 plus the planned same creator swipe (session time); those belong to the other experts' lists too, so I do not repeat them as my blockers.

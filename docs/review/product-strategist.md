@@ -168,3 +168,96 @@ Ordered by funnel impact. Items marked (T) are owned in detail by the teammate's
 | Activation funnel | 2 | 8 | 9 |
 
 Honest note: a funnel score is a forecast until the TestFlight cohort numbers from section 3.2 exist. If after two weeks of real reveals D7 is under 10%, the problem is the content (catalog size and quality), not the funnel, and the next move is more creators, not more features.
+
+---
+
+# Round 2 (2026-10-07)
+
+Read: `docs/review/brief-r2.md`, screens `docs/review/screens-r2/01..19`, `apps/mobile/src/lib/gate.tsx`, `app/(tabs)/index.tsx`, `app/(tabs)/me.tsx`, `app/(tabs)/explore.tsx`, `app/sign-in.tsx`, `ui/PromoReel.tsx`, `services/api/src/index.js` (`/v1/drop`, `/v1/charts`, `resolveCalls`, `daily`).
+
+## R2.1 Verdict
+
+Big step. The scout funnel now has a floor: a guest tap opens an honest sheet (screen 02), the call runs after sign in, the call bar turns into a ticket with a result date and scout rank (screen 13), the drop is finite with an end card (screen 05), and the scout profile shows Score, open calls, Saved and Following (screen 14). The creator side reaches a real studio with a checklist and stats (screens 17, 18). What still stops 8 is the **second day and the seventh day**: tomorrow's drop is mostly the same promos, the 7 day reveal will be "void" for almost every call at beta scale, nothing reminds the user to come back, and we still cannot measure any of it.
+
+## R2.2 Scores
+
+| # | Area | R1 | R2 | Evidence |
+|---|---|---|---|---|
+| 1 | Retention | 3 | **6** | Loop exists end to end (drop, ticket, open calls, `resolveCalls` cron), but with `RESOLVE_MIN_LATER = 10` later calls per promo almost every beta call resolves `void`, there is no reveal card or resolved history in `ScoutHome`, no reminder, and `/v1/drop` reshuffles the same small pool so day 2 shows already called promos. |
+| 2 | Session time | 4 | **7** | Finite drop with progress segments, end card, "Keep watching" and Explore give a clear 3 to 5 minute session; the cap is content (3 real creators, about 18 promos), which the brief lists as planned. |
+| 3 | Originality | 5 | **8** | The bottom call bar that becomes a ticket ("Called: Will blow up. Result Oct 14. Scout #1"), the daily drop with an end card and the Scout Score card are clearly PromoVote, not a short video clone. |
+| 4 | Trademark and trade dress | 6 | **8** | "For you" and the story rings are gone, creator circles are rounded squares, the right rail is down to Save, Share, More (not legal advice). |
+| 5 | Activation funnel | 2 | **6** | Scout steps S3 to S8 and S11 are fixed and the creator path reaches C7 (stats), but a new scout ends on the Profile tab instead of back on the promo, test creators with no promos appear in Explore (screen 07: "Test Studio", "Pixel Fox"), the drop end card tells a guest "You made 0 of 7 calls" (screen 05), and there are still no funnel events. |
+
+## R2.3 Funnel walk: what is fixed
+
+Scout (section 3.1 of round 1):
+
+| Step | R1 drop point | R2 status |
+|---|---|---|
+| S1 First promo | Random, off niche opener | **Fixed.** `/v1/drop` puts games first (screen 01 opens on Hauling Empire). One time "Tap for sound" hint and coach mark still missing (P1). |
+| S2 Repeats | Infinite loop of 18 promos | **Fixed for day 1** (finite drop). **New issue for day 2**, see B4. |
+| S3 Guest vote | Intent lost | **Fixed.** `asScout()` queues the action, the sheet explains the 7 day result (screen 02). |
+| S4 Sign in | Dropped on Profile | **Fixed** for returning users (`router.dismiss()` in `sign-in.tsx`). New users still go to Profile for onboarding, see B2. |
+| S5 Onboarding | 6 manual inputs | **Mostly fixed.** Two steps, handle suggested from name, native date picker, link preview (screen 12). Name is not prefilled from Apple or Google (`social-sign-in.ts` reads no name), type cards still say "You cannot..." (screen 11). P1. |
+| S6 First call | No payoff | **Fixed.** Ticket, haptic, rank, crowd split after 5 calls, 409 handled, state from `/v1/me/state`. |
+| S7 Creator taps vote | Silent | **Fixed.** "Creators can't vote" sheet. |
+| S8 Save | No Saved list | **Fixed.** Saved tab on profile, toasts. |
+| S9 Follow | Dead action | **Partly.** Following list exists, but nothing tells a scout a followed creator posted. P1. |
+| S10 Session end | No trigger | **Open.** No reminder or push. B6. |
+| S11 Profile | Empty, Delete prominent | **Fixed.** Score card, open calls, Saved, Following; Sign out and Delete moved into the "..." sheet. |
+| S13 Day 7 reveal | No job, no UI | **Job exists, UI does not**, and the threshold makes most calls void. B5. |
+
+Creator (section 4 of round 1):
+
+| Step | R2 status |
+|---|---|
+| C3 Categories | **Fixed.** 7 categories. |
+| C4 Page setup | **Fixed.** Checklist 4/5, logo, banner, bio, links, edit profile (screens 16, 17). Photo upload depends on R2 being enabled by the founder. |
+| C5 First promo | **Concierge** ("Email your trailer"). Acceptable for submission, as I recommended. The message appears twice on the same screen (checklist note and card, screen 18). |
+| C6 Perk | Open (planned). Not a blocker for 8. |
+| C7 Stats | **Fixed in structure.** But a creator with no promo sees a grid of six zeros (screen 18), which reads as "nobody watched". P1. |
+
+## R2.4 Remaining blockers (smallest change first)
+
+### P0 (before App Store submission)
+
+B1. **Hide creators without live promos from Explore.** Where: `/v1/creators` in `services/api/src/index.js`, add `and exists (select 1 from promos pr where pr.creator_profile_id = p.id and pr.status = 'live')`. Why: screen 07 shows "Test Studio" and "Pixel Fox"; tapping leads to an empty page, the worst first impression of the catalog. Works when: every circle in Explore opens a page with at least one promo.
+
+B2. **Send a new scout back to the promo after onboarding.** Where: `lib/gate.tsx`, in the effect that runs `queue.action`, call `router.navigate('/')` before `a()` when the current route is `/me` (or in `me.tsx` `submit()` for scouts when an action is queued). Why: today the call runs in the background while the user stares at their profile; the ticket moment is lost. Works when: in a fresh install test, guest tap, sign in, onboarding ends on the same promo showing the ticket.
+
+B3. **End card variants.** Where: `EndCard` in `app/(tabs)/index.tsx`. Guest: "Sign in to make your calls. Results in 7 days." with Sign in as the primary button. Signed in with 0 calls: "Make a call on any of today's 7 to get a result Oct 14" with "Back to the first one". Why: "You made 0 of 7 calls" (screen 05) scolds the exact users we want to convert. Works when: `gate_guest_t` sign ins from the end card are visible in events (B7).
+
+B4. **Make tomorrow's drop new for this viewer.** Where: `app/(tabs)/index.tsx` load step (client side for now): drop promos the viewer already called (`vs.calls`) or saw in the last 3 days, fill from the pool, and if fewer than 7 fresh promos exist, show the real number ("4 new today") instead of padding with repeats. Change "A new drop lands tomorrow" to only show when the pool has unseen promos. Why: with about 18 promos, `/v1/drop` reshuffles the same pool, so on day 2 a scout opens to tickets they already have. That is a D1 killer. Works when: day 2 drop for a day 1 scout has 0 already called promos.
+
+B5. **Let the reveal happen at beta scale, and show it.** Where: `resolveCalls()` and `ScoutHome` in `me.tsx`.
+* `RESOLVE_MIN_LATER = 10` later calls in 7 days will not be reached for most promos with a few hundred scouts, so nearly every call becomes `void` and the Day 7 aha never fires. For beta, when later calls are under 10, resolve against the promo's later engagement cohort (completion rate, saves and CTA taps from later signed in viewers, top 40% vs bottom 40% of that week's promos, middle stays void). Keep the rule public in Guidelines.
+* Add a "Just resolved" card at the top of `ScoutHome` and a resolved list under Open calls (right, wrong, or "Not enough scouts yet, no points lost" for void).
+* Confirm the cron actually runs: `CLAUDE.md` lists "open Workers dashboard once (workers.dev subdomain needed for the daily cron)" as a pending founder action.
+Works when: at least 50% of calls older than 7 days resolve non void, and "Just resolved" is seen by 60% of D7 users.
+
+B6. **Daily local reminder (already planned).** Where: `expo-notifications` local schedule, asked after the user's 3rd call or on the end card, never on first open. Copy: "Today's drop is ready" and "Your call on X has a result". No loss wording. Why: without a trigger, D1 depends on memory. Works when: opt in 45% or more, and D1 of opted in users is at least 1.5 times the rest.
+
+B7. **Funnel events (unchanged from round 1 P0 item 8).** Where: `app_events` table plus `POST /v1/events/app`, helper in `lib/api.ts`, funnel block on `/admin`. Why: every target in round 1 section 3.2 is unmeasurable today, so no score above 7 on Retention or Funnel can be verified. Works when: the admin shows S1 to S10 for the build 5 TestFlight cohort.
+
+### P1 (before public launch)
+
+* Prefill display name from Apple (first sign in `fullName`) and Google; positive type card copy ("Scout: find hits early and build your Scout Score").
+* Team picks note overlaps the video title (screen 06): give it its own row under the tabs with a solid background, or move it into the reel as a "Team pick" chip.
+* Creator studio before the first promo: replace the six zero tiles with one card "Your numbers start when your first promo goes live" and keep one "Email your trailer" button (remove the duplicate).
+* Charts in Explore: show the list only at 5 or more ranked promos and add thumbnails; a chart of one entry (screen 07) looks like a bug.
+* Following signal: dot on followed creators who posted since last visit (round 1 P2 stories alternative, no rings, no "Stories" name).
+* One time "Tap for sound" hint and 3 step coach mark on the first drop promo.
+* Universal links for `promovote.com/?v=` so shares open the app.
+
+## R2.5 Expected scores
+
+| Area | R1 | R2 | After P0 | After P0 + P1 |
+|---|---|---|---|---|
+| Retention | 3 | 6 | 8 (once B5 shows non void reveals and D7 is measured at 15% or more) | 8 |
+| Session time | 4 | 7 | 7 | 8 (needs the planned 12+ creators and 60 promos) |
+| Originality | 5 | 8 | 8 | 8 |
+| Trademark and trade dress | 6 | 8 | 8 | 8 |
+| Activation funnel | 2 | 6 | 8 | 9 |
+
+Honest note: Session time cannot reach 8 by code alone. With about 18 promos the drop runs out of fresh content in 2 to 3 days. The content plan in the brief (12+ creators, 60 English promos) is the real blocker for that score, and it should run in parallel with B1 to B7.

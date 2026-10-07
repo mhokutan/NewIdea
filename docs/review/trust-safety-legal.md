@@ -209,3 +209,73 @@ Realistic year one: **DIY US only about $1,100**; **attorney assisted US about $
 * [Boost Mobile v Optus "Boost" dispute](https://www.smartcompany.com.au/?p=258996)
 * [Instagram brand gradient](https://about.instagram.com/brand/gradient)
 * [Game press kit usage terms example](https://gtstu.com/indie-game-press-kit/)
+
+---
+
+# Round 2 (2026-10-07)
+
+Inputs: `docs/review/brief-r2.md`, screenshots `docs/review/screens-r2/01..19`, current code in `apps/mobile/src/` (`ui/PromoReel.tsx`, `lib/gate.tsx`, `app/(tabs)/me.tsx`, `app/sign-in.tsx`, `app/creator/[handle].tsx`, `lib/i18n.ts`, `lib/categories.ts`), `services/api/src/index.js`, `web/landing/public/delete-account.html` and the live page https://promovote.com/delete-account, `store/README.md`, `store/status.md`. Still not legal advice.
+
+## R2.1 Scores
+
+| # | Area | R1 | R2 | Evidence (one sentence) |
+|---|---|---|---|---|
+| 1 | Retention | 4 | 6 | Today's Drop plus calls that resolve in 7 days with a Scout Score give a real reason to return, but there is no reminder yet and only 3 real creators. |
+| 2 | Session time | 5 | 6 | The 7 promo drop with an end card and "Keep watching" works, but the pool is too small to keep a long session going. |
+| 3 | Originality | 6 | 8 | "For you" is gone, voting moved to a bottom call bar that becomes a ticket ("Called: Will blow up. Result Oct 14. Scout #1"), and story rings became rounded squares (screens 01, 07, 13). |
+| 4 | Trademark and trade dress safety | 7 | 8 | No TikTok signature wording or rail elements remain, the logo chevron is reused as the call icon, "Open in App Store" replaced Apple's badge text, and the Google button now uses the official G and border. |
+| 5 | **Trademark, trade dress and store policy safety (my domain)** | 5 | **7** | Report, Block, in-app contact, tappable legal links, honest delete flow, Android-only "Google Play soon" and the always-visible founder note are all fixed, but a few small store items remain (below). |
+
+## R2.2 Round 1 store triggers, re-checked
+
+| Round 1 trigger | Status | Evidence |
+|---|---|---|
+| No Report / Block (Apple 1.2, Play UGC) | **Fixed** | "More" sheet on every promo and on creator pages (screen 03); 7 report reasons in `PromoReel.tsx` lines 25 to 28; `api.block` used and blocked creators are hidden through `/v1/me/state` (`index.js` line 733). |
+| No in-app contact | **Fixed** | "Help and legal" with Contact support, Terms, Privacy, Guidelines on Profile for guests and members (screens 09, 14). |
+| Terms / Privacy not tappable | **Fixed** | Underlined links on sign in (screen 10). |
+| "Zero tolerance" sentence in Terms (Apple 1.2 EULA) | **Open** | No match for "tolerance" or "objectionable" in `terms.html` or `guidelines.html`; only a general enforcement line (`guidelines.html` line 135). |
+| Delete account hides errors | **Fixed** | `me.tsx` lines 44 to 53 show `delete_failed` or `delete_done` ("deleted in 30 days"). |
+| Apple token revoke on delete (TN3194) | **Open (known)** | Listed as not done in the brief; needs a Sign in with Apple key. |
+| Play account deletion web link | **Fixed, one wording bug** | Page is live, names the developer (Hazim Okutan), lists deleted and kept data, offers email deletion. But the in-app steps say "Tap Profile, tap Delete account". In the app, Delete account sits inside the "..." settings sheet (`me.tsx` line 63, screen 14). Google checks that the steps match. |
+| "unlock perks" claim (2.3.1) | **Fixed** | `sign_in_p` is now "Watch free. Sign in to call promos, save them and follow creators." |
+| "Google Play coming soon" on iOS (2.3.10) | **Fixed for the chip, one gap** | `PromoReel.tsx` line 121 and `creator/[handle].tsx` line 94 are Android only, and the feed maps `google_play` to "Open website". But the creator main button picker in Edit profile offers "Open in Google Play" (`lib/categories.ts` line 13, screen 16). If that label renders on an iOS creator page it names another mobile platform. |
+| Founder disclosure hidden behind "more" | **Fixed** | "Made by the PromoVote founder" sits under the creator name on every founder promo (screen 01). Team picks note now says "The founder makes some of these promos." |
+| "Download on the App Store" badge text | **Fixed** | "Open in App Store" (screen 06). |
+| Fake Google "G" | **Fixed** | Official asset and #747775 border (`sign-in.tsx` lines 54, 111 to 113). |
+| 2.1 blockers (silent taps, DOB overflow) | **Fixed** | Gate sheets answer every tap (screen 02); native date picker (`me.tsx` line 340). |
+| "Ads" framing (3.2.2(iii), Play Made for Ads) | **Partly open** | App copy says promos and calls, which is good. The long store description is not written yet, and `about.html` (4 times) plus `app.js` still say "The social media of ads". |
+| DMCA agent | **Open (P1)** | `copyright.html` line 34 still says "in progress". |
+
+## R2.3 New findings in round 2
+
+1. **Test creators are visible in production.** Explore shows "Test Studio" and "Pixel Fox" (screen 07), and screen 19 shows "Pixel Fox 9877" with a placeholder logo. If a reviewer sees them, that is placeholder content under Apple 2.1(a).
+2. **Profile photos go live without review once R2 is on.** In `index.js` line 545, uploads are stored with `moderation_status = 'approved'`, and the comment on line 525 says "shown right away". Under Apple 1.2 the "filter" duty means a logo or banner from a brand new account should not be public before any check. This is harmless today because uploads return "not available yet". It becomes a problem the day the founder enables R2.
+3. **No word filter on display name and bio.** The bio blocks links (line 451) and handles have a reserved list, but slurs or sexual words go live until someone reports them. This is acceptable for a first review only if you do item 2 and act on reports within 24 hours. A small blocklist is cheap.
+4. **Report needs sign in.** A guest who taps Report gets the sign in sheet (`PromoReel.tsx` line 112). Apple usually accepts this. A "Report by email" fallback to support@ costs one line and removes the argument.
+5. **Report reasons miss two that matter on a promo platform.** "Impersonation" and "trademark" already exist in the API (`REPORT_REASONS`) but not in the app list. Brand owners will need them.
+6. **The founder note is hard to read on busy videos.** On Team picks (screen 06) the note and the "Picked by the PromoVote team" line sit on top of text in the video and become unreadable. FTC wants disclosures you can actually read: add a solid or blurred backing.
+7. **The first chart is founder content.** Charts show "1 Breathe, visualize, rest" (Poleris, the founder's app) with no founder label (screen 07). Apply the same founder label on chart rows, or keep charts empty until the minimum vote threshold.
+8. **Review notes point to the wrong delete path.** `store/status.md` line 61 should say where Delete account is: "Profile, tap the ... button at the top right, Delete account".
+
+## R2.4 What still keeps my domain below 8 (smallest change first)
+
+### P0 (before submitting build 5)
+
+1. **Fix the delete-account steps on the page and in the review notes.** In `web/landing/public/delete-account.html` line 22, write: "Tap Profile, tap the ... button at the top right, tap Delete account and confirm." Make the same change in the review notes in `store/status.md` line 61. Done when: a reviewer following the page reaches the confirm dialog.
+2. **Add the zero tolerance sentence.** Add one line to `terms.html` (user content section) and `guidelines.html` (enforcement): "PromoVote has zero tolerance for objectionable content and abusive users. We review reports within 24 hours and remove violating content and accounts." Done when: the line is live on promovote.com.
+3. **Remove test accounts and test content from production D1** ("Test Studio", "Pixel Fox", any test promos and test votes that feed Charts), or mark them hidden. Done when: Explore and Charts show only real creators.
+4. **Keep "Google Play" text off iOS everywhere.** In the creator page and the Edit profile picker, show the `google_play` main button as "Get the app" (or hide that option) when `Platform.OS === 'ios'` (`lib/categories.ts` line 13; the creator page CTA render). Done when: a text search of iOS screens finds no "Google Play".
+5. **Write the long store description and keywords without "ads".** Use: trailers, promos, today's drop, make your call, creators. Done when: the App Store Connect and Play listing text contains no "ads".
+6. **Apple token revocation.** The founder creates a Sign in with Apple key (Certificates, Identifiers and Profiles, Keys, about 10 minutes) and adds it as a Worker secret. The delete handler or the daily hard delete job then calls `appleid.apple.com/auth/revoke`. Detection risk at review is low, but it is an Apple requirement. If the key cannot be ready, submit build 5 and ship this in the next build. Do not leave it for later than that.
+
+### P1 (before public launch or before R2 is enabled, whichever comes first)
+
+1. **Before enabling R2,** store uploads as `pending` in `index.js` line 545. Show the monogram to everyone except the owner until a moderator approves, or until an automatic image safety check passes.
+2. Add a small blocklist for display name and bio (same place as the bio link check, `index.js` line 451).
+3. Add "Impersonation or trademark" to the app report reasons (`PromoReel.tsx` lines 25 to 28 and the creator page). Add "Report by email" for guests.
+4. Give the founder note and the Team picks note a readable backing (screen 06). Add the founder label to chart rows.
+5. Register the DMCA agent ($6) and remove the "in progress" sentence in `copyright.html` lines 34 and 75.
+6. Change "The social media of ads" in `about.html` and `app.js` to wording a reviewer will not read as an ad app.
+7. Filing plan unchanged from section 7: run the self search, pick the owning entity, file PROMOVOTE in classes 9, 42 and 35.
+
+With P0 items 1 to 5 done, my domain score is **8**. Item 6 lifts it to 9.

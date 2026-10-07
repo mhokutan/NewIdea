@@ -169,3 +169,70 @@ Hit those and I would discuss a $250K to $500K pre-seed. The position is defensi
 * [Adbowl](https://bafybeiemxf5abjwjbikoz4mc3a3dla6ual3jsgpdr4cjr3oz3evfyavhwq.ipfs.4everland.io/wiki/ADBOWL.html), [AdPinion (TechCrunch)](https://techcrunch.com/?p=7749), [USA Today Ad Meter (ClickZ)](https://www.clickz.com/clickz/news/2113701/usa-facebook-pair-super-bowl-meter)
 * [Mistplay Audience Network, May 2026](https://digital-release.kxan.com/business/press-releases/cision/20260514MO58694/mistplay-launches-mistplay-audience-network-following-strategic-acquisitions-marking-major-expansion-in-rewarded-advertising)
 * [GameDiscoverCo models for indie devs (80.lv)](https://80.lv/articles/gamediscoverco-helping-indie-devs-with-models-and-data/)
+
+---
+
+# Round 2
+
+Date: 2026-10-07. Inputs: `docs/review/brief-r2.md`, screenshots `docs/review/screens-r2/01..19`, `apps/mobile/src/ui/PromoReel.tsx`, `apps/mobile/src/app/(tabs)/explore.tsx`, `services/api/src/index.js` (vote handler around line 688, `resolveCalls()` at line 883).
+
+## Kurucuya kısa özet (Türkçe)
+
+Büyük ilerleme var. İlk 10 saniye artık TikTok gibi okunmuyor. "Today's Drop", 7 parçalı ilerleme çubuğu, alttaki iki büyük çağrı butonu ve dokununca çıkan "Called: Will blow up. Result Oct 14. Scout #1" bileti uygulamaya kendi kimliğini veriyor. Round 1'de istediğim 5 imza özelliğin 4'ü yapılmış. Hâlâ 8'in altında kalan tek ciddi konu sonuç kuralı. Şu an bir tahmin, sonradan gelenlerin yarısı aynı şeyi söylerse "doğru" sayılıyor. Bu ölçtüğü şey "tuttu mu" değil, "kalabalık katıldı mı". Bu yüzden "her şeye erkenden Will blow up de" stratejisi neredeyse hep kazanıyor ve arkadaş grubuyla kolayca oynanabiliyor. Düşük trafikte de çoğu sonuç "void" çıkacak, yani ilk ödül anı boşa gidecek. Kalan maddeler küçük ve aşağıda listeli.
+
+## 1. Scores
+
+| # | Area | R1 | R2 | Evidence (one sentence) |
+|---|---|---|---|---|
+| 1 | Retention | 4 | 6 | The loop now exists (calls, Result Oct 14, Scout Score, end card "results in 7 days"), but with the beta rule of 10 later calls most first results at today's traffic will be "void", and there is no reminder before day 7. |
+| 2 | Session time | 4 | 6 | A finite Drop of 7 plus "Keep watching" is the right shape, but the pool is still about 16 promos from 3 founder creators, so "Keep watching" repeats quickly. |
+| 3 | Originality | 3 | 7 | Screenshots 01 and 13 now read as their own product: "Today's Drop" with progress segments, a two button call bar with the chevron, and a ticket after the call; the right rail of round icons and full bleed video still carry some TikTok silhouette, and promos show no open call status before you tap. |
+| 4 | Trademark and trade dress safety | 6 | 7 | "For you" and story rings are gone and creator tiles are rounded squares; segmented progress bars are a generic pattern, but the USPTO knockout search for PromoVote is still not on file. |
+| 5 | Differentiation and competitive position | 4 | 6 | The prediction game is finally visible, which is the white space no competitor holds, but the resolution rule scores agreement with the later crowd instead of whether the promo did well, so "I called it" can be farmed and does not yet mean taste. |
+
+## 2. First 10 seconds: still a TikTok clone?
+
+No, not anymore. A new user sees "Today's Drop", a 1 of 7 progress bar, a game trailer first (Hauling Empire, matching the decided niche), and two wide buttons at the thumb: "Not for me" and a lime "Will blow up" with the double chevron. Tapping it as a guest opens "Sign in to make your call. Your call locks in and the result comes in 7 days" (screenshot 02). After the call the bar becomes a ticket (screenshot 13). The end card (05) says "That's today's drop". None of TikTok, Reels, Shorts, Steam, SWIPEPLAY or Product Hunt has this sequence. This is the signature I asked for.
+
+What still keeps Originality at 7: the right rail (Save, Share, More in dark circles) plus a full bleed video is still the TikTok layout above the call bar, and the promo itself shows no state ("Open: 6 days left, 12 scouts called" or "Early: under 100 views") before the user acts. S2 from round 1 is the missing piece.
+
+## 3. The remaining fatal flaw: what "right" means
+
+`resolveCalls()` (line 883) marks "Will blow up" correct when at least 50% of later valid calls on the same promo are also "Will blow up". Three problems:
+
+1. **Dominant strategy.** Scouts lean positive (people skip what they dislike, and "Not for me" feels rude to small creators). If the average later share of "Will blow up" across promos is above 50%, then calling "Will blow up" on everything, as early as possible, wins most of the time and earns the x3 early multiplier. The scoreboard then rewards speed and volume, not taste. The Scout Score becomes noise and "Called it" loses meaning.
+2. **Collusion.** One early scout plus 10 friends calling "Will blow up" later equals a guaranteed 30 points and a "Called it". Creators cannot vote, but their friends can sign up as scouts with Apple or Google. There is no per promo cluster check.
+3. **It contradicts our own spec.** `docs/03-profiles-spec.md` defines a hit by Hit Score (completion, saves, button taps, follows from the promo's own views) with calls excluded, exactly so predictions cannot be self fulfilling. The beta rule is the opposite.
+
+Also, with `RESOLVE_MIN_LATER = 10` and today's traffic, almost every Oct 14 result will be "void". The first payoff moment, the one that should bring people back, will say "void".
+
+What would need to be true for the scoreboard to be a moat: a call is right only if the promo beat its peers on real behaviour, and saying "yes" to everything does not pay.
+
+## 4. Remaining blockers (smallest change first)
+
+### P0 (before App Store submission)
+
+| # | What | Where | Why | Done when |
+|---|---|---|---|---|
+| P0.1 | Hide test creators ("Test Studio", "Pixel Fox 9877") from public lists, or delete them from the live D1. | Explore creators query in `services/api/src/index.js`; data in D1 `promovote-db` | They appear on the live Explore (screenshot 07). A reviewer or first user sees fake accounts. | Explore shows only real creators on the production API. |
+| P0.2 | Label founder promos in Charts ("Made by the PromoVote founder"), and only open Charts after the 50 valid view floor from docs/04 section 1.2. | `apps/mobile/src/app/(tabs)/explore.tsx` lines 76 to 84; `/v1/home?tab=top` | Charts today show one founder promo at #1 with no label (screenshot 07). Our own rule in docs/04 section 1.3 requires the label; without it "paying never buys a spot" looks like self dealing. | The label is visible on every founder item in Charts; Charts stay empty below the floor. |
+| P0.3 | Base rate fix for resolution: "Will blow up" is right only if the later "Will blow up" share on this promo is above the median share of all promos that went live the same ISO week (not a flat 50%). "Not for me" is right if it is below the median. | `resolveCalls()` lines 883 to 899 | Kills the "yes to everything" strategy with a few lines and no new data. | Simulation: a scout who taps "Will blow up" on every promo ends near 50% right, not 80%+. |
+| P0.4 | Honest void copy: when a call voids, show "Not enough scouts saw this one yet. No points lost." instead of a bare "void", and keep the call open up to 14 days before voiding. | `resolveCalls()` (extend the window), Scout profile open calls list in `apps/mobile/src/app/(tabs)/me.tsx` | The first result moment must not feel broken. | No call shows a bare "void" on the profile. |
+
+### P1 (before public launch)
+
+| # | What | Where | Why | Done when |
+|---|---|---|---|---|
+| P1.1 | Call status chip on each promo: "Open: N days left, X scouts called" (bucketed), or "Early: be one of the first 10". | `ui/PromoReel.tsx` above the info block; `PROMO_SELECT` adds call count bucket | Shows the game in the first frame before any tap; this is what takes Originality from 7 to 8. | 5 second test: 6 of 10 strangers say "predict which games will blow up". |
+| P1.2 | Blend the outcome: once a promo has 150 valid views, resolve by Hit Score rank in its weekly cohort (calls excluded, as in the spec), with the crowd rule only as the low traffic fallback. | `resolveCalls()`, Hit Score from `view_events`, saves, clicks | Makes "Called it" mean real early taste; this is the moat. | Weekly job writes `hit_outcome` on promos; calls resolve against it. |
+| P1.3 | Collusion guard: ignore later calls from accounts created after the early call that have fewer than 3 calls on other creators, and cap "Called it" to once per creator per scout per month. | `resolveCalls()` later count query (line 889) | Stops friend rings from farming. | Seeded test ring of 10 fresh accounts does not flip an outcome. |
+| P1.4 | Daily local reminder ("Today's drop is ready") and a day 7 "Your result is in" notification. | Planned list in brief-r2 | The loop needs a trigger; without it the 7 day gap kills D7. | D1 and D7 measured from `view_events`; target D7 15% per the verdict. |
+| P1.5 | 12+ real creators, 60 English promos, mostly indie games, with written permission. | Seed script or creator onboarding | Session time and differentiation both cap at 6 on 3 founder creators. | At least 20 non founder promos live; "Keep watching" does not repeat within 20 swipes. |
+| P1.6 | USPTO knockout search for PromoVote (classes 35, 42). | Founder or lawyer | The trademark score stays at 7 until it is on file. | Written result saved. |
+| P1.7 | Fix the overlap of the Team picks note with the promo headline (screenshot 06). | `app/(tabs)/index.tsx` note position | A small visual bug, but it sits on the first screen of that tab. | Note and promo text never overlap at 393 x 852. |
+
+Expected after P0 and P1: Retention 8, Session time 8, Originality 8, Trademark 8, Differentiation 8.
+
+## 5. Investor view after round 2
+
+Still not a pre-seed investment today, but this is now a product I can describe in one sentence that is not "TikTok for ads": **"A daily drop of new games and apps where you call the hits early and build a public track record."** That is a real position. The milestones from round 1 section 7 stay the same. One addition: before any pitch, show the resolution rule passing a simple test, where "yes to everything" earns no more than a coin flip. If the scoreboard can be farmed, there is no moat.
