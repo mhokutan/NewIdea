@@ -8,7 +8,10 @@
       "developmentClient": true,
       "distribution": "internal",
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://api.promovote.com"
+        "EXPO_PUBLIC_API_URL": "https://api.promovote.com",
+        "EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID": "506724718671-t1g7ehas8tssjdjs3vhsvdgo60g4pini.apps.googleusercontent.com",
+        "EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID": "506724718671-onetdf2qhmf8pgg1lrlij9gi7luqt1c3.apps.googleusercontent.com",
+        "GOOGLE_IOS_URL_SCHEME": "com.googleusercontent.apps.506724718671-onetdf2qhmf8pgg1lrlij9gi7luqt1c3"
       }
     },
     "preview": {
@@ -17,13 +20,19 @@
         "buildType": "apk"
       },
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://api.promovote.com"
+        "EXPO_PUBLIC_API_URL": "https://api.promovote.com",
+        "EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID": "506724718671-t1g7ehas8tssjdjs3vhsvdgo60g4pini.apps.googleusercontent.com",
+        "EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID": "506724718671-onetdf2qhmf8pgg1lrlij9gi7luqt1c3.apps.googleusercontent.com",
+        "GOOGLE_IOS_URL_SCHEME": "com.googleusercontent.apps.506724718671-onetdf2qhmf8pgg1lrlij9gi7luqt1c3"
       }
     },
     "production": {
       "autoIncrement": true,
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://api.promovote.com"
+        "EXPO_PUBLIC_API_URL": "https://api.promovote.com",
+        "EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID": "506724718671-t1g7ehas8tssjdjs3vhsvdgo60g4pini.apps.googleusercontent.com",
+        "EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID": "506724718671-onetdf2qhmf8pgg1lrlij9gi7luqt1c3.apps.googleusercontent.com",
+        "GOOGLE_IOS_URL_SCHEME": "com.googleusercontent.apps.506724718671-onetdf2qhmf8pgg1lrlij9gi7luqt1c3"
       }
     }
   },

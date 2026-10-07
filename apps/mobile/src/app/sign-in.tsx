@@ -2,6 +2,7 @@
 // Email code sign in sits behind a "Continue with email" link. Until email sending is enabled the server
 // only accepts it for the app review account; other emails get EMAIL_LOGIN_SOON.
 import * as AppleAuthentication from 'expo-apple-authentication';
+import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { KeyboardAvoidingView, Linking, Platform, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
@@ -50,7 +51,7 @@ export default function SignIn() {
         {google ? (
           <Pressable onPress={async () => { setBusy(true); setErr(''); done(await signInWithGoogle()); }} disabled={busy}
             style={({ pressed }) => [styles.google, (pressed || busy) && { opacity: 0.7 }]} accessibilityRole="button">
-            <Text style={styles.googleG}>G</Text>
+            <Image source={require('../../assets/images/google-g.png')} style={{ width: 20, height: 20 }} accessibilityIgnoresInvertColors />
             <Text style={styles.googleText}>{t('with_google')}</Text>
           </Pressable>
         ) : null}
@@ -107,9 +108,9 @@ const styles = StyleSheet.create({
   box: { padding: 24, gap: 14 },
   title: { color: C.text, fontSize: 30, fontWeight: '800' },
   text: { color: C.text2, fontSize: 16, lineHeight: 22, marginBottom: 6 },
-  google: { height: 52, borderRadius: 14, backgroundColor: '#fff', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10 },
-  googleG: { color: '#4285F4', fontWeight: '800', fontSize: 20 },
-  googleText: { color: '#1f1f1f', fontWeight: '600', fontSize: 17 },
+  // Google branding guidelines: white button, #747775 border, standard G logo, "Continue with Google".
+  google: { height: 52, borderRadius: 14, backgroundColor: '#fff', borderWidth: 1, borderColor: '#747775', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 12 },
+  googleText: { color: '#1f1f1f', fontWeight: '500', fontSize: 17 },
   input: { backgroundColor: C.surface, color: C.text, fontSize: 17, borderRadius: 14, borderWidth: 1, borderColor: C.line, paddingHorizontal: 16, paddingVertical: 14 },
   code: { letterSpacing: 8, fontSize: 24, textAlign: 'center' },
   err: { color: C.danger, fontSize: 14 },

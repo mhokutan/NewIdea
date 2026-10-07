@@ -20,7 +20,7 @@
     "API_URL": "https://api.promovote.com",
     "APPLE_BUNDLE_ID": "com.miapera.promovote",
     // Google OAuth client ids (iOS, Android, web), comma separated. Filled in when the founder creates them.
-    "GOOGLE_CLIENT_IDS": "",
+    "GOOGLE_CLIENT_IDS": "506724718671-t1g7ehas8tssjdjs3vhsvdgo60g4pini.apps.googleusercontent.com,506724718671-onetdf2qhmf8pgg1lrlij9gi7luqt1c3.apps.googleusercontent.com,506724718671-532i7nc7cvuoeod7qj0o20s5o5av717i.apps.googleusercontent.com,506724718671-n2jjp52p5tpnsti4pl2pct9cganm94ln.apps.googleusercontent.com",
     // App store review test account (email code sign in). Its fixed code is the secret REVIEW_CODE.
     "REVIEW_EMAIL": "review@promovote.com"
   },
