@@ -15,15 +15,14 @@ on:
     branches: [claude/gracious-pasteur-nu8ssc]
   workflow_dispatch:
 
-concurrency:
-  group: ios-build
-  cancel-in-progress: false
-
 permissions:
   contents: read
 
 jobs:
   ios:
+    concurrency:
+      group: ios-build
+      cancel-in-progress: false
     if: github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[build ios]')
     runs-on: macos-26
     timeout-minutes: 120

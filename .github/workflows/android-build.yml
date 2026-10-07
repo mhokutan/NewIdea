@@ -13,15 +13,14 @@ on:
     branches: [claude/gracious-pasteur-nu8ssc]
   workflow_dispatch:
 
-concurrency:
-  group: android-build
-  cancel-in-progress: false
-
 permissions:
   contents: read
 
 jobs:
   android:
+    concurrency:
+      group: android-build
+      cancel-in-progress: false
     if: github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[build android]')
     runs-on: ubuntu-24.04
     timeout-minutes: 90
