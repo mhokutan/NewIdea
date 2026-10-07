@@ -7,7 +7,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { api, type Perk, type Profile } from '@/lib/api';
 import { t } from '@/lib/i18n';
-import { C } from '@/lib/theme';
+import { C, F } from '@/lib/theme';
 import { categoryLabel, ctaLabel, ctaVisible, linkName } from '@/lib/categories';
 import { asMember } from '@/lib/gate';
 import { useMe } from '@/lib/use-me';
@@ -137,11 +137,11 @@ const styles = StyleSheet.create({
   topRight: { position: 'absolute', right: 12, flexDirection: 'row', gap: 8 },
   round: { width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(20,20,31,0.72)', alignItems: 'center', justifyContent: 'center' },
   actions: { flexDirection: 'row', gap: 10, marginTop: 16 },
-  newChip: { alignSelf: 'flex-start', marginTop: 6, color: C.lime, fontSize: 12, fontWeight: '700', borderWidth: 1, borderColor: 'rgba(198,255,61,0.45)', borderRadius: 99, paddingHorizontal: 8, paddingVertical: 2, overflow: 'hidden' },
+  newChip: { alignSelf: 'flex-start', marginTop: 6, color: C.text2, fontSize: 12, fontWeight: '700', borderWidth: 1, borderColor: 'rgba(255,255,255,0.3)', borderRadius: 99, paddingHorizontal: 8, paddingVertical: 2, overflow: 'hidden' },
   back: { position: 'absolute', left: 12, width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(20,20,31,0.72)', alignItems: 'center', justifyContent: 'center' },
   head: { flexDirection: 'row', alignItems: 'flex-end', gap: 14, marginTop: -48 },
   avatarWrap: { borderWidth: 4, borderColor: C.bg, borderRadius: 30 },
-  name: { color: C.text, fontSize: 26, fontWeight: '800', flexShrink: 1 },
+  name: { color: C.text, fontSize: 26, ...F.display, flexShrink: 1 },
   handle: { color: '#c9c6d8', fontSize: 14, marginTop: 2 },
   kind: { color: C.text2, fontSize: 13, fontWeight: '600', marginTop: 12, alignSelf: 'flex-start', borderWidth: 1, borderColor: 'rgba(255,255,255,0.18)', borderRadius: 99, paddingVertical: 4, paddingHorizontal: 10 },
   bio: { color: C.text2, fontSize: 16, lineHeight: 23, marginTop: 18 },
@@ -152,7 +152,7 @@ const styles = StyleSheet.create({
   gift: { flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 16, padding: 14, minHeight: 56, borderRadius: 14, borderWidth: 1.5, borderStyle: 'dashed', borderColor: 'rgba(198,255,61,0.55)', backgroundColor: 'rgba(198,255,61,0.06)' },
   giftKicker: { color: C.lime, fontSize: 12, fontWeight: '700' },
   disc: { color: C.muted, fontSize: 13, marginTop: 14 },
-  h2: { color: C.text, fontSize: 18, fontWeight: '800', marginTop: 28, marginBottom: 12 },
+  h2: { color: C.text, fontSize: 18, ...F.display, marginTop: 28, marginBottom: 12 },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   tile: { borderRadius: 10, overflow: 'hidden', backgroundColor: C.surface },
   dur: { position: 'absolute', top: 6, right: 6, color: '#fff', fontSize: 11, fontWeight: '600', backgroundColor: 'rgba(8,8,12,0.7)', borderRadius: 6, paddingHorizontal: 5, paddingVertical: 2, overflow: 'hidden' },

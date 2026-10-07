@@ -9,7 +9,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { api, type Creator, type Promo } from '@/lib/api';
 import { EXPLORE_CATEGORIES } from '@/lib/categories';
 import { t } from '@/lib/i18n';
-import { C } from '@/lib/theme';
+import { C, F } from '@/lib/theme';
 import { Avatar } from '@/ui/Avatar';
 import { Icon } from '@/ui/Icon';
 import { Pill } from '@/ui/Pill';
@@ -158,9 +158,9 @@ const styles = StyleSheet.create({
   bar: { height: 6, borderRadius: 3, backgroundColor: 'rgba(255,255,255,0.12)', marginTop: 10, overflow: 'hidden' },
   barFill: { height: 6, borderRadius: 3, backgroundColor: C.lime },
   rank: { width: 150, padding: 12, borderRadius: 14, backgroundColor: C.surface2, gap: 4 },
-  rankNo: { color: C.lime, fontSize: 22, fontWeight: '800' },
+  rankNo: { color: C.lime, fontSize: 22, ...F.display },
   rankFounder: { color: C.muted, fontSize: 11, marginTop: 2 },
   rankTitle: { color: C.text, fontSize: 14, fontWeight: '700' },
-  h2: { color: C.text, fontSize: 20, fontWeight: '800' },
+  h2: { color: C.text, fontSize: 20, ...F.display },
   chartsText: { color: C.text2, fontSize: 15, marginTop: 6 },
 });

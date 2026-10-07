@@ -8,7 +8,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { api, type Perk } from '@/lib/api';
 import { asMember } from '@/lib/gate';
 import { lang, t } from '@/lib/i18n';
-import { C, R } from '@/lib/theme';
+import { C, R, F } from '@/lib/theme';
 import { useMe } from '@/lib/use-me';
 import { Button } from './Pill';
 
@@ -87,7 +87,7 @@ const styles = StyleSheet.create({
   sheet: { backgroundColor: C.surface, borderTopLeftRadius: R.lg, borderTopRightRadius: R.lg, paddingHorizontal: 20, paddingTop: 10, gap: 8 },
   grab: { alignSelf: 'center', width: 40, height: 5, borderRadius: 3, backgroundColor: 'rgba(255,255,255,0.25)', marginBottom: 10 },
   kicker: { color: C.lime, fontWeight: '700', fontSize: 13 },
-  title: { color: C.text, fontSize: 22, fontWeight: '800' },
+  title: { color: C.text, fontSize: 22, ...F.display },
   text: { color: C.text2, fontSize: 15, lineHeight: 21 },
   small: { color: C.muted, fontSize: 13 },
   code: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderWidth: 2, borderStyle: 'dashed', borderColor: C.lime, borderRadius: 14, paddingHorizontal: 16, minHeight: 56 },

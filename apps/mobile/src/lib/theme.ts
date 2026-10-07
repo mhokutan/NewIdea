@@ -14,3 +14,10 @@ export const C = {
   danger: '#ff6b6b',
 };
 export const R = { sm: 10, md: 14, lg: 22 };
+
+// Brand display font (Bricolage Grotesque, SIL OFL, assets/fonts). Loaded in app/_layout.tsx.
+// fontWeight stays normal: the weight is in the file, and Android falls back to the system font otherwise.
+export const F = {
+  display: { fontFamily: 'Bricolage-ExtraBold', fontWeight: 'normal' as const },
+  displayBold: { fontFamily: 'Bricolage-Bold', fontWeight: 'normal' as const },
+};

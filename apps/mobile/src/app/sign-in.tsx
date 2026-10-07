@@ -10,8 +10,9 @@ import { KeyboardAvoidingView, Linking, Platform, Pressable, StyleSheet, Text, T
 import { authClient } from '@/lib/auth';
 import { t } from '@/lib/i18n';
 import { appleAvailable, EMAIL_LOGIN, googleAvailable, type Result, signInWithApple, signInWithGoogle } from '@/lib/social-sign-in';
-import { C } from '@/lib/theme';
+import { C, F } from '@/lib/theme';
 import { refreshMe } from '@/lib/use-me';
+import { Icon } from '@/ui/Icon';
 import { Button } from '@/ui/Pill';
 
 export default function SignIn() {
@@ -36,9 +37,20 @@ export default function SignIn() {
 
   return (
     <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.root}>
+      <Pressable onPress={() => (router.canDismiss() ? router.dismiss() : router.navigate('/'))} style={styles.close} accessibilityRole="button" accessibilityLabel={t('not_now')} hitSlop={8}>
+        <Text style={styles.closeText}>{t('not_now')}</Text>
+      </Pressable>
       <View style={styles.box}>
-        <Text style={styles.title}>{t('sign_in_t')}</Text>
-        <Text style={styles.text}>{t('sign_in_p')}</Text>
+        <Image source={require('../../assets/images/icon.png')} style={styles.logo} accessibilityIgnoresInvertColors accessibilityLabel="PromoVote" />
+        <Text style={styles.title} accessibilityRole="header">{t('sign_in_t')}</Text>
+        <View style={styles.values}>
+          {([['chevrons', 'value_call'], ['ticket', 'value_result'], ['save', 'value_save']] as const).map(([icon, key]) => (
+            <View key={key} style={styles.value}>
+              <View style={styles.valueIcon}><Icon name={icon} size={16} color={C.lime} /></View>
+              <Text style={styles.valueText}>{t(key)}</Text>
+            </View>
+          ))}
+        </View>
         {apple ? (
           <AppleAuthentication.AppleAuthenticationButton
             buttonType={AppleAuthentication.AppleAuthenticationButtonType.CONTINUE}
@@ -106,7 +118,14 @@ function EmailCode({ onDone }: { onDone: (r: Result) => void }) {
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: C.bg, justifyContent: 'center' },
   box: { padding: 24, gap: 14 },
-  title: { color: C.text, fontSize: 30, fontWeight: '800' },
+  close: { position: 'absolute', top: Platform.OS === 'ios' ? 16 : 40, right: 16, minHeight: 44, justifyContent: 'center', paddingHorizontal: 8, zIndex: 2 },
+  closeText: { color: C.text2, fontSize: 16, fontWeight: '600' },
+  logo: { width: 64, height: 64, borderRadius: 16, marginBottom: 4 },
+  values: { gap: 12, marginVertical: 8 },
+  value: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  valueIcon: { width: 32, height: 32, borderRadius: 10, backgroundColor: 'rgba(198,255,61,0.12)', alignItems: 'center', justifyContent: 'center' },
+  valueText: { color: C.text2, fontSize: 16, lineHeight: 22, flex: 1 },
+  title: { color: C.text, fontSize: 30, ...F.display },
   text: { color: C.text2, fontSize: 16, lineHeight: 22, marginBottom: 6 },
   // Google branding guidelines: white button, #747775 border, standard G logo, "Continue with Google".
   google: { height: 52, borderRadius: 14, backgroundColor: '#fff', borderWidth: 1, borderColor: '#747775', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 12 },

@@ -1,5 +1,6 @@
 import { DarkTheme, Stack, ThemeProvider } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
+import { useFonts } from 'expo-font';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -12,7 +13,14 @@ SplashScreen.preventAutoHideAsync();
 const theme = { ...DarkTheme, colors: { ...DarkTheme.colors, background: C.bg, card: C.bg, primary: C.lime, text: C.text, border: C.line } };
 
 export default function RootLayout() {
-  useEffect(() => { SplashScreen.hideAsync(); }, []);
+  // Brand font; if it fails to load the app still opens with the system font.
+  const [fontsLoaded, fontError] = useFonts({
+    'Bricolage-Bold': require('../../assets/fonts/BricolageGrotesque-Bold.ttf'),
+    'Bricolage-ExtraBold': require('../../assets/fonts/BricolageGrotesque-ExtraBold.ttf'),
+  });
+  const ready = fontsLoaded || !!fontError;
+  useEffect(() => { if (ready) SplashScreen.hideAsync(); }, [ready]);
+  if (!ready) return null;
   return (
     <GestureHandlerRootView style={{ flex: 1, backgroundColor: C.bg }}>
     <ThemeProvider value={theme}>

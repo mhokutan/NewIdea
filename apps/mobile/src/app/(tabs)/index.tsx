@@ -12,13 +12,14 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { api, type Promo } from '@/lib/api';
 import { nextRound } from '@/lib/fair-queue';
 import { lang, t } from '@/lib/i18n';
-import { C } from '@/lib/theme';
+import { C, F } from '@/lib/theme';
 import { reminderOn, turnOnReminder } from '@/lib/reminder';
 import { useMe } from '@/lib/use-me';
 import { useViewerState } from '@/lib/viewer-state';
 import { Button } from '@/ui/Pill';
 import { Icon } from '@/ui/Icon';
 import { PromoReel } from '@/ui/PromoReel';
+import { ResultReveal } from '@/ui/ResultReveal';
 import { Fade } from '@/ui/Fade';
 
 type Item = { key: string; promo: Promo; end?: false } | { key: string; end: true; promo?: undefined };
@@ -163,6 +164,7 @@ export default function Feed() {
           maxToRenderPerBatch={2}
         />
       )}
+      <ResultReveal enabled={focused} />
       <Fade colors={['rgba(0,0,0,0.6)', 'rgba(0,0,0,0)']} style={[styles.scrim, { height: insets.top + WEB_MENU + 120 }]} />
       <View style={[styles.top, { paddingTop: insets.top + 6 + WEB_MENU }]} pointerEvents="box-none">
         <View style={styles.bar} pointerEvents="box-none">
@@ -250,7 +252,7 @@ const styles = StyleSheet.create({
   seg: { flex: 1, height: 3, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.28)' },
   segOn: { backgroundColor: C.lime },
   end: { alignItems: 'center', justifyContent: 'center', backgroundColor: C.bg, padding: 32, gap: 8 },
-  endTitle: { color: C.text, fontSize: 28, fontWeight: '800', textAlign: 'center', marginTop: 8 },
+  endTitle: { color: C.text, fontSize: 28, ...F.display, textAlign: 'center', marginTop: 8 },
   endText: { color: C.text2, fontSize: 16, lineHeight: 23, textAlign: 'center', maxWidth: 320 },
   note: { alignSelf: 'flex-start', marginTop: 8, marginLeft: 4, maxWidth: 320, color: '#fff', fontSize: 12, fontWeight: '600', backgroundColor: 'rgba(10,10,15,0.78)', borderRadius: 10, paddingHorizontal: 10, paddingVertical: 6, overflow: 'hidden' },
   scrim: { position: 'absolute', top: 0, left: 0, right: 0 },

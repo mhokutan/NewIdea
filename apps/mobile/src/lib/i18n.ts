@@ -62,6 +62,8 @@ const en = {
   reminder_t: "Today's Drop is ready", reminder_p: "7 new promos. Make your calls before the crowd does.", reminder_channel: "Daily drop", remind_me: "Remind me when the next drop lands", remind_on: "Done. We will remind you at 6 pm. Turn it off any time in Settings.", remind_denied: "Notifications are off. You can turn them on in your phone settings.",
   reminder_off: "Turn off daily reminder", reminder_turn_on: "Turn on daily reminder",
   st_link_taps: "Link taps", report_email: "Report by email instead",
+  value_call: "Call which new games, apps and shops will blow up", value_result: "Results in 7 days build your Scout Score", value_save: "Save promos and follow creators. Watching stays free.",
+  reveal_right_t: "You called it! {n} right", reveal_right_p: "{n} of your calls got their result. Your Scout Score went up.", reveal_t: "Your results are in", reveal_p: "{n} of your calls got their result. No points lost on a miss.", reveal_see: "See my results",
 };
 type Key = keyof typeof en;
 const es: Partial<Record<Key, string>> = {
@@ -125,6 +127,8 @@ const es: Partial<Record<Key, string>> = {
   reminder_t: "El Drop de hoy está listo", reminder_p: "7 promos nuevos. Haz tus predicciones antes que la multitud.", reminder_channel: "Drop diario", remind_me: "Avísame cuando llegue el próximo drop", remind_on: "Listo. Te avisamos a las 18:00. Puedes desactivarlo en Ajustes.", remind_denied: "Las notificaciones están desactivadas. Puedes activarlas en los ajustes del teléfono.",
   reminder_off: "Desactivar recordatorio diario", reminder_turn_on: "Activar recordatorio diario",
   st_link_taps: "Toques en enlaces", report_email: "Reportar por email",
+  value_call: "Predice qué juegos, apps y tiendas nuevas van a explotar", value_result: "Los resultados en 7 días suben tu Scout Score", value_save: "Guarda promos y sigue a creadores. Ver es gratis.",
+  reveal_right_t: "¡Acertaste! {n} correctas", reveal_right_p: "{n} de tus predicciones ya tienen resultado. Tu Scout Score subió.", reveal_t: "Llegaron tus resultados", reveal_p: "{n} de tus predicciones ya tienen resultado. Fallar no quita puntos.", reveal_see: "Ver mis resultados",
 };
 const tr: Partial<Record<Key, string>> = {
   tab_feed: 'Akış', tab_explore: 'Keşfet', tab_me: 'Profil',
@@ -187,6 +191,8 @@ const tr: Partial<Record<Key, string>> = {
   reminder_t: "Bugünün seçkisi hazır", reminder_p: "7 yeni tanıtım. Kalabalıktan önce tahminini yap.", reminder_channel: "Günlük seçki", remind_me: "Yeni seçki gelince bana hatırlat", remind_on: "Tamam. Saat 18:00'de hatırlatacağız. Ayarlardan istediğin zaman kapatabilirsin.", remind_denied: "Bildirimler kapalı. Telefon ayarlarından açabilirsin.",
   reminder_off: "Günlük hatırlatmayı kapat", reminder_turn_on: "Günlük hatırlatmayı aç",
   st_link_taps: "Link tıklaması", report_email: "Email ile bildir",
+  value_call: "Hangi yeni oyun, uygulama ve mağazanın patlayacağını tahmin et", value_result: "7 gün sonra gelen sonuçlar Kaşif Puanını büyütür", value_save: "Tanıtımları kaydet, firmaları takip et. İzlemek ücretsiz.",
+  reveal_right_t: "Bildin! {n} doğru tahmin", reveal_right_p: "{n} tahminin sonuçlandı. Kaşif Puanın arttı.", reveal_t: "Sonuçların geldi", reveal_p: "{n} tahminin sonuçlandı. Yanlış tahmin puan kaybettirmez.", reveal_see: "Sonuçlarımı gör",
 };
 
 const DICTS = { en, es, tr } as const;

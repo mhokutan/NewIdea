@@ -11,7 +11,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { api, ApiError } from '@/lib/api';
 import { CATEGORIES, CTA_OPTIONS, ctaVisible } from '@/lib/categories';
 import { t } from '@/lib/i18n';
-import { C } from '@/lib/theme';
+import { C, F } from '@/lib/theme';
 import { refreshMe, useMe } from '@/lib/use-me';
 import { Avatar } from '@/ui/Avatar';
 import { Button, Pill } from '@/ui/Pill';
@@ -160,7 +160,7 @@ const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: C.bg },
   top: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   cancel: { color: C.text2, fontSize: 16, width: 60 },
-  title: { color: C.text, fontSize: 18, fontWeight: '800' },
+  title: { color: C.text, fontSize: 18, ...F.display },
   bannerBox: { height: 120, borderRadius: 16, overflow: 'hidden', backgroundColor: C.surface2, justifyContent: 'flex-end' },
   bannerHint: { backgroundColor: 'rgba(0,0,0,0.45)', padding: 10, alignItems: 'center' },
   hintText: { color: '#fff', fontWeight: '700' },

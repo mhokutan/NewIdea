@@ -12,7 +12,7 @@ import * as Clipboard from 'expo-clipboard';
 import { api, ApiError, type Perk, type ScoutSummary, type Studio, type WalletItem } from '@/lib/api';
 import { CATEGORIES } from '@/lib/categories';
 import { lang, t } from '@/lib/i18n';
-import { C } from '@/lib/theme';
+import { C, F } from '@/lib/theme';
 import { openMail } from '@/lib/mail';
 import { reminderOn, turnOffReminder, turnOnReminder } from '@/lib/reminder';
 import { signOut, useMe } from '@/lib/use-me';
@@ -478,8 +478,8 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 
 const styles = StyleSheet.create({
   card: { backgroundColor: C.surface, borderRadius: 18, padding: 18, gap: 10, borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)' },
-  h1: { color: C.text, fontSize: 26, fontWeight: '800' },
-  h2: { color: C.text, fontSize: 18, fontWeight: '800' },
+  h1: { color: C.text, fontSize: 26, ...F.display },
+  h2: { color: C.text, fontSize: 18, ...F.display },
   text: { color: C.text2, fontSize: 15, lineHeight: 21 },
   small: { color: C.muted, fontSize: 13, lineHeight: 18 },
   label: { color: '#c9c6d8', fontSize: 14, fontWeight: '600' },
@@ -492,14 +492,14 @@ const styles = StyleSheet.create({
   gear: { width: 44, height: 44, borderRadius: 22, backgroundColor: C.surface, alignItems: 'center', justifyContent: 'center' },
   banner: { height: 120, borderRadius: 16, marginBottom: -4 },
   scoreCard: { backgroundColor: C.surface, borderRadius: 20, padding: 18, gap: 6, borderWidth: 1, borderColor: 'rgba(198,255,61,0.25)' },
-  score: { color: C.lime, fontSize: 44, fontWeight: '800' },
-  levelChip: { color: C.ink, backgroundColor: C.lime, fontWeight: '800', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 99, overflow: 'hidden', marginBottom: 10 },
+  score: { color: C.lime, fontSize: 44, ...F.display },
+  levelChip: { color: C.text, backgroundColor: C.surface2, borderWidth: 1, borderColor: C.line, fontWeight: '800', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 99, overflow: 'hidden', marginBottom: 10 },
   bar: { height: 6, borderRadius: 3, backgroundColor: 'rgba(255,255,255,0.12)', overflow: 'hidden', marginVertical: 4 },
   barFill: { height: 6, borderRadius: 3, backgroundColor: C.lime },
   statRow: { flexDirection: 'row', gap: 8, marginTop: 8 },
   statGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   stat: { flexGrow: 1, flexBasis: '30%', backgroundColor: C.surface2, borderRadius: 14, padding: 12, gap: 2 },
-  statN: { color: C.text, fontSize: 22, fontWeight: '800' },
+  statN: { color: C.text, fontSize: 22, ...F.display },
   statL: { color: C.muted, fontSize: 12 },
   walletCode: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderWidth: 1.5, borderStyle: 'dashed', borderColor: C.lime, borderRadius: 10, paddingHorizontal: 12, minHeight: 44, marginTop: 4 },
   walletCodeText: { color: C.text, fontSize: 17, fontWeight: '800', letterSpacing: 1.5 },

@@ -5,7 +5,7 @@ import { useEffect, useRef } from 'react';
 import { Modal, Platform, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { t } from '@/lib/i18n';
-import { C, R } from '@/lib/theme';
+import { C, R, F } from '@/lib/theme';
 
 export type SheetAction = { label: string; onPress: () => void; tone?: 'primary' | 'danger' | 'plain' };
 
@@ -47,7 +47,7 @@ const styles = StyleSheet.create({
   backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.55)' },
   sheet: { backgroundColor: C.surface, borderTopLeftRadius: R.lg, borderTopRightRadius: R.lg, paddingHorizontal: 20, paddingTop: 10, gap: 6 },
   grab: { alignSelf: 'center', width: 40, height: 5, borderRadius: 3, backgroundColor: 'rgba(255,255,255,0.25)', marginBottom: 10 },
-  title: { color: C.text, fontSize: 20, fontWeight: '800' },
+  title: { color: C.text, fontSize: 20, ...F.display },
   text: { color: C.text2, fontSize: 15, lineHeight: 21 },
   btn: { minHeight: 50, borderRadius: 14, borderWidth: 1, borderColor: C.line, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 16 },
   primary: { backgroundColor: C.lime, borderColor: C.lime },

@@ -4,15 +4,16 @@
 import { useEventListener } from 'expo';
 import * as Haptics from 'expo-haptics';
 import { Image } from 'expo-image';
-import { Link } from 'expo-router';
+import { Link, router } from 'expo-router';
 import { useVideoPlayer, VideoView } from 'expo-video';
 import { useEffect, useRef, useState } from 'react';
+import Animated, { FadeInDown } from 'react-native-reanimated';
 import { AccessibilityInfo, Linking, Platform, Pressable, Share, StyleSheet, Text, View } from 'react-native';
 
 import { api, ApiError, type Call, type Promo } from '@/lib/api';
 import { asScout } from '@/lib/gate';
 import { lang, t } from '@/lib/i18n';
-import { C } from '@/lib/theme';
+import { C, F } from '@/lib/theme';
 import { setBlocked, setCall, setSaved, useViewerState } from '@/lib/viewer-state';
 import { Avatar } from './Avatar';
 import { Icon, type IconName } from './Icon';
@@ -121,7 +122,30 @@ export function PromoReel({ promo, active, height, muted, onSeen, bottomInset = 
         </>
       ) : null}
       <VideoView player={player} style={styles.video} contentFit="contain" nativeControls={false} surfaceType="textureView" />
-      <Pressable style={StyleSheet.absoluteFill} onPress={() => setPaused(!paused)} accessibilityRole="button" accessibilityLabel={paused ? t('play') : t('pause')} />
+      {/* The video area is also the reel summary for VoiceOver and TalkBack, with every action in the actions rotor. */}
+      <Pressable style={StyleSheet.absoluteFill} onPress={() => setPaused(!paused)} accessibilityRole="button"
+        accessibilityLabel={`${c.name}. ${promo.title}.${call ? ` ${t('called')}: ${t(call.choice)}. ${sub}` : ''}`}
+        accessibilityHint={paused ? t('play') : t('pause')}
+        accessibilityActions={[
+          { name: 'activate', label: paused ? t('play') : t('pause') },
+          ...(!call ? [{ name: 'blow_up', label: t('will_blow_up') }, { name: 'not_for_me', label: t('not_for_me') }] : []),
+          { name: 'save', label: saved ? t('saved') : t('save') },
+          { name: 'share', label: t('share') },
+          { name: 'creator', label: c.name },
+          ...(promo.cta?.url && ctaVisible(promo.cta.kind, Platform.OS) ? [{ name: 'cta', label: t(ctaLabel(promo.cta.kind)) }] : []),
+          { name: 'more', label: t('more_actions') },
+        ]}
+        onAccessibilityAction={(e) => {
+          const a = e.nativeEvent.actionName;
+          if (a === 'activate') setPaused(!paused);
+          else if (a === 'blow_up') vote('will_blow_up');
+          else if (a === 'not_for_me') vote('not_for_me');
+          else if (a === 'save') toggleSave();
+          else if (a === 'share') share();
+          else if (a === 'creator') router.push(`/creator/${c.handle}`);
+          else if (a === 'cta') openCta();
+          else if (a === 'more') setMenu(true);
+        }} />
       {paused ? <View style={styles.paused} pointerEvents="none"><Icon name="play" size={34} /></View> : null}
 
       <Fade colors={['rgba(6,6,10,0)', 'rgba(6,6,10,0.82)', 'rgba(6,6,10,0.96)']} locations={[0, 0.55, 1]} style={[styles.shade, open && styles.shadeOpen]} />
@@ -178,7 +202,7 @@ export function PromoReel({ promo, active, height, muted, onSeen, bottomInset = 
       {/* Call bar: the core PromoVote action. After a call it becomes a ticket with the result date. */}
       <View style={[styles.callBar, { bottom }]}>
         {call ? (
-          <View style={[styles.ticket, done && call.outcome === 'correct' && styles.ticketWin]} accessible accessibilityLabel={`${t('called')}: ${t(call.choice)}. ${sub}`}>
+          <Animated.View entering={FadeInDown.springify().damping(16)} style={[styles.ticket, done && call.outcome === 'correct' && styles.ticketWin]} accessible accessibilityLabel={`${t('called')}: ${t(call.choice)}. ${sub}`}>
             <View style={[styles.ticketIcon, call.choice === 'will_blow_up' ? styles.ticketUp : styles.ticketDown]}>
               <Icon name={call.choice === 'will_blow_up' ? 'chevrons' : 'down'} size={18} color={call.choice === 'will_blow_up' ? C.ink : '#fff'} />
             </View>
@@ -186,14 +210,14 @@ export function PromoReel({ promo, active, height, muted, onSeen, bottomInset = 
               <Text maxFontSizeMultiplier={1.35} style={styles.ticketTitle} numberOfLines={1}>{t('called')}: {t(call.choice)}</Text>
               <Text maxFontSizeMultiplier={1.35} style={[styles.ticketSub, done && call.outcome === 'correct' && { color: C.lime, fontWeight: '700' }]} numberOfLines={1}>{sub}</Text>
             </View>
-          </View>
+          </Animated.View>
         ) : (
           <>
-            <Pressable onPress={() => vote('not_for_me')} disabled={busy} accessibilityRole="button" accessibilityLabel={t('not_for_me')}
+            <Pressable onPress={() => vote('not_for_me')} disabled={busy} accessibilityRole="button" accessibilityLabel={t('not_for_me')} android_ripple={{ color: 'rgba(255,255,255,0.15)' }}
               style={({ pressed }) => [styles.callBtn, styles.callNo, pressed && styles.pressed]}>
               <Text maxFontSizeMultiplier={1.35} style={styles.callNoText}>{t('not_for_me')}</Text>
             </Pressable>
-            <Pressable onPress={() => vote('will_blow_up')} disabled={busy} accessibilityRole="button" accessibilityLabel={t('will_blow_up')}
+            <Pressable onPress={() => vote('will_blow_up')} disabled={busy} accessibilityRole="button" accessibilityLabel={t('will_blow_up')} android_ripple={{ color: 'rgba(0,0,0,0.15)' }}
               style={({ pressed }) => [styles.callBtn, styles.callYes, pressed && styles.pressed]}>
               <Icon name="chevrons" size={18} color={C.ink} />
               <Text maxFontSizeMultiplier={1.35} style={styles.callYesText}>{t('will_blow_up')}</Text>
@@ -237,11 +261,11 @@ const styles = StyleSheet.create({
   whoKind: { color: '#d4d1e2', fontSize: 13 },
   gift: { alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: C.lime, borderRadius: 99, paddingHorizontal: 10, minHeight: 28, marginTop: 6 },
   giftText: { color: C.ink, fontWeight: '800', fontSize: 12 },
-  title: { color: '#fff', fontWeight: '800', fontSize: 18, marginTop: 8, marginBottom: 2 },
+  title: { color: '#fff', ...F.display, fontSize: 18, marginTop: 8, marginBottom: 2 },
   desc: { color: C.text2, fontSize: 14, lineHeight: 20 },
   more: { color: '#fff', fontSize: 13, fontWeight: '700', marginTop: 2, opacity: 0.85 },
   tags: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginTop: 8 },
-  hashtag: { color: '#fff', fontWeight: '600', fontSize: 13, paddingVertical: 6 },
+  hashtag: { color: '#fff', fontWeight: '600', fontSize: 13, paddingVertical: 11, paddingRight: 4 },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 8 },
   chip: { color: C.lime, fontSize: 12, fontWeight: '600', paddingVertical: 5, paddingHorizontal: 10, borderRadius: 99, borderWidth: 1, borderColor: 'rgba(198,255,61,0.45)', overflow: 'hidden' },
   cta: { alignSelf: 'flex-start', marginTop: 10, borderRadius: 12, backgroundColor: '#fff', minHeight: 44, paddingHorizontal: 14, flexDirection: 'row', alignItems: 'center', gap: 6 },
@@ -262,7 +286,7 @@ const styles = StyleSheet.create({
   ticketWin: { borderColor: C.lime },
   ticketUp: { backgroundColor: C.lime },
   ticketDown: { backgroundColor: 'rgba(255,255,255,0.15)' },
-  ticketTitle: { color: '#fff', fontWeight: '800', fontSize: 14 },
+  ticketTitle: { color: '#fff', ...F.display, fontSize: 14 },
   ticketSub: { color: '#c9c6d8', fontSize: 12, marginTop: 1 },
   toast: { position: 'absolute', alignSelf: 'center', backgroundColor: 'rgba(20,20,31,0.95)', borderRadius: 99, paddingHorizontal: 16, paddingVertical: 9 },
   toastText: { color: '#fff', fontWeight: '600', fontSize: 14 },

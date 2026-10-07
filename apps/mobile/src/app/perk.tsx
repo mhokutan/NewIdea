@@ -7,7 +7,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { api, ApiError } from '@/lib/api';
 import { t } from '@/lib/i18n';
-import { C } from '@/lib/theme';
+import { C, F } from '@/lib/theme';
 import { Button, Pill } from '@/ui/Pill';
 
 const KINDS = [['code', 'k_code'], ['discount', 'k_discount'], ['beta_invite', 'k_beta']] as const;
@@ -66,7 +66,7 @@ const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: C.bg },
   top: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   cancel: { color: C.text2, fontSize: 16, width: 60 },
-  title: { color: C.text, fontSize: 18, fontWeight: '800' },
+  title: { color: C.text, fontSize: 18, ...F.display },
   label: { color: '#c9c6d8', fontSize: 14, fontWeight: '600' },
   input: { backgroundColor: C.surface, color: C.text, fontSize: 16, borderRadius: 12, borderWidth: 1, borderColor: C.line, paddingHorizontal: 14, paddingVertical: 12 },
   text: { color: C.text2, fontSize: 15, lineHeight: 21 },
