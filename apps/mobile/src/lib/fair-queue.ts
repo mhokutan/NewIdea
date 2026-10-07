@@ -14,15 +14,28 @@ export function nextRound(all: Promo[], seen: Record<string, number>, lang: stri
     list.push(p);
     byCreator.set(p.creator.handle, list);
   }
-  const picks = [...byCreator.values()].map((list) =>
-    list.sort((a, b) => langRank(a) - langRank(b) || (seen[a.id] || 0) - (seen[b.id] || 0)).slice(0, SLOTS_PER_CREATOR),
-  );
+  for (const list of byCreator.values()) list.sort((a, b) => langRank(a) - langRank(b) || (seen[a.id] || 0) - (seen[b.id] || 0));
+  const budget = byCreator.size * SLOTS_PER_CREATOR;
+  // Fair skip: a creator with nothing new (unseen, viewer language or English) gives its slots to creators that
+  // still have new promos, round robin, so the viewer meets a repeat only after every new promo was shown.
+  const fresh = [...byCreator.values()].map((l) => shuffle(l.filter((p) => !seen[p.id] && langRank(p) < 2)));
   const out: Promo[] = [];
+  for (let i = 0; out.length < budget && fresh.some((l) => l[i]); i++) {
+    for (const l of shuffle([...fresh])) if (l[i] && out.length < budget) out.push(l[i]);
+  }
+  // Nothing new left: the usual fair round (same slots per creator, least seen first).
+  if (!out.length) {
+    for (let slot = 0; slot < SLOTS_PER_CREATOR; slot++) {
+      for (const l of shuffle([...byCreator.values()])) if (l[slot]) out.push(l[slot]);
+    }
+  }
+  // Never the same creator twice in a row when another order exists.
   let last = prevCreator;
-  for (let slot = 0; slot < SLOTS_PER_CREATOR; slot++) {
-    const layer = shuffle(picks.map((l) => l[slot]).filter(Boolean));
-    if (layer.length > 1 && layer[0].creator.handle === last) layer.push(layer.shift()!);
-    for (const p of layer) { out.push(p); last = p.creator.handle; }
+  for (let i = 0; i < out.length; i++) {
+    if (out[i].creator.handle !== last) { last = out[i].creator.handle; continue; }
+    const j = out.findIndex((p, k) => k > i && p.creator.handle !== last);
+    if (j > 0) [out[i], out[j]] = [out[j], out[i]];
+    last = out[i].creator.handle;
   }
   return out;
 }
