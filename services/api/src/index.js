@@ -130,7 +130,8 @@ const PROMO_SELECT = `
          v.mp4_url, v.webm_url, v.poster_url, v.stream_uid, v.duration_ms, v.width, v.height,
          p.handle, p.display_name, p.avatar_url, p.i18n as p_i18n, p.is_verified,
          d.category, d.release_status, d.android_status, d.ios_status, d.founder_owned,
-         (select group_concat(tag, ' ') from (select tag from promo_hashtags h where h.promo_id = pr.id order by position)) as tags
+         (select group_concat(tag, ' ') from (select tag from promo_hashtags h where h.promo_id = pr.id order by position)) as tags,
+         (select l.canonical_url from profile_links l where l.profile_id = pr.creator_profile_id and l.platform = 'google_play' and l.safety_status = 'safe' order by l.position limit 1) as play_url
   from promos pr
   join profiles p on p.id = pr.creator_profile_id
   join creator_details d on d.profile_id = p.id
@@ -173,6 +174,8 @@ function promoOut(r, lang) {
       durationMs: r.duration_ms, width: r.width, height: r.height,
     },
     cta: r.cta_kind ? { kind: r.cta_kind, url: r.cta_url ? withUtm(r.cta_url, r.slug) : r.cta_url } : null,
+    // App Store or "notify" promos of creators who are on Google Play: Android viewers get the Play button instead.
+    ctaAndroid: (r.cta_kind === "app_store" || r.cta_kind === "notify") && r.play_url ? { kind: "google_play", url: r.play_url } : null,
     hasPerk: !!r.has_perk,
     views: r.public_view_bucket,
     liveAt: r.live_at,

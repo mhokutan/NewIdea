@@ -66,6 +66,8 @@ export function PromoReel({ promo, active, height, muted, onSeen, bottomInset = 
 
   const flash = (msg: string) => { setNote(msg); AccessibilityInfo.announceForAccessibility(msg); setTimeout(() => setNote(''), 2600); };
   const c = promo.creator;
+  // Android viewers get the Google Play button when the creator is on Play (the App Store link otherwise).
+  const cta = Platform.OS === 'android' && promo.ctaAndroid ? promo.ctaAndroid : promo.cta;
 
   const vote = (choice: Call['choice']) => {
     tap();
@@ -102,10 +104,10 @@ export function PromoReel({ promo, active, height, muted, onSeen, bottomInset = 
     Share.share(Platform.OS === 'ios' ? { message: promo.title, url } : { message: `${promo.title} ${url}` }).catch((e) => console.warn('share_failed', e));
   };
   const openCta = () => {
-    if (!promo.cta?.url) return;
+    if (!cta?.url) return;
     tap();
     api.click(promo.id).catch(() => {});
-    Linking.openURL(promo.cta.url);
+    Linking.openURL(cta.url);
   };
   // Ticket line: the result once the call resolved, otherwise the result date, rank and crowd split.
   const done = !!call?.outcome && call.outcome !== 'pending';
@@ -146,7 +148,7 @@ export function PromoReel({ promo, active, height, muted, onSeen, bottomInset = 
           { name: 'save', label: saved ? t('saved') : t('save') },
           { name: 'share', label: t('share') },
           { name: 'creator', label: c.name },
-          ...(promo.cta?.url && ctaVisible(promo.cta.kind, Platform.OS) ? [{ name: 'cta', label: t(ctaLabel(promo.cta.kind)) }] : []),
+          ...(cta?.url && ctaVisible(cta.kind, Platform.OS) ? [{ name: 'cta', label: t(ctaLabel(cta.kind)) }] : []),
           { name: 'more', label: t('more_actions') },
         ]}
         onAccessibilityAction={(e) => {
@@ -199,14 +201,14 @@ export function PromoReel({ promo, active, height, muted, onSeen, bottomInset = 
             {showAndroidSoon ? <Text maxFontSizeMultiplier={1.35} style={styles.chip}>{t('android_soon')}</Text> : null}
           </View>
         ) : null}
-        {promo.cta?.kind === 'notify' && !promo.cta.url ? (
+        {cta?.kind === 'notify' && !cta.url ? (
           <Pressable onPress={notifyMe} style={({ pressed }) => [styles.cta, following && styles.ctaDone, pressed && styles.pressed]} accessibilityRole="button" android_ripple={{ color: 'rgba(0,0,0,0.12)' }}>
             <Text maxFontSizeMultiplier={1.35} style={[styles.ctaText, following && { color: '#fff' }]}>{following ? t('notify_on') : t('cta_notify')}</Text>
           </Pressable>
         ) : null}
-        {promo.cta?.url && ctaVisible(promo.cta.kind, Platform.OS) ? (
+        {cta?.url && ctaVisible(cta.kind, Platform.OS) ? (
           <Pressable onPress={openCta} style={({ pressed }) => [styles.cta, pressed && styles.pressed]} accessibilityRole="link">
-            <Text maxFontSizeMultiplier={1.35} style={styles.ctaText}>{t(ctaLabel(promo.cta.kind))}</Text>
+            <Text maxFontSizeMultiplier={1.35} style={styles.ctaText}>{t(ctaLabel(cta.kind))}</Text>
             <Icon name="link" size={14} color={D.ink} />
           </Pressable>
         ) : null}

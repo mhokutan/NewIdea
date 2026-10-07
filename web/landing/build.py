@@ -111,6 +111,8 @@ def reel(p, first):
     tags = []
     if c.get("status") == "soon":
         tags.append(f'<span class="tag-soon" data-i18n="tag_soon">{t("tag_soon")}</span>')
+    elif c.get("status") == "ios_soon":
+        tags.append(f'<span class="tag-soon" data-i18n="tag_ios_soon">{t("tag_ios_soon")}</span>')
     if c.get("perk"):
         tags.append(f'<button type="button" class="tag-perk" data-sheet="perk"><svg><use href="/icons.svg#i-gift"/></svg><span data-i18n="perk_tag">{t("perk_tag")}</span></button>')
     tags.append(f'<span class="tag-lang" data-lang-chip hidden>{e(ui[p["lang"]]["lang_name"])}</span>')
@@ -119,8 +121,14 @@ def reel(p, first):
     if p.get("link"):
         key = {"shop": "cta_shop", "appstore": "cta_appstore"}.get(p.get("linkKind"), "cta_etsy")
         cta = f'<a class="btn btn-small btn-ghost" href="{e(p["link"])}" target="_blank" rel="sponsored noopener"><span data-i18n="{key}">{t(key)}</span> <svg class="ext"><use href="/icons.svg#i-arrow-up-right"/></svg></a>'
+        android = c.get("cta", {}).get("android")
+        if p.get("linkKind") == "appstore" and android and android.startswith("https://"):
+            cta += f'<a class="btn btn-small btn-ghost" href="{e(android)}" target="_blank" rel="sponsored noopener"><span data-i18n="cta_googleplay">{t("cta_googleplay")}</span> <svg class="ext"><use href="/icons.svg#i-arrow-up-right"/></svg></a>'
     elif c.get("cta", {}).get("type") == "notify":
         cta = f'<button type="button" class="btn btn-small" data-sheet="notify" data-i18n="cta_notify">{t("cta_notify")}</button>'
+        android = c.get("cta", {}).get("android")
+        if android and android.startswith("https://"):
+            cta = f'<a class="btn btn-small" href="{e(android)}" target="_blank" rel="sponsored noopener"><span data-i18n="cta_googleplay">{t("cta_googleplay")}</span> <svg class="ext"><use href="/icons.svg#i-arrow-up-right"/></svg></a>' + cta.replace('class="btn btn-small"', 'class="btn btn-small btn-ghost"')
     else:
         cta = ""
     disc = "disc_" + c["disclosure"]
@@ -233,8 +241,15 @@ def build_profile(cid, c):
         box = ""
     if c.get("link"):
         links = f'<a class="plink" href="{e(c["link"]["url"])}" target="_blank" rel="sponsored noopener">{e(c["link"]["label"])} <svg aria-hidden="true"><use href="/icons.svg#i-arrow-up-right"/></svg></a>'
-        if c.get("cta", {}).get("android") == "soon":
+        android = c.get("cta", {}).get("android")
+        if android == "soon":
             links += f'<span class="plink plink-soon" data-i18n="tag_android_soon">{t("tag_android_soon")}</span>'
+        elif android and android.startswith("https://"):
+            links += f'<a class="plink" href="{e(android)}" target="_blank" rel="sponsored noopener">Google Play <svg aria-hidden="true"><use href="/icons.svg#i-arrow-up-right"/></svg></a>'
+    elif c.get("cta", {}).get("android", "").startswith("https://"):
+        links = f'<a class="plink" href="{e(c["cta"]["android"])}" target="_blank" rel="sponsored noopener">Google Play <svg aria-hidden="true"><use href="/icons.svg#i-arrow-up-right"/></svg></a>'
+        if c.get("status") == "ios_soon":
+            links += f'<span class="plink plink-soon" data-i18n="tag_ios_soon">{t("tag_ios_soon")}</span>'
     elif c.get("status") == "soon":
         links = f'<span class="plink plink-soon" data-i18n="tag_soon">{t("tag_soon")}</span>'
     else:

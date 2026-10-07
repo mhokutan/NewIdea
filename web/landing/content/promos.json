@@ -10,8 +10,8 @@
         "es": "Un juego de magnate de camiones para iOS y Android. Elige cargas, planifica rutas, contrata conductores y convierte una furgoneta en un imperio logístico. Juego limpio: sin gemas ni temporizadores de energía.",
         "tr": "iOS ve Android için bir tır şirketi oyunu. Yük seç, rota planla, şoför işe al ve tek bir kamyoneti lojistik imparatorluğuna dönüştür. Adil oyun: elmas yok, enerji bekleme süresi yok."
       },
-      "status": "soon",
-      "cta": {"type": "notify"},
+      "status": "ios_soon",
+      "cta": {"type": "notify", "android": "https://play.google.com/store/apps/details?id=com.mhokutan.haulingempire"},
       "disclosure": "founder_made"
     },
     "nicheable": {
@@ -39,7 +39,7 @@
         "tr": "Niyet ve manifest için sakin bir günlük pratik. Bir niyet yaz, sonra her gün iki dakikalık ritüelini yap: olumlamanı oku, şükret, gör. 21 günlük yolculuk, nefes egzersizi ve rehberli meditasyon da var."
       },
       "link": {"url": "https://apps.apple.com/us/app/poleris-manifest-rituals/id6792844860", "label": "App Store"},
-      "cta": {"type": "store", "android": "soon"},
+      "cta": {"type": "store", "android": "https://play.google.com/store/apps/details?id=com.miapera.poleris"},
       "disclosure": "founder_made"
     }
   },

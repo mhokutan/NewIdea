@@ -28,7 +28,7 @@ const en = {
   perk_t: 'Offer a gift', perk_p: 'A code, a discount or a beta invite for scouts. It can never ask for votes, follows or likes.', perk_title: 'Title (for example: 20% off launch week)',
   perk_code: 'Code people will use', perk_link: 'Where to use it (https link, optional)', perk_days: 'Days it runs', perk_stock: 'How many (empty = no limit)', perk_create: 'Start the gift',
   perk_active: 'Active gift', perk_claims: '{n} claimed', perk_end: 'End gift', k_code: 'Code', k_discount: 'Discount', k_beta: 'Beta invite',
-  streams: 'Streams', videos: 'Videos', brands: 'Brands', local: 'Local', cta_google_play: 'Open in Google Play', cta_steam: 'Wishlist on Steam', cta_watch_live: 'Watch live',
+  streams: 'Streams', videos: 'Videos', brands: 'Brands', local: 'Local', cta_google_play: "Get it on Google Play", cta_steam: 'Wishlist on Steam', cta_watch_live: 'Watch live',
   onb_step: 'Step {n} of {total}', onb_type_t: 'How will you use PromoVote?', next: 'Next', back: "Back", handle_hint: 'This is your link: promovote.com/@',
   cats_more: 'Also fits (up to 2)', settings: 'Settings', edit_profile: 'Edit profile', view_page: 'View public page',
   scout_score: 'Scout Score', score_note: 'Reputation only. No cash value.', level: 'Level', to_next: '{n} points to level {l}',
@@ -70,6 +70,7 @@ const en = {
   notify_on: "You will hear at launch", notify_toast: "Done. You will see their launch first.",
   onb_basics_t: "About you", onb_basics_p: "Your name and username show on your Scout profile.", onb_basics_creator_t: "Your business", onb_basics_creator_p: "The name scouts will see on your page and on every promo.", onb_business_name: "Business, game, app or channel name", onb_business_ph: "For example: Pixel Fox Games", onb_name_ph: "Your name", onb_owner_birth: "Account owner's date of birth", onb_birth_note: "PromoVote is 18+. Only the year is kept, never shown.", handle_taken: "That username is taken. Try another.", onb_about_t: "What do you make?", onb_about_p: "This helps the right scouts find you.", onb_category_q: "Main category", onb_bio_creator: "Description", onb_bio_creator_ph: "What is your game, app, shop or channel? Who is it for?", onb_bio_min: "{n} more characters", onb_links_t: "Where can people find you?", onb_links_p: "Add your website, store page or channel. Short links and link in bio pages are not allowed.", onb_main_link: "Main link (website, store or channel)", onb_main_link_ph: "https://yourgame.com", onb_link_bad: "Enter a full address, for example https://yourgame.com", onb_cta_p: "The big button on your page. We picked one from your link; change it if you like.", onb_photo_later: "You can add your logo and banner from your studio after this step.", onb_interests_t: "What do you like to discover?", onb_interests_p: "Pick at least one. We show you more of these first.", onb_bio_scout: "Short bio (optional)", onb_bio_scout_ph: "For example: Indie game hunter, cozy games first",
   appearance: "Appearance", theme_system: "Same as phone", theme_light: "Light", theme_dark: "Dark",
+  ios_soon: "App Store coming soon",
 };
 type Key = keyof typeof en;
 const es: Partial<Record<Key, string>> = {
@@ -99,7 +100,7 @@ const es: Partial<Record<Key, string>> = {
   perk_t: 'Ofrecer un regalo', perk_p: 'Un código, un descuento o una invitación beta para exploradores. Nunca puede pedir votos, seguidores ni likes.', perk_title: 'Título (por ejemplo: 20% de descuento en el lanzamiento)',
   perk_code: 'Código que usará la gente', perk_link: 'Dónde usarlo (enlace https, opcional)', perk_days: 'Días que dura', perk_stock: 'Cuántos (vacío = sin límite)', perk_create: 'Empezar el regalo',
   perk_active: 'Regalo activo', perk_claims: '{n} reclamados', perk_end: 'Terminar regalo', k_code: 'Código', k_discount: 'Descuento', k_beta: 'Invitación beta',
-  streams: 'Directos', videos: 'Videos', brands: 'Marcas', local: 'Local', cta_google_play: 'Abrir en Google Play', cta_steam: 'Desear en Steam', cta_watch_live: 'Ver en directo',
+  streams: 'Directos', videos: 'Videos', brands: 'Marcas', local: 'Local', cta_google_play: "Disponible en Google Play", cta_steam: 'Desear en Steam', cta_watch_live: 'Ver en directo',
   onb_step: 'Paso {n} de {total}', onb_type_t: '¿Cómo usarás PromoVote?', next: 'Siguiente', back: "Atrás", handle_hint: 'Este es tu enlace: promovote.com/@',
   cats_more: 'También encaja (hasta 2)', settings: 'Ajustes', edit_profile: 'Editar perfil', view_page: 'Ver página pública',
   scout_score: 'Puntos de explorador', score_note: 'Solo reputación. Sin valor en dinero.', level: 'Nivel', to_next: '{n} puntos para el nivel {l}',
@@ -141,6 +142,7 @@ const es: Partial<Record<Key, string>> = {
   notify_on: "Te avisaremos al lanzar", notify_toast: "Listo. Verás su lanzamiento primero.",
   onb_basics_t: "Sobre ti", onb_basics_p: "Tu nombre y usuario aparecen en tu perfil de explorador.", onb_basics_creator_t: "Tu negocio", onb_basics_creator_p: "El nombre que verán los exploradores en tu página y en cada promo.", onb_business_name: "Nombre del negocio, juego, app o canal", onb_business_ph: "Por ejemplo: Pixel Fox Games", onb_name_ph: "Tu nombre", onb_owner_birth: "Fecha de nacimiento del titular", onb_birth_note: "PromoVote es para mayores de 18. Solo guardamos el año y nunca se muestra.", handle_taken: "Ese usuario ya existe. Prueba otro.", onb_about_t: "¿Qué haces?", onb_about_p: "Así te encuentran los exploradores adecuados.", onb_category_q: "Categoría principal", onb_bio_creator: "Descripción", onb_bio_creator_ph: "¿Qué es tu juego, app, tienda o canal? ¿Para quién es?", onb_bio_min: "{n} caracteres más", onb_links_t: "¿Dónde te pueden encontrar?", onb_links_p: "Añade tu web, página de tienda o canal. No se permiten enlaces cortos ni páginas de enlaces.", onb_main_link: "Enlace principal (web, tienda o canal)", onb_main_link_ph: "https://tujuego.com", onb_link_bad: "Escribe la dirección completa, por ejemplo https://tujuego.com", onb_cta_p: "El botón grande de tu página. Elegimos uno según tu enlace; cámbialo si quieres.", onb_photo_later: "Podrás añadir tu logo y portada desde tu estudio después de este paso.", onb_interests_t: "¿Qué te gusta descubrir?", onb_interests_p: "Elige al menos uno. Te mostramos más de esto primero.", onb_bio_scout: "Bio corta (opcional)", onb_bio_scout_ph: "Por ejemplo: Cazador de juegos indie, primero los cozy",
   appearance: "Apariencia", theme_system: "Igual que el teléfono", theme_light: "Claro", theme_dark: "Oscuro",
+  ios_soon: "Pronto en App Store",
 };
 const tr: Partial<Record<Key, string>> = {
   tab_feed: 'Akış', tab_explore: 'Keşfet', tab_me: 'Profil',
@@ -169,7 +171,7 @@ const tr: Partial<Record<Key, string>> = {
   perk_t: 'Hediye sun', perk_p: 'Kaşifler için bir kod, indirim veya beta daveti. Asla oy, takip veya beğeni isteyemez.', perk_title: 'Başlık (örnek: çıkış haftası %20 indirim)',
   perk_code: 'Kullanılacak kod', perk_link: 'Nerede kullanılır (https link, isteğe bağlı)', perk_days: 'Kaç gün sürsün', perk_stock: 'Kaç tane (boş = sınırsız)', perk_create: 'Hediyeyi başlat',
   perk_active: 'Aktif hediye', perk_claims: '{n} kişi aldı', perk_end: 'Hediyeyi bitir', k_code: 'Kod', k_discount: 'İndirim', k_beta: 'Beta daveti',
-  streams: 'Yayınlar', videos: 'Videolar', brands: 'Markalar', local: 'Yerel', cta_google_play: "Google Play'de aç", cta_steam: "Steam'de istek listesine ekle", cta_watch_live: 'Canlı izle',
+  streams: 'Yayınlar', videos: 'Videolar', brands: 'Markalar', local: 'Yerel', cta_google_play: "Google Play'den indir", cta_steam: "Steam'de istek listesine ekle", cta_watch_live: 'Canlı izle',
   onb_step: 'Adım {n} / {total}', onb_type_t: "PromoVote'u nasıl kullanacaksın?", next: 'İleri', back: "Geri", handle_hint: 'Linkin bu olacak: promovote.com/@',
   cats_more: 'Bunlara da uyar (en fazla 2)', settings: 'Ayarlar', edit_profile: 'Profili düzenle', view_page: 'Herkese açık sayfayı gör',
   scout_score: 'Kaşif Puanı', score_note: 'Sadece itibar. Nakit değeri yok.', level: 'Seviye', to_next: 'Seviye {l} için {n} puan kaldı',
@@ -211,6 +213,7 @@ const tr: Partial<Record<Key, string>> = {
   notify_on: "Çıkınca haber vereceğiz", notify_toast: "Tamam. Çıkışını ilk sen göreceksin.",
   onb_basics_t: "Seni tanıyalım", onb_basics_p: "Adın ve kullanıcı adın kaşif profilinde görünür.", onb_basics_creator_t: "İşletmen", onb_basics_creator_p: "Kaşiflerin sayfanda ve her tanıtımında göreceği isim.", onb_business_name: "İşletme, oyun, uygulama veya kanal adı", onb_business_ph: "Örnek: Pixel Fox Games", onb_name_ph: "Adın", onb_owner_birth: "Hesap sahibinin doğum tarihi", onb_birth_note: "PromoVote 18 yaş üstü içindir. Sadece yıl saklanır, hiç gösterilmez.", handle_taken: "Bu kullanıcı adı alınmış. Başka bir tane dene.", onb_about_t: "Ne yapıyorsun?", onb_about_p: "Doğru kaşiflerin seni bulmasını sağlar.", onb_category_q: "Ana kategori", onb_bio_creator: "Açıklama", onb_bio_creator_ph: "Oyunun, uygulaman, mağazan veya kanalın ne? Kimin için?", onb_bio_min: "{n} karakter daha", onb_links_t: "İnsanlar seni nerede bulur?", onb_links_p: "Siteni, mağaza sayfanı veya kanalını ekle. Kısa linkler ve link sayfaları kabul edilmez.", onb_main_link: "Ana link (site, mağaza veya kanal)", onb_main_link_ph: "https://oyunun.com", onb_link_bad: "Tam adres yaz, örnek https://oyunun.com", onb_cta_p: "Sayfandaki büyük buton. Linkine göre seçtik, istersen değiştir.", onb_photo_later: "Logonu ve kapak fotoğrafını bu adımdan sonra stüdyondan ekleyebilirsin.", onb_interests_t: "Neleri keşfetmeyi seversin?", onb_interests_p: "En az birini seç. Önce bunlardan daha fazla gösteririz.", onb_bio_scout: "Kısa tanıtım (isteğe bağlı)", onb_bio_scout_ph: "Örnek: Indie oyun avcısı, önce sakin oyunlar",
   appearance: "Görünüm", theme_system: "Telefonla aynı", theme_light: "Açık", theme_dark: "Koyu",
+  ios_soon: "Yakında App Store'da",
 };
 
 const DICTS = { en, es, tr } as const;

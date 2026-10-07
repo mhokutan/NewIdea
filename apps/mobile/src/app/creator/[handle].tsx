@@ -51,9 +51,11 @@ export default function CreatorScreen() {
   if (!p) return <View style={styles.center}><ActivityIndicator color={C.accent} /></View>;
 
   const tileW = (width - 32 - 16) / 3;
-  const main = p.primaryCta?.url && ctaVisible(p.primaryCta.kind, Platform.OS) ? p.primaryCta : null;
+  // On Android a Google Play link is the main button (the App Store or "notify me" one otherwise).
+  const play = Platform.OS === 'android' ? (p.links || []).find((l) => l.platform === 'google_play') : undefined;
+  const main = play ? { kind: 'google_play', url: play.url } : p.primaryCta?.url && ctaVisible(p.primaryCta.kind, Platform.OS) ? p.primaryCta : null;
   // "Notify me at launch" is a follow: followers hear about the first promo and the launch.
-  const notify = p.primaryCta?.kind === 'notify';
+  const notify = p.primaryCta?.kind === 'notify' && !play;
   return (
     <ScrollView style={{ flex: 1, backgroundColor: C.bg }} contentContainerStyle={{ paddingBottom: 48 }}>
       <View style={{ height: 180 + insets.top }}>
@@ -93,13 +95,14 @@ export default function CreatorScreen() {
         )}
         {p.bio ? <Text style={styles.bio}>{p.bio}</Text> : null}
         <View style={styles.links}>
-          {(p.links || []).map((l) => (
+          {(p.links || []).filter((l) => ctaVisible(l.platform, Platform.OS)).map((l) => (
             <Pressable key={l.url} onPress={() => { api.linkTap(handle, l.url).catch(() => {}); Linking.openURL(l.url); }} style={styles.link} accessibilityRole="link">
               <Text style={styles.linkText}>{linkName(l.platform, l.url, l.label)}</Text>
               <Icon name="link" size={14} color={C.text} />
             </Pressable>
           ))}
           {p.releaseStatus === 'soon' ? <Text style={styles.soonCaption}>{t('soon')}</Text> : null}
+          {Platform.OS === 'ios' && p.iosStatus === 'soon' ? <Text style={styles.soonCaption}>{t('ios_soon')}</Text> : null}
           {Platform.OS === 'android' && p.androidStatus === 'soon' ? <Text style={[styles.link, styles.soon]}>{t('android_soon')}</Text> : null}
         </View>
         {perk && !p.viewer?.isMe ? (

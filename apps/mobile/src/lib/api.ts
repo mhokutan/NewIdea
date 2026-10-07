@@ -13,12 +13,12 @@ export type Creator = {
 export type Promo = {
   id: string; slug: string; lang: string; title: string; description: string | null; tags: string[];
   video: { mp4: string | null; webm: string | null; poster: string | null; hls: string | null; durationMs: number };
-  cta: { kind: string; url: string | null } | null; hasPerk: boolean; liveAt: string; creator: Creator;
+  cta: { kind: string; url: string | null } | null; ctaAndroid?: { kind: string; url: string } | null; hasPerk: boolean; liveAt: string; creator: Creator;
 };
 export type Profile = {
   handle: string; type: 'scout' | 'creator'; name: string; bio: string | null; avatar: string | null;
   banner: string | null; mono: string | null; verified: boolean; kind?: string; category?: string;
-  releaseStatus?: string; androidStatus?: string | null; founderOwned?: boolean; followers?: number | null;
+  releaseStatus?: string; androidStatus?: string | null; iosStatus?: string | null; founderOwned?: boolean; followers?: number | null;
   links?: Link[]; promos?: Promo[]; newCreator?: boolean; stats?: { score: number; level: number; calledIt: number } | null;
   viewer?: { following: boolean; isMe: boolean }; primaryCta?: { kind: string; url: string | null } | null;
 };
