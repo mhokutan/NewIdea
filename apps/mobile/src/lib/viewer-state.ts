@@ -35,6 +35,18 @@ export function setBlocked(handle: string) {
   state = { ...state, blocked: [handle, ...state.blocked.filter((x) => x !== handle)], following: state.following.filter((x) => x !== handle) }; emit();
 }
 
+/** True once the signed in state arrived. A hook (not a plain read) so the React Compiler re-renders on change. */
+export function useViewerStateLoaded() {
+  const [loaded, setLoaded] = useState(meta.loaded);
+  useEffect(() => {
+    const l = () => setLoaded(meta.loaded);
+    listeners.add(l);
+    l();
+    return () => { listeners.delete(l); };
+  }, []);
+  return loaded;
+}
+
 export function useViewerState() {
   const [, force] = useState(0);
   useEffect(() => {

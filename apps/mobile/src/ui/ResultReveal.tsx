@@ -11,7 +11,7 @@ import { outcomeText, t } from '@/lib/i18n';
 import { getLocal, setLocal } from '@/lib/store';
 import { C, F, R, themed } from '@/lib/theme';
 import { useMe } from '@/lib/use-me';
-import { useViewerState, viewerStateLoaded } from '@/lib/viewer-state';
+import { useViewerState, useViewerStateLoaded } from '@/lib/viewer-state';
 import { Icon } from './Icon';
 import { Button } from './Pill';
 
@@ -29,7 +29,7 @@ export function ResultReveal({ enabled }: { enabled: boolean }) {
   const total = calls.filter((c) => c.outcome && c.outcome !== 'pending').length;
   const right = calls.filter((c) => c.outcome === 'correct').length;
   const handle = me?.profile?.handle;
-  const loaded = viewerStateLoaded();
+  const loaded = useViewerStateLoaded();
 
   useEffect(() => {
     if (!enabled || !handle || !loaded) return;

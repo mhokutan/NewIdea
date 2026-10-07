@@ -16,7 +16,7 @@ import { lang, t } from '@/lib/i18n';
 import { D, theme, F } from '@/lib/theme';
 import { reminderOn, turnOnReminder } from '@/lib/reminder';
 import { useMe } from '@/lib/use-me';
-import { useViewerState, viewerStateLoaded } from '@/lib/viewer-state';
+import { useViewerState, useViewerStateLoaded } from '@/lib/viewer-state';
 import { Button } from '@/ui/Pill';
 import { Icon } from '@/ui/Icon';
 import { PromoReel } from '@/ui/PromoReel';
@@ -62,7 +62,8 @@ export default function Feed() {
   useEffect(() => { callsNow.current = vs.calls; }, [vs.calls]);
   // -1 = first visit (no calls yet), 0 = nothing new for this scout today, n = new promos in today's drop.
   const [fresh, setFresh] = useState(-1);
-  const stateReady = !meLoading && (!me?.profile || viewerStateLoaded());
+  const vsLoaded = useViewerStateLoaded();
+  const stateReady = !meLoading && (!me?.profile || vsLoaded);
   const bottomInset = TAB_BAR ? TAB_BAR + insets.bottom : 0;
   const seen = useRef<Record<string, number>>({});
   const interestsRef = useRef<string[]>([]);
