@@ -1183,14 +1183,17 @@ async function resolveCalls(db) {
     // Every valid call on the promos involved, in one query; later counts are computed here.
     const promoIds = [...new Set(batch.map((c) => c.promo_id))];
     const { results: all } = await db.prepare(
-      "select id, promo_id, choice, created_at from calls where is_valid = 1 and promo_id in (select value from json_each(?))",
+      `select ca.id, ca.promo_id, ca.choice, ca.created_at, p.created_at as account_at from calls ca join profiles p on p.id = ca.scout_profile_id
+       where ca.is_valid = 1 and ca.promo_id in (select value from json_each(?))`,
     ).bind(JSON.stringify(promoIds)).all();
+    // Collusion guard: later calls count only from accounts at least 3 days old, so a ring of fresh accounts cannot flip a result.
+    const settled = new Date(Date.now() - 3 * 864e5).toISOString();
     const byPromo = new Map();
     for (const c of all) { if (!byPromo.has(c.promo_id)) byPromo.set(c.promo_id, []); byPromo.get(c.promo_id).push(c); }
     const recheck = [], resolved = [], perScout = new Map();
     for (const call of batch) {
       const calls = byPromo.get(call.promo_id) || [];
-      const later = calls.filter((c) => c.created_at > call.created_at && c.id !== call.id);
+      const later = calls.filter((c) => c.created_at > call.created_at && c.id !== call.id && c.account_at < settled);
       const n = later.length, share = n ? later.filter((c) => c.choice === "will_blow_up").length / n : 0;
       if (n < need && call.created_at >= expire) { recheck.push(call.id); continue; } // check again tomorrow
       let o = "void", d = 0, m = null;
