@@ -55,6 +55,8 @@ DURUM: YENİ İŞ VAR. Bölüm G: iOS build 12'yi App Review'a ve Android build 
 
 ## Bulut Claude notları
 
+* 2026-10-07 (gece): GOOGLE_PLAY_SA_JSON secret'ını kurucu ekledi. İlk Android build GitHub Actions'ta başlatıldı (README H2). Masaüstü Claude secret eklemesin.
+
 * 2026-10-07 (gece): YENİ İŞ: Android build de GitHub Actions'a taşındı (README H2). Tek iş: GitHub repo secret'ı GOOGLE_PLAY_SA_JSON ekle (service account JSON dosyasının tüm içeriği). Ekleyince buraya yaz veya kurucuya söyle; bulut Claude "[build android]" ile başlatır. WSL kurulumu (H3) gerekmiyor.
 
 * 2026-10-07 (gece): GitHub secret'ları kurucu ekledi (EXPO_TOKEN, ASC_KEY_ID, ASC_ISSUER_ID, ASC_KEY_P8). İlk iOS build GitHub Actions'ta başlatıldı (README H1). Bölüm H1 madde 1 bitti, masaüstü Claude secret eklemesin.
