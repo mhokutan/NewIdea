@@ -11,6 +11,8 @@ import { api, type Promo } from '@/lib/api';
 import { nextRound } from '@/lib/fair-queue';
 import { lang, t } from '@/lib/i18n';
 import { C } from '@/lib/theme';
+import { reminderOn, turnOnReminder } from '@/lib/reminder';
+import { useMe } from '@/lib/use-me';
 import { useViewerState } from '@/lib/viewer-state';
 import { Button } from '@/ui/Pill';
 import { Icon } from '@/ui/Icon';
@@ -45,7 +47,11 @@ export default function Feed() {
   const [focused, setFocused] = useState(true);
   useFocusEffect(useCallback(() => { setFocused(true); return () => setFocused(false); }, []));
   const vs = useViewerState();
+  const { me } = useMe();
   const blocked = vs.blocked;
+  const callsNow = useRef(vs.calls);
+  useEffect(() => { callsNow.current = vs.calls; }, [vs.calls]);
+  const [fresh, setFresh] = useState(0);
   const bottomInset = TAB_BAR ? TAB_BAR + insets.bottom : 0;
   const seen = useRef<Record<string, number>>({});
   const round = useRef(0);
@@ -65,7 +71,14 @@ export default function Feed() {
   useEffect(() => {
     let alive = true;
     const load = tab === 'drop'
-      ? Promise.all([api.drop(), api.feed()]).then(([d, f]) => ({ drop: d.promos, pool: f.promos }))
+      ? Promise.all([api.drop(), api.feed()]).then(([d, f]) => {
+        // The server sends a pool of up to 21. Returning scouts get the ones they have not called yet first,
+        // so tomorrow's drop is not mostly yesterday's promos.
+        const uncalled = d.promos.filter((p) => !callsNow.current[p.id]);
+        const pick = [...uncalled, ...d.promos.filter((p) => callsNow.current[p.id])].slice(0, d.size || 7);
+        setFresh(Object.keys(callsNow.current).length ? Math.min(uncalled.length, d.size || 7) : 0);
+        return { drop: pick, pool: f.promos };
+      })
       : api.home(tab === 'picks' ? 'featured' : 'new').then((r) => ({ drop: r.promos, pool: r.promos }));
     load.then(({ drop, pool }) => {
       if (!alive) return;
@@ -119,7 +132,7 @@ export default function Feed() {
           data={blocked.length ? items.filter((i) => !i.promo || !blocked.includes(i.promo.creator.handle)) : items}
           keyExtractor={(i) => i.key}
           renderItem={({ item, index }) => item.end ? (
-            <EndCard height={height} calls={dropCalls} size={dropSize} onMore={keepWatching} onExplore={() => router.navigate('/explore')} />
+            <EndCard height={height} calls={dropCalls} size={dropSize} guest={!me} onMore={keepWatching} onExplore={() => router.navigate('/explore')} />
           ) : (
             <PromoReel promo={item.promo} active={focused && index === active} height={height} muted={muted} onSeen={onSeen} bottomInset={bottomInset} />
           )}
@@ -137,6 +150,7 @@ export default function Feed() {
           maxToRenderPerBatch={2}
         />
       )}
+      <View style={[styles.scrim, { height: insets.top + WEB_MENU + 120 }]} pointerEvents="none" />
       <View style={[styles.top, { paddingTop: insets.top + 6 + WEB_MENU }]} pointerEvents="box-none">
         <View style={styles.bar} pointerEvents="box-none">
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tabs} accessibilityRole="tablist">
@@ -151,17 +165,18 @@ export default function Feed() {
                   accessibilityRole="tab"
                   accessibilityState={{ selected: on }}
                 >
-                  <Text style={[styles.tabText, on && styles.tabOn]}>{t(x.label)}</Text>
+                  <Text style={[styles.tabText, on && styles.tabOn]} maxFontSizeMultiplier={1.3}>{t(x.label)}</Text>
                   <View style={[styles.dot, on && styles.dotOn]} />
                 </Pressable>
               );
             })}
           </ScrollView>
-          <Pressable onPress={() => setMuted(!muted)} style={styles.sound} accessibilityRole="button" accessibilityLabel={muted ? 'Sound on' : 'Sound off'}>
+          <Pressable onPress={() => setMuted(!muted)} style={styles.sound} accessibilityRole="button" accessibilityLabel={muted ? t('sound_on') : t('sound_off')}>
             <Icon name={muted ? 'mute' : 'sound'} size={20} />
           </Pressable>
         </View>
-        {tab === 'picks' && items.length > 0 && <Text style={styles.note}>{t('featured_note')}</Text>}
+        {tab === 'picks' && items.length > 0 && active === 0 ? <Text style={styles.note} maxFontSizeMultiplier={1.3}>{t('featured_note')}</Text> : null}
+        {tab === 'drop' && fresh > 0 && active === 0 ? <Text style={styles.note} maxFontSizeMultiplier={1.3}>{t('drop_fresh').replace('{n}', String(fresh))}</Text> : null}
         {tab === 'drop' && dropSize > 0 && active < dropSize ? (
           <View style={styles.progress} accessibilityLabel={`${active + 1} / ${dropSize}`}>
             {Array.from({ length: dropSize }, (_, i) => <View key={i} style={[styles.seg, i <= active && styles.segOn]} />)}
@@ -173,15 +188,30 @@ export default function Feed() {
 }
 
 // Shown after the 7th promo of Today's Drop: a finite day, results in 7 days, then optional endless watching.
-function EndCard({ height, calls, size, onMore, onExplore }: { height: number; calls: number; size: number; onMore: () => void; onExplore: () => void }) {
+function EndCard({ height, calls, size, guest, onMore, onExplore }: {
+  height: number; calls: number; size: number; guest: boolean; onMore: () => void; onExplore: () => void;
+}) {
+  // After a finished drop (signed in), offer the daily reminder once. Local notification only.
+  const [remind, setRemind] = useState<'hidden' | 'offer' | 'on' | 'denied'>('hidden');
+  useEffect(() => {
+    if (guest || Platform.OS === 'web') return;
+    let alive = true;
+    reminderOn().then((on) => { if (alive && !on) setRemind('offer'); });
+    return () => { alive = false; };
+  }, [guest]);
+  const line = guest ? t('drop_done_guest') : calls ? t('drop_done_calls').replace('{n}', String(calls)).replace('{size}', String(size)) : t('drop_done_zero');
   return (
     <View style={[styles.end, { height }]}>
       <Icon name="chevrons" size={44} color={C.lime} />
       <Text style={styles.endTitle} accessibilityRole="header">{t('drop_done_t')}</Text>
-      <Text style={styles.endText}>{t('drop_done_calls').replace('{n}', String(calls)).replace('{size}', String(size))}</Text>
-      <Text style={styles.endText}>{t('drop_done_p')}</Text>
+      <Text style={styles.endText}>{line}</Text>
+      {!guest && calls ? <Text style={styles.endText}>{t('drop_done_p')}</Text> : null}
       <View style={{ width: '100%', maxWidth: 320, gap: 10, marginTop: 18 }}>
-        <Button label={t('keep_watching')} onPress={onMore} />
+        {guest ? <Button label={t('sign_in')} onPress={() => router.push('/sign-in')} /> : null}
+        {remind === 'offer' ? <Button label={t('remind_me')} onPress={() => turnOnReminder().then((ok) => setRemind(ok ? 'on' : 'denied'))} /> : null}
+        {remind === 'on' ? <Text style={styles.endText}>{t('remind_on')}</Text> : null}
+        {remind === 'denied' ? <Text style={styles.endText}>{t('remind_denied')}</Text> : null}
+        <Button label={t('keep_watching')} ghost={guest || remind === 'offer'} onPress={onMore} />
         <Button label={t('tab_explore')} ghost onPress={onExplore} />
       </View>
     </View>
@@ -208,5 +238,6 @@ const styles = StyleSheet.create({
   end: { alignItems: 'center', justifyContent: 'center', backgroundColor: C.bg, padding: 32, gap: 8 },
   endTitle: { color: C.text, fontSize: 28, fontWeight: '800', textAlign: 'center', marginTop: 8 },
   endText: { color: C.text2, fontSize: 16, lineHeight: 23, textAlign: 'center', maxWidth: 320 },
-  note: { marginTop: 2, marginLeft: 4, color: 'rgba(255,255,255,0.8)', fontSize: 12, fontWeight: '600', ...shadow },
+  note: { alignSelf: 'flex-start', marginTop: 8, marginLeft: 4, maxWidth: 320, color: '#fff', fontSize: 12, fontWeight: '600', backgroundColor: 'rgba(10,10,15,0.78)', borderRadius: 10, paddingHorizontal: 10, paddingVertical: 6, overflow: 'hidden' },
+  scrim: { position: 'absolute', top: 0, left: 0, right: 0, experimental_backgroundImage: 'linear-gradient(to bottom, rgba(0,0,0,0.6), rgba(0,0,0,0))' } as any,
 });

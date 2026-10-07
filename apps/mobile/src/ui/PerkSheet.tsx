@@ -1,20 +1,22 @@
 // Gift sheet: shows a creator's active gift and, after sign in, the code. Claiming never depends on calls
 // or follows (server rule in services/api, "perks").
 import * as Clipboard from 'expo-clipboard';
-import { useEffect, useState } from 'react';
-import { ActivityIndicator, Linking, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import { useEffect, useRef, useState } from 'react';
+import { ActivityIndicator, Linking, Modal, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { api, type Perk } from '@/lib/api';
 import { asMember } from '@/lib/gate';
 import { lang, t } from '@/lib/i18n';
 import { C, R } from '@/lib/theme';
+import { useMe } from '@/lib/use-me';
 import { Button } from './Pill';
 
 const fmt = (s: string, v: Record<string, string | number>) => Object.entries(v).reduce((a, [k, x]) => a.replace(`{${k}}`, String(x)), s);
 
 export function PerkSheet({ handle, name, visible, onClose }: { handle: string; name: string; visible: boolean; onClose: () => void }) {
   const insets = useSafeAreaInsets();
+  const { me } = useMe();
   const [perk, setPerk] = useState<Perk | null | undefined>(undefined);
   const [code, setCode] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
@@ -27,16 +29,25 @@ export function PerkSheet({ handle, name, visible, onClose }: { handle: string; 
     return () => { alive = false; };
   }, [visible, handle]);
 
-  const claim = () => asMember(async () => {
+  const claim = async () => {
     if (!perk) return;
+    // Guests sign in first. The gate sheet can only open once this sheet is gone (iOS stacks one modal at a time).
+    if (!me?.profile) { signInNext.current = true; onClose(); return; }
     setErr('');
     try { const r = await api.claimPerk(perk.id); setCode(r.code); } catch (e: any) { setErr(e?.message || t('error')); }
+  };
+  const signInNext = useRef(false);
+  const afterClose = () => { if (signInNext.current) { signInNext.current = false; asMember(() => {}); } };
+  const was = useRef(visible);
+  useEffect(() => {
+    if (was.current && !visible && Platform.OS !== 'ios') afterClose();
+    was.current = visible;
   });
   const copy = async () => { if (!code) return; await Clipboard.setStringAsync(code); setCopied(true); setTimeout(() => setCopied(false), 1800); };
 
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose} statusBarTranslucent>
-      <Pressable style={styles.backdrop} onPress={onClose} accessibilityLabel={t('cancel')} />
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose} statusBarTranslucent onDismiss={Platform.OS === 'ios' ? afterClose : undefined}>
+      <Pressable style={styles.backdrop} onPress={onClose} accessibilityRole="button" accessibilityLabel={t('close')} />
       <View style={[styles.sheet, { paddingBottom: insets.bottom + 16 }]} accessibilityViewIsModal>
         <View style={styles.grab} />
         <Text style={styles.kicker}>{fmt(t('gift_t'), { name })}</Text>

@@ -1,10 +1,11 @@
 // Help and legal block (Apple 1.2 contact info, 5.1.1 privacy policy link). Visible to guests too.
 import { Linking, Pressable, StyleSheet, Text, View } from 'react-native';
 import { t } from '@/lib/i18n';
+import { openMail } from '@/lib/mail';
 import { C } from '@/lib/theme';
 
 const LINKS: [Parameters<typeof t>[0], string][] = [
-  ['help_contact', 'mailto:support@promovote.com'],
+  ['help_contact', 'support@promovote.com'],
   ['help_terms', 'https://promovote.com/terms'],
   ['help_privacy', 'https://promovote.com/privacy'],
   ['help_guidelines', 'https://promovote.com/guidelines'],
@@ -15,7 +16,7 @@ export function LegalLinks() {
     <View style={styles.box}>
       <Text style={styles.h}>{t('help_title')}</Text>
       {LINKS.map(([key, url]) => (
-        <Pressable key={key} onPress={() => Linking.openURL(url)} accessibilityRole="link" style={({ pressed }) => [styles.row, pressed && { opacity: 0.6 }]}>
+        <Pressable key={key} onPress={() => (url.startsWith('https://') ? Linking.openURL(url) : openMail(url))} accessibilityRole="link" style={({ pressed }) => [styles.row, pressed && { opacity: 0.6 }]}>
           <Text style={styles.text}>{t(key)}</Text>
           <Text style={styles.arrow}>›</Text>
         </Pressable>

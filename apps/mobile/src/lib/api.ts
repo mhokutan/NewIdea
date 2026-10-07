@@ -20,7 +20,7 @@ export type Profile = {
   banner: string | null; mono: string | null; verified: boolean; kind?: string; category?: string;
   releaseStatus?: string; androidStatus?: string | null; founderOwned?: boolean; followers?: number | null;
   links?: Link[]; promos?: Promo[]; newCreator?: boolean; stats?: { score: number; level: number; calledIt: number } | null;
-  viewer?: { following: boolean; isMe: boolean };
+  viewer?: { following: boolean; isMe: boolean }; primaryCta?: { kind: string; url: string | null } | null;
 };
 export type Me = {
   user: { id: string; email: string };
@@ -41,9 +41,11 @@ export type Link = { platform: string; url: string; label: string | null };
 export type ScoutSummary = {
   score: number; level: number; nextLevelAt: number; streakWeeks: number; resolved: number; right: number; calledIt: number;
   open: { promo: Promo; choice: Call['choice']; rank: number | null; resolvesAt: string }[];
+  accuracy: number | null;
+  results: { promo: Promo; choice: Call['choice']; outcome: 'correct' | 'incorrect' | 'void'; points: number; resolvedAt: string | null }[];
   saved: Promo[]; following: { handle: string; name: string; avatar: string | null; mono: string | null }[];
 };
-type Stat = { views: number; completion: number; avgSeconds: number; clicks: number; ctr: number };
+type Stat = { views: number; completion: number; avgSeconds: number; clicks: number; ctr: number; saves: number; follows: number };
 export type Studio = {
   profile: { name: string; bio: string | null; avatar: string | null; banner: string | null; followers: number; category: string;
     secondaryCategories: string[]; primaryCta: string | null; releaseStatus: string };

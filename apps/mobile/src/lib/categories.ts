@@ -23,3 +23,11 @@ export const PLATFORM_NAMES: Record<string, string> = {
 export const linkName = (platform: string, url: string, label: string | null) =>
   label || PLATFORM_NAMES[platform] || (() => { try { return new URL(url).hostname.replace(/^www\./, ''); } catch { return url; } })();
 export const categoryLabel = (id?: string | null) => CATEGORIES.find((c) => c.id === id)?.label;
+
+// Main button label for a CTA kind. Google Play buttons are hidden on iOS (App Store guideline 2.3.10).
+const CTA_KEYS: Record<string, Key> = {
+  website: 'cta_website', app_store: 'cta_app_store', google_play: 'cta_google_play', steam: 'cta_steam', itch: 'cta_itch',
+  shop: 'cta_shop', etsy: 'cta_etsy', watch: 'cta_watch', watch_live: 'cta_watch_live', notify: 'cta_notify',
+};
+export const ctaLabel = (kind: string): Key => CTA_KEYS[kind] || 'cta_website';
+export const ctaVisible = (kind: string, os: string) => !(kind === 'google_play' && os === 'ios');

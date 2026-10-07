@@ -4,14 +4,17 @@
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { Image } from 'expo-image';
 import { Link, router, useFocusEffect } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, Linking, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { api, ApiError, type ScoutSummary, type Studio } from '@/lib/api';
+import * as Clipboard from 'expo-clipboard';
+import { api, ApiError, type Perk, type ScoutSummary, type Studio, type WalletItem } from '@/lib/api';
 import { CATEGORIES } from '@/lib/categories';
 import { lang, t } from '@/lib/i18n';
 import { C } from '@/lib/theme';
+import { openMail } from '@/lib/mail';
+import { reminderOn, turnOffReminder, turnOnReminder } from '@/lib/reminder';
 import { signOut, useMe } from '@/lib/use-me';
 import { Avatar } from '@/ui/Avatar';
 import { Icon } from '@/ui/Icon';
@@ -26,6 +29,10 @@ export default function MeScreen() {
   const insets = useSafeAreaInsets();
   const { loading, me, refresh } = useMe();
   const [settings, setSettings] = useState(false);
+  const next = useRef<(() => void) | null>(null);
+  const closeSettings = (then?: () => void) => { next.current = then || null; setSettings(false); };
+  const [reminder, setReminder] = useState(false);
+  const openSettings = () => { reminderOn().then(setReminder).catch(() => {}); setSettings(true); };
   useEffect(() => { refresh(); }, [refresh]);
 
   let body;
@@ -38,11 +45,10 @@ export default function MeScreen() {
     </View>
   );
   else if (me.needsOnboarding) body = <Onboarding onDone={refresh} />;
-  else if (me.profile?.type === 'creator') body = <CreatorHome onSettings={() => setSettings(true)} />;
-  else body = <ScoutHome onSettings={() => setSettings(true)} />;
+  else if (me.profile?.type === 'creator') body = <CreatorHome onSettings={openSettings} />;
+  else body = <ScoutHome onSettings={openSettings} />;
 
   const confirmDelete = () => {
-    setSettings(false);
     Alert.alert(t('delete_account'), t('delete_q'), [
       { text: t('cancel'), style: 'cancel' },
       { text: t('delete_account'), style: 'destructive', onPress: async () => {
@@ -56,12 +62,14 @@ export default function MeScreen() {
   return (
     <ScrollView style={{ flex: 1, backgroundColor: C.bg }} contentContainerStyle={{ padding: 16, paddingTop: insets.top + 16, paddingBottom: 120 }} keyboardShouldPersistTaps="handled">
       {body}
-      <LegalLinks />
-      <Sheet visible={settings} title={t('settings')} onClose={() => setSettings(false)} actions={[
-        { label: t('edit_profile'), tone: 'primary', onPress: () => { setSettings(false); router.push('/edit-profile'); } },
-        { label: t('sign_out'), onPress: async () => { setSettings(false); await signOut(); refresh(); } },
-        { label: t('delete_account'), tone: 'danger', onPress: confirmDelete },
-        { label: t('cancel'), onPress: () => setSettings(false) },
+      {me?.needsOnboarding ? null : <LegalLinks />}
+      <Sheet visible={settings} title={t('settings')} onClose={() => closeSettings()}
+        onDismissed={() => { const n = next.current; next.current = null; n?.(); }} actions={[
+        { label: t('edit_profile'), tone: 'primary', onPress: () => closeSettings(() => router.push('/edit-profile')) },
+        ...(Platform.OS !== 'web' ? [{ label: reminder ? t('reminder_off') : t('reminder_turn_on'), onPress: () => closeSettings(() => { (reminder ? turnOffReminder() : turnOnReminder()).catch(() => {}); }) }] : []),
+        { label: t('sign_out'), onPress: () => closeSettings(async () => { await signOut(); refresh(); }) },
+        { label: t('delete_account'), tone: 'danger', onPress: () => closeSettings(confirmDelete) },
+        { label: t('cancel'), onPress: () => closeSettings() },
       ]} />
     </ScrollView>
   );
@@ -89,8 +97,12 @@ function ScoutHome({ onSettings }: { onSettings: () => void }) {
   const p = me!.profile!;
   const { width } = useWindowDimensions();
   const [data, setData] = useState<ScoutSummary | null>(null);
-  const [tab, setTab] = useState<'open' | 'saved' | 'following'>('open');
-  useFocusEffect(useCallback(() => { api.scout().then(setData).catch(() => {}); }, []));
+  const [tab, setTab] = useState<'open' | 'saved' | 'following' | 'gifts'>('open');
+  const [wallet, setWallet] = useState<WalletItem[] | null>(null);
+  useFocusEffect(useCallback(() => {
+    api.scout().then(setData).catch(() => {});
+    api.myPerks().then((r) => setWallet(r.wallet)).catch(() => setWallet([]));
+  }, []));
 
   const progress = data ? Math.min(1, (data.score - (data.level - 1) * 100) / 100) : 0;
   const tileW = (width - 32 - 16) / 3;
@@ -116,15 +128,30 @@ function ScoutHome({ onSettings }: { onSettings: () => void }) {
       </View>
 
       <View style={styles.segment} accessibilityRole="tablist">
-        {(['open', 'saved', 'following'] as const).map((k) => (
+        {(['open', 'saved', 'following', 'gifts'] as const).map((k) => (
           <Pressable key={k} onPress={() => setTab(k)} style={[styles.segBtn, tab === k && styles.segOn]} accessibilityRole="tab" accessibilityState={{ selected: tab === k }}>
-            <Text style={[styles.segText, tab === k && { color: C.ink }]}>{t(k === 'open' ? 'open_calls' : k === 'saved' ? 'tab_saved' : 'tab_following')}</Text>
+            <Text style={[styles.segText, tab === k && { color: C.ink }]}>{t(k === 'open' ? 'tab_calls' : k === 'saved' ? 'tab_saved' : k === 'gifts' ? 'tab_gifts' : 'tab_following')}</Text>
           </Pressable>
         ))}
       </View>
 
-      {!data ? <ActivityIndicator color={C.lime} /> : tab === 'open' ? (
-        data.open.length ? data.open.map((o) => (
+      {!data ? <ActivityIndicator color={C.lime} /> : tab === 'open' ? (<>
+        {data.results.length ? <Text style={styles.h2}>{t('tab_results')}{data.accuracy != null ? `  ·  ${t('accuracy')} ${data.accuracy}%` : ''}</Text> : null}
+        {data.results.map((o) => (
+          <Pressable key={'r' + o.promo.id} onPress={() => router.navigate({ pathname: '/', params: { v: o.promo.slug } })} style={[styles.callRow, o.outcome === 'correct' && { borderColor: C.lime }]} accessibilityRole="button">
+            {o.promo.video.poster ? <Image source={{ uri: o.promo.video.poster }} style={styles.callThumb} contentFit="cover" /> : <View style={styles.callThumb} />}
+            <View style={{ flex: 1 }}>
+              <Text style={styles.rowTitle} numberOfLines={1}>{o.promo.title}</Text>
+              <Text style={styles.small} numberOfLines={1}>{t(o.choice)}</Text>
+              <Text style={[styles.small, o.outcome === 'correct' && { color: C.lime, fontWeight: '700' }]} numberOfLines={2}>
+                {t(o.outcome === 'correct' ? 'outcome_right' : o.outcome === 'incorrect' ? 'outcome_wrong' : 'outcome_void')}
+                {o.points > 0 ? `  ${fmt(t('points_n'), { n: o.points })}` : ''}
+              </Text>
+            </View>
+          </Pressable>
+        ))}
+        {data.results.length && data.open.length ? <Text style={styles.h2}>{t('open_calls')}</Text> : null}
+        {data.open.length ? data.open.map((o) => (
           <Pressable key={o.promo.id} onPress={() => router.navigate({ pathname: '/', params: { v: o.promo.slug } })} style={styles.callRow} accessibilityRole="button">
             {o.promo.video.poster ? <Image source={{ uri: o.promo.video.poster }} style={styles.callThumb} contentFit="cover" /> : <View style={styles.callThumb} />}
             <View style={{ flex: 1 }}>
@@ -133,7 +160,9 @@ function ScoutHome({ onSettings }: { onSettings: () => void }) {
               <Text style={[styles.small, { color: o.choice === 'will_blow_up' ? C.lime : C.text2 }]}>{t(o.choice)}  ·  {t('result_on')} {shortDate(o.resolvesAt)}</Text>
             </View>
           </Pressable>
-        )) : <Empty text={t('no_open_calls')} />
+        )) : data.results.length ? null : <Empty text={t('no_open_calls')} />}
+      </>) : tab === 'gifts' ? (
+        !wallet ? <ActivityIndicator color={C.lime} /> : wallet.length ? wallet.map((w) => <WalletRow key={w.id} item={w} />) : <Empty text={t('no_gifts')} />
       ) : tab === 'saved' ? (
         data.saved.length ? (
           <View style={styles.grid}>
@@ -158,6 +187,29 @@ function ScoutHome({ onSettings }: { onSettings: () => void }) {
   );
 }
 
+function WalletRow({ item }: { item: WalletItem }) {
+  const [copied, setCopied] = useState(false);
+  const copy = async () => { if (!item.code) return; await Clipboard.setStringAsync(item.code); setCopied(true); setTimeout(() => setCopied(false), 1800); };
+  const ended = item.status !== 'active' || new Date(item.endsAt) < new Date();
+  return (
+    <View style={[styles.callRow, { alignItems: 'flex-start' }]}>
+      <Avatar uri={item.creator.avatar} mono={item.creator.name} size={44} radius={12} />
+      <View style={{ flex: 1, gap: 4 }}>
+        <Text style={styles.small}>{item.creator.name}</Text>
+        <Text style={styles.rowTitle}>{item.title}</Text>
+        {item.code ? (
+          <Pressable onPress={copy} style={styles.walletCode} accessibilityRole="button" accessibilityLabel={`${t('your_code')} ${item.code}. ${t('copy')}`}>
+            <Text style={styles.walletCodeText} selectable>{item.code}</Text>
+            <Text style={{ color: C.lime, fontWeight: '700' }}>{copied ? t('copied') : t('copy')}</Text>
+          </Pressable>
+        ) : null}
+        <Text style={styles.small}>{ended ? t('gift_none') : fmt(t('gift_ends'), { date: shortDate(item.endsAt) })}</Text>
+        {item.redeemUrl && !ended ? <Pressable onPress={() => Linking.openURL(item.redeemUrl!)} accessibilityRole="link" hitSlop={8}><Text style={{ color: C.lime, fontWeight: '700' }}>{t('open_link')} ›</Text></Pressable> : null}
+      </View>
+    </View>
+  );
+}
+
 // ------------------------------------------------------------------ creator studio
 function CreatorHome({ onSettings }: { onSettings: () => void }) {
   const { me } = useMe();
@@ -165,14 +217,25 @@ function CreatorHome({ onSettings }: { onSettings: () => void }) {
   const { width } = useWindowDimensions();
   const [data, setData] = useState<Studio | null>(null);
   const [range, setRange] = useState<'d7' | 'd28'>('d7');
-  useFocusEffect(useCallback(() => { api.studio().then(setData).catch(() => {}); }, []));
+  const [gift, setGift] = useState<(Perk & { claims: number }) | null | undefined>(undefined);
+  const loadGift = useCallback(() => {
+    api.myPerks().then((r) => setGift(r.own.find((k) => k.status === 'active' && new Date(k.endsAt) > new Date()) || null)).catch(() => setGift(null));
+  }, []);
+  useFocusEffect(useCallback(() => { api.studio().then(setData).catch(() => {}); loadGift(); }, [loadGift]));
+  const endGift = () => {
+    if (!gift) return;
+    Alert.alert(t('perk_end'), gift.title, [
+      { text: t('cancel'), style: 'cancel' },
+      { text: t('perk_end'), style: 'destructive', onPress: () => { api.endPerk(gift.id).then(loadGift).catch(() => Alert.alert(t('error'))); } },
+    ]);
+  };
 
   const steps: [boolean, Parameters<typeof t>[0], () => void][] = data ? [
     [data.checklist.logo, 'setup_logo', () => router.push('/edit-profile')],
     [data.checklist.banner, 'setup_banner', () => router.push('/edit-profile')],
     [data.checklist.bio, 'setup_bio', () => router.push('/edit-profile')],
     [data.checklist.links, 'setup_links', () => router.push('/edit-profile')],
-    [data.checklist.promo, 'setup_promo', () => Linking.openURL(`mailto:support@promovote.com?subject=${encodeURIComponent('My first promo @' + p.handle)}`)],
+    [data.checklist.promo, 'setup_promo', () => openMail('hello@promovote.com', 'My first promo @' + p.handle)],
   ] : [];
   const doneCount = steps.filter(([d]) => d).length;
   const s = data?.stats[range];
@@ -210,7 +273,9 @@ function CreatorHome({ onSettings }: { onSettings: () => void }) {
             <Pill label={t('last28')} active={range === 'd28'} onPress={() => setRange('d28')} />
           </View>
         </View>
-        {!data ? <ActivityIndicator color={C.lime} /> : (
+        {!data ? <ActivityIndicator color={C.lime} /> : !data.stats.d28.views && !data.promos.length ? (
+          <Text style={styles.text}>{t('stats_zero')}</Text>
+        ) : (
           <>
             <View style={styles.statGrid}>
               <Stat n={s?.views ?? 0} label={t('st_views')} />
@@ -218,11 +283,31 @@ function CreatorHome({ onSettings }: { onSettings: () => void }) {
               <Stat n={s?.avgSeconds ?? 0} label={t('st_avg')} />
               <Stat n={s?.clicks ?? 0} label={t('st_clicks')} />
               <Stat n={`${s?.ctr ?? 0}%`} label={t('st_ctr')} />
-              <Stat n={data.stats.saves} label={t('st_saves')} />
+              <Stat n={s?.saves ?? 0} label={t('st_saves')} />
+              <Stat n={s?.follows ?? 0} label={t('st_follows')} />
             </View>
             <Text style={styles.small}>
               {data.calls.blowUpPct != null ? fmt(t('calls_split'), { p: data.calls.blowUpPct, n: data.calls.total }) : fmt(t('calls_wait'), { n: data.calls.total })}
             </Text>
+          </>
+        )}
+      </View>
+
+      <View style={styles.card}>
+        <Text style={styles.h2}>{gift ? t('perk_active') : t('perk_t')}</Text>
+        {gift === undefined ? <ActivityIndicator color={C.lime} /> : gift ? (
+          <>
+            <Text style={styles.rowTitle}>{gift.title}</Text>
+            <Text style={styles.small}>
+              {fmt(t('perk_claims'), { n: gift.claims })}  ·  {fmt(t('gift_ends'), { date: shortDate(gift.endsAt) })}
+              {gift.stockLeft != null ? `  ·  ${fmt(t('gift_left'), { n: gift.stockLeft })}` : ''}
+            </Text>
+            <Button label={t('perk_end')} ghost onPress={endGift} />
+          </>
+        ) : (
+          <>
+            <Text style={styles.text}>{t('perk_p')}</Text>
+            <Button label={t('perk_t')} onPress={() => router.push('/perk')} />
           </>
         )}
       </View>
@@ -241,7 +326,7 @@ function CreatorHome({ onSettings }: { onSettings: () => void }) {
       ) : data ? (
         <View style={styles.card}>
           <Text style={styles.text}>{t('uploads_soon')}</Text>
-          <Button label={t('email_trailer')} ghost onPress={() => Linking.openURL(`mailto:support@promovote.com?subject=${encodeURIComponent('My first promo @' + p.handle)}`)} />
+          <Button label={t('email_trailer')} ghost onPress={() => openMail('hello@promovote.com', 'My first promo @' + p.handle)} />
         </View>
       ) : null}
     </View>
@@ -273,17 +358,30 @@ function Onboarding({ onDone }: { onDone: () => void }) {
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
 
+  // Suggest a handle from the name until the user types their own: the clean name first, then a short suffix.
+  const [handleEdited, setHandleEdited] = useState(false);
+  const base = useRef('');
+  const tries = useRef(0);
   useEffect(() => {
     if (handle.length < 3) return;
-    const id = setTimeout(() => api.handle(handle).then((r) => setHandleState(r.available ? 'ok' : 'bad')).catch(() => {}), 300);
+    const id = setTimeout(() => api.handle(handle).then((r) => {
+      if (!r.available && !handleEdited && base.current.length >= 3 && tries.current < 4) {
+        tries.current += 1;
+        setHandle(`${base.current.slice(0, 20)}${10 + Math.floor(Math.random() * 90)}`);
+        return;
+      }
+      setHandleState(r.available ? 'ok' : 'bad');
+    }).catch(() => {}), 300);
     return () => clearTimeout(id);
-  }, [handle]);
+  }, [handle, handleEdited]);
   const handleStatus = handle.length < 3 ? 'idle' : handleState;
-  // Suggest a handle from the name until the user types their own.
-  const [handleEdited, setHandleEdited] = useState(false);
   const onName = (v: string) => {
     setName(v);
-    if (!handleEdited) setHandle(v.toLowerCase().normalize('NFKD').replace(/[^a-z0-9]/g, '').slice(0, 20));
+    if (handleEdited) return;
+    // Handles start with a letter (server rule), so leading digits and symbols are dropped.
+    base.current = v.toLowerCase().normalize('NFKD').replace(/[^a-z0-9]/g, '').replace(/^[^a-z]+/, '').slice(0, 20);
+    tries.current = 0;
+    setHandle(base.current);
   };
 
   const web = Platform.OS === 'web';
@@ -330,9 +428,9 @@ function Onboarding({ onDone }: { onDone: () => void }) {
       <Field label={t('birth')}>
         {web ? (
           <View style={{ flexDirection: 'row', gap: 8 }}>
-            <TextInput value={d.day} onChangeText={(v) => setD({ ...d, day: v })} placeholder="DD" placeholderTextColor={C.muted} keyboardType="number-pad" maxLength={2} style={[styles.input, styles.dateField]} accessibilityLabel="Day" />
-            <TextInput value={d.month} onChangeText={(v) => setD({ ...d, month: v })} placeholder="MM" placeholderTextColor={C.muted} keyboardType="number-pad" maxLength={2} style={[styles.input, styles.dateField]} accessibilityLabel="Month" />
-            <TextInput value={d.year} onChangeText={(v) => setD({ ...d, year: v })} placeholder="YYYY" placeholderTextColor={C.muted} keyboardType="number-pad" maxLength={4} style={[styles.input, styles.dateField, { flex: 1.5 }]} accessibilityLabel="Year" />
+            <TextInput value={d.day} onChangeText={(v) => setD({ ...d, day: v })} placeholder="DD" placeholderTextColor={C.muted} keyboardType="number-pad" maxLength={2} style={[styles.input, styles.dateField]} accessibilityLabel={t('day')} />
+            <TextInput value={d.month} onChangeText={(v) => setD({ ...d, month: v })} placeholder="MM" placeholderTextColor={C.muted} keyboardType="number-pad" maxLength={2} style={[styles.input, styles.dateField]} accessibilityLabel={t('month')} />
+            <TextInput value={d.year} onChangeText={(v) => setD({ ...d, year: v })} placeholder="YYYY" placeholderTextColor={C.muted} keyboardType="number-pad" maxLength={4} style={[styles.input, styles.dateField, { flex: 1.5 }]} accessibilityLabel={t('year')} />
           </View>
         ) : (
           <View style={styles.dateBox}>
@@ -397,11 +495,13 @@ const styles = StyleSheet.create({
   stat: { flexGrow: 1, flexBasis: '30%', backgroundColor: C.surface2, borderRadius: 14, padding: 12, gap: 2 },
   statN: { color: C.text, fontSize: 22, fontWeight: '800' },
   statL: { color: C.muted, fontSize: 12 },
+  walletCode: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderWidth: 1.5, borderStyle: 'dashed', borderColor: C.lime, borderRadius: 10, paddingHorizontal: 12, minHeight: 44, marginTop: 4 },
+  walletCodeText: { color: C.text, fontSize: 17, fontWeight: '800', letterSpacing: 1.5 },
   segment: { flexDirection: 'row', backgroundColor: C.surface, borderRadius: 14, padding: 4, gap: 4 },
   segBtn: { flex: 1, minHeight: 40, borderRadius: 10, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 6 },
   segOn: { backgroundColor: C.lime },
   segText: { color: C.text2, fontWeight: '700', fontSize: 13, textAlign: 'center' },
-  callRow: { flexDirection: 'row', gap: 12, alignItems: 'center', backgroundColor: C.surface, borderRadius: 14, padding: 10 },
+  callRow: { flexDirection: 'row', gap: 12, alignItems: 'center', backgroundColor: C.surface, borderRadius: 14, padding: 10, borderWidth: 1, borderColor: 'transparent' },
   callThumb: { width: 54, height: 72, borderRadius: 10, backgroundColor: C.surface2 },
   rowTitle: { color: C.text, fontSize: 15, fontWeight: '700' },
   followRow: { flexDirection: 'row', gap: 12, alignItems: 'center', paddingVertical: 6, minHeight: 56 },

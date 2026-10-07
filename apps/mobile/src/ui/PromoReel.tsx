@@ -10,30 +10,22 @@ import { useEffect, useRef, useState } from 'react';
 import { AccessibilityInfo, Linking, Platform, Pressable, Share, StyleSheet, Text, View } from 'react-native';
 
 import { api, ApiError, type Call, type Promo } from '@/lib/api';
-import { asMember, asScout } from '@/lib/gate';
+import { asScout } from '@/lib/gate';
 import { lang, t } from '@/lib/i18n';
 import { C } from '@/lib/theme';
-import { useMe } from '@/lib/use-me';
 import { setBlocked, setCall, setSaved, useViewerState } from '@/lib/viewer-state';
 import { Avatar } from './Avatar';
 import { Icon, type IconName } from './Icon';
 import { PerkSheet } from './PerkSheet';
-import { Sheet } from './Sheet';
+import { ReportMenu } from './ReportMenu';
+import { ctaLabel, ctaVisible } from '@/lib/categories';
 
-const CTA_LABEL: Record<string, Parameters<typeof t>[0]> = {
-  app_store: 'cta_app_store', shop: 'cta_shop', etsy: 'cta_etsy', notify: 'cta_notify', website: 'cta_website', watch: 'cta_watch', google_play: 'cta_website',
-};
-const REPORT_REASONS: [string, Parameters<typeof t>[0]][] = [
-  ['spam_or_scam', 'r_spam'], ['hate_or_harassment', 'r_hate'], ['violence', 'r_violence'], ['nudity_or_sexual', 'r_sexual'],
-  ['copyright', 'r_copyright'], ['minor', 'r_minor'], ['other', 'r_other'],
-];
 const tap = () => { if (Platform.OS !== 'web') Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {}); };
 const shortDate = (iso: string) => new Date(iso).toLocaleDateString(lang, { day: 'numeric', month: 'short' });
 
 export function PromoReel({ promo, active, height, muted, onSeen, bottomInset = 0 }: {
   promo: Promo; active: boolean; height: number; muted: boolean; onSeen: (id: string) => void; bottomInset?: number;
 }) {
-  const { me } = useMe();
   const vs = useViewerState();
   const call: Call | undefined = vs.calls[promo.id];
   const saved = vs.saves.includes(promo.id);
@@ -45,7 +37,7 @@ export function PromoReel({ promo, active, height, muted, onSeen, bottomInset = 
   const [paused, setPaused] = useState(false);
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [menu, setMenu] = useState<null | 'menu' | 'report' | 'done'>(null);
+  const [menu, setMenu] = useState(false);
   const [note, setNote] = useState('');
   const [gift, setGift] = useState(false);
   const watched = useRef(0);
@@ -110,16 +102,11 @@ export function PromoReel({ promo, active, height, muted, onSeen, bottomInset = 
     api.click(promo.id).catch(() => {});
     Linking.openURL(promo.cta.url);
   };
-  const report = async (reason: string) => {
-    if (!me) { setMenu(null); return asMember(() => setMenu('report')); }
-    try { await api.report('promo', promo.id, reason); setMenu('done'); } catch { setMenu(null); flash(t('error')); }
-  };
-  const block = async () => {
-    setMenu(null);
-    if (!me?.profile) return asMember(() => {});
-    try { await api.block(c.handle); setBlocked(c.handle); flash(t('blocked_toast')); } catch { flash(t('error')); }
-  };
-
+  // Ticket line: the result once the call resolved, otherwise the result date, rank and crowd split.
+  const done = !!call?.outcome && call.outcome !== 'pending';
+  const sub = !call ? '' : done
+    ? t(call.outcome === 'correct' ? 'outcome_right' : call.outcome === 'incorrect' ? 'outcome_wrong' : 'outcome_void')
+    : `${t('result_on')} ${shortDate(call.resolvesAt)}${call.rank ? `  ·  ${t('scout_n')}${call.rank}` : ''}${call.split && call.split.total >= 5 ? `  ·  ${call.split.blowUpPct}% ${t('say_blow_up')}` : ''}`;
   const showAndroidSoon = Platform.OS === 'android' && c.androidStatus === 'soon';
   const bottom = 14 + bottomInset;
   return (
@@ -133,7 +120,7 @@ export function PromoReel({ promo, active, height, muted, onSeen, bottomInset = 
         </>
       ) : null}
       <VideoView player={player} style={styles.video} contentFit="contain" nativeControls={false} surfaceType="textureView" />
-      <Pressable style={StyleSheet.absoluteFill} onPress={() => setPaused(!paused)} accessibilityLabel={paused ? 'Play' : 'Pause'} />
+      <Pressable style={StyleSheet.absoluteFill} onPress={() => setPaused(!paused)} accessibilityRole="button" accessibilityLabel={paused ? t('play') : t('pause')} />
       {paused ? <View style={styles.paused} pointerEvents="none"><Icon name="play" size={34} /></View> : null}
 
       <View style={[styles.shade, open && styles.shadeOpen]} pointerEvents="none" />
@@ -143,22 +130,22 @@ export function PromoReel({ promo, active, height, muted, onSeen, bottomInset = 
           <Pressable style={styles.who} accessibilityRole="link" hitSlop={6}>
             <Avatar uri={c.avatar} mono={c.mono} size={40} />
             <View style={{ flexShrink: 1 }}>
-              <Text style={styles.whoName} numberOfLines={1}>{c.name}</Text>
-              <Text style={styles.whoKind} numberOfLines={1}>{c.founderOwned ? t('founder_made') : c.kind}</Text>
+              <Text maxFontSizeMultiplier={1.35} style={styles.whoName} numberOfLines={1}>{c.name}</Text>
+              <Text maxFontSizeMultiplier={1.35} style={styles.whoKind} numberOfLines={1}>{c.founderOwned ? t('founder_made') : c.kind}</Text>
             </View>
           </Pressable>
         </Link>
         {promo.hasPerk ? (
           <Pressable onPress={() => { tap(); setGift(true); }} style={({ pressed }) => [styles.gift, pressed && styles.pressed]} accessibilityRole="button" hitSlop={4}>
             <Icon name="ticket" size={14} color={C.ink} />
-            <Text style={styles.giftText}>{t('gift')}</Text>
+            <Text maxFontSizeMultiplier={1.35} style={styles.giftText}>{t('gift')}</Text>
           </Pressable>
         ) : null}
         {/* Collapsed by default so the video stays visible. Tapping the text opens the full details. */}
         <Pressable onPress={() => setOpen(!open)} accessibilityRole="button" accessibilityState={{ expanded: open }} hitSlop={4}>
-          <Text style={styles.title} numberOfLines={open ? undefined : 1}>{promo.title}</Text>
-          {promo.description ? <Text style={styles.desc} numberOfLines={open ? undefined : 1}>{promo.description}</Text> : null}
-          <Text style={styles.more}>{open ? t('less') : t('more')}</Text>
+          <Text maxFontSizeMultiplier={1.35} style={styles.title} numberOfLines={open ? undefined : 1}>{promo.title}</Text>
+          {promo.description ? <Text maxFontSizeMultiplier={1.35} style={styles.desc} numberOfLines={open ? undefined : 1}>{promo.description}</Text> : null}
+          <Text maxFontSizeMultiplier={1.35} style={styles.more}>{open ? t('less') : t('more')}</Text>
         </Pressable>
         {open && promo.tags.length ? (
           <View style={styles.tags}>
@@ -169,13 +156,13 @@ export function PromoReel({ promo, active, height, muted, onSeen, bottomInset = 
         ) : null}
         {open && (c.releaseStatus === 'soon' || showAndroidSoon) ? (
           <View style={styles.chips}>
-            {c.releaseStatus === 'soon' ? <Text style={styles.chip}>{t('soon')}</Text> : null}
-            {showAndroidSoon ? <Text style={styles.chip}>{t('android_soon')}</Text> : null}
+            {c.releaseStatus === 'soon' ? <Text maxFontSizeMultiplier={1.35} style={styles.chip}>{t('soon')}</Text> : null}
+            {showAndroidSoon ? <Text maxFontSizeMultiplier={1.35} style={styles.chip}>{t('android_soon')}</Text> : null}
           </View>
         ) : null}
-        {promo.cta?.url ? (
+        {promo.cta?.url && ctaVisible(promo.cta.kind, Platform.OS) ? (
           <Pressable onPress={openCta} style={({ pressed }) => [styles.cta, pressed && styles.pressed]} accessibilityRole="link">
-            <Text style={styles.ctaText}>{t(CTA_LABEL[promo.cta.kind] || 'cta_website')}</Text>
+            <Text maxFontSizeMultiplier={1.35} style={styles.ctaText}>{t(ctaLabel(promo.cta.kind))}</Text>
             <Icon name="link" size={14} color={C.ink} />
           </Pressable>
         ) : null}
@@ -184,50 +171,41 @@ export function PromoReel({ promo, active, height, muted, onSeen, bottomInset = 
       <View style={[styles.rail, { bottom: bottom + 76 }]}>
         <RailButton icon={saved ? 'saved' : 'save'} label={saved ? t('saved') : t('save')} on={saved} onPress={toggleSave} />
         <RailButton icon="share" label={t('share')} onPress={share} />
-        <RailButton icon="more" label={t('more_actions')} onPress={() => { tap(); setMenu('menu'); }} />
+        <RailButton icon="more" label={t('more_actions')} onPress={() => { tap(); setMenu(true); }} />
       </View>
 
       {/* Call bar: the core PromoVote action. After a call it becomes a ticket with the result date. */}
       <View style={[styles.callBar, { bottom }]}>
         {call ? (
-          <View style={styles.ticket} accessible accessibilityLabel={`${t('called')}: ${t(call.choice)}. ${t('result_on')} ${shortDate(call.resolvesAt)}`}>
+          <View style={[styles.ticket, done && call.outcome === 'correct' && styles.ticketWin]} accessible accessibilityLabel={`${t('called')}: ${t(call.choice)}. ${sub}`}>
             <View style={[styles.ticketIcon, call.choice === 'will_blow_up' ? styles.ticketUp : styles.ticketDown]}>
               <Icon name={call.choice === 'will_blow_up' ? 'chevrons' : 'down'} size={18} color={call.choice === 'will_blow_up' ? C.ink : '#fff'} />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={styles.ticketTitle} numberOfLines={1}>{t('called')}: {t(call.choice)}</Text>
-              <Text style={styles.ticketSub} numberOfLines={1}>
-                {t('result_on')} {shortDate(call.resolvesAt)}{call.rank ? `  ·  ${t('scout_n')}${call.rank}` : ''}
-                {call.split && call.split.total >= 5 ? `  ·  ${call.split.blowUpPct}% ${t('say_blow_up')}` : ''}
-              </Text>
+              <Text maxFontSizeMultiplier={1.35} style={styles.ticketTitle} numberOfLines={1}>{t('called')}: {t(call.choice)}</Text>
+              <Text maxFontSizeMultiplier={1.35} style={[styles.ticketSub, done && call.outcome === 'correct' && { color: C.lime, fontWeight: '700' }]} numberOfLines={1}>{sub}</Text>
             </View>
           </View>
         ) : (
           <>
             <Pressable onPress={() => vote('not_for_me')} disabled={busy} accessibilityRole="button" accessibilityLabel={t('not_for_me')}
               style={({ pressed }) => [styles.callBtn, styles.callNo, pressed && styles.pressed]}>
-              <Text style={styles.callNoText}>{t('not_for_me')}</Text>
+              <Text maxFontSizeMultiplier={1.35} style={styles.callNoText}>{t('not_for_me')}</Text>
             </Pressable>
             <Pressable onPress={() => vote('will_blow_up')} disabled={busy} accessibilityRole="button" accessibilityLabel={t('will_blow_up')}
               style={({ pressed }) => [styles.callBtn, styles.callYes, pressed && styles.pressed]}>
               <Icon name="chevrons" size={18} color={C.ink} />
-              <Text style={styles.callYesText}>{t('will_blow_up')}</Text>
+              <Text maxFontSizeMultiplier={1.35} style={styles.callYesText}>{t('will_blow_up')}</Text>
             </Pressable>
           </>
         )}
       </View>
 
-      {note ? <View style={[styles.toast, { bottom: bottom + 70 }]} pointerEvents="none"><Text style={styles.toastText}>{note}</Text></View> : null}
+      {note ? <View style={[styles.toast, { bottom: bottom + 70 }]} pointerEvents="none"><Text maxFontSizeMultiplier={1.35} style={styles.toastText}>{note}</Text></View> : null}
 
       {promo.hasPerk ? <PerkSheet handle={c.handle} name={c.name} visible={gift} onClose={() => setGift(false)} /> : null}
-      <Sheet visible={menu === 'menu'} onClose={() => setMenu(null)} actions={[
-        { label: t('report'), onPress: () => setMenu('report') },
-        { label: `${t('block')} @${c.handle}`, tone: 'danger', onPress: block },
-        { label: t('cancel'), onPress: () => setMenu(null) },
-      ]} />
-      <Sheet visible={menu === 'report'} title={t('report_t')} onClose={() => setMenu(null)}
-        actions={[...REPORT_REASONS.map(([code, key]) => ({ label: t(key), onPress: () => report(code) })), { label: t('cancel'), onPress: () => setMenu(null) }]} />
-      <Sheet visible={menu === 'done'} title={t('report_thanks_t')} text={t('report_thanks_p')} onClose={() => setMenu(null)} actions={[{ label: t('ok'), onPress: () => setMenu(null) }]} />
+      <ReportMenu visible={menu} onClose={() => setMenu(false)} kind="promo" id={promo.id} handle={c.handle}
+        onBlocked={() => { setBlocked(c.handle); flash(t('blocked_toast')); }} onError={() => flash(t('error'))} />
     </View>
   );
 }
@@ -239,7 +217,7 @@ function RailButton({ icon, label, onPress, on }: { icon: IconName; label: strin
       <View style={[styles.railIcon, on && { backgroundColor: C.lime }]}>
         <Icon name={icon} color={on ? C.ink : '#fff'} />
       </View>
-      <View style={styles.railLabelPill}><Text style={styles.railLabel} numberOfLines={1}>{label}</Text></View>
+      <View style={styles.railLabelPill}><Text maxFontSizeMultiplier={1.35} style={styles.railLabel} numberOfLines={1}>{label}</Text></View>
     </Pressable>
   );
 }
@@ -249,8 +227,8 @@ const styles = StyleSheet.create({
   // Explicit size: on web the <video> element ignores left/right/top/bottom and would draw at its natural size.
   video: { position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' },
   paused: { position: 'absolute', top: '50%', left: '50%', width: 76, height: 76, marginLeft: -38, marginTop: -38, borderRadius: 38, backgroundColor: 'rgba(8,8,12,0.55)', alignItems: 'center', justifyContent: 'center' },
-  shade: { position: 'absolute', left: 0, right: 0, bottom: 0, height: '40%', backgroundColor: 'transparent', experimental_backgroundImage: 'linear-gradient(to top, rgba(6,6,10,0.95) 25%, rgba(6,6,10,0))' } as any,
-  shadeOpen: { height: '75%' },
+  shade: { position: 'absolute', left: 0, right: 0, bottom: 0, height: '55%', backgroundColor: 'transparent', experimental_backgroundImage: 'linear-gradient(to top, rgba(6,6,10,0.96) 0%, rgba(6,6,10,0.85) 38%, rgba(6,6,10,0))' } as any,
+  shadeOpen: { height: '80%' },
   pressed: { transform: [{ scale: 0.94 }], opacity: 0.85 },
   info: { position: 'absolute', left: 16, right: 84 },
   who: { flexDirection: 'row', alignItems: 'center', gap: 10, alignSelf: 'flex-start', minHeight: 44 },
@@ -280,6 +258,7 @@ const styles = StyleSheet.create({
   callYesText: { color: C.ink, fontWeight: '800', fontSize: 15 },
   ticket: { flex: 1, minHeight: 52, borderRadius: 16, backgroundColor: 'rgba(20,20,31,0.9)', borderWidth: 1, borderColor: 'rgba(198,255,61,0.45)', flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 12 },
   ticketIcon: { width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
+  ticketWin: { borderColor: C.lime },
   ticketUp: { backgroundColor: C.lime },
   ticketDown: { backgroundColor: 'rgba(255,255,255,0.15)' },
   ticketTitle: { color: '#fff', fontWeight: '800', fontSize: 14 },
