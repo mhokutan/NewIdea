@@ -40,6 +40,8 @@ DURUM: TAMAMLANDI
 
 * 2026-10-07 (masaüstü Claude): Kurulum A'dan E'ye tamamlandı. Kalanlar (README gereği sonraya): ekran görüntüleri ve uzun açıklama (Apple ve Play), incelemeye gönderim (Apple'a build 4 veya sonrası), Play üretim için 12 test kullanıcısı ile 14 gün kapalı test (Personal hesap). Android release manifestindeki gereksiz izinler (SYSTEM_ALERT_WINDOW, READ/WRITE_EXTERNAL_STORAGE, DUMP, USE_FINGERPRINT) için blockedPermissions önerisi duruyor. Apple App Privacy'de v1 için 'Purchase History' beyanı var; v1'de satın alma yoksa istenirse kaldırılabilir.
 
+* 2026-10-07 (masaüstü Claude): Google service account key yerelde test edildi: token alındı (200), PromoVote'a erişim var (reviews 200, oneTimeProducts listesi 204 boş). ÖNEMLİ: eski 'inappproducts' uç noktası 403 'Please migrate to the new publishing API' döndürüyor. Ürünleri oluştururken yeni API'yi kullan: androidpublisher v3 'applications/{package}/oneTimeProducts' (monetization.onetimeproducts). Bulut ortamındaki GOOGLE_PLAY_SA_JSON_B64 değerini kontrol etmek için: base64 -d ile çöz ve client_email'in play-api@promovote.iam.gserviceaccount.com olduğuna bak (içeriği yazdırma).
+
 ## Bulut Claude notları
 
 * 2026-10-07: iOS build 4 TestFlight'a yüklendi (ana sayfa sekmeleri ve inceleme hesabı girişi). İncelemeye bu build gönderilmeli.
