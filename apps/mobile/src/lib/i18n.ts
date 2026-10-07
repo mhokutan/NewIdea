@@ -72,6 +72,7 @@ const en = {
   appearance: "Appearance", theme_system: "Same as phone", theme_light: "Light", theme_dark: "Dark",
   ios_soon: "App Store coming soon",
   home_following: "Following", following_empty: "Follow creators to see their new promos here.", following_guest: "Sign in and follow creators to see their new promos here.", find_creators: "Find creators", following_toast: "Following {name}", stat_followers: "Followers", stat_saves: "Saves", stat_calls: "Calls", pinned: "Pinned",
+  activity: "Activity", act_new: "new", act_empty: "Nothing new yet. Results of your calls and new promos from creators you follow show up here.", act_result: "Your call on {title} is in.", act_new_promo: "{name} posted a new promo: {title}", act_week_followers: "{n} new followers this week", act_week_saves: "Your promos were saved {n} times this week", act_week_calls: "Scouts made {n} calls on your promos this week", this_week_plus: "+{n} this week", ago_m: "{n} min ago", ago_h: "{n} h ago", ago_d: "{n} d ago",
 };
 type Key = keyof typeof en;
 const es: Partial<Record<Key, string>> = {
@@ -145,6 +146,7 @@ const es: Partial<Record<Key, string>> = {
   appearance: "Apariencia", theme_system: "Igual que el teléfono", theme_light: "Claro", theme_dark: "Oscuro",
   ios_soon: "Pronto en App Store",
   home_following: "Siguiendo", following_empty: "Sigue a creadores para ver aquí sus nuevas promos.", following_guest: "Inicia sesión y sigue a creadores para ver aquí sus nuevas promos.", find_creators: "Buscar creadores", following_toast: "Siguiendo a {name}", stat_followers: "Seguidores", stat_saves: "Guardados", stat_calls: "Predicciones", pinned: "Fijado",
+  activity: "Actividad", act_new: "nuevo", act_empty: "Aún no hay nada nuevo. Aquí verás los resultados de tus predicciones y las nuevas promos de los creadores que sigues.", act_result: "Ya está el resultado de tu predicción sobre {title}.", act_new_promo: "{name} publicó una nueva promo: {title}", act_week_followers: "{n} seguidores nuevos esta semana", act_week_saves: "Tus promos se guardaron {n} veces esta semana", act_week_calls: "Los exploradores hicieron {n} predicciones sobre tus promos esta semana", this_week_plus: "+{n} esta semana", ago_m: "hace {n} min", ago_h: "hace {n} h", ago_d: "hace {n} d",
 };
 const tr: Partial<Record<Key, string>> = {
   tab_feed: 'Akış', tab_explore: 'Keşfet', tab_me: 'Profil',
@@ -217,6 +219,7 @@ const tr: Partial<Record<Key, string>> = {
   appearance: "Görünüm", theme_system: "Telefonla aynı", theme_light: "Açık", theme_dark: "Koyu",
   ios_soon: "Yakında App Store'da",
   home_following: "Takip", following_empty: "Takip ettiğin üreticilerin yeni tanıtımları burada görünür.", following_guest: "Giriş yap, üreticileri takip et, yeni tanıtımları burada görünsün.", find_creators: "Üretici bul", following_toast: "{name} takip ediliyor", stat_followers: "Takipçi", stat_saves: "Kaydetme", stat_calls: "Tahmin", pinned: "Sabit",
+  activity: "Bildirimler", act_new: "yeni", act_empty: "Henüz yeni bir şey yok. Tahmin sonuçların ve takip ettiğin üreticilerin yeni tanıtımları burada görünür.", act_result: "{title} tahmininin sonucu geldi.", act_new_promo: "{name} yeni bir tanıtım paylaştı: {title}", act_week_followers: "Bu hafta {n} yeni takipçi", act_week_saves: "Tanıtımların bu hafta {n} kez kaydedildi", act_week_calls: "Kaşifler bu hafta tanıtımların için {n} tahmin yaptı", this_week_plus: "bu hafta +{n}", ago_m: "{n} dk önce", ago_h: "{n} sa önce", ago_d: "{n} gün önce",
 };
 
 const DICTS = { en, es, tr } as const;

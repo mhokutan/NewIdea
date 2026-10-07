@@ -850,6 +850,36 @@ app.get("/v1/me/scout", async (c) => {
 });
 
 // Creator studio: setup checklist, links, promos and free stats (7 and 28 days). Delivery numbers stay free forever.
+// Activity (founder request 2026-10-07, like the TikTok and Instagram inbox). Built from existing rows, nothing stored.
+// Scouts: call results and new promos from followed creators. Creators: weekly totals only, never who followed or saved.
+app.get("/v1/me/activity", async (c) => {
+  const [v, err] = await requireProfile(c);
+  if (err) return err;
+  const lang = langOf(c);
+  const db = c.env.DB;
+  const items = [];
+  if (v.profile.type === "scout") {
+    const since30 = new Date(Date.now() - 30 * 864e5).toISOString(), since14 = new Date(Date.now() - 14 * 864e5).toISOString();
+    const [results, fresh] = await db.batch([
+      db.prepare(PROMO_SELECT.replace("select pr.id,", "select ca.choice as call_choice, ca.outcome as call_outcome, ca.score_delta as call_delta, ca.resolved_at as call_resolved, pr.id,").replace("from promos pr", "from calls ca join promos pr on pr.id = ca.promo_id")
+        + " and ca.scout_profile_id = ? and ca.outcome in ('correct', 'incorrect', 'void') and ca.resolved_at >= ? order by ca.resolved_at desc limit 20").bind(v.profile.id, since30),
+      db.prepare(PROMO_SELECT + ` and pr.creator_profile_id in (select creator_profile_id from follows where follower_profile_id = ?1)
+        and pr.creator_profile_id not in (select blocked_profile_id from blocks where blocker_profile_id = ?1) and pr.live_at >= ?2 order by pr.live_at desc limit 20`).bind(v.profile.id, since14),
+    ]);
+    for (const r of results.results) items.push({ kind: "result", at: r.call_resolved, outcome: r.call_outcome, choice: r.call_choice, points: r.call_delta || 0, promo: promoOut(r, lang) });
+    for (const r of fresh.results) items.push({ kind: "new_promo", at: r.live_at, promo: promoOut(r, lang) });
+  } else {
+    const since7 = new Date(Date.now() - 7 * 864e5).toISOString();
+    const w = await db.prepare(`select
+        (select count(*) from follows where creator_profile_id = ?1 and created_at >= ?2) as followers,
+        (select count(*) from saves s join promos pr on pr.id = s.promo_id where pr.creator_profile_id = ?1 and s.created_at >= ?2) as saves,
+        (select count(*) from calls ca join promos pr on pr.id = ca.promo_id where pr.creator_profile_id = ?1 and ca.is_valid = 1 and ca.created_at >= ?2) as calls`).bind(v.profile.id, since7).first();
+    for (const k of ["followers", "saves", "calls"]) if (w?.[k]) items.push({ kind: "week_" + k, at: now(), n: w[k] });
+  }
+  items.sort((a, b) => String(b.at).localeCompare(String(a.at)));
+  return c.json({ items: items.slice(0, 40) });
+});
+
 app.get("/v1/me/studio", async (c) => {
   const [v, err] = await requireProfile(c, "creator");
   if (err) return err;

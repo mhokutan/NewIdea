@@ -73,6 +73,10 @@ async function call<T>(path: string, init: RequestInit = {}): Promise<T> {
   return body as T;
 }
 
+export type ActivityItem =
+  | { kind: 'result'; at: string; outcome: string; choice: 'will_blow_up' | 'not_for_me'; points: number; promo: Promo }
+  | { kind: 'new_promo'; at: string; promo: Promo }
+  | { kind: 'week_followers' | 'week_saves' | 'week_calls'; at: string; n: number };
 export const api = {
   feed: () => call<{ promos: Promo[] }>('/v1/feed'),
   drop: () => call<{ day: string; size: number; promos: Promo[] }>('/v1/drop'),
@@ -90,6 +94,7 @@ export const api = {
   createPerk: (b: Record<string, unknown>) => call<{ ok: true; id: string }>('/v1/me/perks', { method: 'POST', body: JSON.stringify(b) }),
   endPerk: (id: string) => call('/v1/me/perks/' + id, { method: 'DELETE' }),
   studio: () => call<Studio>('/v1/me/studio'),
+  activity: () => call<{ items: ActivityItem[] }>('/v1/me/activity'),
   updateMe: (b: Record<string, unknown>) => call<{ ok: true }>('/v1/me', { method: 'PATCH', body: JSON.stringify(b) }),
   setLinks: (links: { url: string; label?: string | null }[]) => call<{ ok: true; links: Link[] }>('/v1/me/links', { method: 'PUT', body: JSON.stringify({ links }) }),
   uploadMedia: (kind: 'avatar' | 'banner', uri: string) => uploadMedia(kind, uri),

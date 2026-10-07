@@ -14,6 +14,7 @@ import { compact } from '@/lib/format';
 import { lang, outcomeText, t } from '@/lib/i18n';
 import { C, F, themed, setThemePref, theme, type SchemePref } from '@/lib/theme';
 import { openMail } from '@/lib/mail';
+import { ACTIVITY_SEEN, getLocal } from '@/lib/store';
 import { reminderOn, turnOffReminder, turnOnReminder } from '@/lib/reminder';
 import { signOut, useMe } from '@/lib/use-me';
 import { Avatar } from '@/ui/Avatar';
@@ -93,10 +94,30 @@ function Header({ name, handle, avatar, sub, onSettings }: { name: string; handl
         <Text style={styles.h1} numberOfLines={1}>{name}</Text>
         <Text style={styles.text} numberOfLines={1}>@{handle}  ·  {sub}</Text>
       </View>
+      <Bell />
       <Pressable onPress={onSettings} style={styles.gear} accessibilityRole="button" accessibilityLabel={t('settings')} hitSlop={6}>
         <Icon name="more" size={20} color={C.text} />
       </Pressable>
     </View>
+  );
+}
+
+// Bell: opens Activity. The dot shows when a result or a new promo from a followed creator arrived since the last visit.
+function Bell() {
+  const [dot, setDot] = useState(false);
+  useFocusEffect(useCallback(() => {
+    let alive = true;
+    Promise.all([api.activity(), getLocal(ACTIVITY_SEEN)]).then(([r, seen]) => {
+      const newest = r.items.find((i) => i.kind === 'result' || i.kind === 'new_promo')?.at;
+      if (alive) setDot(!!newest && (!seen || newest > seen));
+    }).catch(() => {});
+    return () => { alive = false; };
+  }, []));
+  return (
+    <Pressable onPress={() => router.push('/activity')} style={styles.gear} accessibilityRole="button" accessibilityLabel={dot ? `${t('activity')}, ${t('act_new')}` : t('activity')} hitSlop={6}>
+      <Icon name="bell" size={20} color={C.text} />
+      {dot ? <View style={styles.bellDot} /> : null}
+    </Pressable>
   );
 }
 
@@ -274,6 +295,7 @@ function CreatorHome({ onSettings }: { onSettings: () => void }) {
             <View key={k} style={styles.total} accessible accessibilityLabel={`${n} ${t(k)}`}>
               <Text style={styles.totalN} maxFontSizeMultiplier={1.3}>{compact(n)}</Text>
               <Text style={styles.statL} numberOfLines={1} maxFontSizeMultiplier={1.3}>{t(k)}</Text>
+              {k === 'stat_followers' && data.stats.d7.follows ? <Text style={styles.delta}>{t('this_week_plus').replace('{n}', String(data.stats.d7.follows))}</Text> : null}
             </View>
           ))}
         </View>
@@ -398,6 +420,8 @@ const styles = themed(() => ({
   bar: { height: 6, borderRadius: 3, backgroundColor: C.line, overflow: 'hidden', marginVertical: 4 },
   barFill: { height: 6, borderRadius: 3, backgroundColor: C.lime },
   statRow: { flexDirection: 'row', gap: 8, marginTop: 8 },
+  bellDot: { position: 'absolute', top: 9, right: 9, width: 9, height: 9, borderRadius: 5, backgroundColor: C.pink, borderWidth: 1.5, borderColor: C.bg },
+  delta: { color: C.accent, fontSize: 11, fontWeight: '700' },
   totals: { flexDirection: 'row', paddingVertical: 12, borderRadius: 14, backgroundColor: C.surface, borderWidth: 1, borderColor: C.line },
   total: { flex: 1, alignItems: 'center', gap: 2 },
   totalN: { color: C.text, fontSize: 20, ...F.display },

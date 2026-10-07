@@ -15,3 +15,6 @@ export async function setLocal(key: string, value: string) {
     else await SecureStore.setItemAsync(key, value);
   } catch {}
 }
+
+/** Last time the Activity screen was opened (ISO time), for the dot on the bell. */
+export const ACTIVITY_SEEN = 'pv_activity_seen';

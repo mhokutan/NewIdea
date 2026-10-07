@@ -18,6 +18,7 @@ const MAP = {
   more: { ios: 'ellipsis', android: 'more_horiz', web: 'more_horiz' },
   ticket: { ios: 'ticket.fill', android: 'confirmation_number', web: 'confirmation_number' },
   gift: { ios: 'gift.fill', android: 'redeem', web: 'redeem' },
+  bell: { ios: 'bell.fill', android: 'notifications', web: 'notifications' },
 } as const;
 export type IconName = keyof typeof MAP;
 
