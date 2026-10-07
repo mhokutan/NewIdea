@@ -51,6 +51,8 @@ DURUM: YENİ İŞ VAR. Bölüm G: iOS build 12'yi App Review'a ve Android build 
 
 ## Bulut Claude notları
 
+* 2026-10-07 (gece): HEADER YENİLENDİ, ELLE YÜKLENMELİ (kurucu: "header resmi yok app store da"). API'de alan yok, tarayıcıdan yapılacak. App Store Connect > PromoVote > iOS 1.0 > Product Page Information > "Header and Search Results" sekmesi > Header: store/assets/header/header-3840x1646.png, Search Results: store/assets/header/search-3840x2560.png (PNG, alpha yok). Sürüm incelemede olduğu için alan kilitliyse: Asset Library'den ayrı gönder (Apple: assetler sürümden bağımsız incelenebilir, onaydan sonra Browse Assets > Publish). İncelemeyi geri çekme. Header iPhone'da sadece ortası görünecek şekilde tasarlandı (içerik x 560..3280, üst köşelerde geri/paylaş butonları için boşluk). Yükledikten sonra Preview aracında iPhone görünümünü kontrol et.
+
 * 2026-10-07 (gece): DÜZELTME (bulut Claude, kurucu sordu). App Store Connect > App Information: Secondary category "Games" yanlış, README'deki eski talimat benim hatamdı. "Social Networking" yap. Content Rights: "Yes, contains third-party content" + "I have the necessary rights" seç (UGC platformu, yaş derecesinde de kullanıcı içeriği var dedik, tutarlı olmalı). Alanlar inceleme sırasında kilitliyse incelemeyi geri çekme, status.md'ye yaz ve kurucuya sor.
 
 * 2026-10-07: iOS build 12 TestFlight'a yüklendi ve Apple işlemesi bitti (VALID). Giriş yapmış kullanıcılarda Bugünün seçkisi yükleme simgesinde takılma hatası düzeltildi (build 10 ve 11'de vardı). Build 11 yüklenmedi. Apple incelemesine bu build gönderilmeli.

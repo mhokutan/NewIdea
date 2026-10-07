@@ -194,7 +194,7 @@ G1. App Store (iOS build 12)
    Keywords: indie games,game trailers,new apps,discover,predict,hits,promos,creators,scout,trends
    Support URL: https://promovote.com/support  Marketing URL: https://promovote.com
    Copyright: 2026 Hazim Okutan
-5. Ürün sayfası header (Apple'ın yeni görsel alanı) ve arama sonucu görseli: bu alanlar App Store Connect'te görünüyorsa store/assets/header/header-3840x1646.png ve store/assets/header/search-3840x2560.png yükle. Alan yoksa veya kabul etmezse atla, gönderimi bekletme, status.md'ye yaz.
+5. Ürün sayfası header ve arama sonucu görseli (API ile yüklenemiyor, tarayıcıdan): Product Page Information > "Header and Search Results" > Header = store/assets/header/header-3840x1646.png, Search Results = store/assets/header/search-3840x2560.png. Sürüm kilitliyse Asset Library üzerinden ayrı gönder. Preview ile iPhone görünümünü kontrol et.
 6. App Review Information: Sign-in required evet, User name review@promovote.com, Password alanını kurucu girer (kodu kimseye yazma). Notes: yukarıdaki APP REVIEW NOTES, aynen. İletişim bilgileri zaten girili.
 7. Version Release: "Manually release this version" (onaydan sonra yayın tarihini kurucu seçer).
 8. "Add for Review" > "Submit to App Review". Sonucu status.md'ye yaz.

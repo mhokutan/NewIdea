@@ -137,54 +137,56 @@ def screenshot(lang, i, W, H):
     im.alpha_composite(ph, (int(W / 2 - ph.width / 2), top - pad))
     return im.convert('RGB')
 
-def header_master():
-    W, H = 5244, 2950
+def header_master(W=5244, H=2950, safe=(4425, 2247), k=1.0, logo=True):
     im = background(W, H, glow_at=(0.62, 0.5), r=0.42).convert('RGBA')
-    sx, sy = (W - 4425) // 2, (H - 2247) // 2  # safe area shared by both crops
+    sx, sy = (W - safe[0]) // 2, (H - safe[1]) // 2  # content box
     d = ImageDraw.Draw(im)
     # logo mark (favicon drawing) + wordmark
-    lx, ly, lr = sx + 120, sy + 360, 120
-    ss = 4; L = Image.new('RGBA', (lr * 2 * ss, lr * 2 * ss), (0, 0, 0, 0)); ld = ImageDraw.Draw(L)
-    grad = Image.new('RGBA', L.size)
-    for x in range(L.width):
-        t = x / L.width; ImageDraw.Draw(grad).line((x, 0, x, L.height), fill=(int(255 + (139 - 255) * t), int(84 + (92 - 84) * t), int(112 + (255 - 112) * t), 255))
-    ring = Image.new('L', L.size, 0); ImageDraw.Draw(ring).ellipse((0, 0, L.width - 1, L.height - 1), fill=255)
-    L.paste(grad, (0, 0), ring)
-    q = lr * ss / 32 * 1.0
-    ImageDraw.Draw(L).ellipse((5 * q * 0.5 * 2 / 2 * 1.0 + 4 * q, 4 * q, L.width - 4 * q, L.height - 4 * q), fill=(20, 20, 31, 255))
-    ld = ImageDraw.Draw(L)
-    for yy in (0, 11):
-        ld.line([(20 * q, (35 + yy) * q), (32 * q, (23 + yy) * q), (44 * q, (35 + yy) * q)], fill=LIME, width=int(6 * q), joint='curve')
-        for px, py in [(20, 35 + yy), (44, 35 + yy)]:
-            ld.ellipse(((px - 3) * q, (py - 3) * q, (px + 3) * q, (py + 3) * q), fill=LIME)
-    L = L.resize((lr * 2, lr * 2), Image.LANCZOS)
-    im.alpha_composite(L, (lx, ly - lr))
-    d.text((lx + lr * 2 + 50, ly), 'PromoVote', font=font('b800', 150), fill=WHITE, anchor='lm')
-    f = font('b800', 300)
-    y = ly + 300
+    lx, ly, lr = sx, sy + int(150 * k), int(120 * k)
+    if logo:
+        ss = 4; L = Image.new('RGBA', (lr * 2 * ss, lr * 2 * ss), (0, 0, 0, 0)); ld = ImageDraw.Draw(L)
+        grad = Image.new('RGBA', L.size)
+        for x in range(L.width):
+            t = x / L.width; ImageDraw.Draw(grad).line((x, 0, x, L.height), fill=(int(255 + (139 - 255) * t), int(84 + (92 - 84) * t), int(112 + (255 - 112) * t), 255))
+        ring = Image.new('L', L.size, 0); ImageDraw.Draw(ring).ellipse((0, 0, L.width - 1, L.height - 1), fill=255)
+        L.paste(grad, (0, 0), ring)
+        q = lr * ss / 32 * 1.0
+        ImageDraw.Draw(L).ellipse((5 * q * 0.5 * 2 / 2 * 1.0 + 4 * q, 4 * q, L.width - 4 * q, L.height - 4 * q), fill=(20, 20, 31, 255))
+        ld = ImageDraw.Draw(L)
+        for yy in (0, 11):
+            ld.line([(20 * q, (35 + yy) * q), (32 * q, (23 + yy) * q), (44 * q, (35 + yy) * q)], fill=LIME, width=int(6 * q), joint='curve')
+            for px, py in [(20, 35 + yy), (44, 35 + yy)]:
+                ld.ellipse(((px - 3) * q, (py - 3) * q, (px + 3) * q, (py + 3) * q), fill=LIME)
+        L = L.resize((lr * 2, lr * 2), Image.LANCZOS)
+        im.alpha_composite(L, (lx, ly - lr))
+        d.text((lx + lr * 2 + 50, ly), 'PromoVote', font=font('b800', int(150 * k)), fill=WHITE, anchor='lm')
+    f = font('b800', int(300 * k))
+    y = ly + int(250 * k) if logo else (H - int(1180 * k)) // 2
     for line, col in [('Call the', WHITE), ('next', WHITE), ('big hit.', LIME)]:
-        d.text((lx, y), line, font=f, fill=col); y += 310
-    d.text((lx, y + 70), 'Watch short promos. Make your call.', font=font('inter500', 104), fill=MUTED)
+        d.text((lx, y), line, font=f, fill=col); y += int(310 * k)
+    for n, sub in enumerate(['Watch short promos.', 'Make your call.']):
+        d.text((lx, y + int(60 * k) + n * int(125 * k)), sub, font=font('inter500', int(104 * k)), fill=MUTED)
     # three phones on the right
     shots = [('en', '5-creator'), ('en', '1-feed'), ('en', '2-ticket')]
-    cxs = [sx + 2950, sx + 3600, sx + 4250]
-    ph_h = 2050
+    R = sx + safe[0]; cxs = [R - int(1300 * k), R - int(650 * k), R]
+    ph_h = int(2050 * k)
     for idx in (0, 2, 1):
         lang, sh = shots[idx]
         pw = int(ph_h * 1320 / 2868 * (1.0 if idx == 1 else 0.9))
         ph, pad = phone(load_screen(lang, sh), pw)
-        cy = H // 2 + (0 if idx == 1 else 40)
-        im.alpha_composite(ph, (int(cxs[idx] - ph.width / 2) - 330, int(cy - ph.height / 2)))
+        cy = H // 2 + (0 if idx == 1 else int(40 * k))
+        im.alpha_composite(ph, (int(cxs[idx] - ph.width / 2) - int(330 * k), int(cy - ph.height / 2)))
     return im.convert('RGB')
 
 if __name__ == '__main__':
-    for lang in COPY:
+    for lang in (COPY if 'screens' in sys.argv else []):
         for i in range(5):
             for kind, (W, H) in {'ios': (1320, 2868), 'play': (1080, 1920)}.items():
                 p = f'{OUT}/screens/{kind}/{lang}'; os.makedirs(p, exist_ok=True)
                 screenshot(lang, i, W, H).save(f'{p}/{i + 1}-{SHOTS[i][2:]}.png', optimize=True)
-    m = header_master(); os.makedirs(f'{OUT}/header', exist_ok=True)
-    m.save(f'{OUT}/header/master-5244x2950.png', optimize=True)
-    m.crop((0, (2950 - 2247) // 2, 5244, (2950 - 2247) // 2 + 2247)).resize((3840, 1646), Image.LANCZOS).save(f'{OUT}/header/header-3840x1646.png', optimize=True)
-    m.crop(((5244 - 4425) // 2, 0, (5244 - 4425) // 2 + 4425, 2950)).resize((3840, 2560), Image.LANCZOS).save(f'{OUT}/header/search-3840x2560.png', optimize=True)
+    os.makedirs(f'{OUT}/header', exist_ok=True)
+    header_master().save(f'{OUT}/header/universal-5244x2950.png', optimize=True)
+    # Header: iPhone shows only about x 330..3530 with round buttons in the top corners, so content stays in x 560..3280.
+    header_master(3840, 1646, (2720, 1300), 0.7, logo=False).save(f'{OUT}/header/header-3840x1646.png', optimize=True)
+    header_master(3840, 2560, (3200, 1900), 0.86).save(f'{OUT}/header/search-3840x2560.png', optimize=True)
     print('done')
