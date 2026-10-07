@@ -144,6 +144,44 @@ app.get("/v1/feed", async (c) => {
   return c.json({ promos: results.map((r) => promoOut(r, lang)) });
 });
 
+// Home tabs. new: latest first. featured: team picks (never paid). top: last 7 days, weighted valid views
+// (guest 0.5, boosted views never count) plus 3 points per valid "will blow up" call. A promo needs at least
+// TOP_MIN_VIEWS weighted views to show up, so the tab stays honestly empty until real data exists (docs/04).
+const TOP_MIN_VIEWS = 50;
+app.get("/v1/home", async (c) => {
+  const lang = langOf(c);
+  const tab = c.req.query("tab");
+  const db = c.env.DB;
+  let rows;
+  if (tab === "new") {
+    ({ results: rows } = await db.prepare(PROMO_SELECT + " order by pr.live_at desc limit 50").all());
+  } else if (tab === "featured") {
+    ({ results: rows } = await db.prepare(PROMO_SELECT + " and pr.featured_at is not null order by pr.featured_at desc, pr.live_at desc limit 30").all());
+  } else if (tab === "top") {
+    const since = new Date(Date.now() - 6 * 864e5).toISOString().slice(0, 10);
+    const { results: scores } = await db.prepare(
+      `select promo_id, sum(case when is_guest = 1 then 0.5 else 1 end) as views from view_events
+       where day >= ? and is_boost = 0 group by promo_id having views >= ?`,
+    ).bind(since, TOP_MIN_VIEWS).all();
+    if (!scores.length) {
+      rows = [];
+    } else {
+      const { results: votes } = await db.prepare(
+        `select promo_id, count(*) as n from calls where is_valid = 1 and choice = 'will_blow_up' and created_at >= ? group by promo_id`,
+      ).bind(since).all();
+      const voteMap = Object.fromEntries(votes.map((v) => [v.promo_id, v.n]));
+      const score = Object.fromEntries(scores.map((s) => [s.promo_id, s.views + 3 * (voteMap[s.promo_id] || 0)]));
+      const ids = Object.keys(score);
+      const { results } = await db.prepare(PROMO_SELECT + ` and pr.id in (${ids.map(() => "?").join(",")})`).bind(...ids).all();
+      rows = results.sort((a, b) => score[b.id] - score[a.id]).slice(0, 50);
+    }
+  } else {
+    return fail(c, 400, "bad_tab", "Use tab=new, top or featured.");
+  }
+  c.header("Cache-Control", "public, max-age=60");
+  return c.json({ tab, promos: rows.map((r) => promoOut(r, lang)) });
+});
+
 app.get("/v1/promos/:id", async (c) => {
   const r = await c.env.DB.prepare(PROMO_SELECT + " and (pr.id = ?1 or pr.slug = ?1)").bind(c.req.param("id")).first();
   if (!r) return fail(c, 404, "not_found", "Promo not found.");

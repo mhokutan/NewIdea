@@ -3,6 +3,8 @@ import { getLocales } from 'expo-localization';
 
 const en = {
   tab_feed: 'Feed', tab_explore: 'Explore', tab_me: 'Profile',
+  home_for_you: 'For you', home_new: 'New', home_top: 'Top', home_featured: 'Featured',
+  top_empty: 'Top opens when real people start watching and voting. Paying never buys a spot.', featured_note: 'Picked by the PromoVote team. Never paid.', featured_empty: 'No picks yet.', new_empty: 'No promos yet.',
   will_blow_up: 'Will blow up', not_for_me: 'Not for me', save: 'Save', share: 'Share',
   soon: 'Coming soon', android_soon: 'Google Play coming soon', founder_made: 'Made by the PromoVote founder',
   cta_app_store: 'Download on the App Store', cta_shop: 'Visit the shop', cta_etsy: 'View on Etsy', cta_notify: 'Notify me at launch', cta_website: 'Open website', cta_watch: 'Watch',
@@ -23,6 +25,8 @@ const en = {
 type Key = keyof typeof en;
 const es: Partial<Record<Key, string>> = {
   tab_feed: 'Feed', tab_explore: 'Explorar', tab_me: 'Perfil',
+  home_for_you: 'Para ti', home_new: 'Nuevo', home_top: 'Top', home_featured: 'Destacados',
+  top_empty: 'El Top abre cuando personas reales empiecen a ver y votar. Pagar nunca compra un puesto.', featured_note: 'Elegido por el equipo de PromoVote. Nunca pagado.', featured_empty: 'Todavía no hay destacados.', new_empty: 'Todavía no hay promos.',
   will_blow_up: 'Va a explotar', not_for_me: 'No es para mí', save: 'Guardar', share: 'Compartir',
   soon: 'Muy pronto', android_soon: 'Pronto en Google Play', founder_made: 'Hecho por el fundador de PromoVote',
   cta_app_store: 'Descargar en App Store', cta_shop: 'Visitar la tienda', cta_etsy: 'Ver en Etsy', cta_notify: 'Avísame al lanzar', cta_website: 'Abrir sitio web', cta_watch: 'Ver',
@@ -42,6 +46,8 @@ const es: Partial<Record<Key, string>> = {
 };
 const tr: Partial<Record<Key, string>> = {
   tab_feed: 'Akış', tab_explore: 'Keşfet', tab_me: 'Profil',
+  home_for_you: 'Sana özel', home_new: 'Yeni', home_top: 'Popüler', home_featured: 'Öne çıkan',
+  top_empty: 'Popüler listesi gerçek insanlar izleyip oy vermeye başlayınca açılır. Para verip listeye girilemez.', featured_note: 'PromoVote ekibinin seçimi. Ücretli değil.', featured_empty: 'Henüz seçim yok.', new_empty: 'Henüz video yok.',
   will_blow_up: 'Patlayacak', not_for_me: 'Bana göre değil', save: 'Kaydet', share: 'Paylaş',
   soon: 'Yakında', android_soon: "Yakında Google Play'de", founder_made: 'PromoVote kurucusunun yapımı',
   cta_app_store: "App Store'dan indir", cta_shop: 'Mağazaya git', cta_etsy: "Etsy'de gör", cta_notify: 'Çıkınca haber ver', cta_website: 'Siteyi aç', cta_watch: 'İzle',

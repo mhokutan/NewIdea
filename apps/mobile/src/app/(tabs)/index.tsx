@@ -1,7 +1,8 @@
-// Home feed: endless vertical promos with the same fair rotation as the website.
+// Home feed: vertical promos with tabs. "For you" uses the same fair rotation as the website and never ends.
+// New, Top and Featured are server ordered lists (services/api /v1/home). Featured is a team pick, never paid.
 import { useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View, type ViewToken } from 'react-native';
+import { ActivityIndicator, FlatList, Platform, Pressable, ScrollView, StyleSheet, Text, View, type ViewToken } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { api, type Promo } from '@/lib/api';
@@ -13,10 +14,22 @@ import { Icon } from '@/ui/Icon';
 import { PromoReel } from '@/ui/PromoReel';
 
 type Item = { key: string; promo: Promo };
+// On web, NativeTabs draws the app menu as a floating bar at the top; keep the home tabs below it.
+const WEB_MENU = Platform.OS === 'web' ? 64 : 0;
+type Tab = 'for_you' | 'new' | 'top' | 'featured';
+
+const TABS: { id: Tab; label: Parameters<typeof t>[0] }[] = [
+  { id: 'for_you', label: 'home_for_you' },
+  { id: 'new', label: 'home_new' },
+  { id: 'top', label: 'home_top' },
+  { id: 'featured', label: 'home_featured' },
+];
+const EMPTY: Record<Tab, Parameters<typeof t>[0]> = { for_you: 'new_empty', new: 'new_empty', top: 'top_empty', featured: 'featured_empty' };
 
 export default function Feed() {
   const { v } = useLocalSearchParams<{ v?: string }>();
   const insets = useSafeAreaInsets();
+  const [tab, setTab] = useState<Tab>('for_you');
   const [all, setAll] = useState<Promo[] | null>(null);
   const [items, setItems] = useState<Item[]>([]);
   const [error, setError] = useState(false);
@@ -36,19 +49,30 @@ export default function Feed() {
     });
   }, []);
 
-  // Loads live promos, then builds the first fair round. A deep link (?v=slug) plays first.
+  // Loads the selected tab. For you builds the first fair round; a deep link (?v=slug) plays first.
   const [attempt, setAttempt] = useState(0);
   useEffect(() => {
     let alive = true;
-    api.feed().then(({ promos }) => {
+    const load = tab === 'for_you' ? api.feed() : api.home(tab);
+    load.then(({ promos }) => {
       if (!alive) return;
       setAll(promos);
       setItems([]);
       setActive(0);
-      append(promos, promos.find((p) => p.slug === v || p.id === v));
+      if (tab === 'for_you') append(promos, promos.find((p) => p.slug === v || p.id === v));
+      else setItems(promos.map((p) => ({ key: `${tab}-${p.id}`, promo: p })));
     }).catch(() => { if (alive) setError(true); });
     return () => { alive = false; };
-  }, [append, v, attempt]);
+  }, [append, v, attempt, tab]);
+
+  // Resets the list right away so the old tab never flashes while the new one loads.
+  const selectTab = (next: Tab) => {
+    if (next === tab) return;
+    setAll(null);
+    setItems([]);
+    setActive(0);
+    setTab(next);
+  };
 
   const onViewable = useCallback(({ viewableItems }: { viewableItems: ViewToken[] }) => {
     const first = viewableItems.find((x) => x.isViewable);
@@ -69,9 +93,11 @@ export default function Feed() {
     <View style={styles.root} onLayout={(e) => setHeight(e.nativeEvent.layout.height)}>
       {!all || !height ? (
         <View style={styles.center}><ActivityIndicator color={C.lime} /></View>
+      ) : !items.length ? (
+        <View style={styles.center}><Text style={styles.msg}>{t(EMPTY[tab])}</Text></View>
       ) : (
         <FlatList
-          key={v || 'feed'}
+          key={`${tab}-${v || 'feed'}`}
           data={items}
           keyExtractor={(i) => i.key}
           renderItem={({ item, index }) => (
@@ -84,7 +110,7 @@ export default function Feed() {
           getItemLayout={(_, index) => ({ length: height, offset: height * index, index })}
           onViewableItemsChanged={onViewable}
           viewabilityConfig={{ itemVisiblePercentThreshold: 60 }}
-          onEndReached={() => all && append(all)}
+          onEndReached={() => tab === 'for_you' && all && append(all)}
           onEndReachedThreshold={2}
           windowSize={3}
           initialNumToRender={2}
@@ -92,21 +118,49 @@ export default function Feed() {
           removeClippedSubviews
         />
       )}
-      <View style={[styles.top, { paddingTop: insets.top + 8 }]} pointerEvents="box-none">
-        <Text style={styles.logo} accessibilityRole="header">PromoVote</Text>
-        <Pressable onPress={() => setMuted(!muted)} style={styles.sound} accessibilityRole="button" accessibilityLabel={muted ? 'Sound on' : 'Sound off'}>
-          <Icon name={muted ? 'mute' : 'sound'} size={20} />
-        </Pressable>
+      <View style={[styles.top, { paddingTop: insets.top + 6 + WEB_MENU }]} pointerEvents="box-none">
+        <View style={styles.bar} pointerEvents="box-none">
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tabs} accessibilityRole="tablist">
+            {TABS.map((x) => {
+              const on = x.id === tab;
+              return (
+                <Pressable
+                  key={x.id}
+                  onPress={() => selectTab(x.id)}
+                  style={styles.tab}
+                  hitSlop={6}
+                  accessibilityRole="tab"
+                  accessibilityState={{ selected: on }}
+                >
+                  <Text style={[styles.tabText, on && styles.tabOn]}>{t(x.label)}</Text>
+                  <View style={[styles.dot, on && styles.dotOn]} />
+                </Pressable>
+              );
+            })}
+          </ScrollView>
+          <Pressable onPress={() => setMuted(!muted)} style={styles.sound} accessibilityRole="button" accessibilityLabel={muted ? 'Sound on' : 'Sound off'}>
+            <Icon name={muted ? 'mute' : 'sound'} size={20} />
+          </Pressable>
+        </View>
+        {tab === 'featured' && items.length > 0 && <Text style={styles.note}>{t('featured_note')}</Text>}
       </View>
     </View>
   );
 }
 
+const shadow = { textShadowColor: 'rgba(0,0,0,0.6)', textShadowRadius: 4 } as const;
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: '#000' },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: C.bg, padding: 24 },
-  msg: { color: C.text2, fontSize: 16, textAlign: 'center' },
-  top: { position: 'absolute', top: 0, left: 0, right: 0, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16 },
-  logo: { color: '#fff', fontWeight: '800', fontSize: 20, textShadowColor: 'rgba(0,0,0,0.6)', textShadowRadius: 4 },
-  sound: { width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(20,20,31,0.72)', alignItems: 'center', justifyContent: 'center' },
+  center: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: C.bg, padding: 32 },
+  msg: { color: C.text2, fontSize: 16, lineHeight: 23, textAlign: 'center', maxWidth: 320 },
+  top: { position: 'absolute', top: 0, left: 0, right: 0, paddingHorizontal: 12 },
+  bar: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  tabs: { gap: 18, paddingHorizontal: 4, alignItems: 'center' },
+  tab: { alignItems: 'center', paddingVertical: 6 },
+  tabText: { color: 'rgba(255,255,255,0.68)', fontSize: 16, fontWeight: '600', ...shadow },
+  tabOn: { color: '#fff', fontWeight: '800' },
+  dot: { marginTop: 5, width: 18, height: 3, borderRadius: 2, backgroundColor: 'transparent' },
+  dotOn: { backgroundColor: C.lime },
+  sound: { marginLeft: 'auto', width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(20,20,31,0.72)', alignItems: 'center', justifyContent: 'center' },
+  note: { marginTop: 2, marginLeft: 4, color: 'rgba(255,255,255,0.8)', fontSize: 12, fontWeight: '600', ...shadow },
 });
