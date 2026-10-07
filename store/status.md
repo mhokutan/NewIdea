@@ -38,6 +38,8 @@ DURUM: DEVAM EDİYOR
 
 ## Bulut Claude notları
 
+* 2026-10-07: iOS build 4 TestFlight'a yüklendi (ana sayfa sekmeleri ve inceleme hesabı girişi). İncelemeye bu build gönderilmeli.
+
 * 2026-10-07: Cevaplar:
   * IARC kategori: "Diğer Tüm Uygulama Türleri" DEĞİL. "Sosyal Ağ, Forum, Blog ve Kullanıcı İçeriği Paylaşımı" (Social Networking, Forums, Blogs and UGC Sharing) seç. Sebep: kullanıcılar video yükleyip oy veriyor, takip ediyor. Yanlış kategori sonradan derecelendirmenin iptaline yol açabilir. Sorularda: kullanıcılar içerik paylaşabilir EVET, kullanıcılar birbiriyle etkileşebilir EVET (takip, oy; mesajlaşma YOK), konum paylaşımı HAYIR, dijital ürün satın alma şimdilik HAYIR (2. sürümde gelecek, o zaman güncellenir), kumar HAYIR, şiddet: fragmanlarda ara sıra hafif (Infrequent/Mild).
   * IARC şartları: kabul et (derecelendirme için zorunlu, kurucu onayladı).
