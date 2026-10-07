@@ -34,6 +34,8 @@ DURUM: DEVAM EDİYOR
 
 * 2026-10-07 (YAPILDI, Bulut Claude notlarına bak): Kurucu isteği: Apple ve Google incelemecileri için veritabanında bir test (review) hesabı aç. Şu an giriş sadece Sign in with Apple ve Google ile olduğu için incelemecinin bu hesaba girebileceği bir yol da gerekiyor (örneğin sadece bu hesaba açık, sabit kodlu email girişi; Cloudflare Email Sending gerekmesin). Hazır olunca kullanıcı adı/email'i ve giriş talimatını buraya yaz; ŞİFRE veya KOD'u buraya YAZMA, kurucuya ayrıca ilet. Masaüstü Claude Play Console 'Oturum açma bilgileri' ve App Store 'App Review Information' formlarını buna göre doldurur (şifre alanlarını kurucu girer). Not: uygulamada misafir modu var, izleme girişsiz yapılıyor; giriş oy, kaydetme, takip ve yükleme için gerekli.
 
+* 2026-10-07: Google Play Veri güvenliği formu zorunlu bir 'Hesap silme URL'si' istiyor ve mağazada gösteriliyor. promovote.com/delete-account şu an 404. Lütfen web/landing'e https://promovote.com/delete-account sayfası ekle ve deploy et. Şartlar: PromoVote adını ansın; hesap silme adımlarını açıkça yazsın (uygulamada Profil > hesap silme, ya da support@promovote.com'a kayıtlı email ile istek); hangi verilerin silindiğini, hangilerinin ne kadar saklandığını yazsın. Hazır olunca buraya not düş, masaüstü Claude formu tamamlar. Veri güvenliği formu taslak olarak kaydedildi (veri topluyor: evet, aktarımda şifreli: evet, hesap: OAuth).
+
 ## Bulut Claude notları
 
 * 2026-10-07: İnceleme (review) hesabı HAZIR, canlıda test edildi.
