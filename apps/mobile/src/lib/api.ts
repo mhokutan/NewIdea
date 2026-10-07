@@ -19,7 +19,7 @@ export type Profile = {
   handle: string; type: 'scout' | 'creator'; name: string; bio: string | null; avatar: string | null;
   banner: string | null; mono: string | null; verified: boolean; kind?: string; category?: string;
   releaseStatus?: string; androidStatus?: string | null; founderOwned?: boolean; followers?: number | null;
-  links?: { platform: string; url: string; label: string | null }[]; promos?: Promo[];
+  links?: Link[]; promos?: Promo[]; newCreator?: boolean; stats?: { score: number; level: number; calledIt: number } | null;
   viewer?: { following: boolean; isMe: boolean };
 };
 export type Me = {
@@ -34,6 +34,20 @@ export type Call = {
   outcome?: 'pending' | 'correct' | 'incorrect' | 'void'; split?: { total: number; blowUpPct: number };
 };
 export type ViewerState = { calls: Record<string, Call>; saves: string[]; following: string[]; blocked: string[] };
+
+export type Link = { platform: string; url: string; label: string | null };
+export type ScoutSummary = {
+  score: number; level: number; nextLevelAt: number; streakWeeks: number; resolved: number; right: number; calledIt: number;
+  open: { promo: Promo; choice: Call['choice']; rank: number | null; resolvesAt: string }[];
+  saved: Promo[]; following: { handle: string; name: string; avatar: string | null; mono: string | null }[];
+};
+type Stat = { views: number; completion: number; avgSeconds: number; clicks: number; ctr: number };
+export type Studio = {
+  profile: { name: string; bio: string | null; avatar: string | null; banner: string | null; followers: number; category: string;
+    secondaryCategories: string[]; primaryCta: string | null; releaseStatus: string };
+  links: Link[]; checklist: { logo: boolean; banner: boolean; bio: boolean; links: boolean; promo: boolean };
+  stats: { d7: Stat; d28: Stat; saves: number; followers: number }; calls: { total: number; blowUpPct: number | null }; promos: Promo[];
+};
 
 export class ApiError extends Error {
   constructor(public status: number, public code: string, message: string, public body?: any) { super(message); }
@@ -62,6 +76,11 @@ export const api = {
   creators: (cat?: string) => call<{ creators: Creator[] }>('/v1/creators' + (cat ? '?cat=' + cat : '')),
   profile: (handle: string) => call<{ profile: Profile }>('/v1/profiles/' + encodeURIComponent(handle)),
   me: () => call<Me>('/v1/me'),
+  scout: () => call<ScoutSummary>('/v1/me/scout'),
+  studio: () => call<Studio>('/v1/me/studio'),
+  updateMe: (b: Record<string, unknown>) => call<{ ok: true }>('/v1/me', { method: 'PATCH', body: JSON.stringify(b) }),
+  setLinks: (links: { url: string; label?: string | null }[]) => call<{ ok: true; links: Link[] }>('/v1/me/links', { method: 'PUT', body: JSON.stringify({ links }) }),
+  uploadMedia: (kind: 'avatar' | 'banner', uri: string) => uploadMedia(kind, uri),
   onboarding: (b: Record<string, unknown>) => call<{ ok: true; handle: string }>('/v1/onboarding', { method: 'POST', body: JSON.stringify(b) }),
   handle: (h: string) => call<{ available: boolean; reason: string | null }>('/v1/handles/' + encodeURIComponent(h)),
   follow: (h: string, on: boolean) => call('/v1/follows/' + h, { method: on ? 'POST' : 'DELETE', body: JSON.stringify({ source: 'feed' }) }),
@@ -75,6 +94,19 @@ export const api = {
   report: (targetType: string, targetId: string, reason: string) => call('/v1/reports', { method: 'POST', body: JSON.stringify({ targetType, targetId, reason }) }),
   deleteAccount: () => call('/v1/me', { method: 'DELETE' }),
 };
+
+// Uploads a resized JPEG from the photo picker.
+async function uploadMedia(kind: 'avatar' | 'banner', uri: string) {
+  const cookie = Platform.OS === 'web' ? '' : await authClient.getCookie().catch(() => '');
+  const blob = await (await fetch(uri)).blob();
+  const res = await fetch(`${API_URL}/v1/me/media?kind=${kind}`, {
+    method: 'POST', body: blob, credentials: Platform.OS === 'web' ? 'include' : 'omit',
+    headers: { 'Content-Type': 'image/jpeg', ...(cookie ? { Cookie: cookie } : {}) },
+  });
+  const body = await res.json().catch(() => ({}));
+  if (!res.ok) throw new ApiError(res.status, body?.error?.code || 'error', body?.error?.message || 'Upload failed', body);
+  return body as { ok: true; url: string };
+}
 
 // Random id for guest view counting. Not linked to the person, reset by reinstalling.
 let cachedDevice: string | null = null;

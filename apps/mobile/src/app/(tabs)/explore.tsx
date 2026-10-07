@@ -7,13 +7,14 @@ import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, 
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { api, type Creator, type Promo } from '@/lib/api';
+import { EXPLORE_CATEGORIES } from '@/lib/categories';
 import { t } from '@/lib/i18n';
 import { C } from '@/lib/theme';
 import { Avatar } from '@/ui/Avatar';
 import { Icon } from '@/ui/Icon';
 import { Pill } from '@/ui/Pill';
 
-const CATS = ['all', 'games', 'apps', 'shops'] as const;
+const CATS = [{ id: 'all', label: 'all' as const }, ...EXPLORE_CATEGORIES];
 
 export default function Explore() {
   const params = useLocalSearchParams<{ tag?: string; cat?: string }>();
@@ -103,7 +104,7 @@ export default function Explore() {
       </ScrollView>
 
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.row}>
-        {CATS.map((k) => <Pill key={k} label={t(k)} active={cat === k} onPress={() => setCat(k)} />)}
+        {CATS.map((k) => <Pill key={k.id} label={t(k.label)} active={cat === k.id} onPress={() => setCat(k.id)} />)}
       </ScrollView>
 
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={[styles.row, { paddingTop: 0 }]}>

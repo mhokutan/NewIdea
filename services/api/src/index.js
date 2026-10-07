@@ -7,7 +7,10 @@ import { createAuth } from "./auth.js";
 
 const app = new Hono();
 const LANGS = ["en", "es", "tr"];
-const CATEGORIES = ["games", "apps", "shops", "creators", "brands"];
+// Creator categories (expert review 2026-10-07). Local opens in Explore once there are 20 local creators.
+const CATEGORIES = ["games", "apps", "streams", "videos", "shops", "brands", "local"];
+const KIND_BY_CATEGORY = { games: "game_dev", apps: "app_maker", streams: "streamer", videos: "short_video", shops: "shop", brands: "brand", local: "local_business" };
+const CTA_KINDS = ["website", "app_store", "google_play", "steam", "itch", "shop", "etsy", "watch", "watch_live", "notify"];
 const HANDLE_RE = /^[a-z][a-z0-9_]{2,23}$/;
 const TERMS_VERSION = "2026-10-02";
 const now = () => new Date().toISOString();
@@ -27,13 +30,14 @@ app.use("*", cors({
   origin: (o, c) => (o === "https://promovote.com" || (c.env.DEV_LOG_OTP === "1" && /^http:\/\/localhost:\d+$/.test(o || "")) ? o : null),
   credentials: true,
   allowHeaders: ["Content-Type", "Authorization"],
-  allowMethods: ["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
+  allowMethods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
 }));
 
 // Writes: small JSON bodies only, and a per IP rate limit (Workers Rate Limiting binding WRITE_LIMIT).
 app.use("/v1/*", async (c, next) => {
   if (c.req.method === "GET" || c.req.method === "OPTIONS") return next();
-  if (+(c.req.header("Content-Length") || 0) > 16384) return c.json({ error: { code: "too_large", message: "Request too large." } }, 413);
+  // Photo uploads check their own (larger) limit in the route.
+  if (c.req.path !== "/v1/me/media" && +(c.req.header("Content-Length") || 0) > 16384) return c.json({ error: { code: "too_large", message: "Request too large." } }, 413);
   if (c.env.WRITE_LIMIT) {
     const { success } = await c.env.WRITE_LIMIT.limit({ key: c.req.header("CF-Connecting-IP") || "unknown" });
     if (!success) return c.json({ error: { code: "rate_limited", message: "Too many requests. Wait a minute." } }, 429);
@@ -333,7 +337,8 @@ app.get("/v1/profiles/:handle", async (c) => {
       kind: pick(i.kind, lang, p.kind), category: p.category,
       releaseStatus: p.release_status, androidStatus: p.android_status, iosStatus: p.ios_status,
       founderOwned: !!p.founder_owned, foundingCreator: !!p.founding_creator,
-      followers: p.show_follower_count ? p.follower_count : null,
+      followers: p.show_follower_count && p.follower_count >= 10 ? p.follower_count : null,
+      newCreator: p.follower_count < 10,
       links: links.results.map((l) => ({ platform: l.platform, url: l.canonical_url, label: l.label })),
       promos: promos.results.map((r) => promoOut(r, lang)),
     });
@@ -402,9 +407,8 @@ app.post("/v1/onboarding", async (c) => {
   let category = null, kind = null;
   if (type === "creator") {
     category = CATEGORIES.includes(b.category) ? b.category : null;
-    const kinds = { games: "game_dev", apps: "app_maker", shops: "shop", creators: "short_video", brands: "brand" };
     if (!category) return fail(c, 400, "bad_category", "Choose a category.");
-    kind = kinds[category];
+    kind = KIND_BY_CATEGORY[category];
   }
   const db = c.env.DB;
   const blocked = await db.batch([
@@ -446,11 +450,175 @@ app.patch("/v1/me", async (c) => {
     if (/https?:\/\/|www\.|\b[a-z0-9-]+\.(com|net|org|io|app|gg|ly)\b/i.test(bio)) return fail(c, 400, "bio_links", "Links go in the links section, not the bio.");
     stmts.push(db.prepare("update profiles set bio = ?, updated_at = ? where id = ?").bind(bio || null, now(), v.profile.id));
   }
+  if (v.profile.type === "creator") {
+    if (b.category !== undefined) {
+      if (!CATEGORIES.includes(b.category)) return fail(c, 400, "bad_category", "Choose a category.");
+      stmts.push(db.prepare("update creator_details set category = ?, kind = ?, updated_at = ? where profile_id = ?").bind(b.category, KIND_BY_CATEGORY[b.category], now(), v.profile.id));
+    }
+    if (Array.isArray(b.secondaryCategories)) {
+      const sec = [...new Set(b.secondaryCategories.filter((x) => CATEGORIES.includes(x) && x !== b.category))].slice(0, 2);
+      stmts.push(db.prepare("update creator_details set secondary_categories = ? where profile_id = ?").bind(JSON.stringify(sec), v.profile.id));
+    }
+    if (b.primaryCta !== undefined) {
+      if (b.primaryCta !== null && !CTA_KINDS.includes(b.primaryCta)) return fail(c, 400, "bad_cta", "Unknown button type.");
+      stmts.push(db.prepare("update creator_details set primary_cta = ? where profile_id = ?").bind(b.primaryCta, v.profile.id));
+    }
+    if (["live", "soon"].includes(b.releaseStatus)) stmts.push(db.prepare("update creator_details set release_status = ? where profile_id = ?").bind(b.releaseStatus, v.profile.id));
+  }
   if (LANGS.includes(b.language)) stmts.push(db.prepare("update account_private set language = ?, updated_at = ? where user_id = ?").bind(b.language, now(), v.user.id));
   if (typeof b.perkEmails === "boolean") stmts.push(db.prepare("update account_private set perk_email_opt_in = ? where user_id = ?").bind(+b.perkEmails, v.user.id));
   if (typeof b.followEmails === "boolean") stmts.push(db.prepare("update account_private set follow_email_opt_in = ? where user_id = ?").bind(+b.followEmails, v.user.id));
   if (stmts.length) await db.batch(stmts);
   return c.json({ ok: true });
+});
+
+// ------------------------------------------------------------------ profile links
+// Up to 8 links. https only, no URL shorteners or link-in-bio pages, platform detected from the host.
+// Known platforms and plain websites pass basic checks; a URL safety scan is added before user uploads open.
+const LINK_HOSTS = [
+  ["youtube", /(^|\.)(youtube\.com|youtu\.be)$/], ["twitch", /(^|\.)twitch\.tv$/], ["kick", /(^|\.)kick\.com$/],
+  ["tiktok", /(^|\.)tiktok\.com$/], ["instagram", /(^|\.)instagram\.com$/], ["x", /(^|\.)(x\.com|twitter\.com)$/],
+  ["steam", /(^|\.)(store\.steampowered\.com|steamcommunity\.com)$/], ["app_store", /(^|\.)apps\.apple\.com$/],
+  ["google_play", /(^|\.)play\.google\.com$/], ["etsy", /(^|\.)etsy\.com$/], ["discord", /(^|\.)(discord\.gg|discord\.com)$/],
+  ["itch", /(^|\.)itch\.io$/], ["amazon", /(^|\.)amazon\.[a-z.]+$/], ["shopify", /(^|\.)myshopify\.com$/],
+  ["google_maps", /(^|\.)(maps\.google\.[a-z.]+|maps\.app\.goo\.gl)$/],
+];
+const BAD_HOSTS = /(^|\.)(bit\.ly|tinyurl\.com|t\.co|goo\.gl|ow\.ly|is\.gd|buff\.ly|rebrand\.ly|cutt\.ly|shorturl\.at|linktr\.ee|beacons\.ai|lnk\.bio|taplink\.cc|linkin\.bio)$/;
+function checkLink(raw) {
+  let u;
+  try { u = new URL(String(raw || "").trim()); } catch { return { error: "Enter a full link that starts with https://" }; }
+  if (u.protocol !== "https:") return { error: "Links must start with https://" };
+  const host = u.hostname.toLowerCase();
+  if (/^[\d.]+$/.test(host) || host.includes(":") || !host.includes(".")) return { error: "Use a normal website address." };
+  if (BAD_HOSTS.test(host) && !/^maps\.app\.goo\.gl$/.test(host)) return { error: "Short links and link-in-bio pages are not allowed. Add each link directly." };
+  if (u.username || u.password) return { error: "Use a normal website address." };
+  u.hash = "";
+  const platform = (LINK_HOSTS.find(([, re]) => re.test(host)) || ["website"])[0];
+  return { platform, url: u.toString().slice(0, 500) };
+}
+app.put("/v1/me/links", async (c) => {
+  const [v, err] = await requireProfile(c, "creator");
+  if (err) return err;
+  const b = await c.req.json().catch(() => ({}));
+  const list = Array.isArray(b.links) ? b.links.slice(0, 9) : null;
+  if (!list) return fail(c, 400, "bad_links", "Send a list of links.");
+  if (list.length > 8) return fail(c, 400, "too_many_links", "You can add up to 8 links.");
+  const rows = [];
+  for (const [i, l] of list.entries()) {
+    const r = checkLink(l?.url);
+    if (r.error) return fail(c, 400, "bad_link", `${r.error} (${String(l?.url || "").slice(0, 60)})`);
+    rows.push({ ...r, label: l?.label ? String(l.label).trim().slice(0, 40) : null, position: i });
+  }
+  const db = c.env.DB, t = now();
+  await db.batch([
+    db.prepare("delete from profile_links where profile_id = ?").bind(v.profile.id),
+    ...rows.map((r) => db.prepare(
+      "insert into profile_links (id, profile_id, platform, url_input, canonical_url, label, position, safety_status, last_scanned_at) values (?, ?, ?, ?, ?, ?, ?, 'safe', ?)",
+    ).bind(uuid(), v.profile.id, r.platform, r.url, r.url, r.label, r.position, t)),
+  ]);
+  return c.json({ ok: true, links: rows.map((r) => ({ platform: r.platform, url: r.url, label: r.label })) });
+});
+
+// ------------------------------------------------------------------ media (avatar, banner) on R2
+// The app resizes before upload (avatar 512 px, banner 1500 x 500). Served from api.promovote.com/media/...
+// Moderation: shown right away; reports and the admin queue can remove it (image classifier comes with uploads).
+const MEDIA_LIMITS = { avatar: 2 * 1024 * 1024, banner: 4 * 1024 * 1024 };
+const MEDIA_TYPES = { "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp" };
+app.post("/v1/me/media", async (c) => {
+  const [v, err] = await requireProfile(c);
+  if (err) return err;
+  if (!c.env.MEDIA) return fail(c, 503, "media_unavailable", "Photo upload is not available yet.");
+  const kind = c.req.query("kind");
+  if (!MEDIA_LIMITS[kind]) return fail(c, 400, "bad_kind", "Choose avatar or banner.");
+  const type = (c.req.header("Content-Type") || "").split(";")[0].trim();
+  if (!MEDIA_TYPES[type]) return fail(c, 400, "bad_type", "Use a JPEG, PNG or WebP image.");
+  const body = await c.req.arrayBuffer();
+  if (!body.byteLength || body.byteLength > MEDIA_LIMITS[kind]) return fail(c, 413, "too_large", "That image is too large.");
+  const id = uuid();
+  const key = `profiles/${v.profile.id}/${kind}-${id}.${MEDIA_TYPES[type]}`;
+  await c.env.MEDIA.put(key, body, { httpMetadata: { contentType: type, cacheControl: "public, max-age=31536000, immutable" } });
+  const url = `${c.env.API_URL || "https://api.promovote.com"}/media/${key}`;
+  const db = c.env.DB;
+  const old = await db.prepare(`select ${kind === "avatar" ? "avatar_url" : "banner_url"} as u from profiles where id = ?`).bind(v.profile.id).first();
+  await db.batch([
+    db.prepare("insert into media_assets (id, owner_user_id, kind, r2_key, public_url, bytes, mime, moderation_status) values (?, ?, ?, ?, ?, ?, ?, 'approved')").bind(id, v.user.id, kind, key, url, body.byteLength, type),
+    db.prepare(`update profiles set ${kind === "avatar" ? "avatar_url" : "banner_url"} = ?, ${kind === "avatar" ? "avatar_media_id" : "banner_media_id"} = ?, updated_at = ? where id = ?`).bind(url, id, now(), v.profile.id),
+  ]);
+  // Remove the previous file we stored (curated founder media on promovote.com is left alone).
+  const prefix = `${c.env.API_URL || "https://api.promovote.com"}/media/`;
+  if (old?.u && old.u.startsWith(prefix)) await c.env.MEDIA.delete(old.u.slice(prefix.length)).catch(() => {});
+  return c.json({ ok: true, url }, 201);
+});
+app.get("/media/*", async (c) => {
+  if (!c.env.MEDIA) return c.notFound();
+  const key = c.req.path.slice("/media/".length);
+  if (!/^profiles\/[a-f0-9-]{36}\/(avatar|banner)-[a-f0-9-]{36}\.(jpg|png|webp)$/.test(key)) return c.notFound();
+  const obj = await c.env.MEDIA.get(key);
+  if (!obj) return c.notFound();
+  return new Response(obj.body, { headers: { "Content-Type": obj.httpMetadata?.contentType || "image/jpeg", "Cache-Control": "public, max-age=31536000, immutable", "X-Content-Type-Options": "nosniff" } });
+});
+
+// ------------------------------------------------------------------ own profile summaries
+// Scout: Scout Score (reputation only, no cash value), level, open calls with their result date, saved, following.
+app.get("/v1/me/scout", async (c) => {
+  const [v, err] = await requireProfile(c, "scout");
+  if (err) return err;
+  const lang = langOf(c), db = c.env.DB;
+  const [stats, open, done, saved, following] = await db.batch([
+    db.prepare("select * from scout_stats where profile_id = ?").bind(v.profile.id),
+    db.prepare(PROMO_SELECT.replace("select pr.id,", "select ca.choice as call_choice, ca.created_at as call_at, ca.voter_ordinal as call_rank, pr.id,").replace("from promos pr", "from calls ca join promos pr on pr.id = ca.promo_id") + " and ca.scout_profile_id = ? and ca.outcome = 'pending' order by ca.created_at desc limit 50").bind(v.profile.id),
+    db.prepare("select count(*) as n, sum(outcome = 'correct') as right, sum(is_called_it) as called_it from calls where scout_profile_id = ? and outcome in ('correct', 'incorrect')").bind(v.profile.id),
+    db.prepare(PROMO_SELECT.replace("from promos pr", "from saves sv join promos pr on pr.id = sv.promo_id") + " and sv.scout_profile_id = ? order by sv.created_at desc limit 60").bind(v.profile.id),
+    db.prepare("select p.handle, p.display_name, p.avatar_url, p.i18n from follows f join profiles p on p.id = f.creator_profile_id where f.follower_profile_id = ? and p.status = 'active' order by f.created_at desc limit 100").bind(v.profile.id),
+  ]);
+  const st = stats.results[0] || { scout_score: 0, level: 1, current_streak_weeks: 0 };
+  const d = done.results[0] || {};
+  c.header("Cache-Control", "no-store");
+  return c.json({
+    score: st.scout_score, level: st.level, nextLevelAt: st.level * 100, streakWeeks: st.current_streak_weeks,
+    resolved: d.n || 0, right: d.right || 0, calledIt: d.called_it || 0,
+    open: open.results.map((r) => ({ promo: promoOut(r, lang), choice: r.call_choice, rank: r.call_rank, resolvesAt: new Date(new Date(r.call_at).getTime() + CALL_DAYS * 864e5).toISOString() })),
+    saved: saved.results.map((r) => promoOut(r, lang)),
+    following: following.results.map((r) => ({ handle: r.handle, name: r.display_name, avatar: r.avatar_url, mono: (json(r.i18n) || {}).mono || null })),
+  });
+});
+
+// Creator studio: setup checklist, links, promos and free stats (7 and 28 days). Delivery numbers stay free forever.
+app.get("/v1/me/studio", async (c) => {
+  const [v, err] = await requireProfile(c, "creator");
+  if (err) return err;
+  const lang = langOf(c), db = c.env.DB;
+  const d7 = new Date(Date.now() - 7 * 864e5).toISOString().slice(0, 10);
+  const d28 = new Date(Date.now() - 28 * 864e5).toISOString().slice(0, 10);
+  const pid = v.profile.id;
+  const [prof, links, promos, views7, views28, clicks7, clicks28, saves, calls] = await db.batch([
+    db.prepare("select p.display_name, p.bio, p.avatar_url, p.banner_url, p.follower_count, d.category, d.secondary_categories, d.primary_cta, d.release_status from profiles p join creator_details d on d.profile_id = p.id where p.id = ?").bind(pid),
+    db.prepare("select platform, canonical_url, label from profile_links where profile_id = ? order by position").bind(pid),
+    db.prepare(PROMO_SELECT + " and pr.creator_profile_id = ? order by pr.live_at desc limit 60").bind(pid),
+    db.prepare("select count(*) as n, sum(completed) as done, avg(max_seconds) as secs from view_events v join promos pr on pr.id = v.promo_id where pr.creator_profile_id = ? and v.day >= ? and v.is_boost = 0").bind(pid, d7),
+    db.prepare("select count(*) as n, sum(completed) as done, avg(max_seconds) as secs from view_events v join promos pr on pr.id = v.promo_id where pr.creator_profile_id = ? and v.day >= ? and v.is_boost = 0").bind(pid, d28),
+    db.prepare("select count(*) as n from click_events e join promos pr on pr.id = e.promo_id where pr.creator_profile_id = ? and e.day >= ?").bind(pid, d7),
+    db.prepare("select count(*) as n from click_events e join promos pr on pr.id = e.promo_id where pr.creator_profile_id = ? and e.day >= ?").bind(pid, d28),
+    db.prepare("select count(*) as n from saves s join promos pr on pr.id = s.promo_id where pr.creator_profile_id = ?").bind(pid),
+    db.prepare("select count(*) as n, sum(choice = 'will_blow_up') as up from calls ca join promos pr on pr.id = ca.promo_id where pr.creator_profile_id = ? and ca.is_valid = 1").bind(pid),
+  ]);
+  const p = prof.results[0] || {};
+  const stat = (v, cl) => ({ views: v.n || 0, completion: v.n ? Math.round((100 * (v.done || 0)) / v.n) : 0, avgSeconds: Math.round(v.secs || 0), clicks: cl.n || 0, ctr: v.n ? Math.round((1000 * (cl.n || 0)) / v.n) / 10 : 0 });
+  const cl = calls.results[0] || {};
+  const checklist = {
+    logo: !!p.avatar_url, banner: !!p.banner_url, bio: !!p.bio, links: links.results.length > 0, promo: promos.results.length > 0,
+  };
+  c.header("Cache-Control", "no-store");
+  return c.json({
+    profile: { name: p.display_name, bio: p.bio, avatar: p.avatar_url, banner: p.banner_url, followers: p.follower_count || 0,
+      category: p.category, secondaryCategories: json(p.secondary_categories) || [], primaryCta: p.primary_cta, releaseStatus: p.release_status },
+    links: links.results.map((l) => ({ platform: l.platform, url: l.canonical_url, label: l.label })),
+    checklist,
+    stats: { d7: stat(views7.results[0] || {}, clicks7.results[0] || {}), d28: stat(views28.results[0] || {}, clicks28.results[0] || {}), saves: saves.results[0]?.n || 0, followers: p.follower_count || 0 },
+    // The vote split is shown to the owner only after 30 calls, so a few early votes do not mislead.
+    calls: (cl.n || 0) >= 30 ? { total: cl.n, blowUpPct: Math.round((100 * (cl.up || 0)) / cl.n) } : { total: cl.n || 0, blowUpPct: null },
+    promos: promos.results.map((r) => promoOut(r, lang)),
+  });
 });
 
 // Apple 5.1.1(v): delete from inside the app. 30 day grace, then the daily job removes the user.
