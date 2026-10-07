@@ -1,6 +1,6 @@
 // PromoVote API (Cloudflare Worker + D1). Used by the iOS and Android apps, later by the website.
 // Public reads: feed, explore, profiles. Signed in: onboarding, follow, vote, save, report, block, delete account.
-// Payments arrive only from RevenueCat webhooks (Apple and Google in-app purchases).
+// Payments (version 2) arrive from Apple App Store Server Notifications and Google Play RTDN (Pub/Sub push).
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { createAuth } from "./auth.js";
@@ -34,6 +34,12 @@ app.use("*", cors({
   allowHeaders: ["Content-Type", "Authorization"],
   allowMethods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
 }));
+
+// Store notifications. Version 1 sells nothing, so they are acknowledged and ignored. They must answer 2xx:
+// Pub/Sub retries every unacknowledged push forever (a 404 here caused about 1,500 retries an hour on 2026-10-07).
+// Registered before the write limit so Google's retries never get a 429. No database work.
+app.post("/v1/webhooks/google", (c) => c.body(null, 204));
+app.post("/v1/webhooks/apple", (c) => c.body(null, 200));
 
 // Writes: small JSON bodies only, and a per IP rate limit (Workers Rate Limiting binding WRITE_LIMIT).
 app.use("/v1/*", async (c, next) => {
