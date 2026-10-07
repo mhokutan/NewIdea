@@ -12,7 +12,7 @@ DURUM: DEVAM EDİYOR
 | A. iOS sertifikası (EAS) | bitti | Kurucu çalıştırdı: 'All credentials are ready to build @mhokutan/promovote (com.miapera.promovote)'. Mevcut dağıtım sertifikası yeniden kullanıldı, yeni provisioning profile. Capability: Sign in with Apple, Associated Domains, IAP. Team ID 6WRT42YG28 (Individual). |
 | B. App Store Connect | bitti | B1 bitti (Apple ID 6819894584, SKU promovote-ios). B2 bitti: IAP key 'PromoVote API', Key ID 36Q8797745, .p8 SecretKeys klasöründe. B3 bitti: Production ve Sandbox https://api.promovote.com/v1/webhooks/apple, V2. B4.1 bitti: Entertainment + Games. B4.2 bitti: 18+ (UGC ve reklam var, şiddet Cartoon/Realistic Infrequent/Mild, kumar ve sohbet yok); Social Media: evet; Social Media Age Restricted: hayır (Apple kuralı: Age Assurance olmadan evet olamıyor). B4.4 bitti: Free, 175 ülke + yeni ülkeler otomatik. B4.5: Paid Apps sözleşmesi aktif görünüyor (Hazim Okutan, ABD, 175 ülke). B4.3: Privacy Policy URL girildi; 7 veri türü (Name, Email, Coarse Location, Photos or Videos, User ID, Purchase History, Product Interaction) App Functionality, kimliğe bağlı, tracking yok olarak dolduruldu; kurucu onayıyla yayınlandı. B4.6: Small Business Program başvurusunu kurucu yaptı (Apple ve Google). Ekran görüntüleri ve açıklama metni README gereği bekliyor. Not: Mustafa Peker sadece Pondra'ya erişiyor, PromoVote'a erişimi yok. |
 | C. Google Cloud | yarım | C1, C3, C4 bitti (topic play-rtdn, Publisher yetkisi kurucu tarafından verildi, push subscription play-rtdn-push, never expire). C2: branding ve 3 client bitti; Audience Production'a alındı (kurucu); Play App Signing SHA-1 ile ikinci Android client Bölüm D sonrası. Destek emaili Google kuralı gereği hazimokutan@gmail.com. |
-| D. Google Play Console | beklemede | |
+| D. Google Play Console | yarım | D1 bitti: uygulama oluşturuldu (app id 4976203073741032475, en-US, App, Free; beyanlar kurucu onayıyla). Hesap Personal: üretim öncesi 12 test kullanıcısı ile 14 gün kapalı test şart. D2: build 717c2210 (1.0.0, versionCode 2) .aab indirildi (repo dışında); internal testing sürüm taslağı açıldı, .aab'yi kurucu elle yüklüyor (dosya 75 MB, tarayıcı aracı sınırı 10 MB). |
 | E. Bulut ortamına key'ler | beklemede | |
 
 ## Gizli olmayan değerler
@@ -24,7 +24,7 @@ DURUM: DEVAM EDİYOR
 * OAuth iOS client id: 506724718671-onetdf2qhmf8pgg1lrlij9gi7luqt1c3.apps.googleusercontent.com
 * OAuth Android client id'leri: 506724718671-532i7nc7cvuoeod7qj0o20s5o5av717i.apps.googleusercontent.com (EAS upload key SHA-1 AD:B8:...:09:F8), Play App Signing client'ı bekliyor
 * Google hesabı: hazimokutan@gmail.com (Cloud ve Play Console sadece bu hesapla)
-* Google Play hesap türü (Organization / Personal):
+* Google Play hesap türü (Organization / Personal): Personal
 
 ## Kurucunun yapması gerekenler
 
