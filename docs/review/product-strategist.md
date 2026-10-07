@@ -261,3 +261,74 @@ B7. **Funnel events (unchanged from round 1 P0 item 8).** Where: `app_events` ta
 | Activation funnel | 2 | 6 | 8 | 9 |
 
 Honest note: Session time cannot reach 8 by code alone. With about 18 promos the drop runs out of fresh content in 2 to 3 days. The content plan in the brief (12+ creators, 60 English promos) is the real blocker for that score, and it should run in parallel with B1 to B7.
+
+---
+
+# Round 3 (2026-10-07, night)
+
+Read: `docs/review/brief-r3.md`, screens `docs/review/screens-r3/01..18`, `apps/mobile/src/app/(tabs)/index.tsx`, `app/(tabs)/me.tsx`, `lib/gate.tsx`, `lib/reminder.ts`, `lib/i18n.ts`, `lib/social-sign-in.ts`, `ui/ResultReveal.tsx`, `ui/PromoReel.tsx`, `services/api/src/index.js` (`/v1/drop`, `/v1/creators`, `resolveCalls`, `crowdBar`, `weeklyStreaks`, events routes), `web/landing/content/promos.json`.
+
+## R3.1 Verdict
+
+The funnel is now built end to end, and most of my round 2 P0 list is closed. B1 (creators without live promos hidden, `index.js` line 328), B2 (the gate returns to the tapped promo, `gate.tsx` lines 67 to 79), B3 (guest and zero call end card variants, `index.tsx` line 218), the name prefill from Apple, the reminder offered only after a finished drop, the one time reveal sheet (screen 13) and Results with accuracy (screens 14, 15) are all done well. What still stops 8 is no longer missing screens. It is three honesty gaps in the day 2 to day 14 loop, and the same missing measurement as in rounds 1 and 2:
+1. An English viewer has about 9 to 10 English promos in the drop pool (`promos.json`, `langRank < 2` in `/v1/drop`). A daily scout sees 7 fresh on day 1, 2 or 3 on day 2, and 0 on day 3.
+2. The daily reminder says "7 new promos" every day at 18:00 forever (`reminder.ts` line 30, `i18n.ts` line 62), even when there are 0 new promos and even if the user already opened the app at 17:00. By day 3 that is a false promise sent to our most engaged users.
+3. At beta scale most calls will not have a result on the date we printed on the ticket. `RESOLVE_MIN_LATER = 10` (`index.js` line 1094) needs 10 later scouts on the same promo; Charts show "So far: 3" scouts (screen 05). The call is rechecked daily up to 21 days and then goes void, while the ticket and Open calls keep saying "Result Oct 14" after Oct 14 has passed (`me.tsx` line 169, `PromoReel.tsx` line 111, `resolvesAt` is always `created_at + 7 days`).
+
+## R3.2 Scores
+
+| # | Area | R2 | R3 | Evidence |
+|---|---|---|---|---|
+| 1 | Retention | 6 | **7** | Every loop part now exists (uncalled first drop from a pool of 21, local reminder, reveal sheet, Results, forgiving weekly streak), but the English pool empties on day 3, the reminder copy is static and false once it does, and past due calls show a date that already passed with no "waiting for more scouts" state. |
+| 2 | Session time | 7 | **7** | Swipe between three tabs and the creator player (screen 07, "1 / 11") add depth, but New and Team picks are the same small pile and a daily scout runs out of fresh English promos in 2 days; this score is a content problem now, not a code problem. |
+| 3 | Originality | 8 | **8** | Ticket with outcome, "The crowd saw it differently. No points lost.", the "You called it" reveal, Scout Score with weekly dots and the gift wallet (screen 18) are clearly PromoVote. |
+| 4 | Trademark and trade dress | 8 | **8** | New tagline "The social network for promos", no story rings, solid backed Team picks note, rounded square creator tiles; nothing new raises a copy signal (not legal advice). |
+| 5 | Activation funnel | 6 | **7** | B1, B2, B3 and the name prefill are fixed and the guest to first ticket path is clean (screens 02, 08, 10, 11), but there are still no funnel events (third round in a row), so no step can be measured, and the type cards still frame both choices by what you cannot do (screen 09, `i18n.ts` line 19). |
+
+## R3.3 Round 2 blockers: status
+
+| Item | Status |
+|---|---|
+| B1 Hide creators without live promos | **Fixed** (`/v1/creators` `exists ... status = 'live'`). Note: screen 16 shows "9 Lives Studio" with no promos, but that is a direct creator page from local seed data, not Explore. |
+| B2 Back to the promo after onboarding | **Fixed** (`queue.from` and `router.navigate(from)` in `gate.tsx`). |
+| B3 End card variants | **Fixed** (guest, zero calls, N calls). |
+| B4 Tomorrow's drop new for this viewer | **Partly.** Uncalled first plus "N new for you today" is right. Missing: the end card still promises "A new drop lands tomorrow" when the pool has nothing unseen, and seen but not called promos are not pushed back. The real gap is supply (see R3.5). |
+| B5 Reveal at beta scale, and show it | **UI fixed, rule not.** Reveal sheet and Results are good. `RESOLVE_MIN_LATER` is still 10, the wait is now up to 21 days, and the UI does not tell the scout that a result is late. |
+| B6 Daily local reminder | **Shipped, copy wrong** (static "7 new promos", repeating daily trigger). |
+| B7 Funnel events | **Not done.** Only `/v1/events/link`, `view`, `click` exist. |
+
+## R3.4 Remaining blockers (smallest change first)
+
+### P0 (before App Store submission)
+
+P0.1 **Late result state on tickets and Open calls.** Where: `me.tsx` line 169, `PromoReel.tsx` line 111, and the three `resolvesAt` places in `index.js` (lines 753, 879, 919). What: when `outcome = 'pending'` and `resolvesAt` is in the past, show "Waiting for more scouts. Checked every day, no points lost." instead of a past date; optionally return `waiting: true` from the API. Why: a result date that passes silently is the fastest way to teach a new scout that the core promise is fake. Works when: no screen ever shows a result date earlier than today.
+
+P0.2 **Honest reminder.** Where: `lib/reminder.ts`, called from the drop load in `index.tsx` (lines 78 to 85). What: replace the repeating DAILY trigger with a one shot notification for the next 18:00, rescheduled on every app open with the real numbers: "{n} new promos in Today's Drop" when the unseen pool has at least 3, "Your call on {title} has a result" when a call is due, and no notification at all when both are zero. Do not fire on a day the user already opened the app. Keep the copy free of loss wording. Also show `drop_done_p` "A new drop lands tomorrow" only when the pool still has unseen promos (`index.tsx` line 224). Why: a false "7 new" on day 3 trains users to ignore or disable the only trigger we have. Works when: reminder opt out rate under 10% in the TestFlight cohort, and no reminder is sent with 0 new promos.
+
+P0.3 **Resolve at beta scale (with the economist).** Where: `RESOLVE_MIN_LATER` and `crowdBar` in `index.js` lines 1094 to 1108. What: make the minimum adaptive, for example 5 later valid calls while weekly calling scouts are under 50, 10 above that, and state the rule in the Guidelines. Why: with a handful of scouts nearly every early call ends void after 21 days, so the Day 7 aha never fires for the first cohort, who are exactly the people we need to keep. Works when: 50% or more of calls older than 7 days resolve non void during TestFlight. Honest note: below roughly 15 to 20 scouts calling the same drop each week, no threshold makes results meaningful; this part closes only with real users.
+
+P0.4 **Funnel events (B7, unchanged for the third round).** Where: new `app_events` table and migration in `services/api/migrations/`, `POST /v1/events/app` in `index.js` (same cookieless pattern as `trackEvent`), a small `track()` helper in `lib/api.ts`, a funnel block on `promovote.com/admin`. Minimum events: `app_open` (first), `promo_view_3s`, `gate_shown`, `signin_ok`, `onboarding_ok`, `pending_action_applied`, `call`, `drop_done`, `remind_offer`, `remind_ok`, `reveal_seen`. Why: without it neither Retention nor Activation can be verified above 7, whatever the code does. Works when: the admin shows open to first call conversion and D1 for the first TestFlight cohort.
+
+### P1 (before public launch)
+
+* **"Called it" naming collision.** Screen 14 and 13: the sheet says "You called it! 1 right", the row says "You called it right", and the tile says "Called it 0". Rename the tile (for example "Early hits", meaning right and in the first 10% of callers) or rename the outcome copy to "Right call. +30 points" (`i18n.ts` lines 35, 59, 66). Small change, removes a "this is broken" moment at the exact reward point.
+* **Positive type card copy** (third round): "Scout: find hits early and build your Scout Score." / "Creator or business: post promos and get real feedback." (`i18n.ts` line 19).
+* **Viewer language in Explore and creator pages.** Screen 05 and 07 show Turkish promos ("Depo", "İstanbul Deposu") to an English viewer. Sort viewer language and English first in `/v1/explore` and the creator promo list, the same way `/v1/drop` does.
+* **Top scrim vs. baked in video titles.** Screens 01 and 11: the video's own headline ("You run the business", "Pick loads. Plan routes.") sits under the tab labels. Either a stronger scrim (0.75 at top) or ask creators to keep the top 15% of the frame free in the upload guidelines.
+* Universal links for shares, and the following signal dot (both from round 2, still open, need founder setup for universal links).
+
+## R3.5 What only content or real users can close
+
+* **Session time 8 and Retention 8 need supply, not code.** A scout who calls the full drop every day uses 49 fresh promos a week. For an English viewer we have about 10 in total. The minimum for an honest daily drop is roughly 30 English promos live before launch and 15 to 20 new English promos per week after, from at least 10 creators, with games still leading. Until then the right product move is to say the truth in the app ("{n} new today", no reminder on empty days) rather than to pad the drop.
+* **Results need a crowd.** Meaningful outcomes need about 15 to 20 scouts calling the same promos each week. The first TestFlight cohort should be recruited as one group in one week (founder outreach, waitlist), not trickled in, so their calls resolve together.
+* **Every forecast here is unverified until P0.4 ships.** If after two weeks of real results D7 is under 10%, the next move is more creators, not more features (same as rounds 1 and 2).
+
+## R3.6 Expected scores
+
+| Area | R2 | R3 | After P0 | After P0 + content plan |
+|---|---|---|---|---|
+| Retention | 6 | 7 | 7 (8 once events show D7 at 12% or more) | 8 |
+| Session time | 7 | 7 | 7 | 8 |
+| Originality | 8 | 8 | 8 | 8 |
+| Trademark and trade dress | 8 | 8 | 8 | 8 |
+| Activation funnel | 6 | 7 | 8 | 9 |

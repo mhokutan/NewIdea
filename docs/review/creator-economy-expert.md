@@ -347,3 +347,60 @@ Nearly every round 1 P0 for the creator side shipped, and it shipped well:
 * After P0 (items 1 to 4, about one day of work): Creator value 7, Session time 7, Retention 6.
 * After P1 items 5 to 8 (link taps, upload, perks, weekly push): Creator value 8, Retention 8, Session time 8.
 * Originality reaches 8 with items 11 and 12 plus the scout verdict being visible once real calls arrive.
+
+---
+
+# Round 3 (2026-10-07, night)
+
+Inputs: `docs/review/brief-r3.md`, screenshots `docs/review/screens-r3/06`, `07`, `14`, `16`, `17`, `18`, `apps/mobile/src/app/creator/[handle].tsx`, `apps/mobile/src/app/perk.tsx`, `apps/mobile/src/ui/PerkSheet.tsx`, `apps/mobile/src/ui/PromoReel.tsx`, `apps/mobile/src/app/(tabs)/me.tsx` (`CreatorHome`), `apps/mobile/src/app/edit-profile.tsx`, `apps/mobile/src/lib/categories.ts`, `apps/mobile/src/lib/mail.ts`, `services/api/src/index.js` (profiles, perks, studio, events/link, explore, creators), `services/api/scripts/gen-seed-sql.py`.
+
+## R3.1 What improved
+
+Of my 12 round 2 items, 7 shipped and they shipped cleanly:
+
+* **R2 P0 1 to 4 all done.** Owner and visitor empty copy (`no_promos_owner`, `no_promos`), main button returned as `primaryCta` and rendered next to Follow, mailto falls back to copy plus alert (`lib/mail.ts`), the zero wall is one sentence (`stats_zero`) and saves now respect the 7 / 28 day range, plus a New followers tile.
+* **Link taps (R2 P1 5):** `POST /v1/events/link`, one per viewer per link per day, owner taps excluded, shown in the studio. UTM tags on non store links mean a creator also sees PromoVote in their own Shopify, Etsy or GA numbers. That is the right instinct: we prove value in tools the creator already trusts.
+* **Gifts (R2 P1 7):** this is the best creator side feature so far. The creator form is short (kind, title, code, link, days, stock), the studio shows claims and End, the public page has a dashed coupon card (16), the code sheet (17) and the scout Gifts wallet (18) are clear, and the rule "Gifts never depend on your calls or follows" is printed on every surface and enforced in the claim handler (`index.js` 692 to 708 reads only the perk and the user id). Codes are AES-GCM sealed. For an Etsy shop or an app maker, "38 claims of LIVES20" is the first number on PromoVote that maps directly to money.
+* **Creator only player (R2 P1 12):** grid tap opens `/play/[handle]` with "Hauling Empire 1 / 11" (07). Exactly the "swipe through one creator" behaviour that small creators want, because it turns one view into a binge of their catalogue.
+* **Scout loop** (Results, reveal sheet, forgiving streak, score_eligible cap) is outside my domain, but it matters to creators: a scout who returns weekly is a creator's audience returning weekly.
+
+## R3.2 Scores
+
+| # | Area | R2 | R3 | Evidence |
+|---|---|---|---|---|
+| 1 | Retention | 6 | 7 | Scouts now have a weekly loop (streak, results, reveal) and creators have claims, link taps and new followers to check, but a creator still cannot post and gets no weekly recap, so creator side return is capped. |
+| 2 | Session time | 6 | 7 | The creator player, the gift flow and the wallet add real minutes for scouts; a creator without a live promo still finishes the studio in about 2 minutes. |
+| 3 | Originality | 7 | 8 | Gifts that are explicitly never tied to calls or follows, the call ticket with outcome, "You called it" and the scout verdict for creators are a combination no other creator platform has; the creator page layout itself is still generic and proof links are missing. |
+| 4 | Trademark and trade dress safety | 8 | 8 | "The social network for promos" is descriptive and safe, link chips stay text, Google Play is hidden on iOS, the dashed coupon and Bricolage titles are generic patterns, not a brand's trade dress. |
+| 5 | Creator / advertiser value | 6 | 7 | Identity, main button, link taps, followers and gifts with claims now give a creator real numbers; self serve posting is still missing, and the 3 live creators do not show off the new tools (no main button on any founder page, Nicheable's gift chip opens "This gift has ended"). |
+
+## R3.3 What still keeps scores below 8 (smallest change first)
+
+### P0 (before App Store submission, all small)
+
+1. **Nicheable gift chip is a dead promise.** `gen-seed-sql.py` line 53 sets `has_perk = 1` on every Nicheable promo, and `PROMO_SELECT` (`index.js` line 126) shows the gift chip when `pr.has_perk or exists (active perk)`. Production has no `perks` row (no migration or seed creates one, and the code must be sealed with the secret, so SQL cannot). Result: a scout taps the lime Gift chip on a founder promo and gets "This gift has ended." Fix: remove `pr.has_perk or` from line 126 so the chip only follows a real active perk, then create NEWIDEA25 as a real gift on @nicheable through `POST /v1/me/perks` with the founder placeholder account. Done when: the chip on Nicheable promos opens the real NEWIDEA25 code and its claims show in Nicheable's studio. This also gives the App Store reviewer a working gift on real content instead of a seeded test creator.
+2. **No founder page shows the main button.** Seed never sets `creator_details.primary_cta`, so screenshot 06 (Hauling Empire) and the Poleris and Nicheable pages show Follow only. One small migration: `poleris` to `app_store`, `nicheable` to `etsy`, `haulingempire` stays null (Follow already acts as its notify). Done when: Poleris shows "Open in the App Store" next to Follow on iOS.
+3. **Gift title can ask for follows.** `POST /v1/me/perks` checks `/(vote|follow|like|subscribe)/` on `description` only (`index.js` 659), and the app never sends a description; the title is the only text scouts see. "Follow us, get 20% off" passes today. Run the same check on `title`, add `review|rate|call|share|comment`, and return the same `no_conditions` message. Done when: that title is rejected with the message in the form. This is the one rule the whole gift system rests on (FTC incentivized reviews, App Store 3.2.2 and store ToS), so it must be enforced in code, not only in copy.
+
+### P1 (before public launch)
+
+4. **Link taps never count for seed links.** `GET /v1/profiles/:handle` sends `withUtm(canonical_url)`, which adds a trailing slash to `https://nicheable.etsy.com`; `/v1/events/link` strips the UTM params and compares with the stored `canonical_url` without the slash (`index.js` 987), so it never matches. User created links are already normalised by `checkLink`, so only the seed is hit. Fix: send the link position or id from the app instead of the URL, or normalise both sides with `new URL().toString()`. Done when: a tap on Nicheable's Etsy link raises Link taps in its studio.
+5. **Main button hidden with no hint.** If a creator picks "Wishlist on Steam" but has no Steam link, `primaryCta` returns null and the button silently disappears (`index.js` 378 to 383). Add one line under the button picker in `edit-profile.tsx` line 122: "Add a Steam link below to show this button."
+6. **Studio promo tiles still jump into the main feed** (`me.tsx` line 330 navigates to `/` with `v`). Use the same `/play/[handle]` push as the public page.
+7. **Visitor empty state** says "No promos yet." (`i18n.ts` 56). Add "Follow to see the first one." so the empty page has a next step (16 shows how bare it is).
+8. **Secondary categories still do nothing in Explore** (carried from R2 item 9): `/v1/creators` filters only `d.category = ?` (`index.js` 329). Add the `json_each(d.secondary_categories)` clause.
+9. **Weekly creator recap** (carried). No push server yet, so do the free half now: a "Your week" card at the top of the studio (views, button taps, link taps, new followers, gift claims, change versus last week) and a Monday local reminder for creators, the same mechanism as the scout 18:00 reminder. Server push for approvals comes with uploads.
+10. **Trust before open signup** (carried): links are saved `safe` without a scan (`index.js` 571) and photos `approved` (606). Fine for hand picked creators, required before signup is public. Gifts add a new surface: a `redeem_url` passes only `checkLink`, so add it to the same scan.
+11. **Proof links** (carried): website verification by meta tag or `/.well-known/promovote.txt` and a lime check on verified links. This is the cheapest way to make the creator page itself original rather than a banner, avatar and grid.
+12. **Self serve promo upload** (known, blocked on R2 in the dashboard). Still the single change that moves Creator value and creator Retention to 8. Until then answer emailed trailers within 24 hours.
+
+### What only real creators and users can close
+
+* **Creator value 8 and creator side Retention 8** need self serve upload plus real creators beyond the 3 founder pages. No code change can make a creator studio feel alive while every live promo belongs to the founder. Outreach to 20 to 30 indie devs, app makers and Etsy shops (the validation plan) is the real blocker.
+* Gift claims, link taps and the scout verdict (shown after 30 calls) are only convincing with real traffic. The tools are now in place; the numbers are not.
+
+### Expected scores after these
+
+* After P0 1 to 3 (under a day): Creator value 7, but the founder pages finally demonstrate every creator tool on real content, which is what the App Store reviewer sees.
+* After P1 4 to 9 plus upload: Creator value 8, Retention 8, Session time 8.
+* With real creators posting weekly and gifts being claimed, Creator value can reach 9, because PromoVote would then be the only place where a small creator gets a fair turn, an honest verdict and a measurable gift result for free.

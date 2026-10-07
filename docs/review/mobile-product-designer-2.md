@@ -279,3 +279,57 @@ Judged from `docs/review/screens-r2/01..19`, the commits 1fd6aba, dd9bdee, 71a08
 ### Expected after the P0 list
 
 My domain moves to 8 after items 1 to 6 (all small, about one day). Retention and Session time reach 8 with the planned daily reminder and result reveal (retention) and item 10 plus the planned same creator swipe (session time); those belong to the other experts' lists too, so I do not repeat them as my blockers.
+
+## Round 3 (2026-10-07, night)
+
+Judged from `docs/review/screens-r3/01..18`, commits c885a37 to db91c30 and every file in `apps/mobile/src` (PromoReel, index, play/[handle], creator/[handle], explore, me, sign-in, perk, Sheet, ReportMenu, PerkSheet, ResultReveal, Avatar, Pill, Fade, reminder, theme, _layout, app.json). Angle unchanged: accessibility, platform conventions (iOS HIG, Material 3), motion and gestures.
+
+### Scores
+
+| # | Area | R2 | R3 | Evidence (one sentence) |
+|---|------|----|----|-------------------------|
+| 1 | Retention | 7 | 8 | The loop now closes: the ticket shows the outcome ("no points lost" when wrong, screen 11), a one time "You called it! 1 right" sheet greets the scout on the feed (screen 13), Results with accuracy sit above Open calls (screen 15), a forgiving weekly streak with dots is on the profile (screen 14), and the 18:00 local reminder is offered only after a finished drop (`index.tsx` EndCard). |
+| 2 | Session time | 7 | 7 | The creator player ("Hauling Empire 1 / 11", screen 07) and "keep watching" add depth, but there is still no in feed way to go deeper into one creator (the horizontal swipe was spent on tabs), Explore tiles, Results, Saved and studio tiles all jump to the Feed tab instead of a player, and with 3 creators the depth runs out fast. |
+| 3 | Originality | 8 | 8 | Bricolage Grotesque on titles, Scout Score and the ticket, the branded sign in with three value lines (screen 08), the outcome ticket and the dashed gift card (screen 16) are PromoVote's own; the tab swipe adds nothing original. |
+| 4 | Trademark and trade dress | 8 | 8 | No story rings, rounded square avatars, official Google G with the #747775 border (`sign-in.tsx` line 131), Apple's own button; a horizontal swipe between top feeds is a generic pattern, not a protected look. |
+| 5 | My domain (a11y, platform, motion, gestures) | 6 | 7 | Five of my six R2 P0 items are done (localized labels, 44 pt creator buttons, Dynamic Type caps on every overlay, a reel summary with the full actions rotor, ticket spring through Reanimated 4 which follows Reduce Motion by default), but the feed tabs are still unreadable over bright frames (screens 01, 03, 11, 13), and the new tab swipe has no finger tracking, no Android edge exclusion and contradicts the founder's swipe rule. |
+
+### Verified since round 2
+
+* All R2 hard coded labels are now `t()` keys: Play/Pause, Sound on/off, Back, Close, Day/Month/Year (`PromoReel.tsx` 128 to 136, `index.tsx` 189, `creator/[handle].tsx` 59, `Sheet.tsx` 28, `me.tsx` 446 to 448). Only the logo's "PromoVote" label stays English, which is correct.
+* The video area is one accessible element with a summary label (creator, title, call state) and actions for play/pause, both calls, save, share, creator, CTA and More (`PromoReel.tsx` 126 to 148). Calls are hidden from the rotor once made. Good.
+* `maxFontSizeMultiplier` 1.3 to 1.35 on tabs, notes, creator row, title, desc, more, chips, CTA, call bar, ticket, rail labels and toast; sheets and buttons at 1.4; profile, onboarding and Explore scale freely.
+* Creator page back, share and more are 44 pt; play screen buttons 44 pt; hashtag links have 11 pt vertical padding; creator links have `minHeight: 44`.
+* Top scrim exists (`index.tsx` 168, black 60 percent to 0) and the Team picks note sits on a solid 78 percent backing (screen 04, now legible). Bottom shade is 55 percent tall with a 0.82 stop (screens 07, 11 read well).
+* Android ripple on call buttons, rail, Sheet actions, Pill and Button. Avatar falls back to a letter (screens 05, 16, 18). Empty creator page copy is right ("No promos yet.", screen 16).
+* Sheets wait for `onDismissed` before navigating (iOS one modal rule) in Sheet, ReportMenu, PerkSheet, ResultReveal and Settings. Report and Block are one sheet with steps (screen 03).
+
+### Still holding scores below 8 (smallest change first)
+
+**P0 (my domain, before App Store submission)**
+
+1. **Feed tabs over bright video.** Screens 01, 03, 11 and 13: "New" and "Team picks" sit on the promo's own white headline ("You run the business", "Pick loads. Plan routes.") and cannot be read; the 60 percent scrim fades to 0 exactly where the tabs are. `index.tsx` line 168: raise the first stop to 0.8 and add a middle stop (`colors: ['rgba(0,0,0,0.8)', 'rgba(0,0,0,0.55)', 'rgba(0,0,0,0)']`, `locations: [0, 0.6, 1]`), and set inactive `tabText` (line 246) to `rgba(255,255,255,0.85)`. If a frame still wins, put the tab strip on a 55 percent black pill like the rail labels. Done when: screens 01 and 03 re shot have legible inactive tabs.
+2. **Tab swipe: decide, then make it a real gesture.** `index.tsx` lines 120 to 124. (a) CLAUDE.md (founder decision 2026-10-07) says "Swipe left plays the same creator's other promos", but the code makes swipe left go to the next tab. One of the two must change; my recommendation from R1 section 5.3 stands (horizontal = deeper into the same creator, tabs tap only), because two horizontal meanings cannot coexist and New and Team picks are thin. If the founder keeps tab swipe, update CLAUDE.md. (b) Whichever meaning wins, the pan only acts `onEnd`: nothing moves under the finger, then the list blanks and a spinner shows. Direct manipulation needs the content (or at least the lime tab dot) to follow `translationX` and settle with a spring, skipped under Reduce Motion. (c) Add Android edge exclusion: `.hitSlop({ left: -24, right: -24 })`, so a swipe near the edge is not stolen by system back, which on a tab root closes the app. Done when: on a Pixel with gesture navigation 10 edge swipes never exit the app, and a 60 fps recording shows the content tracking the finger.
+
+**P1 (before public launch)**
+
+3. **Remaining small targets.** Explore hashtag chips `paddingVertical: 7` (about 33 pt, `explore.tsx` 148) to `minHeight: 44`; the reel gift chip is 28 pt plus 4 hitSlop (`PromoReel.tsx` 262) to `minHeight: 32` with `hitSlop: 8`; scout segment buttons `minHeight: 40` (`me.tsx` 520) to 44; onboarding "Back" (`me.tsx` 470) has no `accessibilityRole="button"`.
+4. **Android ripple parity.** Still missing on the creator page round buttons and links, creator grid tiles, Explore tiles, creator circles and hashtag chips, the feed sound button, scout segment, Results and Open call rows, wallet code and the TypeCard. One shared `Touchable` wrapper with a bounded ripple would cover all of them.
+5. **Predictive back.** `app.json` line 28 still has `predictiveBackGestureEnabled: false`. Turn on and test sign in, edit profile, perk and the creator player before targeting API 36.
+6. **Tiles open the Feed tab.** Explore grid and charts (`explore.tsx` 80, 126), Results, Open calls, Saved (`me.tsx` 150, 164, 179) and studio promos (`me.tsx` 330) push `/` with `v`, which switches tabs under the user and loses their place; back does not return. Open the stack player (`/play/[handle]` or a generic `/play` with a list) like the creator grid already does. This is also the cheapest session time win left.
+7. **Bottom scrim on app screen recordings.** Screen 04 (Poleris): "Made by the PromoVote founder" still mixes with the promo's burned in text. Move the 0.82 stop from 0.55 to 0.4 in `PromoReel.tsx` line 151, or give the creator row a subtle text backing.
+8. **Small a11y polish.** Handle status reads the glyphs "check mark" / "multiplication x" (`me.tsx` 440): use words. Disabled `Button` looks like a pressed one (opacity 0.6, `Pill.tsx` 130): use `C.surface2` with `C.muted` text. On page change, move VoiceOver focus to the new reel (`AccessibilityInfo.setAccessibilityFocus`). Android tab indicator `C.surface2` on `C.bg` is about 1.3:1 (`(tabs)/_layout.tsx`): use `#2a2a3d` or lime at 18 percent.
+9. **Copy that confuses (for the product lead).** Screen 14 shows "1 Right calls" next to "0 Called it": two names for what a scout reads as the same thing, and a plural with 1. Explain "Called it" (early right call) or merge the stats.
+
+**P2**
+
+10. Respect the iOS "Auto-Play Video Previews" setting; captions track and toggle.
+
+### Gaps that code cannot close
+
+* Session time is capped by supply: 3 founder creators (about 30 promos) means the creator player and keep watching run dry within one or two sessions. Real creators are needed before Session time can honestly reach 8, even after item 6.
+* Retention at 8 is a design judgment; the reminder opt in rate and day 7 return can only be confirmed with real users after the first results resolve.
+
+### Expected after the P0 list
+
+My domain reaches 8 after items 1 and 2 (about half a day, plus the founder's decision on the swipe meaning). Items 3 to 8 move it toward 9. Session time reaches 8 with item 6 plus the in feed same creator swipe and more real creators.
