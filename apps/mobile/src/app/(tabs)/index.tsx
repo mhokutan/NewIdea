@@ -122,7 +122,21 @@ export default function Feed() {
     if (first?.index != null) setActive(first.index);
   }, []);
 
+  // Keep watching: add the next fair round and glide to its first promo (the end card stays behind it).
+  const listRef = useRef<FlatList<Item>>(null);
+  const scrollTo = useRef<number | null>(null);
   const keepWatching = () => { if (all) append(all); };
+  const keepWatchingNow = () => {
+    const data = blocked.length ? items.filter((i) => !i.promo || !blocked.includes(i.promo.creator.handle)) : items;
+    scrollTo.current = data.findIndex((i) => i.end) + 1;
+    keepWatching();
+  };
+  useEffect(() => {
+    const i = scrollTo.current;
+    if (i == null || i <= 0 || i >= items.length) return;
+    scrollTo.current = null;
+    requestAnimationFrame(() => listRef.current?.scrollToIndex({ index: i, animated: true }));
+  }, [items.length]);
   const dropCalls = items.filter((i) => i.promo && vs.calls[i.promo.id]).length;
 
   // Swipe left on a promo plays the same creator's other promos (founder rule, CLAUDE.md); tabs change by tap.
@@ -154,11 +168,12 @@ export default function Feed() {
         <View style={styles.center}><Text style={styles.msg}>{t(EMPTY[tab])}</Text></View>
       ) : (
         <FlatList
+          ref={listRef}
           key={`${tab}-${v || 'feed'}`}
           data={blocked.length ? items.filter((i) => !i.promo || !blocked.includes(i.promo.creator.handle)) : items}
           keyExtractor={(i) => i.key}
           renderItem={({ item, index }) => item.end ? (
-            <EndCard height={height} calls={dropCalls} size={dropSize} guest={!me} onMore={keepWatching} onExplore={() => router.navigate('/explore')} />
+            <EndCard height={height} calls={dropCalls} size={dropSize} guest={!me} onMore={keepWatchingNow} onExplore={() => router.navigate('/explore')} />
           ) : (
             <PromoReel promo={item.promo} active={focused && index === active} height={height} muted={muted} onSeen={onSeen} bottomInset={bottomInset} />
           )}
@@ -180,7 +195,7 @@ export default function Feed() {
       <Fade colors={['rgba(0,0,0,0.82)', 'rgba(0,0,0,0.55)', 'rgba(0,0,0,0)']} locations={[0, 0.55, 1]} style={[styles.scrim, { height: insets.top + WEB_MENU + 150 }]} />
       <View style={[styles.top, { paddingTop: insets.top + 6 + WEB_MENU }]} pointerEvents="box-none">
         <View style={styles.bar} pointerEvents="box-none">
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tabs} accessibilityRole="tablist">
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexShrink: 1 }} contentContainerStyle={styles.tabs} accessibilityRole="tablist">
             {TABS.map((x) => {
               const on = x.id === tab;
               return (
@@ -198,6 +213,10 @@ export default function Feed() {
               );
             })}
           </ScrollView>
+          <View style={{ flexGrow: 1, minWidth: 6 }} />
+          {tab === 'drop' && dropSize > 0 && active < dropSize ? (
+            <Text style={styles.counter} accessibilityLabel={`${active + 1} / ${dropSize}`} maxFontSizeMultiplier={1.2}>{active + 1} / {dropSize}</Text>
+          ) : null}
           <Pressable onPress={() => setMuted(!muted)} style={styles.sound} accessibilityRole="button" accessibilityLabel={muted ? t('sound_on') : t('sound_off')}>
             <Icon name={muted ? 'mute' : 'sound'} size={20} />
           </Pressable>
@@ -205,11 +224,6 @@ export default function Feed() {
         {tab === 'picks' && items.length > 0 && active === 0 ? <Text style={styles.note} maxFontSizeMultiplier={1.3}>{t('featured_note')}</Text> : null}
         {tab === 'drop' && fresh > 0 && active === 0 ? <Text style={styles.note} maxFontSizeMultiplier={1.3}>{t('drop_fresh').replace('{n}', String(fresh))}</Text> : null}
         {tab === 'drop' && fresh === 0 && active === 0 ? <Text style={styles.note} maxFontSizeMultiplier={1.3}>{t('drop_nothing_new')}</Text> : null}
-        {tab === 'drop' && dropSize > 0 && active < dropSize ? (
-          <View style={styles.progress} accessibilityLabel={`${active + 1} / ${dropSize}`}>
-            {Array.from({ length: dropSize }, (_, i) => <View key={i} style={[styles.seg, i <= active && styles.segOn]} />)}
-          </View>
-        ) : null}
       </View>
     </View>
     </GestureDetector>
@@ -237,12 +251,12 @@ function EndCard({ height, calls, size, guest, onMore, onExplore }: {
       <Text style={styles.endText}>{line}</Text>
       {!guest && calls ? <Text style={styles.endText}>{t('drop_done_p')}</Text> : null}
       <View style={{ width: '100%', maxWidth: 320, gap: 10, marginTop: 18 }}>
-        {guest ? <Button label={t('sign_in')} onPress={() => router.push('/sign-in')} /> : null}
+        {guest ? <Button onDark label={t('sign_in')} onPress={() => router.push('/sign-in')} /> : null}
         {remind === 'offer' ? <Button label={t('remind_me')} onPress={() => turnOnReminder().then((ok) => { setRemind(ok ? 'on' : 'denied'); if (ok) api.event('reminder_on'); })} /> : null}
         {remind === 'on' ? <Text style={styles.endText}>{t('remind_on')}</Text> : null}
         {remind === 'denied' ? <Text style={styles.endText}>{t('remind_denied')}</Text> : null}
-        <Button label={t('keep_watching')} ghost={guest || remind === 'offer'} onPress={onMore} />
-        <Button label={t('tab_explore')} ghost onPress={onExplore} />
+        <Button onDark label={t('keep_watching')} ghost={guest || remind === 'offer'} onPress={onMore} />
+        <Button onDark label={t('tab_explore')} ghost onPress={onExplore} />
       </View>
     </View>
   );
@@ -255,16 +269,14 @@ const styles = StyleSheet.create({
   msg: { color: D.text2, fontSize: 16, lineHeight: 23, textAlign: 'center', maxWidth: 320 },
   top: { position: 'absolute', top: 0, left: 0, right: 0, paddingHorizontal: 12 },
   bar: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  tabs: { gap: 18, paddingHorizontal: 4, alignItems: 'center' },
+  tabs: { gap: 14, paddingHorizontal: 4, alignItems: 'center' },
   tab: { alignItems: 'center', paddingVertical: 6 },
   tabText: { color: 'rgba(255,255,255,0.85)', fontSize: 16, fontWeight: '600', ...shadow },
   tabOn: { color: '#fff', fontWeight: '800' },
   dot: { marginTop: 5, width: 18, height: 3, borderRadius: 2, backgroundColor: 'transparent' },
   dotOn: { backgroundColor: D.lime },
-  sound: { marginLeft: 'auto', width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(20,20,31,0.72)', alignItems: 'center', justifyContent: 'center' },
-  progress: { flexDirection: 'row', gap: 4, marginTop: 6, paddingHorizontal: 4 },
-  seg: { flex: 1, height: 3, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.28)' },
-  segOn: { backgroundColor: D.lime },
+  sound: { width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(20,20,31,0.72)', alignItems: 'center', justifyContent: 'center' },
+  counter: { flexShrink: 0, color: '#fff', fontSize: 13, fontWeight: '700', backgroundColor: 'rgba(20,20,31,0.72)', borderRadius: 99, paddingHorizontal: 10, paddingVertical: 5, overflow: 'hidden', fontVariant: ['tabular-nums'] },
   end: { alignItems: 'center', justifyContent: 'center', backgroundColor: D.bg, padding: 32, gap: 8 },
   endTitle: { color: D.text, fontSize: 28, ...F.display, textAlign: 'center', marginTop: 8 },
   endText: { color: D.text2, fontSize: 16, lineHeight: 23, textAlign: 'center', maxWidth: 320 },

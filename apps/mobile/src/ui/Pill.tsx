@@ -10,11 +10,12 @@ export function Pill({ label, active, onPress }: { label: string; active?: boole
   );
 }
 
-export function Button({ label, onPress, ghost, disabled }: { label: string; onPress?: () => void; ghost?: boolean; disabled?: boolean }) {
+// onDark: the button sits on the always dark video feed, so the ghost style stays white in the light theme too.
+export function Button({ label, onPress, ghost, disabled, onDark }: { label: string; onPress?: () => void; ghost?: boolean; disabled?: boolean; onDark?: boolean }) {
   return (
     <Pressable onPress={onPress} disabled={disabled} accessibilityRole="button" accessibilityState={{ disabled: !!disabled }} android_ripple={{ color: 'rgba(0,0,0,0.12)' }}
-      style={({ pressed }) => [styles.btn, ghost && styles.ghost, (pressed || disabled) && { opacity: 0.6 }]}>
-      <Text style={[styles.btnText, ghost && { color: C.text }]} maxFontSizeMultiplier={1.4}>{label}</Text>
+      style={({ pressed }) => [styles.btn, ghost && styles.ghost, ghost && onDark && { borderColor: 'rgba(255,255,255,0.22)' }, (pressed || disabled) && { opacity: 0.6 }]}>
+      <Text style={[styles.btnText, ghost && { color: onDark ? '#fff' : C.text }]} maxFontSizeMultiplier={1.4}>{label}</Text>
     </Pressable>
   );
 }
