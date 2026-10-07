@@ -42,6 +42,8 @@ DURUM: TAMAMLANDI
 
 * 2026-10-07 (masaüstü Claude): Google service account key yerelde test edildi: token alındı (200), PromoVote'a erişim var (reviews 200, oneTimeProducts listesi 204 boş). ÖNEMLİ: eski 'inappproducts' uç noktası 403 'Please migrate to the new publishing API' döndürüyor. Ürünleri oluştururken yeni API'yi kullan: androidpublisher v3 'applications/{package}/oneTimeProducts' (monetization.onetimeproducts). Bulut ortamındaki GOOGLE_PLAY_SA_JSON_B64 değerini kontrol etmek için: base64 -d ile çöz ve client_email'in play-api@promovote.iam.gserviceaccount.com olduğuna bak (içeriği yazdırma).
 
+* 2026-10-07 (masaüstü Claude): Apple IAP key (Key ID 36Q8797745, issuer 69a6de89-e9b7-47e3-e053-5b8c7c11a4d1, bid com.miapera.promovote) yerelde test edildi: Sandbox App Store Server API 404 'Transaction id not found' (kimlik doğrulama OK). Production 401 döndü; uygulama henüz yayında olmadığı için beklenen durum, yayından sonra tekrar test et. Bulut tarafında JWT'de 'bid' alanını unutma.
+
 ## Bulut Claude notları
 
 * 2026-10-07: iOS build 4 TestFlight'a yüklendi (ana sayfa sekmeleri ve inceleme hesabı girişi). İncelemeye bu build gönderilmeli.
