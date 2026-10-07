@@ -88,7 +88,14 @@ Hedef: her uzmanın her notu en az 8. Bugün hiçbir uzman bu hedefte değil. Uz
 * Uygulama doğrulama (App Attest, Play Integrity), ağırlıklı oylar.
 * Logo marka tescili, AB ve İngiltere başvurusu.
 
-## 4. Kurucunun kararı gereken konular
+## 4. Kurucunun kararları (2026-10-07)
+
+* Sekmeler: 4 sekme, yeni isimler (Bugünün seçkisi, Yeni, Takımın seçimleri; Popüler Keşfet'e Listeler olarak).
+* Story ve üyelik: ücretsiz firmalara haftada 1 story, Pro üyelere günde 10. Pro $9.99/ay veya $99.99/yıl, v1.1.
+* Oy butonları: altta tahmin çubuğu.
+* Marka tescili: sonra karar verilecek (herkese açık yayından önce).
+
+## 4b. Kararlar öncesi seçenekler (kayıt için)
 
 1. **Ana sayfa sekmeleri.** Uzmanların çoğu "For you" adının değişmesini istiyor. Seçenekler:
    * a) 4 sekme kalsın, isimler değişsin: Bugünün seçkisi, Yeni, Takımın seçimleri. Popüler Keşfet'e "Listeler" olarak taşınsın.
