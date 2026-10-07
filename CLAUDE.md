@@ -56,7 +56,7 @@ Status: validation stage. **promovote.com landing page is LIVE** (waitlist).
 * Browser testing: Playwright MCP in `.mcp.json` (via `scripts/playwright-mcp.sh`).
 * For any UI work: use Taste + Impeccable for direction, then audit with web-design-guidelines and web-quality-skills, then verify in a real browser with Playwright.
 
-* App review team (founder rule 2026-10-07): before shipping, the expert team reviews the app with `docs/review/brief.md`; every expert must score at least 8/10 on retention, session time, originality and trademark safety. Reports in `docs/review/`.
+* App review team (founder rule 2026-10-07): before shipping, the expert team reviews the app with `docs/review/brief.md`; every expert must score at least 8/10 on retention, session time, originality and trademark safety. Each role is a team of at least two experts with different angles (founder rule 2026-10-07). Reports in `docs/review/`.
 
 ## Writing style
 * Talk to the founder in Turkish, simple and clear.
