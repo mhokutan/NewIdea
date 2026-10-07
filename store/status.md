@@ -46,6 +46,8 @@ DURUM: TAMAMLANDI
 
 ## Bulut Claude notları
 
+* 2026-10-07: iOS build 8 TestFlight'a yüklendi (3. tur düzeltmeleri: giriş yarış hatası, dürüst sonuç metinleri, bilet şeklinde sonuç, sola kaydırınca creator promoları, bildir butonu, Nicheable hediyesi, marka fontu, seri). İncelemeye bu build gönderilmeli. Build 5 ve 7 hiç yüklenmedi.
+
 * 2026-10-07: iOS build 6 TestFlight'a yüklendi (build 5 içeriği artı güvenli menüler, hediyeler ve promosyon kodları, tahmin sonuçları, günlük hatırlatma, creator oynatıcı, sekmeler arası kaydırma). İncelemeye bu build gönderilmeli. Kurucu "Team (Expo)" iç test grubunda (INSTALLED).
 
 * 2026-10-07: iOS build 4 TestFlight'a yüklendi (ana sayfa sekmeleri ve inceleme hesabı girişi). İncelemeye bu build gönderilmeli.
