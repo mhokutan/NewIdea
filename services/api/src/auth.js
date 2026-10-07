@@ -4,7 +4,8 @@ import { betterAuth } from "better-auth";
 import { emailOTP } from "better-auth/plugins";
 import { expo } from "@better-auth/expo";
 
-export const TRUSTED_ORIGINS = ["https://promovote.com", "promovote://", "exp://"];
+// exp:// (Expo Go / dev client) is trusted only in local development.
+export const TRUSTED_ORIGINS = ["https://promovote.com", "promovote://"];
 
 function socialProviders(env) {
   const bundleId = env?.APPLE_BUNDLE_ID || "com.miapera.promovote";
@@ -25,7 +26,7 @@ export function authOptions(env, database, sendCode) {
     secret: env?.BETTER_AUTH_SECRET,
     database,
     // Local development (DEV_LOG_OTP=1) also trusts the app's web build on localhost.
-    trustedOrigins: env?.DEV_LOG_OTP === "1" ? [...TRUSTED_ORIGINS, "http://localhost:8081"] : TRUSTED_ORIGINS,
+    trustedOrigins: env?.DEV_LOG_OTP === "1" ? [...TRUSTED_ORIGINS, "exp://", "http://localhost:8081"] : TRUSTED_ORIGINS,
     // Native sign in only: the app gets an ID token from Apple or Google and the server verifies it
     // (signature, issuer, audience). No client secret is needed for that, so none is stored.
     socialProviders: socialProviders(env),

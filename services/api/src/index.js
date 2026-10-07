@@ -30,6 +30,17 @@ app.use("*", cors({
   allowMethods: ["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
 }));
 
+// Writes: small JSON bodies only, and a per IP rate limit (Workers Rate Limiting binding WRITE_LIMIT).
+app.use("/v1/*", async (c, next) => {
+  if (c.req.method === "GET" || c.req.method === "OPTIONS") return next();
+  if (+(c.req.header("Content-Length") || 0) > 16384) return c.json({ error: { code: "too_large", message: "Request too large." } }, 413);
+  if (c.env.WRITE_LIMIT) {
+    const { success } = await c.env.WRITE_LIMIT.limit({ key: c.req.header("CF-Connecting-IP") || "unknown" });
+    if (!success) return c.json({ error: { code: "rate_limited", message: "Too many requests. Wait a minute." } }, 429);
+  }
+  return next();
+});
+
 function sendCodeFor(env) {
   return async (email, otp) => {
     if (env.REVIEW_EMAIL && email === env.REVIEW_EMAIL) return; // fixed code, nothing to send
@@ -156,8 +167,9 @@ app.get("/v1/feed", async (c) => {
   return c.json({ promos: results.map((r) => promoOut(r, lang)) });
 });
 
-// Home tabs. new: latest first. featured: team picks (never paid). top: last 7 days, weighted valid views
-// (guest 0.5, boosted views never count) plus 3 points per valid "will blow up" call. A promo needs at least
+// Home tabs. new: latest first. featured: team picks (never paid). top: last 7 days of valid views from
+// signed in viewers only (guest device ids are free to fake, so they never rank; boosted views never count)
+// plus 3 points per valid "will blow up" call. A promo needs at least
 // TOP_MIN_VIEWS weighted views to show up, so the tab stays honestly empty until real data exists (docs/04).
 const TOP_MIN_VIEWS = 50;
 app.get("/v1/home", async (c) => {
@@ -172,8 +184,8 @@ app.get("/v1/home", async (c) => {
   } else if (tab === "top") {
     const since = new Date(Date.now() - 6 * 864e5).toISOString().slice(0, 10);
     const { results: scores } = await db.prepare(
-      `select promo_id, sum(case when is_guest = 1 then 0.5 else 1 end) as views from view_events
-       where day >= ? and is_boost = 0 group by promo_id having views >= ?`,
+      `select promo_id, count(*) as views from view_events
+       where day >= ? and is_boost = 0 and is_guest = 0 group by promo_id having views >= ?`,
     ).bind(since, TOP_MIN_VIEWS).all();
     if (!scores.length) {
       rows = [];
@@ -184,7 +196,8 @@ app.get("/v1/home", async (c) => {
       const voteMap = Object.fromEntries(votes.map((v) => [v.promo_id, v.n]));
       const score = Object.fromEntries(scores.map((s) => [s.promo_id, s.views + 3 * (voteMap[s.promo_id] || 0)]));
       const ids = Object.keys(score);
-      const { results } = await db.prepare(PROMO_SELECT + ` and pr.id in (${ids.map(() => "?").join(",")})`).bind(...ids).all();
+      // json_each keeps this to one bound parameter (D1 allows at most 100).
+      const { results } = await db.prepare(PROMO_SELECT + " and pr.id in (select value from json_each(?))").bind(JSON.stringify(ids)).all();
       rows = results.sort((a, b) => score[b.id] - score[a.id]).slice(0, 50);
     }
   } else {
@@ -458,7 +471,9 @@ app.delete("/v1/follows/:handle", async (c) => {
 });
 
 async function livePromo(db, id) {
-  return db.prepare("select pr.id, pr.creator_profile_id from promos pr where pr.id = ? and pr.status = 'live'").bind(id).first();
+  return db.prepare(
+    "select pr.id, pr.creator_profile_id, (select max(duration_ms) from promo_videos v where v.promo_id = pr.id) as duration_ms from promos pr where pr.id = ? and pr.status = 'live'",
+  ).bind(id).first();
 }
 
 // Votes: scouts only, one per promo, skip is free and not stored.
@@ -513,7 +528,9 @@ async function trackEvent(c, table) {
   if (v?.profile?.id === promo.creator_profile_id) return c.json({ ok: true, counted: false });
   const guest = v?.profile ? 0 : 1;
   if (table === "view_events") {
-    const secs = Math.max(0, Math.min(600, Math.floor(+b.seconds || 0)));
+    // Seconds can never exceed the video length (plus 1 s rounding), so a client cannot fake long watches.
+    const maxSecs = promo.duration_ms ? Math.ceil(promo.duration_ms / 1000) + 1 : 60;
+    const secs = Math.max(0, Math.min(maxSecs, Math.floor(+b.seconds || 0)));
     if (secs < 3) return c.json({ ok: true, counted: false });
     const r = await db.prepare(
       `insert into view_events (promo_id, viewer_key, day, is_guest, max_seconds, completed, country_code) values (?, ?, ?, ?, ?, ?, ?)
@@ -541,8 +558,13 @@ app.post("/v1/reports", async (c) => {
   const priority = ["minor", "malicious_link"].includes(b.reason) ? 1 : ["spam_or_scam", "nudity_or_sexual", "hate_or_harassment", "violence"].includes(b.reason) ? 2 : 3;
   await db.prepare("insert into reports (id, reporter_user_id, target_type, target_id, target_profile_id, reason, details, priority) values (?, ?, ?, ?, ?, ?, ?, ?)")
     .bind(uuid(), v.user.id, b.targetType, String(b.targetId).slice(0, 64), targetProfile || null, b.reason, b.details ? String(b.details).slice(0, 500) : null, priority).run();
-  // A minor report limits the profile right away until a moderator reviews it.
-  if (b.reason === "minor" && targetProfile) await db.prepare("update profiles set status = 'limited' where id = ? and status = 'active'").bind(targetProfile).run();
+  // Minor reports go to the top of the moderator queue. The profile is limited automatically only when at least
+  // two different people report it as a minor within 7 days, so one person cannot take down an account.
+  if (b.reason === "minor" && targetProfile) {
+    const since = new Date(Date.now() - 7 * 864e5).toISOString();
+    const r = await db.prepare("select count(distinct reporter_user_id) as n from reports where target_profile_id = ? and reason = 'minor' and created_at >= ?").bind(targetProfile, since).first();
+    if ((r?.n || 0) >= 2) await db.prepare("update profiles set status = 'limited' where id = ? and status = 'active'").bind(targetProfile).run();
+  }
   return c.json({ ok: true }, 201);
 });
 
@@ -568,40 +590,8 @@ app.delete("/v1/blocks/:handle", async (c) => {
   return c.json({ ok: true, blocked: false });
 });
 
-// ------------------------------------------------------------------ payments (RevenueCat)
-function safeEqual(a, b) {
-  const x = new TextEncoder().encode(a || ""), y = new TextEncoder().encode(b || "");
-  let diff = x.length ^ y.length;
-  for (let i = 0; i < Math.max(x.length, y.length); i++) diff |= (x[i] || 0) ^ (y[i] || 0);
-  return diff === 0;
-}
-
-// RevenueCat sends every Apple and Google purchase and refund here. app_user_id is our user id.
-app.post("/v1/webhooks/revenuecat", async (c) => {
-  if (!c.env.REVENUECAT_WEBHOOK_AUTH || !safeEqual(c.req.header("Authorization"), c.env.REVENUECAT_WEBHOOK_AUTH)) return fail(c, 401, "unauthorized", "Bad signature.");
-  const body = await c.req.json().catch(() => null);
-  const e = body?.event;
-  if (!e?.type) return fail(c, 400, "bad_event", "No event.");
-  const db = c.env.DB;
-  const txn = e.transaction_id || e.original_transaction_id;
-  if (["INITIAL_PURCHASE", "NON_RENEWING_PURCHASE"].includes(e.type)) {
-    const prof = await db.prepare("select id from profiles where owner_user_id = ?").bind(e.app_user_id).first();
-    const product = await db.prepare("select id from iap_products where id = ? and active = 1").bind(e.product_id).first();
-    if (!prof || !product || !txn) return c.json({ ok: true, ignored: true });
-    await db.prepare(
-      `insert or ignore into purchases (id, profile_id, store, product_id, store_transaction_id, environment, purchased_at, raw_event)
-       values (?, ?, ?, ?, ?, ?, ?, ?)`,
-    ).bind(uuid(), prof.id, e.store === "PLAY_STORE" ? "play_store" : "app_store", product.id, txn,
-      e.environment === "SANDBOX" ? "sandbox" : "production", new Date(e.purchased_at_ms || Date.now()).toISOString(), JSON.stringify(e).slice(0, 8000)).run();
-  } else if (["CANCELLATION", "REFUND"].includes(e.type) || e.cancel_reason === "CUSTOMER_SUPPORT") {
-    const t = now();
-    await db.batch([
-      db.prepare("update purchases set status = 'refunded', refunded_at = ? where store_transaction_id = ?").bind(t, txn),
-      db.prepare("update boosts set status = 'stopped_refund', ends_at = ? where status in ('scheduled', 'running') and purchase_id in (select id from purchases where store_transaction_id = ?)").bind(t, txn),
-    ]);
-  }
-  return c.json({ ok: true });
-});
+// ------------------------------------------------------------------ payments
+// In-app purchases ship in version 2: Apple and Google will be verified directly here (no RevenueCat).
 
 // A creator spends a verified purchase on one of their live promos.
 app.post("/v1/boosts", async (c) => {

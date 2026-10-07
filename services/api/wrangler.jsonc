@@ -11,6 +11,8 @@
     { "binding": "DB", "database_name": "promovote-db", "database_id": "b6a6a86f-5e7e-48fe-9ad1-2a29b1222a31", "migrations_dir": "migrations" }
   ],
   "triggers": { "crons": ["17 4 * * *"] },
+  // 60 writes per minute per IP on /v1 (votes, saves, follows, events, reports).
+  "ratelimits": [{ "name": "WRITE_LIMIT", "namespace_id": "1001", "simple": { "limit": 60, "period": 60 } }],
   "vars": {
     "API_URL": "https://api.promovote.com",
     "APPLE_BUNDLE_ID": "com.miapera.promovote",
@@ -19,7 +21,7 @@
     // App store review test account (email code sign in). Its fixed code is the secret REVIEW_CODE.
     "REVIEW_EMAIL": "review@promovote.com"
   },
-  // Secrets (set with `npx wrangler secret put NAME`, never commit): BETTER_AUTH_SECRET, REVENUECAT_WEBHOOK_AUTH, REVIEW_CODE
+  // Secrets (set with `npx wrangler secret put NAME`, never commit): BETTER_AUTH_SECRET, REVIEW_CODE
   // Email sending binding is added once Email Sending is enabled for promovote.com:
   // "send_email": [{ "name": "EMAIL" }]
   "observability": { "enabled": true }
