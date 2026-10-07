@@ -346,3 +346,67 @@ Not repeated here because they are known and planned (`brief-r2.md`): video uplo
 * **Backend completeness and safety 7 to 8:** B1 to B5. Each is under half a day; all five together take about 1.5 working days.
 
 Legal notes in this report are not legal advice.
+
+---
+
+# Round 3 (2026-10-07, night)
+
+Inputs: `docs/review/brief-r3.md`, commits c885a37 to db91c30, current `services/api/src/index.js` (1221 lines), `migrations/0007_jobs_and_logs.sql`, `0008_link_clicks.sql`, `wrangler.jsonc`, `apps/mobile/src` (home tab drop logic, `lib/reminder.ts`, `lib/api.ts`), screens 01, 15, 17. Read only checks: `node --check src/index.js` passes; live `GET /v1/feed` and `/v1/drop`; `GET /health` polled from 03:05 to 03:09 UTC, across the 03:07 hourly trigger. Cloudflare D1 limits page checked for the per invocation query cap.
+
+## R3.1 What was fixed from round 2
+
+| Round 2 item | Status | Evidence |
+|---|---|---|
+| B1 Drop stable all day | Fixed | Per promo hash rank `seeded(day:lang:id)` (`index.js` 263 to 270). Small leftover: creator order in the round robin follows the best ranked promo, so a new promo can still move a creator's slot. The app picks uncalled promos first, so this is low. |
+| B2 links cannot get around moderation | Partly fixed | A re-saved blocked URL is refused (`index.js` 563 to 566), but see R3.3 C2: remove the link in one save, add it back in the next, and it returns as `safe`. |
+| B3 harden "minor" reports | Fixed | Only reporters with a profile older than 7 days count; verified and founder owned profiles are never auto limited (`index.js` 1011 to 1026). |
+| B4 media guard | Partly fixed | Content-Length checked before reading, magic bytes checked (`index.js` 589 to 602). Still open: no server side EXIF strip, no image check, uploads are stored as `approved`. Safe today only because R2 is off. |
+| B5 cron live and visible | Built, not working live | Hourly `7 * * * *` plus daily cron, `job_runs` heartbeat on `/health`, `deletion_log` replaces the lost audit row. But `/health` returned `"jobs":{}` before and for two minutes after the 03:07 UTC trigger. With zero due calls the job needs only 3 queries, so it should have written its row. Most likely the triggers are still not registered (workers.dev subdomain, `docs/02` line 38), or the job fails. Nobody can tell which today. |
+| B7 fewer voids | Fixed in logic | Calls with fewer than 10 later calls are rechecked every 20 h up to day 21, then void; resolution loops in rounds. |
+| B9 staff names | Partly fixed | `STAFF_NAME` blocks PromoVote, admin, moderator. Look alike names of verified creators are still open (P1). |
+| B6 rate limit key, B11 attestation, B12 housekeeping | Open | Still 60 per minute per IP; `promos.cta_kind` keeps the old CHECK (`0002_core.sql` 152); follow count update not batched; line 3 still says RevenueCat. |
+
+Security check of the new routes (perks, wallet, scout summary, studio, link events): every write is session scoped, perk create and end are owner bound, the claim handler reads only `perks`, `perk_claims` and `perk_codes` (the no calls or follows rule holds), codes are AES-GCM sealed. **No IDOR and no SQL injection found.**
+
+## R3.2 Scores
+
+| # | Area | R2 | R3 | Evidence |
+|---|---|---|---|---|
+| 1 | Retention | 7 | 7 | Results, reveal sheet, forgiving streak and a local 18:00 reminder are the right loop, but the resolver is not proven to run (empty heartbeat) and cannot keep up on the free tier (C1), and the English drop pool live today is 9 promos, so a scout who finishes day 1 gets only 2 fresh promos on day 2. |
+| 2 | Session time | 8 | 8 | Swipe between tabs, creator player, endless fair rotation and the Calls tab give enough surfaces; total supply is 21 live promos from 3 creators, which caps real sessions until content grows. |
+| 3 | Originality | 8 | 8 | Crowd bar based on the median of resolved promos, percentile early multiplier, 7 scored calls a day and "You called it" are clearly our own mechanic and hard to game by saying yes to everything. |
+| 4 | Trademark and trade dress | 8 | 8 | Own words (Today's Drop, Calls, Gifts, Scout Score), "The social network for promos" tagline, open licensed brand font; nothing in the backend uses third party marks. |
+| 5 | Backend completeness and platform safety | 7 | 7 | Good progress and no IDOR, but the core job is unverified live and breaks the 50 queries per invocation cap of D1 on the free plan, the link laundering hole is still open in two steps, and guest events can burn the daily D1 write quota. |
+
+## R3.3 What still keeps a score below 8
+
+### P0 (before App Store submission), smallest first
+
+| # | What | Where | Why | Done when |
+|---|---|---|---|---|
+| C2 | **Blocked links stay blocked.** In `PUT /v1/me/links` delete only rows that are not blocked (`delete from profile_links where profile_id = ? and safety_status != 'blocked'`), keep blocked rows hidden, and refuse any new URL that matches a blocked row of any profile (same canonical URL or host). | `index.js` 543 to 578 | Today: save without the link, then save again with it, and it is public as `safe`. Scam links are the top store and legal risk for a link out app. | Block a URL in D1, remove it from the list, save, add it back: refused. Same URL from a second creator: refused. |
+| C3 | **Honest `/health`.** Do not swallow the error (today `.catch` returns `jobs: {}` both when the table is missing and when no job ran). Return `stale: true` when `resolve_calls` is older than 2 h or `daily` older than 26 h. | `index.js` 187 to 190 | We cannot tell "cron not registered" from "job fails" right now. | `/health` says which job is stale and why. |
+| C1 | **Make `resolveCalls` fit the free plan.** D1 allows 50 queries per Worker invocation on the free plan, and each statement inside `db.batch` counts. The job spends 3 queries per call that waits and up to 6 per call it resolves. So one run stops after about 8 to 15 calls with "too many API requests", the error is caught (`index.js` 1219 to 1220), and the `job_runs` row is never written, so `/health` looks dead even when work was done. A call that waits up to day 21 is rechecked about 14 times, so at low traffic the real capacity is only about 25 to 30 calls per day. 5 scouts making 7 calls a day already exceed it. The daily cron also runs `daily()`, `resolveCalls` and `weeklyStreaks` in one invocation, so they share the same 50 and the 30 day deletion (Apple 5.1.1(v)) can fail with them. Fix: rewrite resolution as set based SQL, about 6 statements per run no matter how many calls: (1) mark rechecks with one `update ... where (select count(*) later) < 10`, (2) void the expired ones, (3) resolve the rest with correlated subqueries for later share and percentile, with the bar bound as a parameter and one run stamp, (4) `update scout_stats ... from (select ... group by scout_profile_id)` for that stamp, (5) `insert into score_events select ...`, (6) heartbeat. Put `daily()` and `weeklyStreaks` in their own scheduled invocation (or give daily its own cron minute). Workers Paid ($5 per month, 1000 queries) buys time but does not fix the per call cost. | `index.js` 1109 to 1162, 1216 to 1221 | "Result Oct 14" is the core promise. If results lag, the reveal, accuracy and streak all stall, and nobody sees it because the heartbeat is missing. | Local `wrangler dev --test-scheduled` with 500 seeded due calls: all resolved in one run, `job_runs` row written, total queries under 15. |
+| C4 | **Cron really registered.** Founder opens Workers and Pages once (workers.dev subdomain), then redeploy and confirm both triggers on the Triggers tab. Then watch `/health` for 2 hours. This is the same founder action as round 1 and 2; it is still the single biggest risk to the loop. | dashboard, `wrangler.jsonc` 17 | Without it no call ever resolves and no account is ever hard deleted. | `/health` shows `resolve_calls` within the last hour and `daily` within 26 h. |
+| C5 | **Media before R2 goes on.** Strip EXIF server side (or reject JPEGs with an APP1 Exif segment), store new uploads as `pending` until a Workers AI check or the admin queue passes them, and delete R2 objects of deleted users in `daily()`. | `index.js` 581 to 620, 1192 to 1213 | Store guideline 1.2 and the privacy promise. Not live today because `MEDIA` is unbound; it must ship with the R2 switch, not after. | A JPEG with GPS EXIF is refused or comes back stripped; a new avatar is not public until approved; a deleted user's files are gone after the next daily run. |
+
+### P1 (before public launch)
+
+| # | What | Where | Why |
+|---|---|---|---|
+| C6 | Rate limit guest events. `/v1/events/*` skip `WRITE_LIMIT`, and every random device id inserts a new row. A script can spend the free 100k D1 rows written per day in under an hour and stop all writes (calls, follows, sign in sessions) for everyone. Add an `EVENT_LIMIT` binding (120 per minute per IP), and key `WRITE_LIMIT` by profile id when signed in (CGNAT, round 2 B6). | `index.js` 38 to 48, 954 to 999 | Cheap denial of service on the free tier; fake link taps also inflate studio stats. |
+| C7 | Gifts: first gift of a creator goes to `in_review`; require at least 1 live promo (screen 17 shows a gift on a page with "No promos yet"); `redeemUrl` limited to known platform hosts until the link scan exists; claim and the public gift card check that the creator profile is `active`; claim inserts the `perk_claims` row first and decrements stock only when it was new (today two parallel taps by one user both take stock). | `index.js` 649 to 710 | A free account can post a "gift" that links to any website at once. That is the classic scam pattern for link out apps. |
+| C8 | Device attestation and vote weights before Charts open (round 2 B11). Sock accounts that call after you can make your early calls right and farm x3. | new `devices` routes, `calls.weight` | Scout Score and Charts trust. |
+| C9 | Housekeeping before uploads: rebuild `promos.cta_kind` without the old CHECK, batch the follow count update, fix the RevenueCat comment on line 3, look alike name check against verified creators. | `0002_core.sql` 152, `index.js` 3, 832 to 848 | Avoids surprise 500s and impersonation once uploads open. |
+
+### Gaps that code cannot close
+
+* **Supply.** 21 live promos from 3 founder creators, 9 of them in English. The drop pool of 21 only works with real content: at today's supply a daily English scout runs out of new promos on day 2. This needs creator outreach, not code.
+* **Resolution needs a crowd.** Each call needs 10 later calls on the same promo within 21 days. With a handful of TestFlight scouts most early calls will end as void ("no points lost"). Only real users close this; the code path is correct.
+
+## R3.4 Path to 8
+
+* **Backend completeness and safety 7 to 8:** C1 to C5. C2 and C3 are under an hour each, C1 is about half a day with a local scheduled test, C4 is a 5 minute founder action, C5 ships with the R2 switch.
+* **Retention 7 to 8:** C1 and C4 (results really arrive, visible on `/health`), then at least 5 more creators so the English pool reaches 21. The second half is content, not engineering.
+
+Legal notes in this report are not legal advice.

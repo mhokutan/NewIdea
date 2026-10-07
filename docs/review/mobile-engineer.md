@@ -224,3 +224,63 @@ P1, before public launch:
 7. Early feedback before day 7: show the crowd split on the ticket as soon as 5 calls exist (already coded) and a "your calls" result inbox on Profile. Raises retention.
 8. Horizontal pager between Today's Drop, New and Team picks plus swipe to the same creator's other promos (`react-native-pager-view`, `GestureHandlerRootView` in `app/_layout.tsx`). Raises session time to 8.
 9. Enable R2 (`services/api/wrangler.jsonc:14-15`) so logo and banner upload work instead of "not available yet"; then video upload.
+
+## Round 3 (2026-10-07, night)
+
+Read: commits c885a37, d6799eb, 96ee4da, e3ba08b, 5c65c36, 1bcb441, db91c30 (diffs and current code), `ui/Sheet.tsx`, `ui/ReportMenu.tsx`, `ui/PerkSheet.tsx`, `ui/ResultReveal.tsx`, `ui/PromoReel.tsx`, `lib/gate.tsx`, `lib/viewer-state.ts`, `lib/reminder.ts`, `lib/api.ts`, `app/_layout.tsx`, `app/(tabs)/index.tsx`, `app/(tabs)/me.tsx`, `app/creator/[handle].tsx`, `app/play/[handle].tsx`, `app/perk.tsx`, `app/sign-in.tsx`, `app.json`, `app.config.ts`, API middleware, `/health`, `/v1/drop`, `/v1/calls`, `/v1/me/state`, `resolveCalls`, `scheduled`, screenshots `screens-r3/01..18`.
+Library sources checked: `react-native` Fabric `RCTModalHostViewComponentView.mm` and `Modal.js` (onDismiss), `react-native-gesture-handler/apple/RNGestureHandler.mm` (simultaneous recognition with UIScrollView), `@expo/prebuild-config` (expo-notifications auto plugin), `expo-notifications` Android manifest.
+`npx tsc --noEmit`: clean. `npx expo lint`: clean. `npx expo config --type introspect`: no `aps-environment` entitlement (the `withoutPush` plugin works), `associated-domains` and `applesignin` present. No code was changed.
+
+### Round 2 blockers: status in code
+
+| Round 2 item | Status | Where |
+|---|---|---|
+| P0 1: one Modal per menu, content swapped in place | **Fixed.** Report and Block are one `Sheet` with steps (`menu`, `report`, `done`). | `ui/ReportMenu.tsx:25-58` |
+| P0 2: navigate only after the sheet is gone | **Fixed.** `Sheet` runs `onDismissed` from RN `Modal.onDismiss` on iOS (verified: Fabric emits it in the dismiss completion, `RCTModalHostViewComponentView.mm:194-201`) and on visibility change elsewhere. Used by gate, settings, report menu, gift sheet, result reveal. | `ui/Sheet.tsx:17-27`, `lib/gate.tsx:85-97`, `app/(tabs)/me.tsx:66-72`, `ui/PerkSheet.tsx:34-41` |
+| P0 3: gate waits for session loading | **Fixed.** Taps during loading are queued and answered once `useMe` settles. | `lib/gate.tsx:20-25, 55-62` |
+| P0 4: device pass on a real build | **Not done.** No record in `store/status.md`. Build 6 is on TestFlight, nobody has run the checklist on it. | `store/status.md` |
+| P1 5: events exempt from the IP write limit | **Fixed.** | `services/api/src/index.js:43` |
+| P1 6: daily local reminder and forgiving streak | **Fixed.** Reminder offered on the end card after a finished drop, off in Settings, local only, push entitlement stripped. Streak shown with this week's dots. | `lib/reminder.ts`, `app/(tabs)/index.tsx:200-225`, `app.config.ts:8-12`, `app/(tabs)/me.tsx:117-127` |
+| P1 7: early feedback and results inbox | **Fixed.** Ticket shows outcome, Results with accuracy, one time reveal sheet. | `ui/PromoReel.tsx:108-112`, `ui/ResultReveal.tsx`, `app/(tabs)/me.tsx:140-170` |
+| P1 8: horizontal navigation | **Done differently.** RNGH `Pan` (`activeOffsetX 24`, `failOffsetY 14`) around the feed switches tabs on a flick; creator grid opens `play/[handle]`. `GestureHandlerRootView` is now at the root. RNGH does not recognize simultaneously with a non RNGH `UIScrollView` pan (`RNGestureHandler.mm:551-594`), so on iOS it relies on the vertical scroll view failing on a horizontal drag; plausible, but it must be felt on a device (and on Android). | `app/(tabs)/index.tsx:117-124`, `app/_layout.tsx:25` |
+| P1 9: R2 for logo and banner | Not done (founder must enable R2). | `services/api/wrangler.jsonc:13-15` |
+
+### New findings
+
+1. **Gate after sign in can still present while the sign in modal is dismissing (P0, the old "tap does nothing" in one remaining place).** `sign-in.tsx:30-31` does `await refreshMe()` then `router.dismiss()` in the same tick, so one React commit both removes the `sign-in` modal and, through `lib/gate.tsx:59-61` (`queueMicrotask(() => host.open('onboarding' | 'creator'))`), sets the gate `Sheet` visible. The RN Modal presents from the root `reactViewController` (`RCTModalHostViewComponentView.mm:152-156`) while UIKit is still dismissing the native stack modal, and UIKit refuses silently. Worse, Fabric has already set `_isPresented = YES`, so later `host.open` calls change nothing and every call or save tap does nothing until the user happens to finish onboarding on Profile. This hits exactly a brand new Sign in with Apple user who tapped "Will blow up" as a guest (the founder's first test path and a common reviewer path). Smallest fix: in those two reopen paths use `setTimeout(..., 500)` instead of `queueMicrotask`, or in `sign-in.tsx` dismiss first and call `refreshMe()` after the transition. Verify: new Apple id, guest taps Will blow up, Sign in, Apple: the "Finish your profile" sheet must appear on the feed.
+2. **Fresh drop ignores the viewer's calls on a cold start (P0 for retention, small).** `app/(tabs)/index.tsx:77-82` picks "uncalled first" from `callsNow.current` at load time, but viewer state loads later (`/v1/me`, then `/v1/me/state` from `GateHost`), and the effect depends only on `[v, attempt, tab]`. On a normal app open the drop is computed with an empty call map: a returning scout gets promos they already called (tickets instead of the call bar) and no "N new for you today" line. That undoes the round 3 freshness work on the most common path. Fix: wait for viewer state (expose a `loaded` flag from `viewer-state.ts`) before picking, or re pick when `vs.calls` first arrives while `active === 0`.
+3. **Call resolution has not been seen running in production (P0 for the retention loop, needs the founder).** `GET https://api.promovote.com/health` at 03:06, 03:07 and 03:08 UTC returned `"jobs": {}`. `resolveCalls` writes its heartbeat unconditionally (`index.js:1156`), and the hourly cron is `7 * * * *` (`wrangler.jsonc:16`), so the 03:07 run left no row. Either the deploy was too recent or cron triggers are not active on this account (CLAUDE.md lists "open Workers dashboard once, workers.dev subdomain needed for the cron" as a pending founder action). Until a `resolve_calls` row appears, no ticket ever turns into a result, the reveal never fires and the streak job never runs. Check `/health` after 04:07 UTC.
+4. **`resolveCalls` will hit the D1 per invocation query limit on Workers Free (P1, before real traffic).** Each resolved call costs about 4 to 6 D1 statements (`index.js:1121-1152`), in a loop of up to 10 x 200. Workers Free allows about 50 D1 queries per invocation (verify the current limit in the D1 limits page). Past roughly 8 due calls in one run the job throws, the heartbeat is not written, and the backlog grows by the hour. Fix: resolve per promo instead of per call (one aggregate query per promo, one batch update), cap work per run (for example 5 promos), or move to Workers Paid.
+5. **Content pool is tiny (not code).** `/v1/drop` returns 9 promos in the English pool from 21 live promos and 3 creators. A daily scout runs out of uncalled promos on day 2, so "N new for you today" will read 0 or 1 most days. Only more creators close this.
+6. Smaller notes:
+   * `lib/gate.tsx` and `ui/ReportMenu.tsx:31`, `ui/PerkSheet.tsx:38`: after a guest signs in from Report or Get code, the queued action is `() => {}`, so the user lands back with nothing open and must tap again. The comment in `ReportMenu` says the menu comes back; it does not.
+   * `app/(tabs)/index.tsx`: the `?v=` param stays in the route, so the linked promo is pinned first on every tab switch until the app restarts.
+   * `lib/reminder.ts`: the 18:00 reminder fires even on days the drop is done, and the text is fixed in the language at scheduling time. Fine for v1; later skip today's trigger once the drop is finished.
+   * `app.json` already has `associatedDomains: applinks:promovote.com` and build 6 signed, so the capability is not the blocker for universal links; `https://promovote.com/.well-known/apple-app-site-association` returns the 404 page. Serving that file from `web/landing` is the missing step.
+   * CLAUDE.md says "Swipe left plays the same creator's other promos"; the app now uses horizontal swipe for home tabs and a grid for the creator's promos. Product needs to confirm which rule wins and update CLAUDE.md.
+   * Screen 01: the home tab labels sit on top of the trailer's own burned in title; the top scrim (`index.tsx:149`, 0.6 alpha) is not enough on bright frames. Raise the scrim to about 0.75 or add a text shadow plate.
+
+### Scores, round 3
+
+| # | Area | R2 | R3 | Evidence |
+|---|------|----|----|----------|
+| 1 | Retention | 6 | 7 | Results on the ticket, a reveal sheet, Results with accuracy, a forgiving streak and a local reminder complete the loop in code, but resolution is not yet seen running in production, the fresh drop ignores calls on a cold start, and the pool of 9 promos cannot stay fresh. |
+| 2 | Session time | 7 | 7 | Swipe between home tabs and a creator player add paths, but 21 live promos (about 3 minutes of video) cap a session; code is ready for 8, content is not. |
+| 3 | Originality | 8 | 8 | Call bar to ticket, outcome on the ticket, reveal, Scout Score and the brand font read as its own product. |
+| 4 | Trademark and trade dress | 8 | 8 | No borrowed marks, softer tagline, own font and lime accent; the Save, Share, More rail is generic. |
+| 5 | Engineering and App Store readiness | 7 | 7 | All three round 2 code blockers are fixed correctly and type check and lint are clean, but the gate after sign in can still lock taps on iOS (finding 1) and there is still no recorded device pass on any build. |
+
+### Remaining blockers to 8 (smallest change first)
+
+P0, before submission:
+1. Gate reopen after sign in: `setTimeout(..., 500)` instead of `queueMicrotask` in `lib/gate.tsx:59-61` (or refresh after dismiss in `app/sign-in.tsx:30-31`). Raises engineering.
+2. Fresh drop waits for viewer state (`app/(tabs)/index.tsx:74-95`, `lib/viewer-state.ts` add `loaded`). Raises retention.
+3. Confirm `resolve_calls` appears on `/health` after 04:07 UTC; if not, the founder opens the Workers dashboard once (workers.dev subdomain) so cron triggers run. Raises retention. Needs the founder, not code.
+4. Device pass on build 6 or the next build, recorded in `store/status.md`: guest, new Apple id (finding 1 path), creator, review account; every call bar and rail button, Report reasons, Block, Get code, Edit profile from Settings, reminder offer and Settings toggle, horizontal swipe vs vertical paging on iPhone and Android, call bar position above the tab bar. Engineering goes to 8 when this passes with finding 1 fixed.
+
+P1, before public launch:
+5. Make `resolveCalls` fit the D1 Free per invocation limit (per promo aggregation and a per run cap) (`services/api/src/index.js:1109-1159`).
+6. Serve `/.well-known/apple-app-site-association` from `web/landing` so shared promo links open the app.
+7. Replay the real action after sign in from Report and Get code instead of `() => {}` (`ui/ReportMenu.tsx:31`, `ui/PerkSheet.tsx:38`).
+
+Only real content and real users close the rest: retention and session time stay at 7 until there are enough creators for a fresh 7 every day (today 9 in the pool) and enough scouts for calls to resolve with at least the minimum later calls.

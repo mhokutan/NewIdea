@@ -279,3 +279,80 @@ Inputs: `docs/review/brief-r2.md`, screenshots `docs/review/screens-r2/01..19`, 
 7. Filing plan unchanged from section 7: run the self search, pick the owning entity, file PROMOVOTE in classes 9, 42 and 35.
 
 With P0 items 1 to 5 done, my domain score is **8**. Item 6 lifts it to 9.
+
+---
+
+# Round 3 (2026-10-07, night)
+
+Inputs: `docs/review/brief-r3.md`, screenshots `docs/review/screens-r3/01..18`, code in `apps/mobile/src/` (`ui/ReportMenu.tsx`, `ui/PerkSheet.tsx`, `ui/PromoReel.tsx`, `app/creator/[handle].tsx`, `lib/categories.ts`, `lib/reminder.ts`, `app/(tabs)/me.tsx`), `services/api/src/index.js` (staff name rule, perks, links, media, delete), web pages `terms.html`, `guidelines.html`, `privacy.html`, `delete-account.html`, `copyright.html`, plus `store/README.md`, `store/status.md`, `apps/mobile/app.json`. Apple guideline wording for 1.2, 4.5.4 and 5.1.1(i) re-checked on developer.apple.com today. Still not legal advice; product counsel should review the Terms and Privacy rewrite below before the public release.
+
+An honest note first: in rounds 1 and 2 I checked that Terms and Privacy were *linked* from the app, but I did not check what they *cover*. They still describe the pre-launch website and waitlist only. That is the biggest remaining store and legal gap, and it is on me that it shows up only now.
+
+## R3.1 Scores
+
+| # | Area | R2 | R3 | Evidence (one sentence) |
+|---|---|---|---|---|
+| 1 | Retention | 6 | 7 | Calls now resolve hourly with a visible outcome (right +points, wrong "no points lost"), a one time "You called it" reveal (screen 13), a forgiving weekly streak with saved weeks (screen 14) and an opt in 18:00 reminder, so there is a real loop; it is capped by having only 3 creators to call on. |
+| 2 | Session time | 6 | 6 | Pool of 21, swipe between tabs and the creator player add paths, but all of it is the same 3 founder creators, so a second session repeats the first; this closes only with real content, not code. |
+| 3 | Originality | 8 | 8 | The call ticket with outcome, crowd bar scoring, Scout Score with "Reputation only. No cash value." and creator gifts that are explicitly not tied to calls are a format I have not seen in TikTok, Reels or Product Hunt. |
+| 4 | Trademark and trade dress safety | 8 | 8 | Lime stays dominant, story rings and avatars are rounded squares, no TikTok rail signatures, "The social network for promos" replaced the "ads" line, Bricolage Grotesque is OFL licensed; the name is still unfiled and descriptive, which keeps it from 9. |
+| 5 | **Trademark, trade dress and store policy safety (my domain)** | 7 | **7** | Every round 2 P0 that lives in code or on the website is fixed, but the in-app "Terms of Use" and "Privacy Policy" links open documents that say "We do not have user accounts" and cover only "the promovote.com website and the PromoVote waitlist", which fails Apple 5.1.1(i) and the Play User Data policy, and new creator gifts go public with an external link and no review. |
+
+## R3.2 Round 2 items, re-checked
+
+| Round 2 item | Status | Evidence |
+|---|---|---|
+| P0 1 Delete account steps on page and in notes | **Fixed** | `delete-account.html` lines 21 to 23 ("Tap Profile", "Tap the ... button at the top right", "Tap Delete account"); `store/status.md` line 56 matches. |
+| P0 2 Zero tolerance sentence | **Fixed** | `terms.html` line 58 and `guidelines.html` line 44, both with the 24 hour review promise. |
+| P0 3 Test data out of production | **Fixed per brief** | Brief says production holds only the 3 founder creators and the review account. I cannot query D1 from here; "9 Lives Studio" in screens 16 to 18 is local seed data. Founder: open Explore on the TestFlight build once and confirm. |
+| P0 4 "Google Play" off iOS | **Fixed for buttons, one small gap** | `ctaVisible` hides the main button on iOS (`lib/categories.ts` line 33) and the Edit profile picker filters it (`edit-profile.tsx` line 122). Gap: creator *links* still render `PLATFORM_NAMES.google_play` = "Google Play" on iOS (`creator/[handle].tsx` lines 94 to 99, `categories.ts` line 20). Low risk, one line. |
+| P0 5 Store description without "ads" | **Open (not written yet)** | `store/README.md` lines 101 and 161 still park the long description. |
+| P0 6 Apple token revoke | **Open (known)** | No `revoke` call in `index.js`; needs the founder's Sign in with Apple key. |
+| P1 1 Uploads pending before R2 | **Open** | `index.js` line 606 still inserts media with `moderation_status 'approved'`. Harmless while R2 is off. |
+| P1 2 Word filter on name and bio | **Partly fixed** | `STAFF_NAME` (`index.js` line 15) blocks staff impersonation in names and bios (lines 446, 488, 493). There is still no slur or sexual word list. |
+| P1 3 Impersonation, trademark, guest report | **Fixed** | 10 reasons incl. "Pretending to be someone else" and "Uses my brand or trademark" (screen 03, `ReportMenu.tsx` lines 13 to 17); guests get "Report by email" (line 51). |
+| P1 4 Readable founder note, founder label on charts | **Mostly fixed** | Team picks note sits on a solid backing (screen 04). Charts are an honest empty state until 20 scouts (screen 05), so no founder row can top them. Remaining: the "Made by the PromoVote founder" line under the creator name still sits on raw video and collides with on-screen text on Poleris (screen 04). |
+| P1 5 DMCA agent | **Open** | `copyright.html` line 34 still says "in progress". |
+| P1 6 "The social media of ads" on the site | **Fixed** | No match left in `web/landing`. |
+
+## R3.3 New findings in round 3
+
+1. **Terms and Privacy do not cover the app (P0).**
+   * `privacy.html` line 15: "PromoVote is not launched yet. Today, promovote.com is a pre-launch website with a waitlist." Line 69: "We do not have user accounts or take payments on this website yet." Section 12 (line 154) says the product "is not live yet" and promises an updated policy and an email to the waitlist *before* new data is collected.
+   * The app already collects: Apple or Google account identity and email, birth year (full date asked, year kept, `index.js` line 423), country, language, calls, saves, follows, blocks, reports, gift claims, link taps, an anonymous device id for guest view counts (`index.js` lines 957, 982), and the Terms acceptance version. App Store Connect App Privacy already declares Name, Email, Coarse Location, Photos or Videos, User ID, Purchase History, Product Interaction (`store/status.md` line 13). The linked policy contradicts the label.
+   * Apple 5.1.1(i) requires the policy to identify what the *app* collects, how, all uses, third parties, retention and deletion. Google Play's User Data policy requires the same and reviewers open the link. A reviewer who taps "Privacy Policy" in Help and legal reads "We do not have user accounts" while signed in. That is a likely rejection and, more importantly, a real FTC Section 5 and GDPR transparency problem once real users sign up.
+   * `terms.html` line 15 defines the agreement as covering "the promovote.com website and the PromoVote waitlist (together, the "Site")". There is no clause on accounts, user content licence (we need a licence to show creators' videos, names, logos), creator warranties, gifts, calls and Scout Score in the live app, account termination, or Apple's minimum terms for a custom EULA. `terms.html` line 117 even says the Guidelines describe rules "we plan to apply when the PromoVote product launches". Apple 1.2 expects users to agree to terms that actually govern the UGC service.
+2. **Gifts are user content with an external link and no review (P0, small).** Any creator account can publish a gift right away (`index.js` lines 649 to 673): free text title, code, and a `redeemUrl` that only passes the basic https check (`checkLink`, line 531), not the `safety_status` flow used for profile links. It shows on the creator page and as a chip on promos, with a lime "Open link" button in the sheet (`PerkSheet.tsx` line 71). Screen 16 shows exactly the risky case: a brand new creator, zero promos, "New creator", live gift. "Free $500 gift card, claim here" with a phishing link is the first scam we will see. Under Apple 1.2 this is UGC that needs a filter. The no conditions check (line 659) also reads only `description`, not `title`, and does not cover the staff name rule.
+3. **Gifts: the legal design is right.** Claim needs sign in only and never reads calls, follows or watch time (`index.js` lines 625 to 626, 692 to 708), the sheet says "Gifts never depend on your calls or follows" (screen 17), there is no chance element and no purchase, so it is not a sweepstakes or lottery, it fits the FTC Consumer Reviews and Testimonials Rule (no incentive tied to sentiment), and it is not Apple 3.2.2(x) "compensation for watching". Keep it that way: never give gifts or anything of value to top Scout Score, top streaks or "right calls" without a lawyer, because prize plus skill or chance turns it into a contest with registration rules (NY, FL) and official rules duties. What is missing is a line in Terms that the creator, not PromoVote, offers and honours the gift.
+4. **Reminder is compliant.** Local only, asked after the first finished drop, never at launch, off switch in Settings (`lib/reminder.ts`, `me.tsx` line 69). The copy "Today's Drop is ready" is a product notice, not marketing, so Apple 4.5.4 is satisfied. If a future reminder ever names a creator's product or a gift, it becomes promotional and needs explicit opt in wording.
+5. **Store declarations are consistent with an honest reading.** Play "Contains ads: Yes" (`store/README.md` line 155) and the Apple age rating "advertising yes" are the safer choice, because every promo promotes a third party product. Keep them. This makes the long description even more important: it must explain that promos are posted by the creators who own them, that there is no ad network, and no reward for watching (round 1 P0 6 wording).
+6. **Android permissions trimmed.** `app.json` line 30 now blocks SYSTEM_ALERT_WINDOW, storage and fingerprint permissions that the desktop Claude flagged. Good for the Play permissions declaration.
+7. **Review notes need a gift line.** `store/status.md` line 63 lists voting, saving, following, reporting, blocking and deletion. Add: "Creators can offer optional promo codes. Any signed in user can claim them; they are never tied to calls, follows or watch time." Reviewers who see a code wallet otherwise ask about 3.1.1.
+
+## R3.4 What still keeps my domain below 8 (smallest change first)
+
+### P0 (before submitting build 6 or later for review)
+
+1. **Gift guardrail, one condition.** In `services/api/src/index.js` `app.post("/v1/me/perks")` (line 649), allow gift creation only for creators with at least one live promo or `is_verified` (today that means only the founder's three accounts, because uploads are closed); return 403 `gift_needs_promo` otherwise. Apply the `no_conditions` regex and `STAFF_NAME` to `title` too (line 653). Route `redeemUrl` through the same `safety_status` logic as profile links, so a moderator can block it. Done when: a brand new creator gets 403, and a gift titled "Follow us for 20% off" is refused.
+2. **Rewrite `privacy.html` for the app.** Keep the waitlist part as one section. Add, in plain words: data the app collects (list in R3.3 item 1) and why; Sign in with Apple and Google as sources; Cloudflare as processor (Workers, D1, R2 later); the anonymous guest device id; that calls and Scout Score are public only as aggregate unless shown on the profile; local reminders stay on the phone; gift codes are stored encrypted and shared with no one; outbound link taps and UTM tags; retention (30 day grace then deletion, reports kept without name); how to delete (in app and by email, link to `/delete-account`); 18+; no tracking, no ad network, no sale or share under CPRA; EU and UK rights and legal bases. Remove "not launched yet", "we do not have user accounts" and section 12's promise, or replace it with what is now true. Make sure the list matches App Store Connect App Privacy and Play Data safety exactly (and drop "Purchase History" from both until v2, `store/status.md` line 41). Done when: every data type in the label appears in the policy, and no sentence in the policy is false for a signed in TestFlight user.
+3. **Extend `terms.html` to the app.** Change the scope in line 15 to "the promovote.com website, the PromoVote apps and services". Add short sections: accounts (one account per person, Creator or Scout, 18+), user content (creator keeps ownership, grants PromoVote a non exclusive worldwide licence to host, show, and promote it inside PromoVote and on promovote.com; warranty of rights incl. music), calls and Scout Score (opinion only, no stakes, no cash value, already in line 79, drop "planned"), creator gifts (offered and honoured by the creator, PromoVote is not a party or seller, never tied to calls, follows or reviews, PromoVote may remove any gift), termination and appeals, and an "Apple and Google" section with Apple's minimum EULA terms (agreement is between you and PromoVote, not Apple; Apple has no support or warranty duty; PromoVote handles product claims and IP claims; export and sanctions compliance; Apple and its subsidiaries are third party beneficiaries). Change line 117 so the Guidelines apply now. Bump `TERMS_VERSION` in `index.js` so existing accounts accept again. Done when: a lawyer has read it, it is live, and the onboarding checkbox stores the new version.
+4. **Apple token revoke.** Same as round 2 P0 6: Sign in with Apple key from the founder as a Worker secret, keep the Apple refresh token at sign in, call `appleid.apple.com/auth/revoke` in the delete handler (`index.js` line 802) or the daily hard delete job. If the key is not ready, submit without it but ship it in the very next build.
+5. **Long store description and keywords without "ads"** (round 2 P0 5, unchanged). Use: trailers, promos, Today's Drop, make your call, creators, Scout Score. Add the "posted by the creators who own them, no ad network, no reward for watching" sentence to the review notes, plus the gift line from R3.3 item 7.
+
+### P1 (before public launch, or before R2 or uploads open, whichever comes first)
+
+1. Hide or relabel `google_play` creator links on iOS (`creator/[handle].tsx` line 94, filter by `ctaVisible(l.platform, Platform.OS)`).
+2. Put the "Made by the PromoVote founder" line on the same solid or blurred backing as the Team picks note (`PromoReel.tsx`, creator line; screen 04).
+3. Small slur and sexual word list for display name, bio and gift text, next to `STAFF_NAME` (`index.js` line 15).
+4. Before enabling R2: uploads stored as `pending` (`index.js` line 606), monogram shown to everyone except the owner until approved.
+5. Admin report queue with a visible 24 hour clock, because Terms now promise 24 hours. This promise can only be proven with real reports, not code.
+6. Register the DMCA agent ($6) and remove the "in progress" line in `copyright.html` lines 34 and 75.
+7. Trademark plan unchanged (section 7): self search, pick the owning entity, file PROMOVOTE in classes 9, 42, 35.
+8. Fix the stale header comment "Payments arrive only from RevenueCat webhooks" (`index.js` line 3); it contradicts the founder decision and confuses any future auditor.
+
+### What code cannot close
+
+* Session time (6) and part of retention (7) depend on more than 3 founder creators. That is outreach and real content.
+* The "timely response" part of Apple 1.2 and the 24 hour promise in Terms are proven only by real moderation work once real users report things.
+
+With P0 items 1 to 3 done, my domain score is **8**. With item 4 (Apple revoke) it is **9**.
