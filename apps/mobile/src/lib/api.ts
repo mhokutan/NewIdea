@@ -14,12 +14,13 @@ export type Promo = {
   id: string; slug: string; lang: string; title: string; description: string | null; tags: string[];
   video: { mp4: string | null; webm: string | null; poster: string | null; hls: string | null; durationMs: number };
   cta: { kind: string; url: string | null } | null; ctaAndroid?: { kind: string; url: string } | null; hasPerk: boolean; liveAt: string; creator: Creator;
+  saves?: number; pinned?: boolean; views?: number | null;
 };
 export type Profile = {
   handle: string; type: 'scout' | 'creator'; name: string; bio: string | null; avatar: string | null;
   banner: string | null; mono: string | null; verified: boolean; kind?: string; category?: string;
   releaseStatus?: string; androidStatus?: string | null; iosStatus?: string | null; founderOwned?: boolean; followers?: number | null;
-  links?: Link[]; promos?: Promo[]; newCreator?: boolean; stats?: { score: number; level: number; calledIt: number } | null;
+  links?: Link[]; promos?: Promo[]; newCreator?: boolean; stats?: { score?: number; level?: number; calledIt?: number; followers?: number | null; saves?: number; calls?: number; promos?: number } | null;
   viewer?: { following: boolean; isMe: boolean }; primaryCta?: { kind: string; url: string | null } | null;
 };
 export type Me = {
@@ -75,7 +76,7 @@ async function call<T>(path: string, init: RequestInit = {}): Promise<T> {
 export const api = {
   feed: () => call<{ promos: Promo[] }>('/v1/feed'),
   drop: () => call<{ day: string; size: number; promos: Promo[] }>('/v1/drop'),
-  home: (tab: 'new' | 'top' | 'featured') => call<{ promos: Promo[]; progress?: { scouts: number; goal: number } }>('/v1/home?tab=' + tab),
+  home: (tab: 'following' | 'new' | 'top' | 'featured') => call<{ promos: Promo[]; progress?: { scouts: number; goal: number } }>('/v1/home?tab=' + tab),
   explore: (p: { q?: string; cat?: string; tag?: string }) =>
     call<{ promos: Promo[] }>('/v1/explore?' + new URLSearchParams(Object.entries(p).filter(([, v]) => v) as [string, string][])),
   hashtags: () => call<{ hashtags: { tag: string; count: number }[] }>('/v1/hashtags'),
@@ -94,7 +95,7 @@ export const api = {
   uploadMedia: (kind: 'avatar' | 'banner', uri: string) => uploadMedia(kind, uri),
   onboarding: (b: Record<string, unknown>) => call<{ ok: true; handle: string }>('/v1/onboarding', { method: 'POST', body: JSON.stringify(b) }),
   handle: (h: string) => call<{ available: boolean; reason: string | null }>('/v1/handles/' + encodeURIComponent(h)),
-  follow: (h: string, on: boolean) => call('/v1/follows/' + h, { method: on ? 'POST' : 'DELETE', body: JSON.stringify({ source: 'feed' }) }),
+  follow: (h: string, on: boolean, source: 'feed' | 'profile' | 'explore' = 'feed') => call<{ ok: true; following: boolean; followers: number | null }>('/v1/follows/' + h, { method: on ? 'POST' : 'DELETE', body: JSON.stringify({ source }) }),
   state: () => call<ViewerState>('/v1/me/state'),
   vote: (promoId: string, choice: 'will_blow_up' | 'not_for_me') => call<{ ok: true; call: Call }>('/v1/calls', { method: 'POST', body: JSON.stringify({ promoId, choice }) }),
   block: (handle: string) => call('/v1/blocks/' + encodeURIComponent(handle), { method: 'POST' }),

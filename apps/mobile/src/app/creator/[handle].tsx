@@ -6,6 +6,7 @@ import { ActivityIndicator, Linking, Platform, Pressable, ScrollView, Share, Sty
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { api, type Perk, type Profile } from '@/lib/api';
+import { compact } from '@/lib/format';
 import { t } from '@/lib/i18n';
 import { C, F, themed } from '@/lib/theme';
 import { categoryLabel, ctaLabel, ctaVisible, linkName } from '@/lib/categories';
@@ -38,9 +39,12 @@ export default function CreatorScreen() {
 
   const toggleFollow = () => asMember(() => {
     const on = !p?.viewer?.following;
-    setP((x) => x && { ...x, viewer: { isMe: false, following: on }, followers: x.followers != null ? x.followers + (on ? 1 : -1) : null });
+    const bump = (x: Profile, n: number | null) => ({ ...x, viewer: { isMe: false, following: on }, followers: n, stats: x.stats ? { ...x.stats, followers: n } : x.stats });
+    setP((x) => x && bump(x, x.followers != null ? Math.max(0, x.followers + (on ? 1 : -1)) : null));
     setFollowing(handle, on);
-    api.follow(handle, on).catch(() => { setFollowing(handle, !on); load(); });
+    api.follow(handle, on, 'profile')
+      .then((r) => { if (r.followers != null) setP((x) => x && x.followers != null ? bump(x, r.followers) : x); })
+      .catch(() => { setFollowing(handle, !on); load(); });
   });
 
   const share = () => {
@@ -77,10 +81,19 @@ export default function CreatorScreen() {
               <Text style={styles.name} numberOfLines={1}>{p.name}</Text>
               {p.verified ? <Icon name="check" size={18} color={C.accent} /> : null}
             </View>
-            <Text style={styles.handle}>@{p.handle}{p.followers != null ? `  ·  ${p.followers} ${t('followers')}` : ''}</Text>
+            <Text style={styles.handle}>@{p.handle}</Text>
             {p.newCreator && !p.verified ? <Text style={styles.newChip}>{t('new_creator')}</Text> : null}
           </View>
         </View>
+        {p.stats ? (
+          <View style={styles.stats} accessible accessibilityLabel={[
+            p.stats.followers != null ? `${p.stats.followers} ${t('stat_followers')}` : null, `${p.stats.saves ?? 0} ${t('stat_saves')}`, `${p.stats.calls ?? 0} ${t('stat_calls')}`,
+          ].filter(Boolean).join(', ')}>
+            {p.stats.followers != null ? <Stat n={p.stats.followers} label={t('stat_followers')} /> : null}
+            <Stat n={p.stats.saves} label={t('stat_saves')} />
+            <Stat n={p.stats.calls} label={t('stat_calls')} />
+          </View>
+        ) : null}
         {p.kind || p.category ? <Text style={styles.kind}>{p.founderOwned && p.kind ? p.kind : categoryLabel(p.category) ? t(categoryLabel(p.category)!) : p.kind}</Text> : null}
         {p.viewer?.isMe ? (
           <View style={styles.actions}>
@@ -124,6 +137,10 @@ export default function CreatorScreen() {
             <Pressable key={pr.id} onPress={() => router.push({ pathname: '/play/[handle]', params: { handle, start: pr.slug } })} style={[styles.tile, { width: tileW, height: tileW * 16 / 9 }]} accessibilityRole="button" accessibilityLabel={pr.title}>
               {pr.video.poster ? <Image source={{ uri: pr.video.poster }} style={StyleSheet.absoluteFill} contentFit="cover" /> : null}
               <Text style={styles.dur}>0:{String(Math.round(pr.video.durationMs / 1000)).padStart(2, '0')}</Text>
+              {pr.pinned ? <Text style={styles.pin}>{t('pinned')}</Text> : null}
+              {pr.views ? (
+                <View style={styles.views}><Icon name="play" size={11} color="#fff" /><Text style={styles.viewsText}>{compact(pr.views)}</Text></View>
+              ) : null}
             </Pressable>
           ))}
         </View>
@@ -132,6 +149,15 @@ export default function CreatorScreen() {
       <ReportMenu visible={menu} onClose={() => setMenu(false)} onReopen={() => setMenu(true)} kind="profile" id={handle} handle={handle}
         onBlocked={() => { setBlocked(handle); router.back(); }} />
     </ScrollView>
+  );
+}
+
+function Stat({ n, label }: { n: number | null | undefined; label: string }) {
+  return (
+    <View style={styles.stat}>
+      <Text style={styles.statN} maxFontSizeMultiplier={1.3}>{compact(n)}</Text>
+      <Text style={styles.statL} numberOfLines={1} maxFontSizeMultiplier={1.3}>{label}</Text>
+    </View>
   );
 }
 
@@ -161,5 +187,12 @@ const styles = themed(() => ({
   h2: { color: C.text, fontSize: 18, ...F.display, marginTop: 28, marginBottom: 12 },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   tile: { borderRadius: 10, overflow: 'hidden', backgroundColor: C.surface },
+  stats: { flexDirection: 'row', marginTop: 16, paddingVertical: 12, borderRadius: 14, backgroundColor: C.surface, borderWidth: 1, borderColor: C.line },
+  stat: { flex: 1, alignItems: 'center', gap: 2 },
+  statN: { color: C.text, fontSize: 20, ...F.display },
+  statL: { color: C.muted, fontSize: 12, fontWeight: '600' },
+  pin: { position: 'absolute', top: 6, left: 6, color: C.ink, fontSize: 10, fontWeight: '800', backgroundColor: C.lime, borderRadius: 6, paddingHorizontal: 5, paddingVertical: 2, overflow: 'hidden' },
+  views: { position: 'absolute', left: 6, bottom: 6, flexDirection: 'row', alignItems: 'center', gap: 3, backgroundColor: 'rgba(8,8,12,0.7)', borderRadius: 6, paddingHorizontal: 5, paddingVertical: 2 },
+  viewsText: { color: '#fff', fontSize: 11, fontWeight: '700' },
   dur: { position: 'absolute', top: 6, right: 6, color: '#fff', fontSize: 11, fontWeight: '600', backgroundColor: 'rgba(8,8,12,0.7)', borderRadius: 6, paddingHorizontal: 5, paddingVertical: 2, overflow: 'hidden' },
 }));

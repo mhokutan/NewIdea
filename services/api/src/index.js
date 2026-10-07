@@ -132,7 +132,8 @@ const pick = (map, lang, fallback) => (map && (map[lang] || map.en)) || fallback
 const PROMO_SELECT = `
   select pr.id, pr.slug, pr.lang, pr.title, pr.description, pr.i18n, pr.cta_kind, pr.cta_url, pr.live_at,
          (exists (select 1 from perks k where k.creator_profile_id = pr.creator_profile_id and k.status = 'active' and k.ends_at > strftime('%Y-%m-%dT%H:%M:%fZ', 'now') and (k.stock_left is null or k.stock_left > 0))) as has_perk,
-         pr.public_view_bucket,
+         pr.public_view_bucket, pr.is_pinned,
+         (select count(*) from saves sv where sv.promo_id = pr.id) as save_count,
          v.mp4_url, v.webm_url, v.poster_url, v.stream_uid, v.duration_ms, v.width, v.height,
          p.handle, p.display_name, p.avatar_url, p.i18n as p_i18n, p.is_verified,
          d.category, d.release_status, d.android_status, d.ios_status, d.founder_owned,
@@ -184,6 +185,8 @@ function promoOut(r, lang) {
     ctaAndroid: (r.cta_kind === "app_store" || r.cta_kind === "notify") && r.play_url ? { kind: "google_play", url: r.play_url } : null,
     hasPerk: !!r.has_perk,
     views: r.public_view_bucket,
+    saves: r.save_count || 0, // neutral count (our "likes"); never the call split, which would bias calls
+    pinned: !!r.is_pinned,
     liveAt: r.live_at,
     creator: {
       handle: r.handle, name: r.display_name, avatar: r.avatar_url, mono: pi.mono || null,
@@ -227,7 +230,14 @@ app.get("/v1/home", async (c) => {
   const tab = c.req.query("tab");
   const db = c.env.DB;
   let rows;
-  if (tab === "new") {
+  if (tab === "following") {
+    // Promos from creators the viewer follows, newest first. No ranking, no Boost (founder request 2026-10-07).
+    const [v, err] = await requireProfile(c);
+    if (err) return err;
+    ({ results: rows } = await db.prepare(PROMO_SELECT + ` and pr.creator_profile_id in (select creator_profile_id from follows where follower_profile_id = ?1)
+      and pr.creator_profile_id not in (select blocked_profile_id from blocks where blocker_profile_id = ?1) order by pr.live_at desc limit 50`).bind(v.profile.id).all());
+    return c.json({ tab, promos: rows.map((r) => promoOut(r, lang)) });
+  } else if (tab === "new") {
     ({ results: rows } = await db.prepare(PROMO_SELECT + " order by pr.live_at desc limit 50").all());
   } else if (tab === "featured") {
     ({ results: rows } = await db.prepare(PROMO_SELECT + " and pr.featured_at is not null order by pr.featured_at desc, pr.live_at desc limit 30").all());
@@ -258,7 +268,7 @@ app.get("/v1/home", async (c) => {
       rows = results.sort((a, b) => score[b.id] - score[a.id]).slice(0, 50);
     }
   } else {
-    return fail(c, 400, "bad_tab", "Use tab=new, top or featured.");
+    return fail(c, 400, "bad_tab", "Use tab=following, new, top or featured.");
   }
   let progress;
   if (tab === "top") {
@@ -372,7 +382,7 @@ app.get("/v1/profiles/:handle", async (c) => {
   const handle = c.req.param("handle").toLowerCase().replace(/^@/, "");
   const db = c.env.DB;
   const p = await db.prepare(
-    `select p.*, s.show_follower_count, s.show_calls, d.kind, d.category, d.release_status, d.android_status, d.ios_status, d.founder_owned, d.founding_creator, d.primary_cta
+    `select p.*, s.show_follower_count, s.show_view_counts, s.show_calls, d.kind, d.category, d.release_status, d.android_status, d.ios_status, d.founder_owned, d.founding_creator, d.primary_cta
      from profiles p left join profile_settings s on s.profile_id = p.id left join creator_details d on d.profile_id = p.id
      where p.handle = ? and p.status = 'active'`,
   ).bind(handle).first();
@@ -384,15 +394,23 @@ app.get("/v1/profiles/:handle", async (c) => {
     verified: !!p.is_verified, createdAt: p.created_at,
   };
   if (p.type === "creator") {
-    const [links, promos] = await db.batch([
+    const [links, promos, counts, views] = await db.batch([
       db.prepare("select platform, canonical_url, label from profile_links where profile_id = ? and safety_status = 'safe' order by position").bind(p.id),
       db.prepare(PROMO_SELECT + " and pr.creator_profile_id = ? order by pr.is_pinned desc, (pr.lang = ?) desc, (pr.lang = 'en') desc, pr.live_at desc limit 60").bind(p.id, lang),
+      // Profile stats row (founder request 2026-10-07): neutral totals only, never the Will blow up split.
+      db.prepare(`select (select count(*) from saves s join promos pr on pr.id = s.promo_id where pr.creator_profile_id = ?1 and pr.status = 'live') as saves,
+        (select count(*) from calls ca join promos pr on pr.id = ca.promo_id where pr.creator_profile_id = ?1 and pr.status = 'live' and ca.is_valid = 1) as calls,
+        (select count(*) from promos where creator_profile_id = ?1 and status = 'live') as promos`).bind(p.id),
+      db.prepare("select promo_id, count(*) as n from view_events where is_boost = 0 and promo_id in (select id from promos where creator_profile_id = ? and status = 'live') group by promo_id").bind(p.id),
     ]);
+    const st = counts.results[0] || {};
+    const viewMap = Object.fromEntries(views.results.map((x) => [x.promo_id, x.n]));
     Object.assign(out, {
       kind: pick(i.kind, lang, p.kind), category: p.category,
       releaseStatus: p.release_status, androidStatus: p.android_status, iosStatus: p.ios_status,
       founderOwned: !!p.founder_owned, foundingCreator: !!p.founding_creator,
-      followers: p.show_follower_count && p.follower_count >= 10 ? p.follower_count : null,
+      followers: p.show_follower_count !== 0 ? p.follower_count : null,
+      stats: { followers: p.show_follower_count !== 0 ? p.follower_count : null, saves: st.saves || 0, calls: st.calls || 0, promos: st.promos || 0 },
       newCreator: p.follower_count < 10,
       links: links.results.map((l) => ({ platform: l.platform, url: withUtm(l.canonical_url, "profile"), label: l.label })),
       primaryCta: (() => {
@@ -401,7 +419,7 @@ app.get("/v1/profiles/:handle", async (c) => {
         const l = links.results.find((x) => (CTA_PLATFORMS[p.primary_cta] || []).includes(x.platform));
         return l ? { kind: p.primary_cta, url: withUtm(l.canonical_url, "profile") } : null;
       })(),
-      promos: promos.results.map((r) => promoOut(r, lang)),
+      promos: promos.results.map((r) => ({ ...promoOut(r, lang), views: p.show_view_counts === 0 ? null : viewMap[r.id] || 0 })),
     });
   } else {
     const st = await db.prepare("select scout_score, level, called_it_count from scout_stats where profile_id = ?").bind(p.id).first();
@@ -914,8 +932,10 @@ app.post("/v1/follows/:handle", async (c) => {
   const b = await c.req.json().catch(() => ({}));
   const source = ["profile", "feed", "explore", "share"].includes(b.source) ? b.source : "other";
   const r = await db.prepare("insert or ignore into follows (follower_profile_id, creator_profile_id, source) values (?, ?, ?)").bind(v.profile.id, target.id, source).run();
-  if (r.meta.changes) await db.prepare("update profiles set follower_count = follower_count + 1 where id = ?").bind(target.id).run();
-  return c.json({ ok: true, following: true });
+  const n = r.meta.changes
+    ? await db.prepare("update profiles set follower_count = follower_count + 1 where id = ? returning follower_count").bind(target.id).first()
+    : await db.prepare("select follower_count from profiles where id = ?").bind(target.id).first();
+  return c.json({ ok: true, following: true, followers: n?.follower_count ?? null });
 });
 
 app.delete("/v1/follows/:handle", async (c) => {
@@ -925,8 +945,10 @@ app.delete("/v1/follows/:handle", async (c) => {
   const target = await creatorByHandle(db, c.req.param("handle"));
   if (!target) return fail(c, 404, "not_found", "Creator not found.");
   const r = await db.prepare("delete from follows where follower_profile_id = ? and creator_profile_id = ?").bind(v.profile.id, target.id).run();
-  if (r.meta.changes) await db.prepare("update profiles set follower_count = max(follower_count - 1, 0) where id = ?").bind(target.id).run();
-  return c.json({ ok: true, following: false });
+  const n = r.meta.changes
+    ? await db.prepare("update profiles set follower_count = max(follower_count - 1, 0) where id = ? returning follower_count").bind(target.id).first()
+    : await db.prepare("select follower_count from profiles where id = ?").bind(target.id).first();
+  return c.json({ ok: true, following: false, followers: n?.follower_count ?? null });
 });
 
 async function livePromo(db, id) {

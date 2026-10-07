@@ -10,6 +10,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Clipboard from 'expo-clipboard';
 import { api, type Perk, type ScoutSummary, type Studio, type WalletItem } from '@/lib/api';
 import { CATEGORIES } from '@/lib/categories';
+import { compact } from '@/lib/format';
 import { lang, outcomeText, t } from '@/lib/i18n';
 import { C, F, themed, setThemePref, theme, type SchemePref } from '@/lib/theme';
 import { openMail } from '@/lib/mail';
@@ -266,6 +267,17 @@ function CreatorHome({ onSettings }: { onSettings: () => void }) {
         <View style={{ flex: 1 }}><Button label={t('edit_profile')} onPress={() => router.push('/edit-profile')} /></View>
         <View style={{ flex: 1 }}><Button label={t('view_page')} ghost onPress={() => router.push(`/creator/${p.handle}`)} /></View>
       </View>
+      {data ? (
+        // Same totals scouts see on the public page: followers, saves and calls (never the Will blow up split).
+        <View style={styles.totals}>
+          {([[data.profile.followers, 'stat_followers'], [data.stats.saves, 'stat_saves'], [data.calls.total, 'stat_calls']] as const).map(([n, k]) => (
+            <View key={k} style={styles.total} accessible accessibilityLabel={`${n} ${t(k)}`}>
+              <Text style={styles.totalN} maxFontSizeMultiplier={1.3}>{compact(n)}</Text>
+              <Text style={styles.statL} numberOfLines={1} maxFontSizeMultiplier={1.3}>{t(k)}</Text>
+            </View>
+          ))}
+        </View>
+      ) : null}
 
       {data && doneCount < steps.length ? (
         <View style={styles.card}>
@@ -386,6 +398,9 @@ const styles = themed(() => ({
   bar: { height: 6, borderRadius: 3, backgroundColor: C.line, overflow: 'hidden', marginVertical: 4 },
   barFill: { height: 6, borderRadius: 3, backgroundColor: C.lime },
   statRow: { flexDirection: 'row', gap: 8, marginTop: 8 },
+  totals: { flexDirection: 'row', paddingVertical: 12, borderRadius: 14, backgroundColor: C.surface, borderWidth: 1, borderColor: C.line },
+  total: { flex: 1, alignItems: 'center', gap: 2 },
+  totalN: { color: C.text, fontSize: 20, ...F.display },
   statGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   stat: { flexGrow: 1, flexBasis: '30%', backgroundColor: C.surface2, borderRadius: 14, padding: 12, gap: 2 },
   statN: { color: C.text, fontSize: 22, ...F.display },

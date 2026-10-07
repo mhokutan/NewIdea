@@ -12,7 +12,9 @@ import { AccessibilityInfo, Linking, Platform, Pressable, Share, StyleSheet, Tex
 
 import { api, ApiError, type Call, type Promo } from '@/lib/api';
 import { asMember, asScout } from '@/lib/gate';
+import { compact } from '@/lib/format';
 import { lang, outcomeText, t } from '@/lib/i18n';
+import { useMe } from '@/lib/use-me';
 import { D, F } from '@/lib/theme';
 import { setBlocked, setCall, setFollowing, setSaved, useViewerState } from '@/lib/viewer-state';
 import { Avatar } from './Avatar';
@@ -31,6 +33,10 @@ export function PromoReel({ promo, active, height, muted, onSeen, bottomInset = 
   const vs = useViewerState();
   const call: Call | undefined = vs.calls[promo.id];
   const saved = vs.saves.includes(promo.id);
+  // Save count (our likes): the server count, corrected for a save or unsave made on this screen.
+  const [saveDelta, setSaveDelta] = useState(0);
+  const saveCount = Math.max(0, (promo.saves || 0) + saveDelta);
+  const { me } = useMe();
   const source = Platform.OS === 'web' ? promo.video.webm || promo.video.mp4 : promo.video.hls || promo.video.mp4;
   const player = useVideoPlayer(source ? { uri: source } : null, (p) => {
     p.loop = true; p.muted = true;
@@ -93,8 +99,9 @@ export function PromoReel({ promo, active, height, muted, onSeen, bottomInset = 
     asScout(async () => {
       const on = !saved;
       setSaved(promo.id, on);
+      setSaveDelta((d) => d + (on ? 1 : -1));
       flash(on ? t('saved_toast') : t('unsaved_toast'));
-      try { await api.save(promo.id, on); } catch { setSaved(promo.id, !on); flash(t('error')); }
+      try { await api.save(promo.id, on); } catch { setSaved(promo.id, !on); setSaveDelta((d) => d - (on ? 1 : -1)); flash(t('error')); }
     });
   };
   const share = () => {
@@ -123,6 +130,16 @@ export function PromoReel({ promo, active, height, muted, onSeen, bottomInset = 
     asMember(async () => {
       setFollowing(c.handle, true);
       try { await api.follow(c.handle, true); flash(t('notify_toast')); } catch { setFollowing(c.handle, false); flash(t('error')); }
+    });
+  };
+  // Follow from the reel: a pill next to the creator name, hidden once followed or on your own promos.
+  // Following never earns points, badges or perks (CLAUDE.md).
+  const canFollow = !following && me?.profile?.handle !== c.handle && cta?.kind !== 'notify';
+  const follow = () => {
+    tap();
+    asMember(async () => {
+      setFollowing(c.handle, true);
+      try { await api.follow(c.handle, true); flash(t('following_toast').replace('{name}', c.name)); } catch { setFollowing(c.handle, false); flash(t('error')); }
     });
   };
   const showAndroidSoon = Platform.OS === 'android' && c.androidStatus === 'soon';
@@ -167,15 +184,23 @@ export function PromoReel({ promo, active, height, muted, onSeen, bottomInset = 
       <Fade colors={['rgba(6,6,10,0)', 'rgba(6,6,10,0.82)', 'rgba(6,6,10,0.96)']} locations={[0, 0.45, 1]} style={[styles.shade, open && styles.shadeOpen]} />
 
       <View style={[styles.info, { bottom: bottom + 64 }]} pointerEvents="box-none">
-        <Link href={`/creator/${c.handle}`} asChild>
-          <Pressable style={styles.who} accessibilityRole="link" hitSlop={6}>
-            <Avatar uri={c.avatar} mono={c.mono} size={40} />
-            <View style={{ flexShrink: 1 }}>
-              <Text maxFontSizeMultiplier={1.35} style={styles.whoName} numberOfLines={1}>{c.name}</Text>
-              <Text maxFontSizeMultiplier={1.35} style={styles.whoKind} numberOfLines={1}>{c.founderOwned ? t('founder_made') : c.kind}</Text>
-            </View>
-          </Pressable>
-        </Link>
+        <View style={styles.whoRow}>
+          <Link href={`/creator/${c.handle}`} asChild>
+            <Pressable style={styles.who} accessibilityRole="link" hitSlop={6}>
+              <Avatar uri={c.avatar} mono={c.mono} size={40} />
+              <View style={{ flexShrink: 1 }}>
+                <Text maxFontSizeMultiplier={1.35} style={styles.whoName} numberOfLines={1}>{c.name}</Text>
+                <Text maxFontSizeMultiplier={1.35} style={styles.whoKind} numberOfLines={1}>{c.founderOwned ? t('founder_made') : c.kind}</Text>
+              </View>
+            </Pressable>
+          </Link>
+          {canFollow ? (
+            <Pressable onPress={follow} style={({ pressed }) => [styles.followPill, pressed && styles.pressed]} accessibilityRole="button"
+              accessibilityLabel={`${t('follow')} ${c.name}`} hitSlop={8}>
+              <Text maxFontSizeMultiplier={1.3} style={styles.followText}>{t('follow')}</Text>
+            </Pressable>
+          ) : null}
+        </View>
         {promo.hasPerk ? (
           <Pressable onPress={() => { tap(); setGift(true); }} style={({ pressed }) => [styles.gift, pressed && styles.pressed]} accessibilityRole="button" hitSlop={4}>
             <Icon name="ticket" size={14} color={D.ink} />
@@ -215,7 +240,7 @@ export function PromoReel({ promo, active, height, muted, onSeen, bottomInset = 
       </View>
 
       <View style={[styles.rail, { bottom: bottom + 76 }]}>
-        <RailButton icon={saved ? 'saved' : 'save'} label={saved ? t('saved') : t('save')} on={saved} onPress={toggleSave} />
+        <RailButton icon={saved ? 'saved' : 'save'} label={saveCount ? compact(saveCount) : saved ? t('saved') : t('save')} a11y={`${saved ? t('saved') : t('save')}${saveCount ? `, ${saveCount}` : ''}`} on={saved} onPress={toggleSave} />
         <RailButton icon="share" label={t('share')} onPress={share} />
         <RailButton icon="more" label={t('more_actions')} onPress={() => { tap(); setMenu(true); }} />
       </View>
@@ -256,10 +281,10 @@ export function PromoReel({ promo, active, height, muted, onSeen, bottomInset = 
   );
 }
 
-function RailButton({ icon, label, onPress, on }: { icon: IconName; label: string; onPress: () => void; on?: boolean }) {
+function RailButton({ icon, label, a11y, onPress, on }: { icon: IconName; label: string; a11y?: string; onPress: () => void; on?: boolean }) {
   return (
     <Pressable onPress={onPress} style={({ pressed }) => [styles.railBtn, pressed && styles.pressed]} accessibilityRole="button"
-      accessibilityLabel={label} accessibilityState={{ selected: !!on }} hitSlop={6} android_ripple={{ color: 'rgba(255,255,255,0.2)', borderless: true }}>
+      accessibilityLabel={a11y || label} accessibilityState={{ selected: !!on }} hitSlop={6} android_ripple={{ color: 'rgba(255,255,255,0.2)', borderless: true }}>
       <View style={[styles.railIcon, on && { backgroundColor: '#fff' }]}>
         <Icon name={icon} color={on ? D.ink : '#fff'} />
       </View>
@@ -277,6 +302,9 @@ const styles = StyleSheet.create({
   shadeOpen: { height: '80%' },
   pressed: { transform: [{ scale: 0.94 }], opacity: 0.85 },
   info: { position: 'absolute', left: 16, right: 84 },
+  whoRow: { flexDirection: 'row', alignItems: 'center', gap: 10, flexWrap: 'wrap' },
+  followPill: { minHeight: 32, justifyContent: 'center', paddingHorizontal: 14, borderRadius: 99, borderWidth: 1.5, borderColor: D.lime, backgroundColor: 'rgba(10,10,15,0.45)' },
+  followText: { color: D.lime, fontWeight: '800', fontSize: 14 },
   who: { flexDirection: 'row', alignItems: 'center', gap: 10, alignSelf: 'flex-start', minHeight: 44 },
   whoName: { color: '#fff', fontWeight: '700', fontSize: 16 },
   whoKind: { color: '#d4d1e2', fontSize: 13 },

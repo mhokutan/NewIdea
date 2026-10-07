@@ -2,6 +2,7 @@
 // Today's Drop: the same 7 promos for everyone today, a progress counter and an end card, then optional
 // "keep watching" into the fair rotation (same rules as the website). New and Team picks are server lists.
 // Team picks are chosen by the PromoVote team and never paid. Charts live in Explore.
+// Following (founder request 2026-10-07): new promos from followed creators, newest first, no ranking and no Boost.
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -29,14 +30,15 @@ const WEB_MENU = Platform.OS === 'web' ? 64 : 0;
 // On iOS the native tab bar floats over the screen (about 49 pt plus the home indicator), so the call bar
 // and buttons are lifted above it. Android's bottom navigation sits below the content.
 const TAB_BAR = Platform.OS === 'ios' ? 49 : 0;
-type Tab = 'drop' | 'new' | 'picks';
+type Tab = 'drop' | 'following' | 'new' | 'picks';
 
 const TABS: { id: Tab; label: Parameters<typeof t>[0] }[] = [
   { id: 'drop', label: 'home_drop' },
+  { id: 'following', label: 'home_following' },
   { id: 'new', label: 'home_new' },
   { id: 'picks', label: 'home_picks' },
 ];
-const EMPTY: Record<Tab, Parameters<typeof t>[0]> = { drop: 'new_empty', new: 'new_empty', picks: 'featured_empty' };
+const EMPTY: Record<Tab, Parameters<typeof t>[0]> = { drop: 'new_empty', following: 'following_empty', new: 'new_empty', picks: 'featured_empty' };
 
 export default function Feed() {
   const { v } = useLocalSearchParams<{ v?: string }>();
@@ -95,7 +97,9 @@ export default function Feed() {
         setFresh(Object.keys(callsNow.current).length ? Math.min(uncalled.length, d.size || 7) : -1);
         return { drop: pick, pool: f.promos };
       })
-      : api.home(tab === 'picks' ? 'featured' : 'new').then((r) => ({ drop: r.promos, pool: r.promos }));
+      : tab === 'following' && !me?.profile
+        ? Promise.resolve({ drop: [] as Promo[], pool: [] as Promo[] })
+        : api.home(tab === 'picks' ? 'featured' : tab === 'following' ? 'following' : 'new').then((r) => ({ drop: r.promos, pool: r.promos }));
     load.then(({ drop, pool }) => {
       if (!alive) return;
       setAll(pool);
@@ -107,7 +111,8 @@ export default function Feed() {
       setItems(mapped);
     }).catch(() => { if (alive) setError(true); });
     return () => { alive = false; };
-  }, [v, attempt, tab, stateReady]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [v, attempt, tab, stateReady, tab === 'following' ? vs.following.length : 0]);
 
   // Resets the list right away so the old tab never flashes while the new one loads.
   const selectTab = (next: Tab) => {
@@ -166,7 +171,16 @@ export default function Feed() {
       {!all || !height ? (
         <View style={styles.center}><ActivityIndicator color={D.lime} /></View>
       ) : !items.length ? (
-        <View style={styles.center}><Text style={styles.msg}>{t(EMPTY[tab])}</Text></View>
+        <View style={styles.center}>
+          <Text style={styles.msg}>{t(tab === 'following' && !me?.profile ? 'following_guest' : EMPTY[tab])}</Text>
+          {tab === 'following' ? (
+            <View style={{ width: 220, marginTop: 18 }}>
+              {me?.profile
+                ? <Button onDark label={t('find_creators')} onPress={() => router.navigate('/explore')} />
+                : <Button onDark label={t('sign_in')} onPress={() => router.push('/sign-in')} />}
+            </View>
+          ) : null}
+        </View>
       ) : (
         <FlatList
           ref={listRef}
@@ -215,13 +229,13 @@ export default function Feed() {
             })}
           </ScrollView>
           <View style={{ flexGrow: 1, minWidth: 6 }} />
-          {tab === 'drop' && dropSize > 0 && active < dropSize ? (
-            <Text style={styles.counter} accessibilityLabel={`${active + 1} / ${dropSize}`} maxFontSizeMultiplier={1.2}>{active + 1} / {dropSize}</Text>
-          ) : null}
           <Pressable onPress={() => setMuted(!muted)} style={styles.sound} accessibilityRole="button" accessibilityLabel={muted ? t('sound_on') : t('sound_off')}>
             <Icon name={muted ? 'mute' : 'sound'} size={20} />
           </Pressable>
         </View>
+        {tab === 'drop' && dropSize > 0 && active < dropSize ? (
+          <Text style={styles.counter} accessibilityLabel={`${active + 1} / ${dropSize}`} maxFontSizeMultiplier={1.2}>{active + 1} / {dropSize}</Text>
+        ) : null}
         {tab === 'picks' && items.length > 0 && active === 0 ? <Text style={styles.note} maxFontSizeMultiplier={1.3}>{t('featured_note')}</Text> : null}
         {tab === 'drop' && fresh > 0 && active === 0 ? <Text style={styles.note} maxFontSizeMultiplier={1.3}>{t('drop_fresh').replace('{n}', String(fresh))}</Text> : null}
         {tab === 'drop' && fresh === 0 && active === 0 ? <Text style={styles.note} maxFontSizeMultiplier={1.3}>{t('drop_nothing_new')}</Text> : null}
@@ -270,14 +284,14 @@ const styles = StyleSheet.create({
   msg: { color: D.text2, fontSize: 16, lineHeight: 23, textAlign: 'center', maxWidth: 320 },
   top: { position: 'absolute', top: 0, left: 0, right: 0, paddingHorizontal: 12 },
   bar: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  tabs: { gap: 14, paddingHorizontal: 4, alignItems: 'center' },
+  tabs: { gap: 10, paddingHorizontal: 2, alignItems: 'center' },
   tab: { alignItems: 'center', paddingVertical: 6 },
-  tabText: { color: 'rgba(255,255,255,0.85)', fontSize: 16, fontWeight: '600', ...shadow },
+  tabText: { color: 'rgba(255,255,255,0.85)', fontSize: 14.5, fontWeight: '600', ...shadow },
   tabOn: { color: '#fff', fontWeight: '800' },
   dot: { marginTop: 5, width: 18, height: 3, borderRadius: 2, backgroundColor: 'transparent' },
   dotOn: { backgroundColor: D.lime },
   sound: { width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(20,20,31,0.72)', alignItems: 'center', justifyContent: 'center' },
-  counter: { flexShrink: 0, color: '#fff', fontSize: 13, fontWeight: '700', backgroundColor: 'rgba(20,20,31,0.72)', borderRadius: 99, paddingHorizontal: 10, paddingVertical: 5, overflow: 'hidden', fontVariant: ['tabular-nums'] },
+  counter: { alignSelf: 'flex-end', marginTop: 2, marginRight: 4, color: '#fff', fontSize: 13, fontWeight: '700', backgroundColor: 'rgba(20,20,31,0.72)', borderRadius: 99, paddingHorizontal: 10, paddingVertical: 5, overflow: 'hidden', fontVariant: ['tabular-nums'] },
   end: { alignItems: 'center', justifyContent: 'center', backgroundColor: D.bg, padding: 32, gap: 8 },
   endTitle: { color: D.text, fontSize: 28, ...F.display, textAlign: 'center', marginTop: 8 },
   endText: { color: D.text2, fontSize: 16, lineHeight: 23, textAlign: 'center', maxWidth: 320 },
