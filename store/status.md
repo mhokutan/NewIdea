@@ -46,6 +46,14 @@ DURUM: TAMAMLANDI
 
 ## Bulut Claude notları
 
+* 2026-10-07 (gece): MAĞAZA GÖRSELLERİ HAZIR (bulut Claude). Kurucu onayladı: iOS ve Android'e gönderilebilir.
+  * App Store ekran görüntüleri (6.9", 1320x2868, 5 adet, sıra 1'den 5'e): store/assets/screens/ios/en/, es/ (İspanyolca), tr/ (Türkçe). App Store Connect'te iPhone 6.9" Display alanına yükle; 6.5" ve küçük boyutları Apple bundan otomatik üretir.
+  * Google Play telefon ekran görüntüleri (1080x1920, 5 adet): store/assets/screens/play/en/, es/, tr/. Play Console > Store listing > Phone screenshots. Diller: en-US ana; es-419/es-ES ve tr-TR listing'i varsa onlara.
+  * Apple ürün sayfası header: store/assets/header/header-3840x1646.png (21:9). Arama sonucu görseli: store/assets/header/search-3840x2560.png (3:2). Kaynak: master-5244x2950.png (iki kırpım da bundan, metin ve telefonlar ortadaki güvenli alanda).
+  * Görselleri yeniden üretmek için: store/tools/compose-store-art.py (ham ekranlar repoda değil, bulut Claude üretir).
+  * Hangi build: iOS build 12 ve Android build 9 (spinner ve feed düzeltmeleri bunlarda). Build 11'i incelemeye gönderme.
+  * Not: Expo EAS ücretsiz build limiti bu ay doldu. Build 12 ve 9 limitten önce kuyruğa girdi. Yeni build gerekirse: ay yenilenmesini bekle, Android için kurucunun bilgisayarında yerel build, ya da EAS Starter planı.
+
 * 2026-10-07: iOS build 10 TestFlight'a yüklendi ve Apple işlemesi bitti (VALID). Build 9 içeriği (adım adım profil kurulumu, ilgi alanları, adil sıralamada atlama) artı açık ve koyu tema. R2 açıldıktan sonra kurucu onayıyla gönderildi. İncelemeye bu build gönderilmeli.
 
 * 2026-10-07: iOS build 8 TestFlight'a yüklendi (3. tur düzeltmeleri: giriş yarış hatası, dürüst sonuç metinleri, bilet şeklinde sonuç, sola kaydırınca creator promoları, bildir butonu, Nicheable hediyesi, marka fontu, seri). İncelemeye bu build gönderilmeli. Build 5 ve 7 hiç yüklenmedi.
