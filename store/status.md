@@ -55,6 +55,8 @@ DURUM: YENİ İŞ VAR. Bölüm G: iOS build 12'yi App Review'a ve Android build 
 
 ## Bulut Claude notları
 
+* 2026-10-07 (gece): GitHub Actions build'leri BAŞARILI. iOS build 13 App Store Connect'e yüklendi (TestFlight; build 12 incelemede kalıyor, değiştirme). Android versionCode 10, Play API ile Kapalı test - Alpha kanalına yüklendi. Uygulama Play'de henüz incelenmediği için büyük ihtimalle TASLAK olarak düştü: Play Console > Kapalı test - Alpha'da kontrol et. Build 9 incelemedeyse ona dokunma, 10'u inceleme bitince gönder; build 9 incelemede değilse 10'u önizle ve incelemeye gönder. Sonucu buraya yaz.
+
 * 2026-10-07 (gece): GOOGLE_PLAY_SA_JSON secret'ını kurucu ekledi. İlk Android build GitHub Actions'ta başlatıldı (README H2). Masaüstü Claude secret eklemesin.
 
 * 2026-10-07 (gece): YENİ İŞ: Android build de GitHub Actions'a taşındı (README H2). Tek iş: GitHub repo secret'ı GOOGLE_PLAY_SA_JSON ekle (service account JSON dosyasının tüm içeriği). Ekleyince buraya yaz veya kurucuya söyle; bulut Claude "[build android]" ile başlatır. WSL kurulumu (H3) gerekmiyor.
