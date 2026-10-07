@@ -1,0 +1,64 @@
+# Android build on GitHub Actions (founder decision 2026-10-07: builds run on GitHub, the desktop only does setup).
+# Builds the .aab on a GitHub Linux runner with `eas build --local` (no EAS build minutes; free on this public repo)
+# and uploads it to the Google Play closed testing track (alpha) with the Play Developer API.
+#
+# Start: push a commit to the work branch whose message contains [build android].
+# Repository secrets (never in the repo):
+#   EXPO_TOKEN           Expo access token (build number and the upload keystore stored on EAS)
+#   GOOGLE_PLAY_SA_JSON  contents of the Google Play service account JSON file (Bölüm C3 / D3)
+name: Android build
+
+on:
+  push:
+    branches: [claude/gracious-pasteur-nu8ssc]
+  workflow_dispatch:
+
+concurrency:
+  group: android-build
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  android:
+    if: github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[build android]')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    defaults:
+      run:
+        working-directory: apps/mobile
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Free disk space (the Android build needs about 15 GB)
+        working-directory: /
+        run: sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/.ghcup /opt/hostedtoolcache/CodeQL || true; df -h /
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: apps/mobile/package-lock.json
+
+      - name: Install
+        run: npm ci
+
+      - name: Check
+        run: npx tsc --noEmit && npx expo lint
+
+      - name: Build (local, signed with the EAS upload key)
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+        run: npx -y eas-cli@latest build --platform android --profile production --local --non-interactive --output "$RUNNER_TEMP/promovote.aab"
+
+      - name: Upload to Google Play (closed testing, alpha)
+        env:
+          GOOGLE_PLAY_SA_JSON: ${{ secrets.GOOGLE_PLAY_SA_JSON }}
+          RELEASE_NOTES: "New: Following tab, creator stats, follow from a promo, save counts and an Activity screen."
+        run: node ../../.github/scripts/play-upload.mjs "$RUNNER_TEMP/promovote.aab" alpha

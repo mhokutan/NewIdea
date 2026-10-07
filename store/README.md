@@ -222,7 +222,12 @@ Workflow: .github/workflows/ios-build.yml. GitHub'ın macOS makinesinde "eas bui
 3. Süre 30 ile 60 dakika. Bitince Apple işlemesi 10 ile 30 dakika, sonra TestFlight'ta görünür. Build numarasını EAS otomatik artırır.
 4. Hata olursa Actions sayfasındaki log'u bulut Claude'a söyle; log'da secret değerleri görünmez.
 
-H2. Android: kurucunun Windows bilgisayarı
+H2. Android: GitHub Actions (kurucu kararı 2026-10-07, masaüstü sadece kurulum ve düzenleme için)
+Workflow: .github/workflows/android-build.yml. GitHub'ın Linux makinesinde .aab üretir ve Play Developer API ile Kapalı test - Alpha kanalına yükler (.github/scripts/play-upload.mjs). Uygulama Play'de henüz hiç incelenmediyse API sadece TASLAK sürüm kabul eder; o zaman Play Console'da sürümü açıp "İncelemeye gönder" demek gerekir.
+1. Repo secret'ı ekle (bir kere): GOOGLE_PLAY_SA_JSON = Bölüm C3'te indirilen service account JSON dosyasının tüm içeriği (D:\PromoVote\SecretKeys içinde, Play Console'da yetkisi D3'te verildi). EXPO_TOKEN zaten var.
+2. Başlatma: bulut Claude mesajında "[build android]" olan bir commit push eder.
+
+H3. Android yedek yol: kurucunun Windows bilgisayarı (sadece GitHub yolu çalışmazsa)
 "eas build --local" Windows'ta çalışmaz, WSL (Ubuntu) içinde çalışır. Bir kere kurulum:
 1. PowerShell (yönetici): wsl --install -d Ubuntu  (yeniden başlat, Ubuntu kullanıcı adı ve şifresini kurucu girer)
 2. Ubuntu içinde:

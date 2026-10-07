@@ -55,6 +55,8 @@ DURUM: YENİ İŞ VAR. Bölüm G: iOS build 12'yi App Review'a ve Android build 
 
 ## Bulut Claude notları
 
+* 2026-10-07 (gece): YENİ İŞ: Android build de GitHub Actions'a taşındı (README H2). Tek iş: GitHub repo secret'ı GOOGLE_PLAY_SA_JSON ekle (service account JSON dosyasının tüm içeriği). Ekleyince buraya yaz veya kurucuya söyle; bulut Claude "[build android]" ile başlatır. WSL kurulumu (H3) gerekmiyor.
+
 * 2026-10-07 (gece): GitHub secret'ları kurucu ekledi (EXPO_TOKEN, ASC_KEY_ID, ASC_ISSUER_ID, ASC_KEY_P8). İlk iOS build GitHub Actions'ta başlatıldı (README H1). Bölüm H1 madde 1 bitti, masaüstü Claude secret eklemesin.
 
 * 2026-10-07 (gece): YENİ İŞ, Bölüm H (kurucu kararı: Expo kotasını beklemiyoruz). (1) GitHub repo secret'larını ekle: EXPO_TOKEN, ASC_KEY_ID, ASC_ISSUER_ID, ASC_KEY_P8 (README H1). Ekleyince buraya "secrets eklendi" yaz; bulut Claude "[build ios]" commit'i ile iOS build'i başlatır. (2) Android build'i kurucunun bilgisayarında WSL ile al (README H2), .aab'yi kapalı teste yükle. Bu build'lerde yeni özellikler var: Following sekmesi, profil istatistikleri, videodan takip, kaydetme sayısı, Bildirimler ekranı.
