@@ -304,3 +304,83 @@ Side effect: an English viewer now hits the first repeat sooner, because Hauling
 | Marketplace liquidity and user side value | 5 | 6 | 8 |
 
 The engineering is now ahead of the catalog. The P0 items protect the integrity of the reputation loop for about a day of server work; reaching 8 on retention, session time and liquidity still depends on real supply (P1 item 9).
+
+## Round 3 (2026-10-07, night)
+
+Read: `docs/review/brief-r3.md`, commits c885a37 to db91c30, `services/api/src/index.js` (`crowdBar`, `resolveCalls`, `/v1/calls` with `score_eligible`, `/v1/drop`, `/v1/home` tab top, `weeklyStreaks`, `/v1/me` accuracy), `apps/mobile/src/app/(tabs)/index.tsx` (drop pick, `fresh`, `EndCard`), `apps/mobile/src/lib/reminder.ts`, `apps/mobile/src/lib/i18n.ts`, `apps/mobile/src/lib/fair-queue.ts`, screenshots `docs/review/screens-r3/01..18`. Catalog (from `web/landing/content/promos.json`, same as production): 21 promos, 3 founder creators; 9 English, 11 Turkish, 1 Spanish. An English viewer's drop pool is 9 promos, a Turkish viewer's is 20, a Spanish viewer's is 10.
+
+### R3.1 What was fixed from my round 2 list
+
+| R2 item | Status | Note |
+|---|---|---|
+| P0 1 One gate for Charts | Done | List and card both use `CHARTS_GOAL = 20` scouts in 7 days. |
+| P0 2 Extend instead of void | Done | Pending up to `RESOLVE_MAX_DAYS = 21`, rechecked about daily. |
+| P0 3 Scored calls cap | Done | First 7 calls per UTC day are `score_eligible`; the drop is 7, so the drop is the scored set. |
+| P0 4 Relative bar | Done in code, but inactive today | See finding 1: with 9 English promos the bar never leaves 50%. |
+| P0 5 Fresh drop | Done | Pool of 21, uncalled first, "N new for you today". |
+| P1 7 Percentile multiplier | Done | `voter_ordinal / total valid calls`, first 10% x3. |
+| P1 8 Collusion guard | Not done | `is_valid` is never set to 0 anywhere. |
+| P1 6 Fair skip | Not done | `fair-queue.ts` unchanged; first repeat for an English viewer still at slot 8. |
+| P1 10 Daily reminder | Done (local) | Offered on the end card, never at launch. |
+| P1 11 Perks and wallet | Done | Claim never reads calls or follows. Good. |
+
+### R3.2 New findings (with simulations)
+
+**Finding 1: the relative bar cannot switch on with this catalog, so "always Will blow up" still beats a skilled scout.** `crowdBar` returns the median only when at least `BAR_MIN_PROMOS = 10` promos each have 10 valid calls in the last 7 days. An English first beta has 9 English promos, and Turkish or Spanish promos need 10 calls from Turkish or Spanish scouts. So in practice the bar stays at the fixed 50%. Simulation (9 promos, 30 honest voters per promo with a positive lean, 2,000 runs, a skilled caller sees quality with half the crowd's noise):
+
+| Bar | Payoff | Skilled scout: accuracy, points per call | Always "Will blow up": accuracy, points per call |
+|---|---|---|---|
+| Fixed 50% (today in practice) | Right WBU 10 x mult, right NFM 5 (today) | 77%, 8.2 | 70%, **9.9** |
+| Median | Today's payoff | 79%, 7.8 | 57%, 8.0 |
+| Median | Symmetric: right NFM also 10 x mult | 79%, **11.1** | 57%, 8.0 |
+
+With 20 promos the same picture holds: today's payoff gives a skilled scout 7.9 points per call against 7.2 for the lime spammer (only 9% more for 31 points more accuracy), and the best play for a skilled scout is still to tap lime whenever it thinks there is a 1 in 3 chance (8.3). With symmetric payoff the skilled scout gets 11.4 against 7.1, and honest calling is the best strategy. Screenshot 14 shows the bias to users directly: the right lime call shows "+30 points", the wrong "Not for me" shows nothing, and a "Not for me" can never be worth more than 5. The Accuracy line on the Results tab is honest and helps, but Scout Score, levels and "Called it" are what users compare.
+
+**Finding 2: the catalog runs out on day 2, and the copy still promises new promos.** The fresh drop logic works, but the pool is the catalog:
+
+| Viewer | Drop pool | Fresh calls day 1 / day 2 / day 3+ | Days of fresh drops |
+|---|---|---|---|
+| English | 9 | 7 / 2 / 0 | 1.3 |
+| Spanish | 10 | 7 / 3 / 0 | 1.4 |
+| Turkish | 20 | 7 / 7 / 6 then 0 | 2.9 |
+
+From day 3 an English scout opens "Today's Drop" and gets 7 promos it has already called, with no "new for you" note (it is hidden when `fresh` is 0), while the local reminder still says "7 new promos" every day at 18:00 (`reminder_p` in `lib/i18n.ts`) and the end card still says "A new drop lands tomorrow" (`drop_done_p`). That is a broken promise delivered by notification, which is the fastest way to get the reminder turned off.
+
+**Finding 3: the weekly streak is impossible to keep with this catalog.** A week counts with calls on 3 different days. An English scout who follows the drop makes 7 calls on day 1 and 2 on day 2, then has nothing left to call. Week 1 can only count if the scout holds calls back, and week 2 cannot count at all unless new English promos arrive. Freezes are earned only after 4 counted weeks, so there is nothing to save the streak. Minimum supply for a streak to be possible: 3 new English promos per week. For a meaningful daily drop (at least 3 new per day): about 21 new English promos per week. For a full 7 new per day: 49 per week.
+
+**Finding 4: void rate depends only on new scouts.** Every scout calls every promo in its pool within about 2 days, so all "later calls" on a promo come from scouts who join later. A call resolves only if at least 10 new scouts call that promo within 21 days, which needs about 0.5 new active scouts per day per language. In a burst beta (for example 30 testers in a week, then a trickle of 0.3 a day), the last few testers of the burst and almost every trickle joiner get "void". This cannot be fixed by code; it needs a steady stream of real users.
+
+**Smaller notes.** `crowdBar` takes the median of the whole share of calls made in the last 7 days, while each call is judged on its later share, from promos whose calls are older; with little data this mixes two different populations (P1). `fresh` counts only calls, so a promo the scout watched and skipped counts as new again; acceptable while skips are free and not stored.
+
+### R3.3 Scores
+
+| Area | R2 | R3 | Evidence |
+|---|---|---|---|
+| Retention | 6 | **7** | The full loop now exists (hourly resolution, outcome on the ticket, Results with accuracy, one time reveal sheet, forgiving streak, local reminder), but an English scout runs out of new promos on day 2, the streak cannot be kept in week 2, and the reminder promises "7 new promos" that do not exist. |
+| Session time | 6 | **6** | Swipe between tabs and the creator player add browsing paths, but an English viewer still has 9 promos (about 180 s), the fair skip is not built so the first repeat is still at slot 8, and from day 3 the drop is all replays. |
+| Originality (user view) | 8 | **8** | Ticket outcome, "You called it" reveal, the forgiving weekly streak and gifts that never touch calls are PromoVote's own patterns; 9 needs the scoring to visibly reward taste. |
+| Trademark and trade dress (wording, patterns) | 8 | **8** | New tagline "The social network for promos", solid lime instead of gradient rings, own call bar and ticket; nothing new copies a known product. |
+| Marketplace liquidity and user side value | 5 | **6** | Gifts and the wallet add concrete shopper value and the charts gate is honest, but supply is unchanged (3 founder creators, 9 English promos) and the points payoff still rewards the lime button over judgement. |
+
+### R3.4 What still keeps scores below 8 (smallest change first)
+
+**P0 (before App Store submission, small changes)**
+
+| # | What | Where | Why | How we know it worked |
+|---|---|---|---|---|
+| 1 | Symmetric payoff: right "Not for me" = 10 x multiplier, same as "Will blow up" ("Called it" stays a Will blow up badge) | `resolveCalls`, the `delta` line (`call.choice === "will_blow_up" ? 10 * mult : 5`) in `services/api/src/index.js`; scoring text in `docs/03-profiles-spec.md` | Simulation: skilled scout 11.1 vs spammer 8.0 points per call, instead of 8.2 vs 9.9 | In beta data, accounts with over 90% lime calls score at or below the median |
+| 2 | Bar that works with a small catalog: lower `BAR_MIN_PROMOS` to 5 and compute the bar from later shares of calls resolved in the last 14 days (fall back to 50% only below 5) | `crowdBar`, `BAR_MIN_PROMOS` | With 9 English promos the median bar never switches on | `job_runs` info for `resolve_calls` shows a bar other than 0.5 once 5 promos have 10 calls |
+| 3 | Honest copy when nothing is new: reminder body without a number ("Your drop and results are waiting"), and `drop_done_p` / end card say "New promos land as creators post" when the pool has no uncalled promo for tomorrow; when `fresh` is 0 on a returning scout, show that line at the top instead of silently replaying 7 called promos | `reminder_p`, `drop_done_p` in `apps/mobile/src/lib/i18n.ts` (en, es, tr); `fresh` note and `EndCard` in `apps/mobile/src/app/(tabs)/index.tsx` | From day 3 the reminder and end card promise content that does not exist | A scout with every English promo called sees no "new" claim anywhere |
+
+**P1 (before public launch)**
+
+| # | What | Where | Why | How we know it worked |
+|---|---|---|---|---|
+| 4 | Fair skip (from R2) | `apps/mobile/src/lib/fair-queue.ts` `nextRound`, `web/landing/public/feed.js` | First repeat at slot 8 instead of 10 | Simulation: first repeat at slot 10 for an English viewer |
+| 5 | Collusion guard (from R2): later calls count only from accounts at least 3 days old, `is_valid = 0` for flagged clusters | `/v1/calls`, `resolveCalls` later calls query | `is_valid` is never set today; 10 friends can make each other's x3 calls right | Coordinated test accounts cannot move an outcome |
+| 6 | Streak rule tied to supply: a week also counts if the scout called every promo available to it that week | `weeklyStreaks` | Today the streak is impossible in week 2 for English scouts | No streak is lost in a week with fewer than 3 new promos in the scout's pool |
+| 7 | Supply: at least 21 new English promos per week from at least 9 non founder creators, game trailers first | Ops, seed, creator outreach | Finding 2 and 3 | "N new for you today" is at least 3 for daily scouts for 4 weeks in a row |
+
+### R3.5 Honest bottom line
+
+P0 items 1 to 3 are about an hour of work each and make the reputation loop measure taste and stop overpromising. After them I expect Originality 9, Retention 7, Liquidity 6 and Session time 6 (7 with the fair skip). Retention, Session time and Liquidity cannot reach 8 with code: they need real supply (about 21 new English promos per week, item 7) and a steady stream of new scouts (about 0.5 new active scouts per day per language, so calls stop going void). The app is now clearly ahead of its catalog; the next score points come from outreach, not commits.
