@@ -464,19 +464,21 @@ app.post("/v1/onboarding", async (c) => {
     kind = KIND_BY_CATEGORY[category];
   }
   // The rest of the profile comes in the same request, so nobody ends up with a half empty page.
+  // Builds up to 8 send only the basics; they still work (and finish the page in Edit profile).
+  const legacy = b.bio === undefined && b.links === undefined && b.interests === undefined;
   const bio = typeof b.bio === "string" ? b.bio.trim().slice(0, type === "creator" ? 300 : 160) : "";
-  if (type === "creator" && bio.length < 20) return fail(c, 400, "bio_required", "Tell scouts what you make in at least 20 characters.");
+  if (!legacy && type === "creator" && bio.length < 20) return fail(c, 400, "bio_required", "Tell scouts what you make in at least 20 characters.");
   if (bio && STAFF_NAME.test(bio)) return fail(c, 400, "reserved_name", "Your bio cannot say you are PromoVote staff.");
   if (bio && BIO_LINKS.test(bio)) return fail(c, 400, "bio_links", "Links go in the links section, not the bio.");
   const interests = Array.isArray(b.interests) ? [...new Set(b.interests.filter((x) => CATEGORIES.includes(x)))].slice(0, 7) : [];
-  if (type === "scout" && !interests.length) return fail(c, 400, "interests_required", "Pick at least one thing you like to discover.");
+  if (!legacy && type === "scout" && !interests.length) return fail(c, 400, "interests_required", "Pick at least one thing you like to discover.");
   let links = [], secondary = [], primaryCta = null;
   const releaseStatus = b.releaseStatus === "soon" ? "soon" : "live";
   if (type === "creator") {
     const checked = validateLinks(b.links || []);
     if (checked.error) return fail(c, 400, checked.code, checked.error);
     links = checked.rows;
-    if (!links.length) return fail(c, 400, "link_required", "Add at least one link: your website, store or channel.");
+    if (!legacy && !links.length) return fail(c, 400, "link_required", "Add at least one link: your website, store or channel.");
     secondary = Array.isArray(b.secondaryCategories) ? [...new Set(b.secondaryCategories.filter((x) => CATEGORIES.includes(x) && x !== category))].slice(0, 2) : [];
     if (b.primaryCta != null) {
       if (!CTA_KINDS.includes(b.primaryCta)) return fail(c, 400, "bad_cta", "Unknown button type.");
