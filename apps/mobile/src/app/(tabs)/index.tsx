@@ -1,6 +1,8 @@
-// Home feed: vertical promos with tabs. "For you" uses the same fair rotation as the website and never ends.
-// New, Top and Featured are server ordered lists (services/api /v1/home). Featured is a team pick, never paid.
-import { useFocusEffect, useLocalSearchParams } from 'expo-router';
+// Home feed: vertical promos with tabs (founder decision 2026-10-07).
+// Today's Drop: the same 7 promos for everyone today, a progress counter and an end card, then optional
+// "keep watching" into the fair rotation (same rules as the website). New and Team picks are server lists.
+// Team picks are chosen by the PromoVote team and never paid. Charts live in Explore.
+import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, FlatList, Platform, Pressable, ScrollView, StyleSheet, Text, View, type ViewToken } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -14,26 +16,26 @@ import { Button } from '@/ui/Pill';
 import { Icon } from '@/ui/Icon';
 import { PromoReel } from '@/ui/PromoReel';
 
-type Item = { key: string; promo: Promo };
+type Item = { key: string; promo: Promo; end?: false } | { key: string; end: true; promo?: undefined };
 // On web, NativeTabs draws the app menu as a floating bar at the top; keep the home tabs below it.
 const WEB_MENU = Platform.OS === 'web' ? 64 : 0;
 // On iOS the native tab bar floats over the screen (about 49 pt plus the home indicator), so the call bar
 // and buttons are lifted above it. Android's bottom navigation sits below the content.
 const TAB_BAR = Platform.OS === 'ios' ? 49 : 0;
-type Tab = 'for_you' | 'new' | 'top' | 'featured';
+type Tab = 'drop' | 'new' | 'picks';
 
 const TABS: { id: Tab; label: Parameters<typeof t>[0] }[] = [
-  { id: 'for_you', label: 'home_for_you' },
+  { id: 'drop', label: 'home_drop' },
   { id: 'new', label: 'home_new' },
-  { id: 'top', label: 'home_top' },
-  { id: 'featured', label: 'home_featured' },
+  { id: 'picks', label: 'home_picks' },
 ];
-const EMPTY: Record<Tab, Parameters<typeof t>[0]> = { for_you: 'new_empty', new: 'new_empty', top: 'top_empty', featured: 'featured_empty' };
+const EMPTY: Record<Tab, Parameters<typeof t>[0]> = { drop: 'new_empty', new: 'new_empty', picks: 'featured_empty' };
 
 export default function Feed() {
   const { v } = useLocalSearchParams<{ v?: string }>();
   const insets = useSafeAreaInsets();
-  const [tab, setTab] = useState<Tab>('for_you');
+  const [tab, setTab] = useState<Tab>('drop');
+  const [dropSize, setDropSize] = useState(0);
   const [all, setAll] = useState<Promo[] | null>(null);
   const [items, setItems] = useState<Item[]>([]);
   const [error, setError] = useState(false);
@@ -42,14 +44,15 @@ export default function Feed() {
   const [muted, setMuted] = useState(true);
   const [focused, setFocused] = useState(true);
   useFocusEffect(useCallback(() => { setFocused(true); return () => setFocused(false); }, []));
-  const blocked = useViewerState().blocked;
+  const vs = useViewerState();
+  const blocked = vs.blocked;
   const bottomInset = TAB_BAR ? TAB_BAR + insets.bottom : 0;
   const seen = useRef<Record<string, number>>({});
   const round = useRef(0);
 
   const append = useCallback((pool: Promo[], first?: Promo) => {
     setItems((prev) => {
-      const last = prev[prev.length - 1]?.promo.creator.handle;
+      const last = prev[prev.length - 1]?.promo?.creator.handle;
       let next = nextRound(pool, seen.current, lang, last);
       if (first) next = [first, ...next.filter((p) => p.id !== first.id)];
       round.current += 1;
@@ -57,21 +60,25 @@ export default function Feed() {
     });
   }, []);
 
-  // Loads the selected tab. For you builds the first fair round; a deep link (?v=slug) plays first.
+  // Loads the selected tab. A deep link (?v=slug) plays first.
   const [attempt, setAttempt] = useState(0);
   useEffect(() => {
     let alive = true;
-    const load = tab === 'for_you' ? api.feed() : api.home(tab);
-    load.then(({ promos }) => {
+    const load = tab === 'drop'
+      ? Promise.all([api.drop(), api.feed()]).then(([d, f]) => ({ drop: d.promos, pool: f.promos }))
+      : api.home(tab === 'picks' ? 'featured' : 'new').then((r) => ({ drop: r.promos, pool: r.promos }));
+    load.then(({ drop, pool }) => {
       if (!alive) return;
-      setAll(promos);
-      setItems([]);
+      setAll(pool);
       setActive(0);
-      if (tab === 'for_you') append(promos, promos.find((p) => p.slug === v || p.id === v));
-      else setItems(promos.map((p) => ({ key: `${tab}-${p.id}`, promo: p })));
+      const linked = v ? pool.find((p) => p.slug === v || p.id === v) : undefined;
+      const list = linked ? [linked, ...drop.filter((p) => p.id !== linked.id)] : drop;
+      const mapped: Item[] = list.map((p) => ({ key: `${tab}-${p.id}`, promo: p }));
+      if (tab === 'drop') { setDropSize(list.length); mapped.push({ key: 'drop-end', end: true }); }
+      setItems(mapped);
     }).catch(() => { if (alive) setError(true); });
     return () => { alive = false; };
-  }, [append, v, attempt, tab]);
+  }, [v, attempt, tab]);
 
   // Resets the list right away so the old tab never flashes while the new one loads.
   const selectTab = (next: Tab) => {
@@ -86,6 +93,9 @@ export default function Feed() {
     const first = viewableItems.find((x) => x.isViewable);
     if (first?.index != null) setActive(first.index);
   }, []);
+
+  const keepWatching = () => { if (all) append(all); };
+  const dropCalls = items.filter((i) => i.promo && vs.calls[i.promo.id]).length;
 
   const onSeen = useCallback((id: string) => { seen.current[id] = (seen.current[id] || 0) + 1; }, []);
 
@@ -106,9 +116,11 @@ export default function Feed() {
       ) : (
         <FlatList
           key={`${tab}-${v || 'feed'}`}
-          data={blocked.length ? items.filter((i) => !blocked.includes(i.promo.creator.handle)) : items}
+          data={blocked.length ? items.filter((i) => !i.promo || !blocked.includes(i.promo.creator.handle)) : items}
           keyExtractor={(i) => i.key}
-          renderItem={({ item, index }) => (
+          renderItem={({ item, index }) => item.end ? (
+            <EndCard height={height} calls={dropCalls} size={dropSize} onMore={keepWatching} onExplore={() => router.navigate('/explore')} />
+          ) : (
             <PromoReel promo={item.promo} active={focused && index === active} height={height} muted={muted} onSeen={onSeen} bottomInset={bottomInset} />
           )}
           pagingEnabled
@@ -118,7 +130,7 @@ export default function Feed() {
           getItemLayout={(_, index) => ({ length: height, offset: height * index, index })}
           onViewableItemsChanged={onViewable}
           viewabilityConfig={{ itemVisiblePercentThreshold: 60 }}
-          onEndReached={() => tab === 'for_you' && all && append(all)}
+          onEndReached={() => { if (tab === 'drop' && items.length > dropSize + 1) keepWatching(); }}
           onEndReachedThreshold={2}
           windowSize={3}
           initialNumToRender={2}
@@ -149,7 +161,28 @@ export default function Feed() {
             <Icon name={muted ? 'mute' : 'sound'} size={20} />
           </Pressable>
         </View>
-        {tab === 'featured' && items.length > 0 && <Text style={styles.note}>{t('featured_note')}</Text>}
+        {tab === 'picks' && items.length > 0 && <Text style={styles.note}>{t('featured_note')}</Text>}
+        {tab === 'drop' && dropSize > 0 && active < dropSize ? (
+          <View style={styles.progress} accessibilityLabel={`${active + 1} / ${dropSize}`}>
+            {Array.from({ length: dropSize }, (_, i) => <View key={i} style={[styles.seg, i <= active && styles.segOn]} />)}
+          </View>
+        ) : null}
+      </View>
+    </View>
+  );
+}
+
+// Shown after the 7th promo of Today's Drop: a finite day, results in 7 days, then optional endless watching.
+function EndCard({ height, calls, size, onMore, onExplore }: { height: number; calls: number; size: number; onMore: () => void; onExplore: () => void }) {
+  return (
+    <View style={[styles.end, { height }]}>
+      <Icon name="chevrons" size={44} color={C.lime} />
+      <Text style={styles.endTitle} accessibilityRole="header">{t('drop_done_t')}</Text>
+      <Text style={styles.endText}>{t('drop_done_calls').replace('{n}', String(calls)).replace('{size}', String(size))}</Text>
+      <Text style={styles.endText}>{t('drop_done_p')}</Text>
+      <View style={{ width: '100%', maxWidth: 320, gap: 10, marginTop: 18 }}>
+        <Button label={t('keep_watching')} onPress={onMore} />
+        <Button label={t('tab_explore')} ghost onPress={onExplore} />
       </View>
     </View>
   );
@@ -169,5 +202,11 @@ const styles = StyleSheet.create({
   dot: { marginTop: 5, width: 18, height: 3, borderRadius: 2, backgroundColor: 'transparent' },
   dotOn: { backgroundColor: C.lime },
   sound: { marginLeft: 'auto', width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(20,20,31,0.72)', alignItems: 'center', justifyContent: 'center' },
+  progress: { flexDirection: 'row', gap: 4, marginTop: 6, paddingHorizontal: 4 },
+  seg: { flex: 1, height: 3, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.28)' },
+  segOn: { backgroundColor: C.lime },
+  end: { alignItems: 'center', justifyContent: 'center', backgroundColor: C.bg, padding: 32, gap: 8 },
+  endTitle: { color: C.text, fontSize: 28, fontWeight: '800', textAlign: 'center', marginTop: 8 },
+  endText: { color: C.text2, fontSize: 16, lineHeight: 23, textAlign: 'center', maxWidth: 320 },
   note: { marginTop: 2, marginLeft: 4, color: 'rgba(255,255,255,0.8)', fontSize: 12, fontWeight: '600', ...shadow },
 });

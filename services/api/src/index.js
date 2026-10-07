@@ -172,6 +172,7 @@ app.get("/v1/feed", async (c) => {
 // plus 3 points per valid "will blow up" call. A promo needs at least
 // TOP_MIN_VIEWS weighted views to show up, so the tab stays honestly empty until real data exists (docs/04).
 const TOP_MIN_VIEWS = 50;
+const CHARTS_GOAL = 50; // scouts calling in the last 7 days before Charts feel alive
 app.get("/v1/home", async (c) => {
   const lang = langOf(c);
   const tab = c.req.query("tab");
@@ -203,8 +204,47 @@ app.get("/v1/home", async (c) => {
   } else {
     return fail(c, 400, "bad_tab", "Use tab=new, top or featured.");
   }
+  let progress;
+  if (tab === "top") {
+    const since = new Date(Date.now() - 7 * 864e5).toISOString();
+    const r = await db.prepare("select count(distinct scout_profile_id) as n from calls where created_at >= ?").bind(since).first();
+    progress = { scouts: r?.n || 0, goal: CHARTS_GOAL };
+  }
   c.header("Cache-Control", "public, max-age=60");
-  return c.json({ tab, promos: rows.map((r) => promoOut(r, lang)) });
+  return c.json({ tab, promos: rows.map((r) => promoOut(r, lang)), progress });
+});
+
+// Today's Drop: the same 7 promos for everyone today (per language), picked fairly across creators.
+// Viewer language first, then English; game promos lead so a first session opens on a trailer.
+const DROP_SIZE = 7;
+function seeded(seed) {
+  let h = 2166136261;
+  for (const ch of seed) h = Math.imul(h ^ ch.charCodeAt(0), 16777619);
+  return () => { h = Math.imul(h ^ (h >>> 15), 2246822507); h = Math.imul(h ^ (h >>> 13), 3266489909); return ((h ^= h >>> 16) >>> 0) / 4294967296; };
+}
+app.get("/v1/drop", async (c) => {
+  const lang = langOf(c);
+  const day = today();
+  const { results } = await c.env.DB.prepare(PROMO_SELECT + " order by pr.live_at desc limit 300").all();
+  const rnd = seeded(`${day}:${lang}`);
+  const langRank = (r) => (r.lang === lang ? 0 : r.lang === "en" ? 1 : 2);
+  const byCreator = new Map();
+  for (const r of results.map((r) => [rnd(), r]).sort((a, b) => a[0] - b[0]).map(([, r]) => r)) {
+    if (!byCreator.has(r.handle)) byCreator.set(r.handle, []);
+    byCreator.get(r.handle).push(r);
+  }
+  const lists = [...byCreator.values()].map((l) => l.sort((a, b) => langRank(a) - langRank(b)))
+    .sort((a, b) => (a[0].category === "games" ? 0 : 1) - (b[0].category === "games" ? 0 : 1) || langRank(a[0]) - langRank(b[0]));
+  const out = [];
+  for (let i = 0; out.length < DROP_SIZE && lists.some((l) => l[i]); i++) {
+    for (const l of lists) if (l[i] && out.length < DROP_SIZE && langRank(l[i]) < 2) out.push(l[i]);
+  }
+  // Not enough promos in the viewer's language or English: fill with the rest.
+  for (let i = 0; out.length < DROP_SIZE && lists.some((l) => l[i]); i++) {
+    for (const l of lists) if (l[i] && out.length < DROP_SIZE && !out.includes(l[i])) out.push(l[i]);
+  }
+  c.header("Cache-Control", "public, max-age=300");
+  return c.json({ day, size: DROP_SIZE, promos: out.map((r) => promoOut(r, lang)) });
 });
 
 app.get("/v1/promos/:id", async (c) => {
@@ -666,8 +706,50 @@ app.onError((e, c) => {
 });
 
 // ------------------------------------------------------------------ daily jobs
+// Resolves calls 7 days after they were made, by the crowd that came after them (per call, so new scouts can
+// be right too). Beta rule while traffic is small: at least RESOLVE_MIN_LATER later valid calls, otherwise void.
+// "Will blow up" is right when at least half of the later calls agree; "Not for me" when fewer than half do.
+// Points: right "Will blow up" = 10 x early multiplier (first 10 scouts x3, first 50 x2); right "Not for me" = 5.
+// A wrong call never costs points. Scout Score is reputation only, never cash.
+const RESOLVE_MIN_LATER = 10;
+async function resolveCalls(db) {
+  const cutoff = new Date(Date.now() - CALL_DAYS * 864e5).toISOString();
+  const { results: due } = await db.prepare(
+    "select id, scout_profile_id, promo_id, choice, voter_ordinal, created_at from calls where outcome = 'pending' and is_valid = 1 and created_at < ? limit 500",
+  ).bind(cutoff).all();
+  for (const call of due) {
+    const later = await db.prepare(
+      "select count(*) as n, sum(choice = 'will_blow_up') as up from calls where promo_id = ? and is_valid = 1 and created_at > ? and id != ?",
+    ).bind(call.promo_id, call.created_at, call.id).first();
+    const n = later?.n || 0, share = n ? (later.up || 0) / n : 0;
+    let outcome = "void", delta = 0, mult = null;
+    if (n >= RESOLVE_MIN_LATER) {
+      const right = call.choice === "will_blow_up" ? share >= 0.5 : share < 0.5;
+      outcome = right ? "correct" : "incorrect";
+      if (right && call.choice === "will_blow_up") { mult = call.voter_ordinal && call.voter_ordinal <= 10 ? 3 : call.voter_ordinal && call.voter_ordinal <= 50 ? 2 : 1; delta = 10 * mult; }
+      else if (right) delta = 5;
+    }
+    const calledIt = outcome === "correct" && call.choice === "will_blow_up" && mult === 3 ? 1 : 0;
+    const stmts = [
+      db.prepare("update calls set outcome = ?, score_delta = ?, multiplier = ?, is_called_it = ?, resolved_at = ? where id = ?").bind(outcome, delta, mult, calledIt, now(), call.id),
+    ];
+    if (outcome !== "void") {
+      stmts.push(db.prepare("insert or ignore into scout_stats (profile_id) values (?)").bind(call.scout_profile_id));
+      stmts.push(db.prepare(
+        `update scout_stats set scout_score = scout_score + ?, level = 1 + cast((scout_score + ?) / 100 as integer),
+           calls_resolved_wbu = calls_resolved_wbu + ?, calls_correct_wbu = calls_correct_wbu + ?, called_it_count = called_it_count + ?, updated_at = ?
+         where profile_id = ?`,
+      ).bind(delta, delta, call.choice === "will_blow_up" ? 1 : 0, call.choice === "will_blow_up" && outcome === "correct" ? 1 : 0, calledIt, now(), call.scout_profile_id));
+      if (delta) stmts.push(db.prepare("insert into score_events (profile_id, delta, reason, call_id) values (?, ?, 'call_correct', ?)").bind(call.scout_profile_id, delta, call.id));
+    }
+    await db.batch(stmts);
+  }
+  return due.length;
+}
+
 async function daily(env) {
   const db = env.DB;
+  await resolveCalls(db).catch((e) => console.error("resolve_calls_failed", e?.message));
   const cutoff = new Date(Date.now() - 30 * 864e5).toISOString();
   // Hard delete accounts whose 30 day grace has ended (cascades to profile, follows, saves, calls).
   const { results } = await db.prepare(

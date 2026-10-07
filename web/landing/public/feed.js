@@ -123,7 +123,7 @@
         byCreator.get(c).push(id);
       }
       for (const list of byCreator.values()) {
-        list.sort((a, b) => exposure(a) - exposure(b) || langRank(a) - langRank(b)); // stable: random within ties
+        list.sort((a, b) => langRank(a) - langRank(b) || exposure(a) - exposure(b)); // language first, then least seen; random within ties
       }
       const out = [];
       if (firstId && templates.has(firstId)) {

@@ -1,6 +1,6 @@
 // Fair rotation, same rules as the website feed (web/landing/public/feed.js):
-// every round gives each creator the same number of slots, least seen first,
-// viewer language first, then English, random inside ties, never the same creator twice in a row.
+// every round gives each creator the same number of slots, viewer language first, then English,
+// then least seen, random inside ties, never the same creator twice in a row.
 import type { Promo } from './api';
 
 const SLOTS_PER_CREATOR = 2;
@@ -15,7 +15,7 @@ export function nextRound(all: Promo[], seen: Record<string, number>, lang: stri
     byCreator.set(p.creator.handle, list);
   }
   const picks = [...byCreator.values()].map((list) =>
-    list.sort((a, b) => (seen[a.id] || 0) - (seen[b.id] || 0) || langRank(a) - langRank(b)).slice(0, SLOTS_PER_CREATOR),
+    list.sort((a, b) => langRank(a) - langRank(b) || (seen[a.id] || 0) - (seen[b.id] || 0)).slice(0, SLOTS_PER_CREATOR),
   );
   const out: Promo[] = [];
   let last = prevCreator;

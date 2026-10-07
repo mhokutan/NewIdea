@@ -54,7 +54,8 @@ async function call<T>(path: string, init: RequestInit = {}): Promise<T> {
 
 export const api = {
   feed: () => call<{ promos: Promo[] }>('/v1/feed'),
-  home: (tab: 'new' | 'top' | 'featured') => call<{ promos: Promo[] }>('/v1/home?tab=' + tab),
+  drop: () => call<{ day: string; size: number; promos: Promo[] }>('/v1/drop'),
+  home: (tab: 'new' | 'top' | 'featured') => call<{ promos: Promo[]; progress?: { scouts: number; goal: number } }>('/v1/home?tab=' + tab),
   explore: (p: { q?: string; cat?: string; tag?: string }) =>
     call<{ promos: Promo[] }>('/v1/explore?' + new URLSearchParams(Object.entries(p).filter(([, v]) => v) as [string, string][])),
   hashtags: () => call<{ hashtags: { tag: string; count: number }[] }>('/v1/hashtags'),

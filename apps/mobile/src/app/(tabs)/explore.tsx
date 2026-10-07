@@ -25,10 +25,12 @@ export default function Explore() {
   const [promos, setPromos] = useState<Promo[] | null>(null);
   const [creators, setCreators] = useState<Creator[]>([]);
   const [tags, setTags] = useState<string[]>([]);
+  const [charts, setCharts] = useState<{ promos: Promo[]; progress?: { scouts: number; goal: number } } | null>(null);
 
   // A hashtag tapped in the feed arrives as a route param; adopt it when it changes.
   const [paramTag, setParamTag] = useState(params.tag);
   if (params.tag !== paramTag) { setParamTag(params.tag); setTag(params.tag || ''); }
+  useEffect(() => { api.home('top').then(setCharts).catch(() => {}); }, []);
   useEffect(() => {
     api.hashtags().then((r) => setTags(r.hashtags.map((h) => h.tag))).catch(() => {});
   }, []);
@@ -66,11 +68,34 @@ export default function Explore() {
         </View>
       </View>
 
+      {/* Charts: real ranks only. Until enough scouts call promos this week, an honest progress card. */}
+      <View style={[styles.pad, { marginTop: 14 }]}>
+        <View style={styles.charts}>
+          <Text style={styles.h2}>{t('home_top')}</Text>
+          {charts && charts.promos.length ? (
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10, marginTop: 10 }}>
+              {charts.promos.slice(0, 10).map((p, i) => (
+                <Pressable key={p.id} onPress={() => router.push({ pathname: '/', params: { v: p.slug } })} style={styles.rank} accessibilityRole="button" accessibilityLabel={`${i + 1}. ${p.title}`}>
+                  <Text style={styles.rankNo}>{i + 1}</Text>
+                  <Text style={styles.rankTitle} numberOfLines={2}>{p.title}</Text>
+                </Pressable>
+              ))}
+            </ScrollView>
+          ) : (
+            <>
+              <Text style={styles.chartsText}>{t('charts_progress').replace('{goal}', String(charts?.progress?.goal ?? 50)).replace('{n}', String(charts?.progress?.scouts ?? 0))}</Text>
+              <View style={styles.bar}><View style={[styles.barFill, { width: `${Math.min(100, Math.round(100 * (charts?.progress?.scouts ?? 0) / (charts?.progress?.goal ?? 50)))}%` }]} /></View>
+              <Text style={[styles.chartsText, { fontSize: 13 }]}>{t('charts_soon')}</Text>
+            </>
+          )}
+        </View>
+      </View>
+
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.row}>
         {creators.map((c) => (
           <Link key={c.handle} href={`/creator/${c.handle}`} asChild>
             <Pressable style={styles.story} accessibilityRole="link" accessibilityLabel={c.name}>
-              <View style={styles.ring}><Avatar uri={c.avatar} mono={c.mono} size={62} radius={31} /></View>
+              <Avatar uri={c.avatar} mono={c.mono} size={64} radius={18} />
               <Text style={styles.storyName} numberOfLines={1}>{c.name}</Text>
             </Pressable>
           </Link>
@@ -106,12 +131,6 @@ export default function Explore() {
         ))}
       </View>
 
-      <View style={[styles.pad, { marginTop: 28 }]}>
-        <View style={styles.charts}>
-          <Text style={styles.h2}>{t('charts')}</Text>
-          <Text style={styles.chartsText}>{t('charts_soon')}</Text>
-        </View>
-      </View>
     </ScrollView>
   );
 }
@@ -122,7 +141,6 @@ const styles = StyleSheet.create({
   input: { flex: 1, color: C.text, fontSize: 16, paddingVertical: 13 },
   row: { paddingHorizontal: 16, paddingTop: 14, paddingBottom: 4, gap: 8 },
   story: { width: 76, alignItems: 'center', gap: 6 },
-  ring: { padding: 3, borderRadius: 40, borderWidth: 2, borderColor: C.lime },
   storyName: { color: C.text2, fontSize: 12, fontWeight: '600' },
   tag: { paddingVertical: 7, paddingHorizontal: 12, borderRadius: 10, backgroundColor: C.surface, borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)' },
   tagOn: { backgroundColor: C.lime, borderColor: C.lime },
@@ -133,7 +151,12 @@ const styles = StyleSheet.create({
   tileShade: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, experimental_backgroundImage: 'linear-gradient(to top, rgba(6,6,10,0.92), rgba(6,6,10,0) 55%)' } as any,
   tileWho: { color: '#c9c6d8', fontSize: 12, fontWeight: '600' },
   tileTitle: { color: '#fff', fontSize: 14, fontWeight: '700', marginTop: 2 },
-  charts: { padding: 20, borderRadius: 18, borderWidth: 1, borderStyle: 'dashed', borderColor: 'rgba(255,255,255,0.18)' },
+  charts: { padding: 16, borderRadius: 18, backgroundColor: C.surface, borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)' },
+  bar: { height: 6, borderRadius: 3, backgroundColor: 'rgba(255,255,255,0.12)', marginTop: 10, overflow: 'hidden' },
+  barFill: { height: 6, borderRadius: 3, backgroundColor: C.lime },
+  rank: { width: 150, padding: 12, borderRadius: 14, backgroundColor: C.surface2, gap: 4 },
+  rankNo: { color: C.lime, fontSize: 22, fontWeight: '800' },
+  rankTitle: { color: C.text, fontSize: 14, fontWeight: '700' },
   h2: { color: C.text, fontSize: 20, fontWeight: '800' },
   chartsText: { color: C.text2, fontSize: 15, marginTop: 6 },
 });

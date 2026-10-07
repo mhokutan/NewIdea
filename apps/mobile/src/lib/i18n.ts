@@ -3,8 +3,10 @@ import { getLocales } from 'expo-localization';
 
 const en = {
   tab_feed: 'Feed', tab_explore: 'Explore', tab_me: 'Profile',
-  home_for_you: 'For you', home_new: 'New', home_top: 'Top', home_featured: 'Featured',
-  top_empty: 'Top opens when real people start watching and voting. Paying never buys a spot.', featured_note: 'Picked by the PromoVote team. Never paid.', featured_empty: 'No picks yet.', new_empty: 'No promos yet.',
+  home_drop: "Today's Drop", home_new: 'New', home_picks: 'Team picks', home_top: 'Charts',
+  drop_done_t: "That's today's drop", drop_done_calls: 'You made {n} of {size} calls.', drop_done_p: 'Results come in 7 days. A new drop lands tomorrow.', keep_watching: 'Keep watching',
+  charts_progress: 'Charts open when {goal} scouts call promos this week. So far: {n}.',
+  top_empty: 'Top opens when real people start watching and voting. Paying never buys a spot.', featured_note: 'Picked by the PromoVote team. Never paid. The founder makes some of these promos.', featured_empty: 'No picks yet.', new_empty: 'No promos yet.',
   will_blow_up: 'Will blow up', not_for_me: 'Not for me', save: 'Save', share: 'Share',
   soon: 'Coming soon', android_soon: 'Google Play coming soon', founder_made: 'Made by the PromoVote founder',
   cta_app_store: 'Open in App Store', cta_shop: 'Visit the shop', cta_etsy: 'View on Etsy', cta_notify: 'Notify me at launch', cta_website: 'Open website', cta_watch: 'Watch',
@@ -36,8 +38,10 @@ const en = {
 type Key = keyof typeof en;
 const es: Partial<Record<Key, string>> = {
   tab_feed: 'Feed', tab_explore: 'Explorar', tab_me: 'Perfil',
-  home_for_you: 'Para ti', home_new: 'Nuevo', home_top: 'Top', home_featured: 'Destacados',
-  top_empty: 'El Top abre cuando personas reales empiecen a ver y votar. Pagar nunca compra un puesto.', featured_note: 'Elegido por el equipo de PromoVote. Nunca pagado.', featured_empty: 'Todavía no hay destacados.', new_empty: 'Todavía no hay promos.',
+  home_drop: 'Drop de hoy', home_new: 'Nuevo', home_picks: 'Elegidos', home_top: 'Rankings',
+  drop_done_t: 'Ese fue el drop de hoy', drop_done_calls: 'Hiciste {n} de {size} predicciones.', drop_done_p: 'Los resultados llegan en 7 días. Mañana hay un drop nuevo.', keep_watching: 'Seguir mirando',
+  charts_progress: 'Los rankings abren cuando {goal} exploradores hagan predicciones esta semana. Por ahora: {n}.',
+  top_empty: 'El Top abre cuando personas reales empiecen a ver y votar. Pagar nunca compra un puesto.', featured_note: 'Elegido por el equipo de PromoVote. Nunca pagado. Algunas promos son del fundador.', featured_empty: 'Todavía no hay destacados.', new_empty: 'Todavía no hay promos.',
   will_blow_up: 'Va a explotar', not_for_me: 'No es para mí', save: 'Guardar', share: 'Compartir',
   soon: 'Muy pronto', android_soon: 'Pronto en Google Play', founder_made: 'Hecho por el fundador de PromoVote',
   cta_app_store: 'Abrir en App Store', cta_shop: 'Visitar la tienda', cta_etsy: 'Ver en Etsy', cta_notify: 'Avísame al lanzar', cta_website: 'Abrir sitio web', cta_watch: 'Ver',
@@ -68,8 +72,10 @@ const es: Partial<Record<Key, string>> = {
 };
 const tr: Partial<Record<Key, string>> = {
   tab_feed: 'Akış', tab_explore: 'Keşfet', tab_me: 'Profil',
-  home_for_you: 'Sana özel', home_new: 'Yeni', home_top: 'Popüler', home_featured: 'Öne çıkan',
-  top_empty: 'Popüler listesi gerçek insanlar izleyip oy vermeye başlayınca açılır. Para verip listeye girilemez.', featured_note: 'PromoVote ekibinin seçimi. Ücretli değil.', featured_empty: 'Henüz seçim yok.', new_empty: 'Henüz video yok.',
+  home_drop: 'Bugünün seçkisi', home_new: 'Yeni', home_picks: 'Ekibin seçimi', home_top: 'Listeler',
+  drop_done_t: 'Bugünün seçkisi bitti', drop_done_calls: '{size} videodan {n} tanesine tahmin yaptın.', drop_done_p: 'Sonuçlar 7 gün sonra. Yarın yeni seçki geliyor.', keep_watching: 'İzlemeye devam et',
+  charts_progress: 'Listeler bu hafta {goal} kaşif tahmin yapınca açılır. Şu an: {n}.',
+  top_empty: 'Popüler listesi gerçek insanlar izleyip oy vermeye başlayınca açılır. Para verip listeye girilemez.', featured_note: 'PromoVote ekibinin seçimi. Ücretli değil. Bazı videolar kurucunun kendi firmalarına ait.', featured_empty: 'Henüz seçim yok.', new_empty: 'Henüz video yok.',
   will_blow_up: 'Patlayacak', not_for_me: 'Bana göre değil', save: 'Kaydet', share: 'Paylaş',
   soon: 'Yakında', android_soon: "Yakında Google Play'de", founder_made: 'PromoVote kurucusunun yapımı',
   cta_app_store: "App Store'da aç", cta_shop: 'Mağazaya git', cta_etsy: "Etsy'de gör", cta_notify: 'Çıkınca haber ver', cta_website: 'Siteyi aç', cta_watch: 'İzle',
