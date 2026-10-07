@@ -7,7 +7,7 @@ RevenueCat kullanılmıyor (kurucu kararı 2026-10-06). Satın almalar uygulamad
 * Apple: App Store Server API (In-App Purchase key ile) ve App Store Server Notifications V2, adres `https://api.promovote.com/v1/webhooks/apple`.
 * Google: Google Play Developer API (service account ile) ve Real-time Developer Notifications (Pub/Sub push), adres `https://api.promovote.com/v1/webhooks/google`.
 
-Ürünleri (consumable) bulut oturumundaki Claude API ile oluşturur:
+Ürünler sürüm 2'de gelir (kurucu kararı 2026-10-07: v1 tamamen ücretsiz). Şimdilik oluşturma, sadece kayıt için:
 
 | Product ID | Ürün | Fiyat |
 |---|---|---|
@@ -43,10 +43,32 @@ BİLGİLER
 - Repo: https://github.com/mhokutan/NewIdea, branch claude/gracious-pasteur-nu8ssc. Yerel klasör: D:\PromoVote\repo (sadece store/ ve apps/mobile/)
 - Mağaza görselleri: store/assets/ (app-store-icon-1024.png, play-icon-512.png, feature-graphic-1024x500.png)
 - Expo projesi: @mhokutan/promovote (https://expo.dev/accounts/mhokutan/projects/promovote)
-- Kısa açıklama: "Discover, vote and rank the best game trailers and app promos."
+- Kısa açıklama: "Discover new game trailers and app promos. Call which ones will blow up."
 - Yaş sınırı: 18+. Kumar yok, parayla ödül yok, kullanıcılara para verilmez.
-- Uygulama içi satın alma var (consumable: Boost ve Trailer Test). Abonelik yok.
-- Giriş: Sign in with Apple ve Google ile giriş. Kullanıcı video yükleyebilir (moderasyonlu), şikayet etme ve engelleme var, hesap silme uygulama içinde var.
+- Sürüm 1 tamamen ücretsiz: uygulama içi satın alma YOK, abonelik YOK. App Store Connect'te "In-App Purchases" boş kalır. (Boost ve Trailer Test sürüm 2'de, creator Pro aboneliği v1.1'de gelecek.)
+- Giriş: Sign in with Apple ve Google ile giriş. Kullanıcılar henüz video YÜKLEYEMEZ (bu build'deki bütün tanıtımlar kurucunun 3 stüdyosuna ait). Şikayet etme ve engelleme her tanıtımda ve firma sayfasında var, hesap silme uygulama içinde var (Profil > sağ üstteki ... > Hesabı sil).
+- Metinlerde şu kelimeler KULLANILMAZ: "watch ads", "ad network", "earn", "For you". (Apple 3.2.2(iii): reklam göstermek için yapılmış uygulama gibi görünmemeli.)
+
+APP REVIEW NOTES (App Store Connect > App Review Information > Notes, İngilizce, aynen yapıştır; kod satırını yazma, kodu kurucu ayrı alana girer)
+PromoVote is a community where scouts discover game trailers, app promos and creator videos and call which ones will blow up. Calls resolve after 7 days and build a Scout Score, a reputation score with no cash value. Creators are separate accounts and cannot vote. All promos in this build are posted by the founder's three studios and are labeled "Made by the PromoVote founder". User video upload is not open yet. Report and Block are under the "..." button on every promo and on every creator page. Account deletion: Profile, the "..." button at the top right, Delete account. Review account: tap Profile, Sign in, Continue with email, enter review@promovote.com and the code from the sign in information field. The app is free; there are no purchases in this version.
+
+UZUN AÇIKLAMA (App Store ve Google Play, İngilizce)
+PromoVote is where new games, apps and shops get discovered first.
+
+Every day you get Today's Drop: 7 fresh trailers and promos from indie studios and new creators. Watch, then make your call: Will blow up, or Not for me. Seven days later the crowd decides, and right calls grow your Scout Score. Early scouts who spot a hit first get the most credit.
+
+What you can do:
+- Watch Today's Drop, New and Team picks, all free
+- Call which promos will blow up and see your results
+- Keep a weekly streak and track your accuracy
+- Save promos and follow the creators you like
+- Get gifts and codes from creators (they never ask for your calls or follows)
+
+Fair by design: paying never buys a spot on the charts, Team picks are never paid, and your Scout Score is a reputation score with no cash value.
+
+For creators: build a page with your logo, banner, links and main button, see free stats for every promo, and offer gifts to scouts.
+
+PromoVote is for people 18 and older.
 
 ====================
 BÖLÜM A. iOS SERTİFİKASI (EAS, terminal)
