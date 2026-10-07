@@ -5,6 +5,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
+import { api } from '@/lib/api';
 import { GateHost } from '@/lib/gate';
 import { C } from '@/lib/theme';
 
@@ -20,6 +21,7 @@ export default function RootLayout() {
   });
   const ready = fontsLoaded || !!fontError;
   useEffect(() => { if (ready) SplashScreen.hideAsync(); }, [ready]);
+  useEffect(() => { api.event('app_open'); }, []);
   if (!ready) return null;
   return (
     <GestureHandlerRootView style={{ flex: 1, backgroundColor: C.bg }}>

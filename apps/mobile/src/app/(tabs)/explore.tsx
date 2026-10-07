@@ -77,7 +77,7 @@ export default function Explore() {
           {charts && charts.promos.length ? (
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10, marginTop: 10 }}>
               {charts.promos.slice(0, 10).map((p, i) => (
-                <Pressable key={p.id} onPress={() => router.push({ pathname: '/', params: { v: p.slug } })} style={styles.rank} accessibilityRole="button" accessibilityLabel={`${i + 1}. ${p.title}`}>
+                <Pressable key={p.id} onPress={() => router.push({ pathname: '/play/[handle]', params: { handle: p.creator.handle, start: p.slug } })} style={styles.rank} accessibilityRole="button" accessibilityLabel={`${i + 1}. ${p.title}`}>
                   <Text style={styles.rankNo}>{i + 1}</Text>
                   <Text style={styles.rankTitle} numberOfLines={2}>{p.title}</Text>
                   {p.creator.founderOwned ? <Text style={styles.rankFounder} numberOfLines={1}>{t('founder_made')}</Text> : null}
@@ -123,7 +123,7 @@ export default function Explore() {
         ) : columns.map((col, ci) => (
           <View key={ci} style={{ width: colW, gap: 8 }}>
             {col.map(({ p, h }) => (
-              <Pressable key={p.id} onPress={() => router.push({ pathname: '/', params: { v: p.slug } })} style={[styles.tile, { height: h }]} accessibilityRole="button" accessibilityLabel={p.title}>
+              <Pressable key={p.id} onPress={() => router.push({ pathname: '/play/[handle]', params: { handle: p.creator.handle, start: p.slug } })} style={[styles.tile, { height: h }]} accessibilityRole="button" accessibilityLabel={p.title}>
                 {p.video.poster ? <Image source={{ uri: p.video.poster }} style={StyleSheet.absoluteFill} contentFit="cover" transition={150} /> : null}
                 <Fade colors={['rgba(6,6,10,0)', 'rgba(6,6,10,0)', 'rgba(6,6,10,0.92)']} locations={[0, 0.45, 1]} style={styles.tileShade} />
                 <Text style={styles.tileWho} numberOfLines={1}>{p.creator.name}</Text>

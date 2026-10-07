@@ -52,6 +52,8 @@ export default function CreatorScreen() {
 
   const tileW = (width - 32 - 16) / 3;
   const main = p.primaryCta?.url && ctaVisible(p.primaryCta.kind, Platform.OS) ? p.primaryCta : null;
+  // "Notify me at launch" is a follow: followers hear about the first promo and the launch.
+  const notify = p.primaryCta?.kind === 'notify';
   return (
     <ScrollView style={{ flex: 1, backgroundColor: C.bg }} contentContainerStyle={{ paddingBottom: 48 }}>
       <View style={{ height: 180 + insets.top }}>
@@ -85,7 +87,7 @@ export default function CreatorScreen() {
           </View>
         ) : (
           <View style={styles.actions}>
-            <View style={{ flex: 1 }}><Button label={p.viewer?.following ? t('following') : t('follow')} ghost={!!p.viewer?.following} onPress={toggleFollow} /></View>
+            <View style={{ flex: 1 }}><Button label={notify ? (p.viewer?.following ? t('notify_on') : t('cta_notify')) : p.viewer?.following ? t('following') : t('follow')} ghost={!!p.viewer?.following} onPress={toggleFollow} /></View>
             {main ? <View style={{ flex: 1 }}><Button label={t(ctaLabel(main.kind))} ghost onPress={() => { api.linkTap(handle, main.url!).catch(() => {}); Linking.openURL(main.url!); }} /></View> : null}
           </View>
         )}
@@ -97,7 +99,7 @@ export default function CreatorScreen() {
               <Icon name="link" size={14} />
             </Pressable>
           ))}
-          {p.releaseStatus === 'soon' ? <Text style={[styles.link, styles.soon]}>{t('soon')}</Text> : null}
+          {p.releaseStatus === 'soon' ? <Text style={styles.soonCaption}>{t('soon')}</Text> : null}
           {Platform.OS === 'android' && p.androidStatus === 'soon' ? <Text style={[styles.link, styles.soon]}>{t('android_soon')}</Text> : null}
         </View>
         {perk && !p.viewer?.isMe ? (
@@ -123,8 +125,8 @@ export default function CreatorScreen() {
           ))}
         </View>
       </View>
-      {perk ? <PerkSheet handle={handle} name={p.name} visible={gift} onClose={() => setGift(false)} /> : null}
-      <ReportMenu visible={menu} onClose={() => setMenu(false)} kind="profile" id={handle} handle={handle}
+      {perk ? <PerkSheet handle={handle} name={p.name} visible={gift} onClose={() => setGift(false)} onReopen={() => setGift(true)} /> : null}
+      <ReportMenu visible={menu} onClose={() => setMenu(false)} onReopen={() => setMenu(true)} kind="profile" id={handle} handle={handle}
         onBlocked={() => { setBlocked(handle); router.back(); }} />
     </ScrollView>
   );
@@ -148,6 +150,7 @@ const styles = StyleSheet.create({
   links: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginTop: 14 },
   link: { flexDirection: 'row', alignItems: 'center', gap: 6, minHeight: 44, paddingVertical: 8, paddingHorizontal: 12, borderRadius: 10, backgroundColor: C.surface, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)', overflow: 'hidden' },
   linkText: { color: C.text, fontWeight: '600', fontSize: 14 },
+  soonCaption: { color: C.lime, fontSize: 13, fontWeight: '700', alignSelf: 'center' },
   soon: { color: C.lime, borderColor: 'rgba(198,255,61,0.35)', fontWeight: '600', fontSize: 14 },
   gift: { flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 16, padding: 14, minHeight: 56, borderRadius: 14, borderWidth: 1.5, borderStyle: 'dashed', borderColor: 'rgba(198,255,61,0.55)', backgroundColor: 'rgba(198,255,61,0.06)' },
   giftKicker: { color: C.lime, fontSize: 12, fontWeight: '700' },

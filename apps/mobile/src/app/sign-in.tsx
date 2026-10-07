@@ -7,6 +7,7 @@ import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { KeyboardAvoidingView, Linking, Platform, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
+import { api } from '@/lib/api';
 import { authClient } from '@/lib/auth';
 import { t } from '@/lib/i18n';
 import { appleAvailable, EMAIL_LOGIN, googleAvailable, type Result, signInWithApple, signInWithGoogle } from '@/lib/social-sign-in';
@@ -20,7 +21,7 @@ export default function SignIn() {
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
   const [emailOpen, setEmailOpen] = useState(EMAIL_LOGIN);
-  useEffect(() => { appleAvailable().then(setApple); }, []);
+  useEffect(() => { appleAvailable().then(setApple); api.event('sign_in_view'); }, []);
   const google = googleAvailable();
 
   const done = async (r: Result) => {
@@ -28,8 +29,11 @@ export default function SignIn() {
     // Close the modal instead of replacing it: replace stacked a second copy of the tabs (and its video
     // players) under the first one, which also broke the iOS share sheet.
     if (r.ok) {
-      await refreshMe();
+      // Dismiss first, then load the account once the modal is gone: the account update can open the
+      // onboarding sheet, and iOS refuses to show a sheet while this modal is still closing.
+      api.event('sign_in_done');
       if (router.canDismiss()) router.dismiss(); else router.navigate('/');
+      setTimeout(() => { refreshMe(); }, 600);
       return;
     }
     if (!r.cancelled) setErr(r.message || t('error'));

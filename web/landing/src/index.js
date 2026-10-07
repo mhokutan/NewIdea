@@ -314,6 +314,13 @@ export default {
       return new Response(res.body, { status: res.status, headers: { "Content-Type": "text/plain; charset=utf-8", ...SECURITY_HEADERS } });
     }
 
+    // iOS universal links: shared promo links (promovote.com/?v=slug) open the app when it is installed.
+    // Only links with ?v= go to the app; the plain site and every other page stay on the web.
+    if (url.pathname === "/.well-known/apple-app-site-association" || url.pathname === "/apple-app-site-association") {
+      const aasa = { applinks: { details: [{ appIDs: ["6WRT42YG28.com.miapera.promovote"], components: [{ "/": "/", "?": { v: "?*" }, comment: "Shared promo" }] }] } };
+      return new Response(JSON.stringify(aasa), { headers: { "Content-Type": "application/json", "Cache-Control": "public, max-age=3600" } });
+    }
+
     // Creator profiles: /@handle is served from /creators/<handle>.html
     const profile = /^\/@([a-z0-9_]{3,24})\/?$/.exec(url.pathname);
     if (profile) {

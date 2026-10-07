@@ -119,6 +119,7 @@ export default function EditProfile() {
               <View style={styles.wrap}>{CATEGORIES.filter((k) => k.id !== category).map((k) => <Pill key={k.id} label={t(k.label)} active={secondary.includes(k.id)} onPress={() => toggleSecondary(k.id)} />)}</View>
             </Field>
             <Field label={t('main_button')}>
+              {cta ? <Text style={[styles.small, { alignSelf: 'flex-start' }]}>{t('cta_hint')}</Text> : null}
               <View style={styles.wrap}>{CTA_OPTIONS.filter((k) => ctaVisible(k.id, Platform.OS)).map((k) => <Pill key={k.id} label={t(k.label)} active={cta === k.id} onPress={() => setCta(cta === k.id ? null : k.id)} />)}</View>
             </Field>
             <Pressable onPress={() => setSoon(!soon)} style={styles.check} accessibilityRole="checkbox" accessibilityState={{ checked: soon }}>

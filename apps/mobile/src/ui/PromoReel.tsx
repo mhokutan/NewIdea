@@ -11,10 +11,10 @@ import Animated, { FadeInDown } from 'react-native-reanimated';
 import { AccessibilityInfo, Linking, Platform, Pressable, Share, StyleSheet, Text, View } from 'react-native';
 
 import { api, ApiError, type Call, type Promo } from '@/lib/api';
-import { asScout } from '@/lib/gate';
-import { lang, t } from '@/lib/i18n';
+import { asMember, asScout } from '@/lib/gate';
+import { lang, outcomeText, t } from '@/lib/i18n';
 import { C, F } from '@/lib/theme';
-import { setBlocked, setCall, setSaved, useViewerState } from '@/lib/viewer-state';
+import { setBlocked, setCall, setFollowing, setSaved, useViewerState } from '@/lib/viewer-state';
 import { Avatar } from './Avatar';
 import { Icon, type IconName } from './Icon';
 import { PerkSheet } from './PerkSheet';
@@ -72,10 +72,12 @@ export function PromoReel({ promo, active, height, muted, onSeen, bottomInset = 
     asScout(async () => {
       if (busy) return;
       setBusy(true);
+      const first = Object.keys(vs.calls).length === 0;
       setCall(promo.id, { choice, rank: null, resolvesAt: new Date(Date.now() + 7 * 864e5).toISOString() });
       try {
         const r = await api.vote(promo.id, choice);
         setCall(promo.id, r.call);
+        api.event(first ? 'first_call' : 'call');
         if (Platform.OS !== 'web') Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
         AccessibilityInfo.announceForAccessibility(`${t('called')}. ${t('result_on')} ${shortDate(r.call.resolvesAt)}`);
       } catch (e) {
@@ -96,6 +98,7 @@ export function PromoReel({ promo, active, height, muted, onSeen, bottomInset = 
   const share = () => {
     tap();
     const url = `https://promovote.com/?v=${promo.slug}`;
+    api.event('share');
     Share.share(Platform.OS === 'ios' ? { message: promo.title, url } : { message: `${promo.title} ${url}` }).catch((e) => console.warn('share_failed', e));
   };
   const openCta = () => {
@@ -106,9 +109,20 @@ export function PromoReel({ promo, active, height, muted, onSeen, bottomInset = 
   };
   // Ticket line: the result once the call resolved, otherwise the result date, rank and crowd split.
   const done = !!call?.outcome && call.outcome !== 'pending';
-  const sub = !call ? '' : done
-    ? t(call.outcome === 'correct' ? 'outcome_right' : call.outcome === 'incorrect' ? 'outcome_wrong' : 'outcome_void')
+  const late = call ? outcomeText(call.outcome, call.points, call.resolvesAt, call.finalBy) : null;
+  const sub = !call ? '' : late
+    ? late
     : `${t('result_on')} ${shortDate(call.resolvesAt)}${call.rank ? `  ·  ${t('scout_n')}${call.rank}` : ''}${call.split && call.split.total >= 5 ? `  ·  ${call.split.blowUpPct}% ${t('say_blow_up')}` : ''}`;
+  // Notify me at launch = follow the creator (followers hear about the launch). Tapping again does nothing.
+  const following = vs.following.includes(c.handle);
+  const notifyMe = () => {
+    tap();
+    if (following) return;
+    asMember(async () => {
+      setFollowing(c.handle, true);
+      try { await api.follow(c.handle, true); flash(t('notify_toast')); } catch { setFollowing(c.handle, false); flash(t('error')); }
+    });
+  };
   const showAndroidSoon = Platform.OS === 'android' && c.androidStatus === 'soon';
   const bottom = 14 + bottomInset;
   return (
@@ -148,7 +162,7 @@ export function PromoReel({ promo, active, height, muted, onSeen, bottomInset = 
         }} />
       {paused ? <View style={styles.paused} pointerEvents="none"><Icon name="play" size={34} /></View> : null}
 
-      <Fade colors={['rgba(6,6,10,0)', 'rgba(6,6,10,0.82)', 'rgba(6,6,10,0.96)']} locations={[0, 0.55, 1]} style={[styles.shade, open && styles.shadeOpen]} />
+      <Fade colors={['rgba(6,6,10,0)', 'rgba(6,6,10,0.82)', 'rgba(6,6,10,0.96)']} locations={[0, 0.45, 1]} style={[styles.shade, open && styles.shadeOpen]} />
 
       <View style={[styles.info, { bottom: bottom + 64 }]} pointerEvents="box-none">
         <Link href={`/creator/${c.handle}`} asChild>
@@ -184,6 +198,11 @@ export function PromoReel({ promo, active, height, muted, onSeen, bottomInset = 
             {c.releaseStatus === 'soon' ? <Text maxFontSizeMultiplier={1.35} style={styles.chip}>{t('soon')}</Text> : null}
             {showAndroidSoon ? <Text maxFontSizeMultiplier={1.35} style={styles.chip}>{t('android_soon')}</Text> : null}
           </View>
+        ) : null}
+        {promo.cta?.kind === 'notify' && !promo.cta.url ? (
+          <Pressable onPress={notifyMe} style={({ pressed }) => [styles.cta, following && styles.ctaDone, pressed && styles.pressed]} accessibilityRole="button" android_ripple={{ color: 'rgba(0,0,0,0.12)' }}>
+            <Text maxFontSizeMultiplier={1.35} style={[styles.ctaText, following && { color: '#fff' }]}>{following ? t('notify_on') : t('cta_notify')}</Text>
+          </Pressable>
         ) : null}
         {promo.cta?.url && ctaVisible(promo.cta.kind, Platform.OS) ? (
           <Pressable onPress={openCta} style={({ pressed }) => [styles.cta, pressed && styles.pressed]} accessibilityRole="link">
@@ -228,8 +247,8 @@ export function PromoReel({ promo, active, height, muted, onSeen, bottomInset = 
 
       {note ? <View style={[styles.toast, { bottom: bottom + 70 }]} pointerEvents="none"><Text maxFontSizeMultiplier={1.35} style={styles.toastText}>{note}</Text></View> : null}
 
-      {promo.hasPerk ? <PerkSheet handle={c.handle} name={c.name} visible={gift} onClose={() => setGift(false)} /> : null}
-      <ReportMenu visible={menu} onClose={() => setMenu(false)} kind="promo" id={promo.id} handle={c.handle}
+      {promo.hasPerk ? <PerkSheet handle={c.handle} name={c.name} visible={gift} onClose={() => setGift(false)} onReopen={() => setGift(true)} /> : null}
+      <ReportMenu visible={menu} onClose={() => setMenu(false)} onReopen={() => setMenu(true)} kind="promo" id={promo.id} handle={c.handle}
         onBlocked={() => { setBlocked(c.handle); flash(t('blocked_toast')); }} onError={() => flash(t('error'))} />
     </View>
   );
@@ -239,7 +258,7 @@ function RailButton({ icon, label, onPress, on }: { icon: IconName; label: strin
   return (
     <Pressable onPress={onPress} style={({ pressed }) => [styles.railBtn, pressed && styles.pressed]} accessibilityRole="button"
       accessibilityLabel={label} accessibilityState={{ selected: !!on }} hitSlop={6} android_ripple={{ color: 'rgba(255,255,255,0.2)', borderless: true }}>
-      <View style={[styles.railIcon, on && { backgroundColor: C.lime }]}>
+      <View style={[styles.railIcon, on && { backgroundColor: '#fff' }]}>
         <Icon name={icon} color={on ? C.ink : '#fff'} />
       </View>
       <View style={styles.railLabelPill}><Text maxFontSizeMultiplier={1.35} style={styles.railLabel} numberOfLines={1}>{label}</Text></View>
@@ -252,7 +271,7 @@ const styles = StyleSheet.create({
   // Explicit size: on web the <video> element ignores left/right/top/bottom and would draw at its natural size.
   video: { position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' },
   paused: { position: 'absolute', top: '50%', left: '50%', width: 76, height: 76, marginLeft: -38, marginTop: -38, borderRadius: 38, backgroundColor: 'rgba(8,8,12,0.55)', alignItems: 'center', justifyContent: 'center' },
-  shade: { position: 'absolute', left: 0, right: 0, bottom: 0, height: '55%' },
+  shade: { position: 'absolute', left: 0, right: 0, bottom: 0, height: '62%' },
   shadeOpen: { height: '80%' },
   pressed: { transform: [{ scale: 0.94 }], opacity: 0.85 },
   info: { position: 'absolute', left: 16, right: 84 },
@@ -269,6 +288,7 @@ const styles = StyleSheet.create({
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 8 },
   chip: { color: C.lime, fontSize: 12, fontWeight: '600', paddingVertical: 5, paddingHorizontal: 10, borderRadius: 99, borderWidth: 1, borderColor: 'rgba(198,255,61,0.45)', overflow: 'hidden' },
   cta: { alignSelf: 'flex-start', marginTop: 10, borderRadius: 12, backgroundColor: '#fff', minHeight: 44, paddingHorizontal: 14, flexDirection: 'row', alignItems: 'center', gap: 6 },
+  ctaDone: { backgroundColor: 'rgba(20,20,31,0.82)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.3)' },
   ctaText: { color: C.ink, fontWeight: '700', fontSize: 14 },
   rail: { position: 'absolute', right: 8, gap: 12, alignItems: 'center' },
   railBtn: { width: 68, alignItems: 'center', gap: 4 },

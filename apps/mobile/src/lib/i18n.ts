@@ -4,7 +4,7 @@ import { getLocales } from 'expo-localization';
 const en = {
   tab_feed: 'Feed', tab_explore: 'Explore', tab_me: 'Profile',
   home_drop: "Today's Drop", home_new: 'New', home_picks: 'Team picks', home_top: 'Charts',
-  drop_done_t: "That's today's drop", drop_done_calls: 'You made {n} of {size} calls.', drop_done_p: 'Results come in 7 days. A new drop lands tomorrow.', keep_watching: 'Keep watching',
+  drop_done_t: "That's today's drop", drop_done_calls: 'You made {n} of {size} calls.', drop_done_p: "Results come in 7 days.", keep_watching: 'Keep watching',
   charts_progress: 'Charts open when {goal} scouts call promos this week. So far: {n}.',
   top_empty: 'Top opens when real people start watching and voting. Paying never buys a spot.', featured_note: 'Picked by the PromoVote team. Never paid. The founder makes some of these promos.', featured_empty: 'No picks yet.', new_empty: 'No promos yet.',
   will_blow_up: 'Will blow up', not_for_me: 'Not for me', save: 'Save', share: 'Share',
@@ -16,7 +16,7 @@ const en = {
   follow: 'Follow', following: 'Following', followers: 'followers',
   sign_in: 'Sign in', sign_in_t: 'Join PromoVote', sign_in_p: 'Watch free. Sign in to call promos, save them and follow creators.',
   email: 'Email', send_code: 'Send code', code: '6 digit code', verify: 'Sign in', code_sent: 'We sent a code to',
-  scout: 'Scout', scout_p: 'Discover, vote and save. You cannot post promos.', creator: 'Creator', creator_p: 'Post promos for your game, app, shop or channel. You cannot vote.',
+  scout: 'Scout', scout_p: "Find hits early, make your calls and build your Scout Score.", creator: 'Creator', creator_p: "Show your game, app, shop or channel to people who love finding new things.",
   handle: 'Username', name: 'Display name', birth: 'Date of birth', terms: 'I am 18 or older and accept the Terms and Community Guidelines.',
   create: 'Create profile', category: 'Category', sign_out: 'Sign out', delete_account: 'Delete account',
   delete_q: 'Delete your account? You have 30 days to change your mind by signing in again.', cancel: 'Cancel', ok: 'OK',
@@ -32,7 +32,7 @@ const en = {
   onb_step: 'Step {n} of {total}', onb_type_t: 'How will you use PromoVote?', next: 'Next', back: "Back", handle_hint: 'This is your link: promovote.com/@',
   cats_more: 'Also fits (up to 2)', settings: 'Settings', edit_profile: 'Edit profile', view_page: 'View public page',
   scout_score: 'Scout Score', score_note: 'Reputation only. No cash value.', level: 'Level', to_next: '{n} points to level {l}',
-  open_calls: 'Open calls', right_calls: 'Right calls', called_it: 'Called it', tab_saved: 'Saved', tab_following: 'Following',
+  open_calls: 'Open calls', right_calls: 'Right calls', called_it: "Early hits", tab_saved: 'Saved', tab_following: 'Following',
   no_open_calls: 'No open calls yet. Make a call in Today\'s Drop.', no_saved: 'Nothing saved yet.', no_following: 'You are not following anyone yet.',
   setup_t: 'Set up your page', setup_logo: 'Add your logo', setup_banner: 'Add a banner', setup_bio: 'Write a short bio', setup_links: 'Add your links', setup_promo: 'Post your first promo',
   uploads_soon: 'Promo uploads open soon. Email us your first trailer and we will post it for you.', email_trailer: 'Email your trailer',
@@ -53,24 +53,27 @@ const en = {
   with_google: 'Continue with Google', soon_login: 'Sign in is opening soon. You can watch everything as a guest.', legal_note: 'By continuing you agree to the Terms and Privacy Policy. 18+ only.',
   close: "Close", r_impersonation: "Pretending to be someone else", r_link: "Harmful link", r_trademark: "Uses my brand or trademark", play: "Play", pause: "Pause", sound_on: "Sound on", sound_off: "Sound off",
   day: "Day", month: "Month", year: "Year",
-  cta_itch: "Open on itch.io", no_promos: "No promos yet.", no_promos_owner: "Your promos show up here. Email your first trailer to hello@promovote.com and we post it for you.", share_page: "Share page",
+  cta_itch: "Open on itch.io", no_promos: "No promos live yet. Follow to see the first one.", no_promos_owner: "Your promos show up here. Email your first trailer to hello@promovote.com and we post it for you.", share_page: "Share page",
   mail_copied_t: "Email address copied", mail_copied_p: "No mail app is set up on this phone. Write to {email} from any email app.",
   drop_done_guest: "Sign in to make your calls. Results come in 7 days, and a new drop lands tomorrow.", drop_done_zero: "You watched the whole drop. Make a call next time: results come in 7 days and build your Scout Score.", drop_fresh: "{n} new for you today",
-  outcome_right: "You called it right. Points added.", outcome_wrong: "The crowd saw it differently. No points lost.", outcome_void: "Not enough calls to score this one.", tab_results: "Results", no_results: "Your call results show up here, 7 days after each call.", accuracy: "Accuracy", points_n: "+{n} points",
+  outcome_right: "Right call. +{n} points", outcome_wrong: "The crowd saw it differently. No points lost.", outcome_void: "Not enough calls to score this one.", tab_results: "Results", no_results: "Your call results show up here, 7 days after each call.", accuracy: "Accuracy", points_n: "+{n} points",
   tab_calls: "Calls",
   st_follows: "New followers", stats_zero: "Your free stats start when your first promo goes live: valid views, completion, button taps, saves and new followers. Delivery numbers stay free forever.",
-  reminder_t: "Today's Drop is ready", reminder_p: "7 new promos. Make your calls before the crowd does.", reminder_channel: "Daily drop", remind_me: "Remind me when the next drop lands", remind_on: "Done. We will remind you at 6 pm. Turn it off any time in Settings.", remind_denied: "Notifications are off. You can turn them on in your phone settings.",
+  reminder_t: "Today's Drop is ready", reminder_p: "See what is new and check your results.", reminder_channel: "Daily drop", remind_me: "Remind me when the next drop lands", remind_on: "Done. We will remind you at 6 pm. Turn it off any time in Settings.", remind_denied: "Notifications are off. You can turn them on in your phone settings.",
   reminder_off: "Turn off daily reminder", reminder_turn_on: "Turn on daily reminder",
   st_link_taps: "Link taps", report_email: "Report by email instead",
   value_call: "Call which new games, apps and shops will blow up", value_result: "Results in 7 days build your Scout Score", value_save: "Save promos and follow creators. Watching stays free.",
-  reveal_right_t: "You called it! {n} right", reveal_right_p: "{n} of your calls got their result. Your Scout Score went up.", reveal_t: "Your results are in", reveal_p: "{n} of your calls got their result. No points lost on a miss.", reveal_see: "See my results",
+  reveal_right_t: "Right call! {n} of yours came true", reveal_right_p: "{n} of your calls got their result. Your Scout Score went up.", reveal_t: "Your results are in", reveal_p: "{n} of your calls got their result. No points lost on a miss.", reveal_see: "See my results",
   streak_weeks: "Weekly streak: {n} weeks", streak_week: "{n} of {m} call days this week", streak_freezes: "{n} saved week",
+  drop_nothing_new: "You called everything new. Today's picks again while new promos arrive.", outcome_right_np: "Right call (only your first 7 calls a day score)", outcome_wait: "Waiting for more scouts. Final result by {date}, no points lost.", cta_hint: "This button shows when you add a matching link below.",
+  reveal_share: "I called it early on PromoVote: {title}", reveal_more: "{n} new results in total. See them all on your profile.",
+  notify_on: "You will hear at launch", notify_toast: "Done. You will see their launch first.",
 };
 type Key = keyof typeof en;
 const es: Partial<Record<Key, string>> = {
   tab_feed: 'Feed', tab_explore: 'Explorar', tab_me: 'Perfil',
   home_drop: 'Drop de hoy', home_new: 'Nuevo', home_picks: 'Elegidos', home_top: 'Rankings',
-  drop_done_t: 'Ese fue el drop de hoy', drop_done_calls: 'Hiciste {n} de {size} predicciones.', drop_done_p: 'Los resultados llegan en 7 días. Mañana hay un drop nuevo.', keep_watching: 'Seguir mirando',
+  drop_done_t: 'Ese fue el drop de hoy', drop_done_calls: 'Hiciste {n} de {size} predicciones.', drop_done_p: "Los resultados llegan en 7 días.", keep_watching: 'Seguir mirando',
   charts_progress: 'Los rankings abren cuando {goal} exploradores hagan predicciones esta semana. Por ahora: {n}.',
   top_empty: 'El Top abre cuando personas reales empiecen a ver y votar. Pagar nunca compra un puesto.', featured_note: 'Elegido por el equipo de PromoVote. Nunca pagado. Algunas promos son del fundador.', featured_empty: 'Todavía no hay destacados.', new_empty: 'Todavía no hay promos.',
   will_blow_up: 'Va a explotar', not_for_me: 'No es para mí', save: 'Guardar', share: 'Compartir',
@@ -82,7 +85,7 @@ const es: Partial<Record<Key, string>> = {
   follow: 'Seguir', following: 'Siguiendo', followers: 'seguidores',
   sign_in: 'Entrar', sign_in_t: 'Únete a PromoVote', sign_in_p: 'Mira gratis. Entra para hacer predicciones, guardar y seguir creadores.',
   email: 'Email', send_code: 'Enviar código', code: 'Código de 6 dígitos', verify: 'Entrar', code_sent: 'Enviamos un código a',
-  scout: 'Explorador', scout_p: 'Descubre, vota y guarda. No puedes publicar promos.', creator: 'Creador', creator_p: 'Publica promos de tu juego, app, tienda o canal. No puedes votar.',
+  scout: 'Explorador', scout_p: "Descubre éxitos antes que nadie, haz tus predicciones y sube tu Scout Score.", creator: 'Creador', creator_p: "Muestra tu juego, app, tienda o canal a gente que ama descubrir cosas nuevas.",
   handle: 'Usuario', name: 'Nombre visible', birth: 'Fecha de nacimiento', terms: 'Tengo 18 años o más y acepto los Términos y las Normas de la comunidad.',
   create: 'Crear perfil', category: 'Categoría', sign_out: 'Salir', delete_account: 'Eliminar cuenta',
   delete_q: '¿Eliminar tu cuenta? Tienes 30 días para cambiar de opinión entrando de nuevo.', cancel: 'Cancelar', ok: 'OK',
@@ -98,7 +101,7 @@ const es: Partial<Record<Key, string>> = {
   onb_step: 'Paso {n} de {total}', onb_type_t: '¿Cómo usarás PromoVote?', next: 'Siguiente', back: "Atrás", handle_hint: 'Este es tu enlace: promovote.com/@',
   cats_more: 'También encaja (hasta 2)', settings: 'Ajustes', edit_profile: 'Editar perfil', view_page: 'Ver página pública',
   scout_score: 'Puntos de explorador', score_note: 'Solo reputación. Sin valor en dinero.', level: 'Nivel', to_next: '{n} puntos para el nivel {l}',
-  open_calls: 'Predicciones abiertas', right_calls: 'Aciertos', called_it: 'Lo dije', tab_saved: 'Guardados', tab_following: 'Siguiendo',
+  open_calls: 'Predicciones abiertas', right_calls: 'Aciertos', called_it: "Aciertos tempranos", tab_saved: 'Guardados', tab_following: 'Siguiendo',
   no_open_calls: 'Aún no tienes predicciones abiertas. Haz una en el Drop de hoy.', no_saved: 'Aún no guardaste nada.', no_following: 'Aún no sigues a nadie.',
   setup_t: 'Prepara tu página', setup_logo: 'Añade tu logo', setup_banner: 'Añade una portada', setup_bio: 'Escribe una bio corta', setup_links: 'Añade tus enlaces', setup_promo: 'Publica tu primera promo',
   uploads_soon: 'La subida de promos abre pronto. Envíanos tu primer tráiler por email y lo publicamos.', email_trailer: 'Enviar tráiler por email',
@@ -119,23 +122,26 @@ const es: Partial<Record<Key, string>> = {
   with_google: 'Continuar con Google', soon_login: 'El inicio de sesión abre pronto. Puedes ver todo como invitado.', legal_note: 'Al continuar aceptas los Términos y la Política de privacidad. Solo mayores de 18.',
   close: "Cerrar", r_impersonation: "Se hace pasar por otra persona", r_link: "Enlace dañino", r_trademark: "Usa mi marca registrada", play: "Reproducir", pause: "Pausa", sound_on: "Sonido activado", sound_off: "Sonido desactivado",
   day: "Día", month: "Mes", year: "Año",
-  cta_itch: "Abrir en itch.io", no_promos: "Todavía no hay promos.", no_promos_owner: "Tus promos aparecen aquí. Envía tu primer tráiler a hello@promovote.com y lo publicamos por ti.", share_page: "Compartir página",
+  cta_itch: "Abrir en itch.io", no_promos: "Todavía no hay promos. Sigue para ver el primero.", no_promos_owner: "Tus promos aparecen aquí. Envía tu primer tráiler a hello@promovote.com y lo publicamos por ti.", share_page: "Compartir página",
   mail_copied_t: "Email copiado", mail_copied_p: "Este teléfono no tiene app de correo. Escribe a {email} desde cualquier app de correo.",
   drop_done_guest: "Inicia sesión para hacer tus predicciones. Los resultados llegan en 7 días y mañana hay un drop nuevo.", drop_done_zero: "Viste todo el drop. La próxima vez haz una predicción: los resultados llegan en 7 días y suman a tu Scout Score.", drop_fresh: "{n} nuevos para ti hoy",
-  outcome_right: "Acertaste. Puntos sumados.", outcome_wrong: "La gente lo vio distinto. No pierdes puntos.", outcome_void: "No hubo suficientes predicciones para puntuar.", tab_results: "Resultados", no_results: "Los resultados de tus predicciones aparecen aquí, 7 días después.", accuracy: "Acierto", points_n: "+{n} puntos",
+  outcome_right: "Acertaste. +{n} puntos", outcome_wrong: "La gente lo vio distinto. No pierdes puntos.", outcome_void: "No hubo suficientes predicciones para puntuar.", tab_results: "Resultados", no_results: "Los resultados de tus predicciones aparecen aquí, 7 días después.", accuracy: "Acierto", points_n: "+{n} puntos",
   tab_calls: "Predicciones",
   st_follows: "Nuevos seguidores", stats_zero: "Tus estadísticas gratis empiezan cuando tu primer promo esté publicado: vistas válidas, finalización, toques en el botón, guardados y nuevos seguidores. Siempre gratis.",
-  reminder_t: "El Drop de hoy está listo", reminder_p: "7 promos nuevos. Haz tus predicciones antes que la multitud.", reminder_channel: "Drop diario", remind_me: "Avísame cuando llegue el próximo drop", remind_on: "Listo. Te avisamos a las 18:00. Puedes desactivarlo en Ajustes.", remind_denied: "Las notificaciones están desactivadas. Puedes activarlas en los ajustes del teléfono.",
+  reminder_t: "El Drop de hoy está listo", reminder_p: "Mira lo nuevo y revisa tus resultados.", reminder_channel: "Drop diario", remind_me: "Avísame cuando llegue el próximo drop", remind_on: "Listo. Te avisamos a las 18:00. Puedes desactivarlo en Ajustes.", remind_denied: "Las notificaciones están desactivadas. Puedes activarlas en los ajustes del teléfono.",
   reminder_off: "Desactivar recordatorio diario", reminder_turn_on: "Activar recordatorio diario",
   st_link_taps: "Toques en enlaces", report_email: "Reportar por email",
   value_call: "Predice qué juegos, apps y tiendas nuevas van a explotar", value_result: "Los resultados en 7 días suben tu Scout Score", value_save: "Guarda promos y sigue a creadores. Ver es gratis.",
-  reveal_right_t: "¡Acertaste! {n} correctas", reveal_right_p: "{n} de tus predicciones ya tienen resultado. Tu Scout Score subió.", reveal_t: "Llegaron tus resultados", reveal_p: "{n} de tus predicciones ya tienen resultado. Fallar no quita puntos.", reveal_see: "Ver mis resultados",
+  reveal_right_t: "¡Acertaste! {n} se cumplieron", reveal_right_p: "{n} de tus predicciones ya tienen resultado. Tu Scout Score subió.", reveal_t: "Llegaron tus resultados", reveal_p: "{n} de tus predicciones ya tienen resultado. Fallar no quita puntos.", reveal_see: "Ver mis resultados",
   streak_weeks: "Racha semanal: {n} semanas", streak_week: "{n} de {m} días con predicciones esta semana", streak_freezes: "{n} semana guardada",
+  drop_nothing_new: "Ya predijiste todo lo nuevo. Aquí van otra vez las de hoy mientras llegan promos nuevos.", outcome_right_np: "Acertaste (solo puntúan tus primeras 7 predicciones del día)", outcome_wait: "Esperando a más exploradores. Resultado final antes del {date}, no pierdes puntos.", cta_hint: "Este botón aparece cuando agregas un enlace que coincida abajo.",
+  reveal_share: "Lo predije antes en PromoVote: {title}", reveal_more: "{n} resultados nuevos en total. Velos todos en tu perfil.",
+  notify_on: "Te avisaremos al lanzar", notify_toast: "Listo. Verás su lanzamiento primero.",
 };
 const tr: Partial<Record<Key, string>> = {
   tab_feed: 'Akış', tab_explore: 'Keşfet', tab_me: 'Profil',
   home_drop: 'Bugünün seçkisi', home_new: 'Yeni', home_picks: 'Ekibin seçimi', home_top: 'Listeler',
-  drop_done_t: 'Bugünün seçkisi bitti', drop_done_calls: '{size} videodan {n} tanesine tahmin yaptın.', drop_done_p: 'Sonuçlar 7 gün sonra. Yarın yeni seçki geliyor.', keep_watching: 'İzlemeye devam et',
+  drop_done_t: 'Bugünün seçkisi bitti', drop_done_calls: '{size} videodan {n} tanesine tahmin yaptın.', drop_done_p: "Sonuçlar 7 gün sonra gelir.", keep_watching: 'İzlemeye devam et',
   charts_progress: 'Listeler bu hafta {goal} kaşif tahmin yapınca açılır. Şu an: {n}.',
   top_empty: 'Popüler listesi gerçek insanlar izleyip oy vermeye başlayınca açılır. Para verip listeye girilemez.', featured_note: 'PromoVote ekibinin seçimi. Ücretli değil. Bazı videolar kurucunun kendi firmalarına ait.', featured_empty: 'Henüz seçim yok.', new_empty: 'Henüz video yok.',
   will_blow_up: 'Patlayacak', not_for_me: 'Bana göre değil', save: 'Kaydet', share: 'Paylaş',
@@ -147,7 +153,7 @@ const tr: Partial<Record<Key, string>> = {
   follow: 'Takip et', following: 'Takiptesin', followers: 'takipçi',
   sign_in: 'Giriş yap', sign_in_t: "PromoVote'a katıl", sign_in_p: 'Ücretsiz izle. Tahmin yapmak, kaydetmek ve firmaları takip etmek için giriş yap.',
   email: 'Email', send_code: 'Kod gönder', code: '6 haneli kod', verify: 'Giriş yap', code_sent: 'Kodu şu adrese gönderdik:',
-  scout: 'Kaşif', scout_p: 'Keşfet, oy ver, kaydet. Video paylaşamazsın.', creator: 'Firma / içerik üreticisi', creator_p: 'Oyunun, uygulaman, mağazan veya kanalın için video paylaş. Oy veremezsin.',
+  scout: 'Kaşif', scout_p: "Hitleri erkenden bul, tahmin yap ve Kaşif Puanını büyüt.", creator: 'Firma / içerik üreticisi', creator_p: "Oyununu, uygulamanı, mağazanı veya kanalını yeni şeyler keşfetmeyi seven insanlara göster.",
   handle: 'Kullanıcı adı', name: 'Görünen ad', birth: 'Doğum tarihi', terms: '18 yaşından büyüğüm, Kullanım Şartları ve Topluluk Kuralları’nı kabul ediyorum.',
   create: 'Profili oluştur', category: 'Kategori', sign_out: 'Çıkış yap', delete_account: 'Hesabı sil',
   delete_q: 'Hesabın silinsin mi? 30 gün içinde tekrar giriş yaparsan geri alabilirsin.', cancel: 'Vazgeç', ok: 'Tamam',
@@ -163,7 +169,7 @@ const tr: Partial<Record<Key, string>> = {
   onb_step: 'Adım {n} / {total}', onb_type_t: "PromoVote'u nasıl kullanacaksın?", next: 'İleri', back: "Geri", handle_hint: 'Linkin bu olacak: promovote.com/@',
   cats_more: 'Bunlara da uyar (en fazla 2)', settings: 'Ayarlar', edit_profile: 'Profili düzenle', view_page: 'Herkese açık sayfayı gör',
   scout_score: 'Kaşif Puanı', score_note: 'Sadece itibar. Nakit değeri yok.', level: 'Seviye', to_next: 'Seviye {l} için {n} puan kaldı',
-  open_calls: 'Bekleyen tahminler', right_calls: 'Doğru tahminler', called_it: 'Bildim', tab_saved: 'Kaydedilenler', tab_following: 'Takip ettiklerim',
+  open_calls: 'Bekleyen tahminler', right_calls: 'Doğru tahminler', called_it: "Erken isabet", tab_saved: 'Kaydedilenler', tab_following: 'Takip ettiklerim',
   no_open_calls: 'Henüz bekleyen tahminin yok. Bugünün seçkisinde bir tahmin yap.', no_saved: 'Henüz bir şey kaydetmedin.', no_following: 'Henüz kimseyi takip etmiyorsun.',
   setup_t: 'Sayfanı hazırla', setup_logo: 'Logonu ekle', setup_banner: 'Kapak resmi ekle', setup_bio: 'Kısa bir tanıtım yaz', setup_links: 'Linklerini ekle', setup_promo: 'İlk videonu paylaş',
   uploads_soon: 'Video yükleme yakında açılıyor. İlk fragmanını email ile gönder, biz yayınlayalım.', email_trailer: 'Fragmanı email ile gönder',
@@ -184,18 +190,21 @@ const tr: Partial<Record<Key, string>> = {
   with_google: 'Google ile devam et', soon_login: 'Giriş yakında açılıyor. Misafir olarak her şeyi izleyebilirsin.', legal_note: 'Devam ederek Kullanım Şartları ve Gizlilik Politikası’nı kabul edersin. Sadece 18 yaş üstü.',
   close: "Kapat", r_impersonation: "Başkası gibi davranıyor", r_link: "Zararlı link", r_trademark: "Markamı kullanıyor", play: "Oynat", pause: "Duraklat", sound_on: "Ses açık", sound_off: "Ses kapalı",
   day: "Gün", month: "Ay", year: "Yıl",
-  cta_itch: "itch.io'da aç", no_promos: "Henüz tanıtım yok.", no_promos_owner: "Tanıtımların burada görünür. İlk fragmanını hello@promovote.com adresine gönder, senin için yayınlayalım.", share_page: "Sayfayı paylaş",
+  cta_itch: "itch.io'da aç", no_promos: "Henüz yayında tanıtım yok. İlkini görmek için takip et.", no_promos_owner: "Tanıtımların burada görünür. İlk fragmanını hello@promovote.com adresine gönder, senin için yayınlayalım.", share_page: "Sayfayı paylaş",
   mail_copied_t: "Email adresi kopyalandı", mail_copied_p: "Bu telefonda mail uygulaması kurulu değil. Herhangi bir mail uygulamasından {email} adresine yaz.",
   drop_done_guest: "Tahmin yapmak için giriş yap. Sonuçlar 7 gün sonra gelir, yarın yeni seçki var.", drop_done_zero: "Seçkinin hepsini izledin. Bir dahakine tahmin yap: sonuçlar 7 gün sonra gelir ve Kaşif Puanını büyütür.", drop_fresh: "Bugün sana {n} yeni video",
-  outcome_right: "Doğru tahmin. Puan eklendi.", outcome_wrong: "Kalabalık farklı düşündü. Puan kaybetmedin.", outcome_void: "Puanlamak için yeterli tahmin yok.", tab_results: "Sonuçlar", no_results: "Tahmin sonuçların her tahminden 7 gün sonra burada görünür.", accuracy: "İsabet", points_n: "+{n} puan",
+  outcome_right: "Doğru tahmin. +{n} puan", outcome_wrong: "Kalabalık farklı düşündü. Puan kaybetmedin.", outcome_void: "Puanlamak için yeterli tahmin yok.", tab_results: "Sonuçlar", no_results: "Tahmin sonuçların her tahminden 7 gün sonra burada görünür.", accuracy: "İsabet", points_n: "+{n} puan",
   tab_calls: "Tahminler",
   st_follows: "Yeni takipçi", stats_zero: "Ücretsiz istatistiklerin ilk tanıtımın yayına girince başlar: geçerli izlenme, tamamlama, buton tıklaması, kaydetme ve yeni takipçi. Bu sayılar hep ücretsiz.",
-  reminder_t: "Bugünün seçkisi hazır", reminder_p: "7 yeni tanıtım. Kalabalıktan önce tahminini yap.", reminder_channel: "Günlük seçki", remind_me: "Yeni seçki gelince bana hatırlat", remind_on: "Tamam. Saat 18:00'de hatırlatacağız. Ayarlardan istediğin zaman kapatabilirsin.", remind_denied: "Bildirimler kapalı. Telefon ayarlarından açabilirsin.",
+  reminder_t: "Bugünün seçkisi hazır", reminder_p: "Yenilere göz at, sonuçlarını kontrol et.", reminder_channel: "Günlük seçki", remind_me: "Yeni seçki gelince bana hatırlat", remind_on: "Tamam. Saat 18:00'de hatırlatacağız. Ayarlardan istediğin zaman kapatabilirsin.", remind_denied: "Bildirimler kapalı. Telefon ayarlarından açabilirsin.",
   reminder_off: "Günlük hatırlatmayı kapat", reminder_turn_on: "Günlük hatırlatmayı aç",
   st_link_taps: "Link tıklaması", report_email: "Email ile bildir",
   value_call: "Hangi yeni oyun, uygulama ve mağazanın patlayacağını tahmin et", value_result: "7 gün sonra gelen sonuçlar Kaşif Puanını büyütür", value_save: "Tanıtımları kaydet, firmaları takip et. İzlemek ücretsiz.",
-  reveal_right_t: "Bildin! {n} doğru tahmin", reveal_right_p: "{n} tahminin sonuçlandı. Kaşif Puanın arttı.", reveal_t: "Sonuçların geldi", reveal_p: "{n} tahminin sonuçlandı. Yanlış tahmin puan kaybettirmez.", reveal_see: "Sonuçlarımı gör",
+  reveal_right_t: "Doğru tahmin! {n} tanesi tuttu", reveal_right_p: "{n} tahminin sonuçlandı. Kaşif Puanın arttı.", reveal_t: "Sonuçların geldi", reveal_p: "{n} tahminin sonuçlandı. Yanlış tahmin puan kaybettirmez.", reveal_see: "Sonuçlarımı gör",
   streak_weeks: "Haftalık seri: {n} hafta", streak_week: "Bu hafta {m} günün {n} tanesinde tahmin", streak_freezes: "{n} yedek hafta",
+  drop_nothing_new: "Yeni olan her şeye tahmin yaptın. Yeni tanıtımlar gelene kadar bugünkü seçki tekrar burada.", outcome_right_np: "Doğru tahmin (günde sadece ilk 7 tahmin puan alır)", outcome_wait: "Daha fazla kaşif bekleniyor. Kesin sonuç en geç {date}, puan kaybı yok.", cta_hint: "Bu buton, aşağıya uygun bir link eklediğinde görünür.",
+  reveal_share: "PromoVote'ta erkenden bildim: {title}", reveal_more: "Toplam {n} yeni sonuç. Hepsini profilinde gör.",
+  notify_on: "Çıkınca haber vereceğiz", notify_toast: "Tamam. Çıkışını ilk sen göreceksin.",
 };
 
 const DICTS = { en, es, tr } as const;
@@ -212,3 +221,15 @@ export function deviceLang(): Lang {
 
 export const lang: Lang = deviceLang();
 export const t = (key: Key): string => DICTS[lang][key] || en[key];
+
+/** The result line for a resolved call, or the waiting line once the result date has passed. */
+export function outcomeText(outcome: string | undefined, points: number | undefined, resolvesAt: string, finalBy: string | undefined): string | null {
+  if (outcome === 'correct') return (points || 0) > 0 ? t('outcome_right').replace('{n}', String(points)) : t('outcome_right_np');
+  if (outcome === 'incorrect') return t('outcome_wrong');
+  if (outcome === 'void') return t('outcome_void');
+  if (new Date(resolvesAt).getTime() < Date.now()) {
+    const d = finalBy ? new Date(finalBy).toLocaleDateString(lang, { day: 'numeric', month: 'short' }) : '';
+    return t('outcome_wait').replace('{date}', d);
+  }
+  return null;
+}

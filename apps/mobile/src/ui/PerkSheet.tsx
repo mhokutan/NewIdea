@@ -14,7 +14,7 @@ import { Button } from './Pill';
 
 const fmt = (s: string, v: Record<string, string | number>) => Object.entries(v).reduce((a, [k, x]) => a.replace(`{${k}}`, String(x)), s);
 
-export function PerkSheet({ handle, name, visible, onClose }: { handle: string; name: string; visible: boolean; onClose: () => void }) {
+export function PerkSheet({ handle, name, visible, onClose, onReopen }: { handle: string; name: string; visible: boolean; onClose: () => void; onReopen?: () => void }) {
   const insets = useSafeAreaInsets();
   const { me } = useMe();
   const [perk, setPerk] = useState<Perk | null | undefined>(undefined);
@@ -34,10 +34,10 @@ export function PerkSheet({ handle, name, visible, onClose }: { handle: string; 
     // Guests sign in first. The gate sheet can only open once this sheet is gone (iOS stacks one modal at a time).
     if (!me?.profile) { signInNext.current = true; onClose(); return; }
     setErr('');
-    try { const r = await api.claimPerk(perk.id); setCode(r.code); } catch (e: any) { setErr(e?.message || t('error')); }
+    try { const r = await api.claimPerk(perk.id); setCode(r.code); api.event('gift_claim'); } catch (e: any) { setErr(e?.message || t('error')); }
   };
   const signInNext = useRef(false);
-  const afterClose = () => { if (signInNext.current) { signInNext.current = false; asMember(() => {}); } };
+  const afterClose = () => { if (signInNext.current) { signInNext.current = false; asMember(() => onReopen?.()); } };
   const was = useRef(visible);
   useEffect(() => {
     if (was.current && !visible && Platform.OS !== 'ios') afterClose();

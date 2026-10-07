@@ -32,6 +32,7 @@ export type Me = {
 export type Call = {
   choice: 'will_blow_up' | 'not_for_me'; rank: number | null; resolvesAt: string;
   outcome?: 'pending' | 'correct' | 'incorrect' | 'void'; split?: { total: number; blowUpPct: number };
+  points?: number; finalBy?: string;
 };
 export type ViewerState = { calls: Record<string, Call>; saves: string[]; following: string[]; blocked: string[] };
 
@@ -40,7 +41,7 @@ export type WalletItem = Perk & { creator: { handle: string; name: string; avata
 export type Link = { platform: string; url: string; label: string | null };
 export type ScoutSummary = {
   score: number; level: number; nextLevelAt: number; streakWeeks: number; resolved: number; right: number; calledIt: number;
-  open: { promo: Promo; choice: Call['choice']; rank: number | null; resolvesAt: string }[];
+  open: { promo: Promo; choice: Call['choice']; rank: number | null; resolvesAt: string; finalBy?: string }[];
   accuracy: number | null;
   streak?: { weeks: number; best: number; freezes: number; daysThisWeek: number; daysNeeded: number };
   results: { promo: Promo; choice: Call['choice']; outcome: 'correct' | 'incorrect' | 'void'; points: number; resolvedAt: string | null }[];
@@ -100,6 +101,8 @@ export const api = {
   save: (promoId: string, on: boolean) => call('/v1/saves/' + promoId, { method: on ? 'POST' : 'DELETE' }),
   view: async (promoId: string, seconds: number, completed: boolean) =>
     call('/v1/events/view', { method: 'POST', body: JSON.stringify({ promoId, seconds, completed, deviceId: await deviceId() }) }),
+  /** Funnel step, fire and forget (one row per step per viewer per day on the server). */
+  event: (name: string) => { deviceId().then((d) => call('/v1/events/app', { method: 'POST', body: JSON.stringify({ name, deviceId: d }) })).catch(() => {}); },
   linkTap: async (handle: string, url: string) => call('/v1/events/link', { method: 'POST', body: JSON.stringify({ handle, url, deviceId: await deviceId() }) }),
   click: async (promoId: string) => call('/v1/events/click', { method: 'POST', body: JSON.stringify({ promoId, deviceId: await deviceId() }) }),
   report: (targetType: string, targetId: string, reason: string) => call('/v1/reports', { method: 'POST', body: JSON.stringify({ targetType, targetId, reason }) }),

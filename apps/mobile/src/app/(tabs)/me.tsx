@@ -11,7 +11,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Clipboard from 'expo-clipboard';
 import { api, ApiError, type Perk, type ScoutSummary, type Studio, type WalletItem } from '@/lib/api';
 import { CATEGORIES } from '@/lib/categories';
-import { lang, t } from '@/lib/i18n';
+import { lang, outcomeText, t } from '@/lib/i18n';
 import { C, F } from '@/lib/theme';
 import { openMail } from '@/lib/mail';
 import { reminderOn, turnOffReminder, turnOnReminder } from '@/lib/reminder';
@@ -147,26 +147,25 @@ function ScoutHome({ onSettings }: { onSettings: () => void }) {
       {!data ? <ActivityIndicator color={C.lime} /> : tab === 'open' ? (<>
         {data.results.length ? <Text style={styles.h2}>{t('tab_results')}{data.accuracy != null ? `  ·  ${t('accuracy')} ${data.accuracy}%` : ''}</Text> : null}
         {data.results.map((o) => (
-          <Pressable key={'r' + o.promo.id} onPress={() => router.navigate({ pathname: '/', params: { v: o.promo.slug } })} style={[styles.callRow, o.outcome === 'correct' && { borderColor: C.lime }]} accessibilityRole="button">
+          <Pressable key={'r' + o.promo.id} onPress={() => router.push({ pathname: '/play/[handle]', params: { handle: o.promo.creator.handle, start: o.promo.slug } })} style={[styles.callRow, o.outcome === 'correct' && { borderColor: C.lime }]} accessibilityRole="button">
             {o.promo.video.poster ? <Image source={{ uri: o.promo.video.poster }} style={styles.callThumb} contentFit="cover" /> : <View style={styles.callThumb} />}
             <View style={{ flex: 1 }}>
               <Text style={styles.rowTitle} numberOfLines={1}>{o.promo.title}</Text>
               <Text style={styles.small} numberOfLines={1}>{t(o.choice)}</Text>
               <Text style={[styles.small, o.outcome === 'correct' && { color: C.lime, fontWeight: '700' }]} numberOfLines={2}>
-                {t(o.outcome === 'correct' ? 'outcome_right' : o.outcome === 'incorrect' ? 'outcome_wrong' : 'outcome_void')}
-                {o.points > 0 ? `  ${fmt(t('points_n'), { n: o.points })}` : ''}
+                {outcomeText(o.outcome, o.points, o.resolvedAt || '', undefined)}
               </Text>
             </View>
           </Pressable>
         ))}
         {data.results.length && data.open.length ? <Text style={styles.h2}>{t('open_calls')}</Text> : null}
         {data.open.length ? data.open.map((o) => (
-          <Pressable key={o.promo.id} onPress={() => router.navigate({ pathname: '/', params: { v: o.promo.slug } })} style={styles.callRow} accessibilityRole="button">
+          <Pressable key={o.promo.id} onPress={() => router.push({ pathname: '/play/[handle]', params: { handle: o.promo.creator.handle, start: o.promo.slug } })} style={styles.callRow} accessibilityRole="button">
             {o.promo.video.poster ? <Image source={{ uri: o.promo.video.poster }} style={styles.callThumb} contentFit="cover" /> : <View style={styles.callThumb} />}
             <View style={{ flex: 1 }}>
               <Text style={styles.rowTitle} numberOfLines={1}>{o.promo.title}</Text>
               <Text style={styles.small} numberOfLines={1}>{o.promo.creator.name}</Text>
-              <Text style={[styles.small, { color: o.choice === 'will_blow_up' ? C.lime : C.text2 }]}>{t(o.choice)}  ·  {t('result_on')} {shortDate(o.resolvesAt)}</Text>
+              <Text style={[styles.small, { color: o.choice === 'will_blow_up' ? C.lime : C.text2 }]}>{t(o.choice)}  ·  {outcomeText('pending', 0, o.resolvesAt, o.finalBy) || `${t('result_on')} ${shortDate(o.resolvesAt)}`}</Text>
             </View>
           </Pressable>
         )) : data.results.length ? null : <Empty text={t('no_open_calls')} />}
@@ -176,7 +175,7 @@ function ScoutHome({ onSettings }: { onSettings: () => void }) {
         data.saved.length ? (
           <View style={styles.grid}>
             {data.saved.map((pr) => (
-              <Pressable key={pr.id} onPress={() => router.navigate({ pathname: '/', params: { v: pr.slug } })} style={[styles.tile, { width: tileW, height: tileW * 16 / 9 }]} accessibilityRole="button" accessibilityLabel={pr.title}>
+              <Pressable key={pr.id} onPress={() => router.push({ pathname: '/play/[handle]', params: { handle: pr.creator.handle, start: pr.slug } })} style={[styles.tile, { width: tileW, height: tileW * 16 / 9 }]} accessibilityRole="button" accessibilityLabel={pr.title}>
                 {pr.video.poster ? <Image source={{ uri: pr.video.poster }} style={StyleSheet.absoluteFill} contentFit="cover" /> : null}
               </Pressable>
             ))}
@@ -327,7 +326,7 @@ function CreatorHome({ onSettings }: { onSettings: () => void }) {
           <Text style={styles.h2}>{t('your_promos')}</Text>
           <View style={styles.grid}>
             {data.promos.map((pr) => (
-              <Pressable key={pr.id} onPress={() => router.navigate({ pathname: '/', params: { v: pr.slug } })} style={[styles.tile, { width: tileW, height: tileW * 16 / 9 }]} accessibilityRole="button" accessibilityLabel={pr.title}>
+              <Pressable key={pr.id} onPress={() => router.push({ pathname: '/play/[handle]', params: { handle: pr.creator.handle, start: pr.slug } })} style={[styles.tile, { width: tileW, height: tileW * 16 / 9 }]} accessibilityRole="button" accessibilityLabel={pr.title}>
                 {pr.video.poster ? <Image source={{ uri: pr.video.poster }} style={StyleSheet.absoluteFill} contentFit="cover" /> : null}
               </Pressable>
             ))}
@@ -411,6 +410,7 @@ function Onboarding({ onDone }: { onDone: () => void }) {
         category: type === 'creator' ? category : undefined, acceptTerms: terms, language: lang,
       });
       onDone();
+      api.event('onboarding_done');
       if (type === 'creator') router.push('/edit-profile');
     } catch (e) {
       setErr(e instanceof ApiError ? e.message : t('error'));
@@ -421,8 +421,8 @@ function Onboarding({ onDone }: { onDone: () => void }) {
     <View style={{ gap: 14 }}>
       <Text style={styles.small}>{fmt(t('onb_step'), { n: 1, total: 2 })}</Text>
       <Text style={styles.h1}>{t('onb_type_t')}</Text>
-      <TypeCard title={t('scout')} text={t('scout_p')} onPress={() => setType('scout')} />
-      <TypeCard title={t('creator')} text={t('creator_p')} onPress={() => setType('creator')} />
+      <TypeCard title={t('scout')} text={t('scout_p')} icon="chevrons" onPress={() => setType('scout')} />
+      <TypeCard title={t('creator')} text={t('creator_p')} icon="ticket" onPress={() => setType('creator')} />
     </View>
   );
   const maxDate = new Date(); maxDate.setFullYear(maxDate.getFullYear() - 18);
@@ -472,11 +472,15 @@ function Onboarding({ onDone }: { onDone: () => void }) {
   );
 }
 
-function TypeCard({ title, text, onPress }: { title: string; text: string; onPress: () => void }) {
+function TypeCard({ title, text, icon, onPress }: { title: string; text: string; icon: 'chevrons' | 'ticket'; onPress: () => void }) {
   return (
-    <Pressable onPress={onPress} style={({ pressed }) => [styles.card, pressed && { opacity: 0.8 }]} accessibilityRole="button">
-      <Text style={styles.h2}>{title}</Text>
-      <Text style={styles.text}>{text}</Text>
+    <Pressable onPress={onPress} style={({ pressed }) => [styles.card, { flexDirection: 'row', alignItems: 'center', gap: 14 }, pressed && { opacity: 0.8 }]} accessibilityRole="button">
+      <View style={styles.typeIcon}><Icon name={icon} size={22} color={C.lime} /></View>
+      <View style={{ flex: 1, gap: 4 }}>
+        <Text style={styles.h2}>{title}</Text>
+        <Text style={styles.text}>{text}</Text>
+      </View>
+      <Text style={{ color: C.muted, fontSize: 22 }}>›</Text>
     </Pressable>
   );
 }
@@ -518,7 +522,8 @@ const styles = StyleSheet.create({
   walletCodeText: { color: C.text, fontSize: 17, fontWeight: '800', letterSpacing: 1.5 },
   segment: { flexDirection: 'row', backgroundColor: C.surface, borderRadius: 14, padding: 4, gap: 4 },
   segBtn: { flex: 1, minHeight: 40, borderRadius: 10, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 6 },
-  segOn: { backgroundColor: C.lime },
+  typeIcon: { width: 44, height: 44, borderRadius: 12, backgroundColor: 'rgba(198,255,61,0.12)', alignItems: 'center', justifyContent: 'center' },
+  segOn: { backgroundColor: C.text },
   segText: { color: C.text2, fontWeight: '700', fontSize: 13, textAlign: 'center' },
   callRow: { flexDirection: 'row', gap: 12, alignItems: 'center', backgroundColor: C.surface, borderRadius: 14, padding: 10, borderWidth: 1, borderColor: 'transparent' },
   callThumb: { width: 54, height: 72, borderRadius: 10, backgroundColor: C.surface2 },

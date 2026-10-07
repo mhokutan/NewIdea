@@ -17,9 +17,9 @@ const REASONS: [string, Key][] = [
 ];
 const PROFILE_REASONS = new Set(['spam_or_scam', 'impersonation', 'hate_or_harassment', 'nudity_or_sexual', 'malicious_link', 'trademark', 'minor', 'other']);
 
-export function ReportMenu({ visible, onClose, kind, id, handle, onBlocked, onError }: {
+export function ReportMenu({ visible, onClose, kind, id, handle, onBlocked, onError, onReopen }: {
   visible: boolean; onClose: () => void; kind: 'promo' | 'profile'; id: string; handle: string;
-  onBlocked: () => void; onError?: () => void;
+  onBlocked: () => void; onError?: () => void; onReopen?: () => void;
 }) {
   const { me } = useMe();
   const [step, setStep] = useState<'menu' | 'report' | 'done'>('menu');
@@ -29,7 +29,8 @@ export function ReportMenu({ visible, onClose, kind, id, handle, onBlocked, onEr
   // Guests and users without a profile sign in first; the menu comes back afterwards on the same step.
   const member = (step2: 'report' | 'block', run: () => void) => {
     if (me?.profile) return run();
-    close(() => asMember(step2 === 'report' ? () => {} : run));
+    // After sign in the menu opens again on the report step (or the block runs).
+    close(() => asMember(step2 === 'report' ? () => { setStep('report'); onReopen?.(); } : run));
   };
   const report = (reason: string) => member('report', async () => {
     try { await api.report(kind, id, reason); setStep('done'); } catch { close(onError); }

@@ -56,8 +56,8 @@ export function GateHost() {
     if (loading || !queue.action) return;
     // A tap made while loading, or while signed in without a profile, now gets its answer.
     if (hasProfile && (isScout || !queue.needsScout)) return;
-    if (current.reason === 'creator' && queue.needsScout) { queue.action = null; queueMicrotask(() => host.open?.('creator')); return; }
-    if (current.reason) { const r = current.reason; queueMicrotask(() => host.open?.(r)); }
+    if (current.reason === 'creator' && queue.needsScout) { queue.action = null; setTimeout(() => host.open?.('creator'), 500); return; }
+    if (current.reason) { const r = current.reason; setTimeout(() => host.open?.(r), 500); }
   }, [me, isScout, loading, hasProfile]);
   useEffect(() => {
     if (loading) return;

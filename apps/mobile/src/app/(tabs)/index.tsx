@@ -15,7 +15,7 @@ import { lang, t } from '@/lib/i18n';
 import { C, F } from '@/lib/theme';
 import { reminderOn, turnOnReminder } from '@/lib/reminder';
 import { useMe } from '@/lib/use-me';
-import { useViewerState } from '@/lib/viewer-state';
+import { useViewerState, viewerStateLoaded } from '@/lib/viewer-state';
 import { Button } from '@/ui/Pill';
 import { Icon } from '@/ui/Icon';
 import { PromoReel } from '@/ui/PromoReel';
@@ -51,11 +51,13 @@ export default function Feed() {
   const [focused, setFocused] = useState(true);
   useFocusEffect(useCallback(() => { setFocused(true); return () => setFocused(false); }, []));
   const vs = useViewerState();
-  const { me } = useMe();
+  const { me, loading: meLoading } = useMe();
   const blocked = vs.blocked;
   const callsNow = useRef(vs.calls);
   useEffect(() => { callsNow.current = vs.calls; }, [vs.calls]);
-  const [fresh, setFresh] = useState(0);
+  // -1 = first visit (no calls yet), 0 = nothing new for this scout today, n = new promos in today's drop.
+  const [fresh, setFresh] = useState(-1);
+  const stateReady = !meLoading && (!me?.profile || viewerStateLoaded());
   const bottomInset = TAB_BAR ? TAB_BAR + insets.bottom : 0;
   const seen = useRef<Record<string, number>>({});
   const round = useRef(0);
@@ -73,6 +75,8 @@ export default function Feed() {
   // Loads the selected tab. A deep link (?v=slug) plays first.
   const [attempt, setAttempt] = useState(0);
   useEffect(() => {
+    // Signed in: wait for the viewer's calls so "uncalled first" is right on a normal app open.
+    if (!stateReady) return;
     let alive = true;
     const load = tab === 'drop'
       ? Promise.all([api.drop(), api.feed()]).then(([d, f]) => {
@@ -80,7 +84,7 @@ export default function Feed() {
         // so tomorrow's drop is not mostly yesterday's promos.
         const uncalled = d.promos.filter((p) => !callsNow.current[p.id]);
         const pick = [...uncalled, ...d.promos.filter((p) => callsNow.current[p.id])].slice(0, d.size || 7);
-        setFresh(Object.keys(callsNow.current).length ? Math.min(uncalled.length, d.size || 7) : 0);
+        setFresh(Object.keys(callsNow.current).length ? Math.min(uncalled.length, d.size || 7) : -1);
         return { drop: pick, pool: f.promos };
       })
       : api.home(tab === 'picks' ? 'featured' : 'new').then((r) => ({ drop: r.promos, pool: r.promos }));
@@ -91,11 +95,11 @@ export default function Feed() {
       const linked = v ? pool.find((p) => p.slug === v || p.id === v) : undefined;
       const list = linked ? [linked, ...drop.filter((p) => p.id !== linked.id)] : drop;
       const mapped: Item[] = list.map((p) => ({ key: `${tab}-${p.id}`, promo: p }));
-      if (tab === 'drop') { setDropSize(list.length); mapped.push({ key: 'drop-end', end: true }); }
+      if (tab === 'drop') { api.event('drop_view'); setDropSize(list.length); mapped.push({ key: 'drop-end', end: true }); }
       setItems(mapped);
     }).catch(() => { if (alive) setError(true); });
     return () => { alive = false; };
-  }, [v, attempt, tab]);
+  }, [v, attempt, tab, stateReady]);
 
   // Resets the list right away so the old tab never flashes while the new one loads.
   const selectTab = (next: Tab) => {
@@ -114,13 +118,14 @@ export default function Feed() {
   const keepWatching = () => { if (all) append(all); };
   const dropCalls = items.filter((i) => i.promo && vs.calls[i.promo.id]).length;
 
-  // Swipe left or right anywhere on the feed to move between Today's Drop, New and Team picks.
-  // Vertical moves fail the gesture right away, so paging through promos is never blocked.
-  // The React Compiler memoizes this per tab.
-  const swipe = Gesture.Pan().runOnJS(true).activeOffsetX([-24, 24]).failOffsetY([-14, 14]).onEnd((e) => {
-    const i = TABS.findIndex((x) => x.id === tab);
-    const next = e.translationX < -60 || e.velocityX < -600 ? i + 1 : e.translationX > 60 || e.velocityX > 600 ? i - 1 : i;
-    if (next !== i && TABS[next]) { if (Platform.OS !== 'web') Haptics.selectionAsync().catch(() => {}); selectTab(TABS[next].id); }
+  // Swipe left on a promo plays the same creator's other promos (founder rule, CLAUDE.md); tabs change by tap.
+  // Vertical moves fail the gesture right away, and the screen edges are left to the system back gesture.
+  const swipe = Gesture.Pan().runOnJS(true).activeOffsetX([-24, 24]).failOffsetY([-14, 14]).hitSlop({ left: -24, right: -24 }).onEnd((e) => {
+    if (!(e.translationX < -60 || e.velocityX < -600)) return;
+    const item = items.filter((x) => !x.promo || !blocked.includes(x.promo.creator.handle))[active];
+    if (!item?.promo) return;
+    if (Platform.OS !== 'web') Haptics.selectionAsync().catch(() => {});
+    router.push({ pathname: '/play/[handle]', params: { handle: item.promo.creator.handle, start: item.promo.slug } });
   });
 
   const onSeen = useCallback((id: string) => { seen.current[id] = (seen.current[id] || 0) + 1; }, []);
@@ -165,7 +170,7 @@ export default function Feed() {
         />
       )}
       <ResultReveal enabled={focused} />
-      <Fade colors={['rgba(0,0,0,0.6)', 'rgba(0,0,0,0)']} style={[styles.scrim, { height: insets.top + WEB_MENU + 120 }]} />
+      <Fade colors={['rgba(0,0,0,0.82)', 'rgba(0,0,0,0.55)', 'rgba(0,0,0,0)']} locations={[0, 0.55, 1]} style={[styles.scrim, { height: insets.top + WEB_MENU + 150 }]} />
       <View style={[styles.top, { paddingTop: insets.top + 6 + WEB_MENU }]} pointerEvents="box-none">
         <View style={styles.bar} pointerEvents="box-none">
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tabs} accessibilityRole="tablist">
@@ -192,6 +197,7 @@ export default function Feed() {
         </View>
         {tab === 'picks' && items.length > 0 && active === 0 ? <Text style={styles.note} maxFontSizeMultiplier={1.3}>{t('featured_note')}</Text> : null}
         {tab === 'drop' && fresh > 0 && active === 0 ? <Text style={styles.note} maxFontSizeMultiplier={1.3}>{t('drop_fresh').replace('{n}', String(fresh))}</Text> : null}
+        {tab === 'drop' && fresh === 0 && active === 0 ? <Text style={styles.note} maxFontSizeMultiplier={1.3}>{t('drop_nothing_new')}</Text> : null}
         {tab === 'drop' && dropSize > 0 && active < dropSize ? (
           <View style={styles.progress} accessibilityLabel={`${active + 1} / ${dropSize}`}>
             {Array.from({ length: dropSize }, (_, i) => <View key={i} style={[styles.seg, i <= active && styles.segOn]} />)}
@@ -207,6 +213,7 @@ export default function Feed() {
 function EndCard({ height, calls, size, guest, onMore, onExplore }: {
   height: number; calls: number; size: number; guest: boolean; onMore: () => void; onExplore: () => void;
 }) {
+  useEffect(() => { api.event('drop_complete'); }, []);
   // After a finished drop (signed in), offer the daily reminder once. Local notification only.
   const [remind, setRemind] = useState<'hidden' | 'offer' | 'on' | 'denied'>('hidden');
   useEffect(() => {
@@ -224,7 +231,7 @@ function EndCard({ height, calls, size, guest, onMore, onExplore }: {
       {!guest && calls ? <Text style={styles.endText}>{t('drop_done_p')}</Text> : null}
       <View style={{ width: '100%', maxWidth: 320, gap: 10, marginTop: 18 }}>
         {guest ? <Button label={t('sign_in')} onPress={() => router.push('/sign-in')} /> : null}
-        {remind === 'offer' ? <Button label={t('remind_me')} onPress={() => turnOnReminder().then((ok) => setRemind(ok ? 'on' : 'denied'))} /> : null}
+        {remind === 'offer' ? <Button label={t('remind_me')} onPress={() => turnOnReminder().then((ok) => { setRemind(ok ? 'on' : 'denied'); if (ok) api.event('reminder_on'); })} /> : null}
         {remind === 'on' ? <Text style={styles.endText}>{t('remind_on')}</Text> : null}
         {remind === 'denied' ? <Text style={styles.endText}>{t('remind_denied')}</Text> : null}
         <Button label={t('keep_watching')} ghost={guest || remind === 'offer'} onPress={onMore} />
@@ -243,7 +250,7 @@ const styles = StyleSheet.create({
   bar: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   tabs: { gap: 18, paddingHorizontal: 4, alignItems: 'center' },
   tab: { alignItems: 'center', paddingVertical: 6 },
-  tabText: { color: 'rgba(255,255,255,0.68)', fontSize: 16, fontWeight: '600', ...shadow },
+  tabText: { color: 'rgba(255,255,255,0.85)', fontSize: 16, fontWeight: '600', ...shadow },
   tabOn: { color: '#fff', fontWeight: '800' },
   dot: { marginTop: 5, width: 18, height: 3, borderRadius: 2, backgroundColor: 'transparent' },
   dotOn: { backgroundColor: C.lime },

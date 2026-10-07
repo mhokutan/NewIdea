@@ -4,14 +4,18 @@ import { useEffect, useState } from 'react';
 import { api, type Call, type ViewerState } from './api';
 
 let state: ViewerState = { calls: {}, saves: [], following: [], blocked: [] };
+// True once the signed in state arrived (or there is nobody signed in), so screens that pick content by it can wait.
+const meta = { loaded: false };
+export const viewerStateLoaded = () => meta.loaded;
 const listeners = new Set<() => void>();
 const emit = () => listeners.forEach((l) => l());
 
 export async function loadViewerState() {
   try { state = await api.state(); } catch { state = { calls: {}, saves: [], following: [], blocked: [] }; }
+  meta.loaded = true;
   emit();
 }
-export function clearViewerState() { state = { calls: {}, saves: [], following: [], blocked: [] }; emit(); }
+export function clearViewerState() { state = { calls: {}, saves: [], following: [], blocked: [] }; meta.loaded = true; emit(); }
 
 export function setCall(promoId: string, call: Call | null) {
   const calls = { ...state.calls };
