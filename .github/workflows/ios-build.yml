@@ -1,0 +1,72 @@
+# iOS build on GitHub Actions (founder decision 2026-10-07: do not wait for the EAS cloud quota).
+# Builds on a GitHub macOS runner with `eas build --local` (no EAS build minutes; free on this public repo),
+# then uploads the .ipa to App Store Connect (TestFlight) with the App Store Connect API key.
+#
+# Start: push a commit to the work branch whose message contains [build ios], or run it by hand from the Actions tab.
+# Repository secrets (Settings > Secrets and variables > Actions), never in the repo:
+#   EXPO_TOKEN     Expo access token (reads the build number and the signing credentials stored on EAS)
+#   ASC_KEY_ID     App Store Connect API key id
+#   ASC_ISSUER_ID  App Store Connect issuer id
+#   ASC_KEY_P8     contents of the AuthKey_<id>.p8 file
+name: iOS build
+
+on:
+  push:
+    branches: [claude/gracious-pasteur-nu8ssc]
+  workflow_dispatch:
+
+concurrency:
+  group: ios-build
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  ios:
+    if: github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[build ios]')
+    runs-on: macos-26
+    timeout-minutes: 120
+    defaults:
+      run:
+        working-directory: apps/mobile
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: apps/mobile/package-lock.json
+
+      - name: Xcode version (the runner default, Xcode 26; previews are never picked)
+        run: xcodebuild -version
+
+      - name: Install
+        run: npm ci
+
+      - name: Check
+        run: npx tsc --noEmit && npx expo lint
+
+      - name: Build (local, signed with the EAS credentials)
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+        run: npx -y eas-cli@latest build --platform ios --profile production --local --non-interactive --output "$RUNNER_TEMP/promovote.ipa"
+
+      - name: Upload to App Store Connect
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
+        run: |
+          mkdir -p ~/.appstoreconnect/private_keys
+          KEY=~/.appstoreconnect/private_keys/AuthKey_${ASC_KEY_ID}.p8
+          # Accept the file as is, or the key body on one line without the BEGIN and END lines.
+          if printf '%s' "$ASC_KEY_P8" | grep -q "BEGIN PRIVATE KEY"; then
+            printf '%s\n' "$ASC_KEY_P8" > "$KEY"
+          else
+            { echo "-----BEGIN PRIVATE KEY-----"; printf '%s' "$ASC_KEY_P8" | tr -d ' \r\n' | fold -w 64; echo; echo "-----END PRIVATE KEY-----"; } > "$KEY"
+          fi
+          chmod 600 "$KEY"
+          xcrun altool --upload-app --type ios --file "$RUNNER_TEMP/promovote.ipa" --apiKey "$ASC_KEY_ID" --apiIssuer "$ASC_ISSUER_ID"
+          rm -f "$KEY"

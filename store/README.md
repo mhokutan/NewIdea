@@ -208,6 +208,39 @@ G2. Google Play (Android build 9, kapalı test)
 5. "Send for review" ile gönder. Sonucu ve opt-in linkini (test kullanıcılarının katılma linki) status.md'ye yaz; link gizli değil.
 
 ====================
+BÖLÜM H. EXPO KOTASI OLMADAN BUILD (kurucu kararı 2026-10-07: "apple git üzerinden, google bilgisayardan")
+====================
+H1. iOS: GitHub Actions (repo public, macOS makinesi ücretsiz)
+Workflow: .github/workflows/ios-build.yml. GitHub'ın macOS makinesinde "eas build --local" ile build alır (EAS build kotası harcamaz), sonra .ipa'yı App Store Connect'e (TestFlight) yükler.
+1. Repo secret'larını ekle (bir kere): https://github.com/mhokutan/NewIdea/settings/secrets/actions > New repository secret. Değerleri sohbete veya dosyaya YAZMA.
+   - EXPO_TOKEN: expo.dev > Account settings > Access tokens > Create (adı "github-actions"). Bulut ortamındaki EXPO_TOKEN ile aynı da olabilir.
+   - ASC_KEY_ID: D:\PromoVote\SecretKeys içindeki App Store Connect API (Admin veya App Manager) key'in Key ID'si.
+   - ASC_ISSUER_ID: App Store Connect > Users and Access > Integrations > App Store Connect API sayfasındaki Issuer ID.
+   - ASC_KEY_P8: AuthKey_<id>.p8 dosyasının tüm içeriği (BEGIN ve END satırlarıyla birlikte).
+   (In-App Purchase key DEĞİL; App Store Connect API key.)
+2. Başlatma: bulut Claude mesajında "[build ios]" olan bir commit push eder. Ya da GitHub > Actions > "iOS build" > Run workflow (bu düğme sadece workflow varsayılan branch'e gelince görünür).
+3. Süre 30 ile 60 dakika. Bitince Apple işlemesi 10 ile 30 dakika, sonra TestFlight'ta görünür. Build numarasını EAS otomatik artırır.
+4. Hata olursa Actions sayfasındaki log'u bulut Claude'a söyle; log'da secret değerleri görünmez.
+
+H2. Android: kurucunun Windows bilgisayarı
+"eas build --local" Windows'ta çalışmaz, WSL (Ubuntu) içinde çalışır. Bir kere kurulum:
+1. PowerShell (yönetici): wsl --install -d Ubuntu  (yeniden başlat, Ubuntu kullanıcı adı ve şifresini kurucu girer)
+2. Ubuntu içinde:
+   sudo apt update && sudo apt install -y openjdk-17-jdk unzip git curl
+   curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash - && sudo apt install -y nodejs
+   mkdir -p ~/android/cmdline-tools && cd ~/android/cmdline-tools && curl -LO https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip && unzip -q commandlinetools-linux-*_latest.zip && mv cmdline-tools latest
+   echo 'export ANDROID_HOME=$HOME/android; export PATH=$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools:$PATH' >> ~/.bashrc && source ~/.bashrc
+   yes | sdkmanager --licenses && sdkmanager "platform-tools" "platforms;android-36" "build-tools;36.0.0"
+   (sdkmanager daha yeni sürüm isterse build log'u söyler, onu kur.)
+Her build:
+   git clone --filter=blob:none --sparse -b claude/gracious-pasteur-nu8ssc https://github.com/mhokutan/NewIdea ~/promovote && cd ~/promovote && git sparse-checkout set apps/mobile   (ilk sefer; sonra: cd ~/promovote && git pull)
+   cd ~/promovote/apps/mobile && npm ci
+   export EXPO_TOKEN=<token>   (değeri kurucu yapıştırır)
+   npx -y eas-cli@latest build -p android --profile production --local --non-interactive --output ~/promovote.aab
+   cp ~/promovote.aab /mnt/d/PromoVote/   (Windows'tan D:\PromoVote\promovote.aab olarak görünür)
+Sonra Play Console > Test and release > Closed testing > Create release > .aab yükle (Bölüm G2 adımları). İmza anahtarı EAS'ten iner, Play App Signing ile aynı upload key; yeni key oluşturma.
+
+====================
 BÖLÜM E. KEY'LERİ BULUT ORTAMINA EKLEME
 ====================
 Claude Code bulut oturumlarının ortamına (claude.ai/code, NewIdea oturumlarının kullandığı ortam, Edit > Environment variables) şu değişkenleri ekle. Her değişken TEK SATIR olmalı (KEY=value), tırnak yok.
