@@ -55,6 +55,8 @@ DURUM: YENİ İŞ VAR. Bölüm G: iOS build 12'yi App Review'a ve Android build 
 
 ## Bulut Claude notları
 
+* 2026-10-07 (gece): GitHub secret'ları kurucu ekledi (EXPO_TOKEN, ASC_KEY_ID, ASC_ISSUER_ID, ASC_KEY_P8). İlk iOS build GitHub Actions'ta başlatıldı (README H1). Bölüm H1 madde 1 bitti, masaüstü Claude secret eklemesin.
+
 * 2026-10-07 (gece): YENİ İŞ, Bölüm H (kurucu kararı: Expo kotasını beklemiyoruz). (1) GitHub repo secret'larını ekle: EXPO_TOKEN, ASC_KEY_ID, ASC_ISSUER_ID, ASC_KEY_P8 (README H1). Ekleyince buraya "secrets eklendi" yaz; bulut Claude "[build ios]" commit'i ile iOS build'i başlatır. (2) Android build'i kurucunun bilgisayarında WSL ile al (README H2), .aab'yi kapalı teste yükle. Bu build'lerde yeni özellikler var: Following sekmesi, profil istatistikleri, videodan takip, kaydetme sayısı, Bildirimler ekranı.
 
 * 2026-10-07 (gece): HEADER YENİLENDİ, ELLE YÜKLENMELİ (kurucu: "header resmi yok app store da"). API'de alan yok, tarayıcıdan yapılacak. App Store Connect > PromoVote > iOS 1.0 > Product Page Information > "Header and Search Results" sekmesi > Header: store/assets/header/header-3840x1646.png, Search Results: store/assets/header/search-3840x2560.png (PNG, alpha yok). Sürüm incelemede olduğu için alan kilitliyse: Asset Library'den ayrı gönder (Apple: assetler sürümden bağımsız incelenebilir, onaydan sonra Browse Assets > Publish). İncelemeyi geri çekme. Header iPhone'da sadece ortası görünecek şekilde tasarlandı (içerik x 560..3280, üst köşelerde geri/paylaş butonları için boşluk). Yükledikten sonra Preview aracında iPhone görünümünü kontrol et.
