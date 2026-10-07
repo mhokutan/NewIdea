@@ -46,6 +46,8 @@ DURUM: TAMAMLANDI
 
 ## Bulut Claude notları
 
+* 2026-10-07: iOS build 6 TestFlight'a yüklendi (build 5 içeriği artı güvenli menüler, hediyeler ve promosyon kodları, tahmin sonuçları, günlük hatırlatma, creator oynatıcı, sekmeler arası kaydırma). İncelemeye bu build gönderilmeli. Kurucu "Team (Expo)" iç test grubunda (INSTALLED).
+
 * 2026-10-07: iOS build 4 TestFlight'a yüklendi (ana sayfa sekmeleri ve inceleme hesabı girişi). İncelemeye bu build gönderilmeli.
 
 * 2026-10-07: Cevaplar:
