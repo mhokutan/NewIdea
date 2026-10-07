@@ -64,6 +64,7 @@ const en = {
   st_link_taps: "Link taps", report_email: "Report by email instead",
   value_call: "Call which new games, apps and shops will blow up", value_result: "Results in 7 days build your Scout Score", value_save: "Save promos and follow creators. Watching stays free.",
   reveal_right_t: "You called it! {n} right", reveal_right_p: "{n} of your calls got their result. Your Scout Score went up.", reveal_t: "Your results are in", reveal_p: "{n} of your calls got their result. No points lost on a miss.", reveal_see: "See my results",
+  streak_weeks: "Weekly streak: {n} weeks", streak_week: "{n} of {m} call days this week", streak_freezes: "{n} saved week",
 };
 type Key = keyof typeof en;
 const es: Partial<Record<Key, string>> = {
@@ -129,6 +130,7 @@ const es: Partial<Record<Key, string>> = {
   st_link_taps: "Toques en enlaces", report_email: "Reportar por email",
   value_call: "Predice qué juegos, apps y tiendas nuevas van a explotar", value_result: "Los resultados en 7 días suben tu Scout Score", value_save: "Guarda promos y sigue a creadores. Ver es gratis.",
   reveal_right_t: "¡Acertaste! {n} correctas", reveal_right_p: "{n} de tus predicciones ya tienen resultado. Tu Scout Score subió.", reveal_t: "Llegaron tus resultados", reveal_p: "{n} de tus predicciones ya tienen resultado. Fallar no quita puntos.", reveal_see: "Ver mis resultados",
+  streak_weeks: "Racha semanal: {n} semanas", streak_week: "{n} de {m} días con predicciones esta semana", streak_freezes: "{n} semana guardada",
 };
 const tr: Partial<Record<Key, string>> = {
   tab_feed: 'Akış', tab_explore: 'Keşfet', tab_me: 'Profil',
@@ -193,6 +195,7 @@ const tr: Partial<Record<Key, string>> = {
   st_link_taps: "Link tıklaması", report_email: "Email ile bildir",
   value_call: "Hangi yeni oyun, uygulama ve mağazanın patlayacağını tahmin et", value_result: "7 gün sonra gelen sonuçlar Kaşif Puanını büyütür", value_save: "Tanıtımları kaydet, firmaları takip et. İzlemek ücretsiz.",
   reveal_right_t: "Bildin! {n} doğru tahmin", reveal_right_p: "{n} tahminin sonuçlandı. Kaşif Puanın arttı.", reveal_t: "Sonuçların geldi", reveal_p: "{n} tahminin sonuçlandı. Yanlış tahmin puan kaybettirmez.", reveal_see: "Sonuçlarımı gör",
+  streak_weeks: "Haftalık seri: {n} hafta", streak_week: "Bu hafta {m} günün {n} tanesinde tahmin", streak_freezes: "{n} yedek hafta",
 };
 
 const DICTS = { en, es, tr } as const;

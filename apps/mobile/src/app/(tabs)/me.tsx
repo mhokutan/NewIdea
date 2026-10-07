@@ -120,6 +120,15 @@ function ScoutHome({ onSettings }: { onSettings: () => void }) {
         <View style={styles.bar}><View style={[styles.barFill, { width: `${Math.round(progress * 100)}%` }]} /></View>
         <Text style={styles.small}>{data ? fmt(t('to_next'), { n: Math.max(0, data.nextLevelAt - data.score), l: data.level + 1 }) : ' '}</Text>
         <Text style={styles.small}>{t('score_note')}</Text>
+        {data?.streak ? (
+          <View style={styles.streak} accessible accessibilityLabel={`${fmt(t('streak_weeks'), { n: data.streak.weeks })}. ${fmt(t('streak_week'), { n: Math.min(data.streak.daysThisWeek, data.streak.daysNeeded), m: data.streak.daysNeeded })}`}>
+            <Text style={styles.streakText}>{fmt(t('streak_weeks'), { n: data.streak.weeks })}{data.streak.freezes ? `  ·  ${fmt(t('streak_freezes'), { n: data.streak.freezes })}` : ''}</Text>
+            <View style={{ flexDirection: 'row', gap: 4, alignItems: 'center' }}>
+              {Array.from({ length: data.streak.daysNeeded }, (_, i) => <View key={i} style={[styles.streakDot, i < data.streak!.daysThisWeek && styles.streakDotOn]} />)}
+              <Text style={styles.small}>  {fmt(t('streak_week'), { n: Math.min(data.streak.daysThisWeek, data.streak.daysNeeded), m: data.streak.daysNeeded })}</Text>
+            </View>
+          </View>
+        ) : null}
         <View style={styles.statRow}>
           <Stat n={data?.open.length ?? 0} label={t('open_calls')} />
           <Stat n={data?.right ?? 0} label={t('right_calls')} />
@@ -501,6 +510,10 @@ const styles = StyleSheet.create({
   stat: { flexGrow: 1, flexBasis: '30%', backgroundColor: C.surface2, borderRadius: 14, padding: 12, gap: 2 },
   statN: { color: C.text, fontSize: 22, ...F.display },
   statL: { color: C.muted, fontSize: 12 },
+  streak: { marginTop: 4, gap: 6 },
+  streakText: { color: C.text, fontSize: 14, fontWeight: '700' },
+  streakDot: { width: 10, height: 10, borderRadius: 5, borderWidth: 1.5, borderColor: C.muted },
+  streakDotOn: { backgroundColor: C.lime, borderColor: C.lime },
   walletCode: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderWidth: 1.5, borderStyle: 'dashed', borderColor: C.lime, borderRadius: 10, paddingHorizontal: 12, minHeight: 44, marginTop: 4 },
   walletCodeText: { color: C.text, fontSize: 17, fontWeight: '800', letterSpacing: 1.5 },
   segment: { flexDirection: 'row', backgroundColor: C.surface, borderRadius: 14, padding: 4, gap: 4 },

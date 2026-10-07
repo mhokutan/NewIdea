@@ -42,6 +42,7 @@ export type ScoutSummary = {
   score: number; level: number; nextLevelAt: number; streakWeeks: number; resolved: number; right: number; calledIt: number;
   open: { promo: Promo; choice: Call['choice']; rank: number | null; resolvesAt: string }[];
   accuracy: number | null;
+  streak?: { weeks: number; best: number; freezes: number; daysThisWeek: number; daysNeeded: number };
   results: { promo: Promo; choice: Call['choice']; outcome: 'correct' | 'incorrect' | 'void'; points: number; resolvedAt: string | null }[];
   saved: Promo[]; following: { handle: string; name: string; avatar: string | null; mono: string | null }[];
 };

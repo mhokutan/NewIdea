@@ -734,19 +734,21 @@ app.get("/v1/me/scout", async (c) => {
   const [v, err] = await requireProfile(c, "scout");
   if (err) return err;
   const lang = langOf(c), db = c.env.DB;
-  const [stats, open, done, saved, following, recent] = await db.batch([
+  const [stats, open, done, saved, following, recent, week] = await db.batch([
     db.prepare("select * from scout_stats where profile_id = ?").bind(v.profile.id),
     db.prepare(PROMO_SELECT.replace("select pr.id,", "select ca.choice as call_choice, ca.created_at as call_at, ca.voter_ordinal as call_rank, pr.id,").replace("from promos pr", "from calls ca join promos pr on pr.id = ca.promo_id") + " and ca.scout_profile_id = ? and ca.outcome = 'pending' order by ca.created_at desc limit 50").bind(v.profile.id),
     db.prepare("select count(*) as n, sum(outcome = 'correct') as right, sum(is_called_it) as called_it from calls where scout_profile_id = ? and outcome in ('correct', 'incorrect')").bind(v.profile.id),
     db.prepare(PROMO_SELECT.replace("from promos pr", "from saves sv join promos pr on pr.id = sv.promo_id") + " and sv.scout_profile_id = ? order by sv.created_at desc limit 60").bind(v.profile.id),
     db.prepare("select p.handle, p.display_name, p.avatar_url, p.i18n from follows f join profiles p on p.id = f.creator_profile_id where f.follower_profile_id = ? and p.status = 'active' order by f.created_at desc limit 100").bind(v.profile.id),
     db.prepare(PROMO_SELECT.replace("select pr.id,", "select ca.choice as call_choice, ca.outcome as call_outcome, ca.score_delta as call_delta, ca.resolved_at as call_resolved, pr.id,").replace("from promos pr", "from calls ca join promos pr on pr.id = ca.promo_id") + " and ca.scout_profile_id = ? and ca.outcome in ('correct', 'incorrect', 'void') order by ca.resolved_at desc limit 20").bind(v.profile.id),
+    db.prepare("select count(distinct substr(created_at, 1, 10)) as days from calls where scout_profile_id = ? and created_at >= ?").bind(v.profile.id, weekStart(new Date()).toISOString()),
   ]);
   const st = stats.results[0] || { scout_score: 0, level: 1, current_streak_weeks: 0 };
   const d = done.results[0] || {};
   c.header("Cache-Control", "no-store");
   return c.json({
     score: st.scout_score, level: st.level, nextLevelAt: st.level * 100, streakWeeks: st.current_streak_weeks,
+    streak: { weeks: st.current_streak_weeks || 0, best: st.best_streak_weeks || 0, freezes: st.freezes_available || 0, daysThisWeek: week.results[0]?.days || 0, daysNeeded: STREAK_DAYS },
     resolved: d.n || 0, right: d.right || 0, calledIt: d.called_it || 0,
     open: open.results.map((r) => ({ promo: promoOut(r, lang), choice: r.call_choice, rank: r.call_rank, resolvesAt: new Date(new Date(r.call_at).getTime() + CALL_DAYS * 864e5).toISOString() })),
     accuracy: d.n ? Math.round((100 * (d.right || 0)) / d.n) : null,
@@ -1156,6 +1158,37 @@ async function resolveCalls(db) {
   return done;
 }
 
+// Forgiving weekly streak: a week counts when a scout makes calls on at least STREAK_DAYS different days
+// (Monday to Sunday, UTC). A missed week uses a freeze if one is saved; a freeze is earned every 4 counted
+// weeks (at most 2). Runs once per week from the daily job; the job_runs row makes it safe to re-run.
+const STREAK_DAYS = 3;
+const weekStart = (d) => { const x = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate())); x.setUTCDate(x.getUTCDate() - ((x.getUTCDay() + 6) % 7)); return x; };
+async function weeklyStreaks(db) {
+  const thisWeek = weekStart(new Date());
+  const lastWeek = new Date(thisWeek.getTime() - 7 * 864e5);
+  const key = `streaks:${lastWeek.toISOString().slice(0, 10)}`;
+  if (await db.prepare("select 1 from job_runs where name = ?").bind(key).first()) return;
+  const from = lastWeek.toISOString(), to = thisWeek.toISOString();
+  await db.batch([
+    db.prepare("insert or ignore into scout_stats (profile_id) select distinct scout_profile_id from calls where created_at >= ? and created_at < ?").bind(from, to),
+    // Counted week: streak + 1, a freeze every 4 weeks (max 2).
+    db.prepare(`update scout_stats set current_streak_weeks = current_streak_weeks + 1,
+        best_streak_weeks = max(best_streak_weeks, current_streak_weeks + 1),
+        freezes_available = min(2, freezes_available + (case when (current_streak_weeks + 1) % 4 = 0 then 1 else 0 end)),
+        updated_at = ?3
+      where profile_id in (select scout_profile_id from calls where created_at >= ?1 and created_at < ?2
+        group by scout_profile_id having count(distinct substr(created_at, 1, 10)) >= ${STREAK_DAYS})`).bind(from, to, now()),
+    // Missed week with a streak running: spend a freeze, else the streak ends.
+    db.prepare(`update scout_stats set
+        freezes_available = case when freezes_available > 0 then freezes_available - 1 else 0 end,
+        current_streak_weeks = case when freezes_available > 0 then current_streak_weeks else 0 end,
+        updated_at = ?3
+      where current_streak_weeks > 0 and profile_id not in (select scout_profile_id from calls where created_at >= ?1 and created_at < ?2
+        group by scout_profile_id having count(distinct substr(created_at, 1, 10)) >= ${STREAK_DAYS})`).bind(from, to, now()),
+    db.prepare("insert into job_runs (name, ran_at) values (?, ?)").bind(key, now()),
+  ]);
+}
+
 async function daily(env) {
   const db = env.DB;
   const cutoff = new Date(Date.now() - 30 * 864e5).toISOString();
@@ -1183,6 +1216,6 @@ export default {
   fetch: app.fetch,
   // Hourly: resolve calls (so "Result Oct 14" is true in every time zone). Daily (04:17 UTC): cleanup and deletions.
   scheduled: (event, env, ctx) => ctx.waitUntil(
-    event.cron === "17 4 * * *" ? Promise.all([daily(env), resolveCalls(env.DB)]) : resolveCalls(env.DB).catch((e) => console.error("resolve_calls_failed", e?.message)),
+    event.cron === "17 4 * * *" ? Promise.all([daily(env), resolveCalls(env.DB), weeklyStreaks(env.DB).catch((e) => console.error("streaks_failed", e?.message))]) : resolveCalls(env.DB).catch((e) => console.error("resolve_calls_failed", e?.message)),
   ),
 };
