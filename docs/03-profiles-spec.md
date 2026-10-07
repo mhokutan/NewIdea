@@ -61,7 +61,7 @@ Related: `docs/01-team-verdict.md` (source of truth), `docs/debate/`, `web/landi
 | Account | One login (Supabase `auth.users` row). Email, birth year, country live here. Never public. |
 | Scout profile | Every account has exactly one. Used to watch the daily drop, vote, save, follow. |
 | Creator page | Optional. Owned by an account. P0: max 1 per account. Hosts promos. |
-| Promo | A 10 to 45 second video with a title, CTA link and category. Has 1 or 2 variants (A/B). |
+| Promo | A 10 to 30 second video (up to 60 s when uploaded for a paid Boost or Trailer Test) with a title, CTA link and category. Has 1 or 2 variants (A/B). |
 | Daily drop | The 5 to 7 promos a scout gets per day. Finite. |
 | Call | A scout's vote on a promo: `will_blow_up` or `not_for_me`. Skip is free and is not a call. |
 | Hit Score | Fraud filtered engagement score of a promo: completion rate, save rate, CTA click rate, follows gained from the promo, "interested" reactions. **Calls are excluded** so predictions cannot be self fulfilling. |
@@ -397,8 +397,8 @@ Hard rules (enforced server side in the claim Edge Function):
 
 | Field | Limit |
 |---|---|
-| Video duration | 10 to 45 s (server reads duration from Cloudflare Stream, tolerance 0.5 s) |
-| File | MP4, MOV, WebM. Max 500 MB. Min 480 px short side. Aspect 9:16, 4:5, 1:1 or 16:9 (16:9 is letterboxed in the vertical player, never cropped). |
+| Video duration | Free: 10 to 30 s. Paid (Boost or Trailer Test): 10 to 60 s. Server reads duration from Cloudflare Stream, tolerance 0.5 s. Upload limits live in `docs/04` section 4.1 (monthly). |
+| File | MP4, MOV, WebM. Max 200 MB. Min 480 px short side. Aspect 9:16, 4:5, 1:1 or 16:9 (16:9 is letterboxed in the vertical player, never cropped). |
 | Variants | 1 or 2 (A/B for Trailer Test) |
 | Title | 3 to 60 chars |
 | Description | 0 to 280 chars, no URLs |
@@ -410,7 +410,7 @@ Hard rules (enforced server side in the claim Edge Function):
 
 **Empty states:**
 * Public, no promos: illustration + "No promos live yet. Follow to get the first one in your drop."
-* Owner, no promos: "Post your first promo. 10 to 45 seconds. A real person reviews it, usually within 24 hours." Button "Upload promo".
+* Owner, no promos: "Post your first promo. 10 to 30 seconds. A real person reviews it, usually within 24 hours." Button "Upload promo".
 
 #### 3.2.10 Rankings tab
 

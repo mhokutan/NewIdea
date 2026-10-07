@@ -100,10 +100,10 @@ Web'de bu tasarım yapılmayacak. Web sade, hızlı ve arama motoru dostu kalaca
 
 | Kural | Değer |
 |---|---|
-| Video süresi | 10 ile 60 saniye |
+| Video süresi | 10 ile 30 saniye (ücretsiz). Boost veya Trailer Test için yüklenen video 10 ile 60 saniye (kurucu kararı 2026-10-07) |
 | Format | Dikey 9:16 önerilir, yatay video bulanık arka planla dikeye çevrilir |
 | Dosya | MP4 veya MOV, en fazla 200 MB |
-| Haftalık yükleme | Yeni hesap ilk hafta 2, sonra haftada 3 video |
+| Aylık yükleme | Ayda 10 ücretsiz video, yeni hesabın ilk 30 günü 5 (kurucu kararı 2026-10-07: haftalık değil aylık limit). Boost veya Trailer Test için yüklenen video bu limite sayılmaz |
 | Aynı anda yayında | En fazla 15 video |
 | İlk 3 video | Elle onaydan geçer, sonra otomatik moderasyon + rastgele kontrol |
 
