@@ -264,3 +264,74 @@ Same as round 1 item 5: after the first finished drop, a soft prompt "Get tomorr
 Items 1, 2 and 5 are small. Items 3 and 4 decide whether Scout Score means something. Item 6 is the only external trigger the app will have at launch.
 
 Legal notes in this report are not legal advice.
+
+---
+
+# Round 3 (2026-10-07, night)
+
+Read: `docs/review/brief-r3.md`, screenshots `docs/review/screens-r3/01, 02, 04, 05, 11 to 16`, `apps/mobile/src/app/(tabs)/index.tsx`, `apps/mobile/src/app/(tabs)/me.tsx`, `apps/mobile/src/ui/PromoReel.tsx`, `apps/mobile/src/ui/ResultReveal.tsx`, `apps/mobile/src/lib/reminder.ts`, `apps/mobile/src/lib/i18n.ts`, `services/api/src/index.js` (`/health`, `/v1/home`, `/v1/drop`, `/v1/calls`, `/v1/me/scout`, `crowdBar`, `resolveCalls`, `weeklyStreaks`, `scheduled`), `web/landing/content/promos.json`.
+
+## R3.1 Status of my round 2 P0 list
+
+| R2 item | Status | Note |
+|---|---|---|
+| 1. Guest end card "0 of 7" | Done | `drop_done_guest` and `drop_done_zero` copy plus a Sign in button (`index.tsx` EndCard). |
+| 2. Resolver runs on time | Done in code | Hourly cron, `job_runs` heartbeat on `/health`. Still depends on the founder opening the Workers dashboard once so crons fire; confirm `/health` shows `resolve_calls` within 2 hours after deploy. |
+| 3. Show the result | Done | Ticket outcome, Results list with accuracy, one time reveal sheet (screens 13 to 15). This is the variable reward the loop was missing. |
+| 4. "Always Will blow up" exploit | Mostly done | Median crowd bar, percentile multiplier, 7 score eligible calls a day, visible accuracy. A spray strategy now lands near 50% accuracy, which the profile shows. The payout is still asymmetric (right Will blow up 10 to 30, right Not for me 5), acceptable while accuracy is visible. |
+| 5. Personal drop without repeats | Partly | Uncalled promos first from a pool of 21 and "N new for you today". But the pool is the whole catalog (about 18 promos), and when fewer than 7 are fresh the drop is padded with already called promos (`index.tsx` lines 81 to 82). |
+| 6. Daily local reminder | Done | Offered on the end card after a finished drop, never at launch, off switch in Settings, local only. Copy has an honesty problem (below). |
+
+Also new and good: forgiving weekly streak by call days with saved weeks and no loss copy (screen 14), Charts progress card instead of an empty tab (screen 05), gifts that never read calls or follows (screen 16).
+
+## R3.2 Scores
+
+| # | Area | R2 | R3 | Evidence |
+|---|---|---|---|---|
+| 1 | Retention | 6 | **7** | All four loop steps now exist (reminder, call, reveal, Score and streak), but a daily scout runs out of fresh promos on day 3 with about 18 in the catalog, and with few scouts most tickets will pass their result date without a result because a call needs 10 later calls (`RESOLVE_MIN_LATER`). |
+| 2 | Session time | 7 | **7** | Drop plus Keep watching plus tab swipe fits the 3 to 5 minute target, but the ceiling is the catalog, not the design; from day 3 the drop is mostly tickets the scout already made. |
+| 3 | Originality | 8 | **8** | The dated call ticket that turns into a result, the "You called it" reveal and the call day streak read as PromoVote's own product. |
+| 4 | Trademark and trade dress safety | 8 | **8** | No "For you", no story rings, own call bar, own tagline "The social network for promos"; horizontal swipe between feed tabs is a common pattern, not a signature (not legal advice). |
+| 5 | Engagement loop and habit design | 6 | **7** | The Hooked loop is complete and ethical, but two copy bugs hit the trigger and the reward at exactly the cold start moment: the reminder promises "7 new promos" every day and overdue tickets keep showing a past "Result" date. |
+
+## R3.3 What still keeps scores below 8 (smallest change first)
+
+### P0 (before App Store submission, all small)
+
+**1. Reminder copy must stay true when nothing is new.**
+`apps/mobile/src/lib/i18n.ts` line 62 (and es, tr): `reminder_p` says "7 new promos. Make your calls before the crowd does." With about 18 promos a daily scout has 0 fresh promos from day 3 or 4, so the notification becomes a false count every evening. False counts are on our own banned list, and they are the fastest way to lose notification permission. Change to a neutral line without a number, for example "See what dropped today and check your open calls." Worked when: notification opt out rate in the first 14 days stays under 10%.
+
+**2. Overdue tickets need their own state.**
+`apps/mobile/src/ui/PromoReel.tsx` lines 107 to 111 and `apps/mobile/src/app/(tabs)/me.tsx` line 169 always show `Result <date>` while `outcome` is `pending`. `resolveCalls` keeps a call pending until 10 later calls exist, for up to 21 days. In TestFlight and the first launch weeks that is most calls, so the ticket will say "Result Oct 14" on Oct 20. When `resolvesAt` is in the past and the call is still pending, show "Waiting for more scouts. Final result by <resolvesAt + 14 days>." The API already knows both numbers (`CALL_DAYS`, `RESOLVE_MAX_DAYS`). Worked when: no ticket shows a past date as a future promise.
+
+**3. "Points added" only when points were added.**
+`i18n.ts` line 59 `outcome_right` says "You called it right. Points added." but calls beyond the first 7 of the day are not score eligible (`index.js` line 1137) and get 0 points. Use "You called it right." and append "+N points" only when `points > 0` (the profile already does this, line 157); on the ticket, add "Not scored (over today's 7)" when right with 0 points. Small, but this is the exact moment the scout decides whether the Score is honest.
+
+### P1 (before public launch)
+
+4. **Honest short drop.** When fewer than 7 promos are fresh, show only the fresh ones and end with "That's all new today, N promos" instead of padding with called tickets (`index.tsx` lines 81 to 83). When 0 are fresh, open on a card with the scout's Results and Open calls, then Keep watching. Until weekly new promos pass about 35, `DROP_SIZE = 5` is a better default.
+5. **First level up after one right call.** Still linear `level * 100` (`index.js` lines 750 and 1146, `me.tsx` line 107). Screen 14 shows a right early call (+30) and still "70 points to level 2". Put Level 2 at 30 and grow gaps after that (for example 30, 100, 250, 500).
+6. **"How results work" sheet.** Tap on the ticket or the Score card: "Will blow up is right when the scouts who came after you lean more toward it than on a typical promo. Wrong calls never cost points. Only your first 7 calls a day score." Without it, a "The crowd saw it differently" result feels arbitrary. Text only, `PromoReel.tsx` and `me.tsx`.
+7. **Share carries the call.** `PromoReel.tsx` `share` (line 96) still sends only title and link. Add "I called Will blow up on X. Result Oct 14." and `&by=handle`; after a right result, share from the Results row. This is the only organic acquisition loop the scout side has.
+8. **Guest calls kept on device** (round 1 item 9): up to 3 guest calls attach to the profile after sign in. Strongest guest to scout lever; the gate sheet (screen 02) already sets it up.
+9. **Results day local notification.** The app knows each call's `resolvesAt`; schedule one local "Results day for N of your calls" when the scout has open calls, no push server needed, at most one per day, merged with the daily reminder.
+
+## R3.4 What code cannot close
+
+* **Retention 8 and Session time 8 need real content.** A daily scout needs about 35 to 50 fresh English promos per week. Today the catalog is about 18 from 3 founder creators; after day 3 the honest drop is empty. This closes only with creator outreach and creator uploads (R2 photo and video upload still pending).
+* **The reveal needs real scouts.** With `RESOLVE_MIN_LATER = 10`, a promo needs at least 11 callers before anyone gets a result. With fewer than about 30 active scouts, most calls end void after 21 days. Either recruit a launch cohort (waitlist plus indie game communities, target 50 or more scouts calling in week 1) or lower the beta threshold to 5 later calls and say so in the "How results work" sheet.
+* **D7 at or above 15% must be measured** on real TestFlight and launch cohorts before any Retention score of 8 is more than a prediction.
+
+## R3.5 Expected scores after P0
+
+| Area | R3 now | After P0 (1 to 3) | After P1 plus real content and scouts |
+|---|---|---|---|
+| Retention | 7 | 7 | 8 to 9 (needs measured D7) |
+| Session time | 7 | 7 | 8 |
+| Originality | 8 | 8 | 8 to 9 |
+| Trademark and trade dress | 8 | 8 | 8 |
+| Engagement loop and habit design | 7 | 8 | 8 to 9 |
+
+Plain answer: the habit design is now good enough to ship once P0 items 1 to 3 are fixed (a few lines of copy and one conditional). Retention and Session time stay at 7 until there is more content and enough scouts for results to resolve; that is a supply and launch gap, not a code gap.
+
+Legal notes in this report are not legal advice.

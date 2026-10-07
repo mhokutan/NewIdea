@@ -236,3 +236,78 @@ Expected after P0 and P1: Retention 8, Session time 8, Originality 8, Trademark 
 ## 5. Investor view after round 2
 
 Still not a pre-seed investment today, but this is now a product I can describe in one sentence that is not "TikTok for ads": **"A daily drop of new games and apps where you call the hits early and build a public track record."** That is a real position. The milestones from round 1 section 7 stay the same. One addition: before any pitch, show the resolution rule passing a simple test, where "yes to everything" earns no more than a coin flip. If the scoreboard can be farmed, there is no moat.
+
+---
+
+# Round 3
+
+Date: 2026-10-07 (night). Inputs: `docs/review/brief-r3.md`, screenshots `docs/review/screens-r3/01..18`, `services/api/src/index.js` (`/v1/calls` at line 885, `crowdBar()` and `resolveCalls()` at lines 1094 to 1159, `weeklyStreaks()` at line 1166), `apps/mobile/src/ui/ResultReveal.tsx`, `apps/mobile/src/ui/PromoReel.tsx`, `apps/mobile/src/app/(tabs)/me.tsx`, `apps/mobile/src/lib/reminder.ts`, one fresh competitor search.
+
+## Kurucuya kısa özet (Türkçe)
+
+Round 2'de istediğim en önemli düzeltme yapılmış: "Will blow up" artık sabit %50'ye göre değil, son haftanın medyan kalabalık oranına göre doğru sayılıyor. Yani "her şeye evet" demek artık isabet oranında yazı tura seviyesine düşüyor. Günde sadece 7 çağrının puan alması da hacim hilesini kesiyor. Sonuç anı, Results listesi, haftalık seri ve 18:00 hatırlatması ile döngü artık tam. Özgünlük 8'e çıktı. Ama iki somut sorun var. Birincisi puan tablosu hâlâ "her şeye erken evet" diyeni ödüllendiriyor: doğru "Will blow up" 30 puana kadar, doğru "Not for me" sadece 5 puan. Hesapladım: her şeye evet diyen biri, %65 isabetli dürüst bir oyuncudan daha çok puan topluyor. Düzeltmesi tek satır (iki tarafı eşit puanla). İkincisi bir hata: ilk "You called it" ekranı kodda hiç çıkmıyor, çünkü cihaz ilk sonucu "geçmiş" sayıp saklıyor. En önemli an tam da o. Geri kalan açık (içerik azlığı, sonuçların düşük trafikte void olması, marka araştırması) kodla değil, gerçek kullanıcı, gerçek içerik ve senin kararınla kapanır.
+
+## 1. Scores
+
+| # | Area | R2 | R3 | Evidence (one sentence) |
+|---|---|---|---|---|
+| 1 | Retention | 6 | 7 | The full loop now exists (hourly resolver, ticket outcome, Results with accuracy in screenshot 15, reveal sheet in 13, forgiving weekly streak in 14, 18:00 local reminder offered after the first drop), but the very first reveal never fires (`ResultReveal.tsx` lines 25 to 30), there is still no "I called it" share card, and at founder traffic most calls will void after 21 days because each needs 10 later callers. |
+| 2 | Session time | 6 | 6 | Tab swipe and the creator player (07) add paths, but the server pool of 21 is larger than the roughly 16 live promos from 3 founder creators, so Today's Drop and Keep watching repeat within a day; this only closes with real content. |
+| 3 | Originality | 7 | 8 | Drop progress, the two button call bar with the chevron, a ticket that turns into a right or wrong result, Results with accuracy, streak dots and the "Charts open when 20 scouts call" progress card (05) form a sequence no feed app, Steam or SWIPEPLAY has; the right rail and the missing pre tap call status remain the only TikTok echoes. |
+| 4 | Trademark and trade dress safety | 7 | 7 | "The social network for promos" replaces the old line, Google Play options are hidden on iOS and staff impersonation is blocked, but the USPTO knockout search for PromoVote (classes 35, 42) is still not on file, and I will not score this 8 without it. |
+| 5 | Differentiation and competitive position | 6 | 7 | The median crowd bar (`crowdBar()`, line 1098) makes "yes to everything" a coin flip on accuracy and the 7 scored calls per day cap volume, but the point table is asymmetric (right "Will blow up" = 10 x up to 3, right "Not for me" = 5, wrong = 0), so blanket early "yes" still tops the Scout Score, and the outcome still measures agreement with the later crowd, not real behaviour. |
+
+Competitive check (fresh search): consumer side is still empty. Hit prediction exists only as developer tools (GameRefinery's Game Power Score, Playtracker popularity scores). The white space from round 1 is still ours if the score means taste.
+
+## 2. The remaining scoring flaw, with numbers
+
+Rule today (`resolveCalls()`, lines 1132 to 1137): right "Will blow up" earns 10 x multiplier (x3 for the first 10% of callers, x2 for the next 20%), right "Not for me" earns 5, a wrong call costs nothing.
+
+Two scouts, both calling early (x3), 7 scored calls a day:
+
+* **Blanket yes:** accuracy about 50% against the median bar, so 7 x 0.5 x 30 = **about 105 points a day**.
+* **Honest scout, 65% accurate, half yes and half no:** 3.5 x 0.65 x 30 + 3.5 x 0.65 x 5 = **about 80 points a day**.
+
+The farmer wins by 30%. Expected value says call "Will blow up" whenever you think it has more than a 1 in 7 chance (early) or 1 in 3 chance (late). So "Not for me" is almost never worth pressing for points, the crowd split drifts positive, and the Scout Score and Level reward speed, not taste. Accuracy is shown (screenshot 15), which helps, but the big lime number on the profile (14) is the score.
+
+What would need to be true: the score must rise with accuracy, not with saying yes. The smallest fix is symmetric points. With right "Not for me" also worth 10 x multiplier, blanket yes earns about 15 per call and the 65% scout about 19.5. Good.
+
+Smaller notes:
+* No test guards the rule. In round 2 I asked for a test where "yes to everything" earns no more than a coin flip before any pitch. There is none in `services/api/`.
+* Collusion: one early scout plus 10 fresh friend accounts still flips an outcome; there is no guard (round 2 P1.3 still open).
+* The word "called it" means two things: the reveal says "You called it! 1 right" for any correct call (13), while the profile stat "Called it" counts only correct early x3 calls (14 shows 0 next to a +30 result; that pairing is likely seed data, since the code sets `is_called_it` for x3, but the copy mismatch is real).
+
+## 3. Remaining blockers (smallest change first)
+
+### P0 (before App Store submission or before any pitch)
+
+| # | What | Where | Why | Done when |
+|---|---|---|---|---|
+| P0.1 | Fix the skipped first reveal: when no `pv_results_seen` key exists, store `{right: 0, total: 0}` as soon as the scout is signed in (or treat a missing key as zero when the scout has calls made in this install), so the first resolved results do show the sheet. | `apps/mobile/src/ui/ResultReveal.tsx` lines 25 to 30 (the early return on `!total` means the key is never written before the first result, then line 30 swallows it) | The first result is the payoff that teaches the loop. Today a new scout never sees "You called it". | Fresh install, one call, seed it resolved: the sheet appears once. |
+| P0.2 | Symmetric points: right "Not for me" = 10 x multiplier, same as "Will blow up". | `resolveCalls()` line 1137 in `services/api/src/index.js`, plus the points line in the Scout help copy | Removes the last dominant strategy; makes the score a taste score. | Simulation below shows blanket yes below a 60% honest scout. |
+| P0.3 | A unit test of the rule: 1,000 simulated promos, a blanket yes scout, a blanket no scout, and a 65% scout; assert the 65% scout has the highest score and both blanket players land near 50% accuracy. | New test next to `services/api/src/index.js` (export `crowdBar` and the outcome math as pure functions) | Investor and App Review both need "the scoreboard cannot be farmed" as a fact, not a claim. | Test runs in CI and fails if someone changes the weights back. |
+
+### P1 (before public launch)
+
+| # | What | Where | Why | Done when |
+|---|---|---|---|---|
+| P1.1 | One meaning for "called it": reveal title says "1 right" or "Right call", and "Called it" stays for early x3 hits only. | `reveal_right_t` in `apps/mobile/src/lib/i18n.ts` (en, es, tr) | The badge must be rare to mean status. | Copy review. |
+| P1.2 | Call status chip before the tap: "Open, 9 scouts called" (bucketed) or "Be one of the first 10". | `apps/mobile/src/ui/PromoReel.tsx` chips block near line 183; call count bucket in the feed select | Shows the game in the first frame; the last TikTok echo. | 5 second test: 6 of 10 strangers say "predict which games blow up". |
+| P1.3 | Collusion guard: later calls from accounts younger than the early call with fewer than 3 calls on other creators do not count toward `n` or `share`. | `resolveCalls()` later query, line 1122 | A friend ring flips any outcome today. | Seeded ring of 10 fresh accounts does not change the result. |
+| P1.4 | "I called it" share card (1080 x 1920, chevron, promo, date called, scout number). | New view in the app, share from the Results row | Status is our replacement for money; status needs an audience. | Share rate per correct call measured; target 10%. |
+| P1.5 | Low traffic resolution: for the beta, lower `RESOLVE_MIN_LATER` to 5 while daily active scouts are below 100, and show the count needed on the open call ("needs 3 more scouts"). | `RESOLVE_MIN_LATER` line 1094; open calls row in `me.tsx` | Otherwise most first results are void and the loop never pays out. | Under 30% of beta calls void. |
+| P1.6 | Blend real behaviour into the outcome once a promo has 150 valid views (Hit Score rank in its weekly cohort, calls excluded, per `docs/03-profiles-spec.md`). | `resolveCalls()` | Turns "predict the crowd" into "predict the hit"; the copy "The crowd saw it differently" is honest today, but the button says "Will blow up". | `hit_outcome` written weekly; calls resolve against it. |
+| P1.7 | USPTO knockout search for PromoVote (classes 35, 42). | Founder or lawyer | Trademark stays at 7 without it. | Written result on file. |
+| P1.8 | Real supply: at least 12 non founder creators and 40 promos, mostly indie games, with written permission. | Outreach, seed script or creator upload | Session time cannot reach 8 on 3 founder creators; the drop pool of 21 already exceeds live supply. | Keep watching does not repeat within 20 swipes; Today's Drop is new each day for 7 days. |
+
+**Only real users or real content can close:** Session time (P1.8), the void rate and therefore the payoff side of Retention (P1.5 helps, users decide), and Hit Score blending (P1.6 needs 150 views per promo). Trademark closes only with the founder's search. Everything in P0 is code and small.
+
+Expected after P0 and P1.1 to P1.4: Originality 8, Differentiation 8, Retention 8 in a closed beta with at least 50 active scouts. Session time 8 and Trademark 8 need P1.8 and P1.7.
+
+## 4. Investor view after round 3
+
+Better, and for the first time the mechanism is close to defensible: base rate is fixed, volume is capped, results are shown honestly with "no points lost". I still would not invest at pre-seed today, for the same two reasons: supply is 3 founder creators, and the score can still be topped by saying yes early. P0.2 and P0.3 fix the second in an afternoon. The first is the real company risk, and only outreach fixes it.
+
+Milestones that would change my mind (unchanged in substance): 40% of first session users make a call, 25% of callers return when results land, a 5 second test where 6 of 10 say "calling which new games blow up", 30 non founder creators with 40% posting a second promo, and the verdict's week 12 money gate (50 paying developers, about $2,000 MRR). Add one: the scoring test from P0.3 in CI, shown in the deck.
+
+Sources for the fresh check: [GameRefinery (ArcticStartup)](https://arcticstartup.com/does-a-successful-game-come-down-to-the-right-formula-gamerefinery-thinks-theyve-found-it/?amp=1), [Playtracker popularity score](https://playtracker.net/insight/game/137674).

@@ -281,3 +281,62 @@ No change to my round 1 view. One plan at $9.99 per month or $99.99 per year, Cr
 If P0 items 1 to 5 are done: Business readiness 7, Originality 8, Trademark 8.
 
 If P1 items 6 to 8 are also done (perks, uploads, link taps): Retention 8, Session time 8, Business readiness 8.
+
+---
+
+# Round 3 (2026-10-07, night)
+
+Inputs: `docs/review/brief-r3.md`, screens `screens-r3/01, 06, 07, 16, 17, 18`, `services/api/src/index.js` (`withUtm`, `CTA_PLATFORMS`, `GET /v1/profiles/:handle`, `checkLink` and `PUT /v1/me/links`, perks block, `GET /v1/me/studio`, `POST /v1/events/link`), `services/api/scripts/gen-seed-sql.py`, `services/api/migrations/0003` and `0006`, `apps/mobile/src/app/creator/[handle].tsx`, `apps/mobile/src/app/perk.tsx`, `apps/mobile/src/ui/PerkSheet.tsx`, `apps/mobile/src/ui/PromoReel.tsx`, `apps/mobile/src/app/(tabs)/me.tsx`, `apps/mobile/src/lib/categories.ts`.
+
+## Round 2 P0 list: status
+
+| # | Round 2 item | Status | Evidence |
+|---|---|---|---|
+| 1 | Main button on the public page | Done in code | `primaryCta` resolved from the first matching link (`index.js` lines 378 to 383), rendered next to Follow (`[handle].tsx` line 89), Google Play hidden on iOS, taps logged through `linkTap`. |
+| 2 | Link spoofing | Mostly done | Amazon is anchored to real TLDs (line 527), and a label that names another platform is refused (lines 555 to 559). Still open: Shopify and Maps are not in `PLATFORM_WORDS`, and a custom label on a `website` link still hides the domain (`categories.ts` line 24). |
+| 3 | Honest profile empty state | Done | `no_promos` and `no_promos_owner` (`[handle].tsx` line 117, screen 16 "No promos yet."). |
+| 4 | Exact free numbers | Done | Clicks filter `is_boost = 0`, saves and follows are windowed, link taps added (`index.js` lines 773 to 784). |
+| 5 | UTM tags | Done | `withUtm` on promo CTAs and profile links, store links left clean (lines 138 to 150); `/v1/events/link` strips UTM before matching, so taps still count. |
+
+P1 items from round 2: perks (done, claim path reads only the perk and the user, screens 16 to 18), link taps (done), video upload (not done), link safety scan (not done, links still save as `safe` with no check, line 571), banner legibility (fine on screen 06), digest and verified business flow (not done).
+
+This is a real step. A shop or studio can now set up a page, put a money button on it, run a gift with a stock limit and an end date, see claims, and find PromoVote traffic in its own GA4, Shopify or Etsy stats. That is the "reason to try" and half of the "reason to stay" from round 1.
+
+## Scores
+
+| # | Area | R2 | R3 | Evidence |
+|---|---|---|---|---|
+| 1 | Retention | 6 | 6 | Gifts with a claims counter and link taps give an owner something to check, but a non founder creator still cannot post a promo, so they never enter the feed, nobody reaches their page, and every number stays at 0. |
+| 2 | Session time | 6 | 7 | The creator page now opens a vertical player of that creator's promos (screen 07) and the gift sheet and wallet add real steps (screens 17, 18); promo tiles still show only a poster and a duration (screen 06). |
+| 3 | Originality | 8 | 8 | A gift that is explicitly never tied to calls or follows, with the rule printed under the code (screen 17), next to the call ticket and Results, is a business offer no other short video app makes. |
+| 4 | Trademark and trade dress | 8 | 8 | "The social network for promos", rounded square avatars, lime dashed gift card and ticket style; nothing on these screens borrows another app's look. |
+| 5 | Advertiser and business readiness | 6 | 7 | Main button, UTM, exact free stats and gifts are all in, but production pages do not use them yet (no `primary_cta` set for the 3 founder creators, screen 06 shows only Follow and a dead "Coming soon"), links are not scanned, and no business can upload its own promo. |
+
+## What still keeps a score below 8 (smallest change first)
+
+### P0 (before App Store submission)
+
+1. **Gift chip that leads to "no gift" (likely bug on production).** `gen-seed-sql.py` line 53 writes `has_perk = 1` for every Nicheable promo, and `PROMO_SELECT` (`index.js` line 126) shows the chip when `pr.has_perk` is 1 even if no `perks` row exists. No migration inserts the NEWIDEA25 gift. So unless a gift was created by hand in production, a scout taps "Gift" on a Nicheable promo and the sheet says there is no gift. Fix: add a seed migration that creates the Nicheable gift (code NEWIDEA25, `redeem_url` the Etsy shop, 90 days), and drop `pr.has_perk or` from line 126 so the chip only follows a live gift. Done when every promo with a gift chip opens a claimable code.
+2. **Use the new tools on the founder pages.** The 3 founder creators have no `primary_cta` (only `0006` defines the column, no seed sets it). Set Poleris to `app_store`, Nicheable to `etsy` and Hauling Empire to `notify`. These pages are the only real businesses on the app, and app review and every early visitor will judge them. Done when screen 06 for Poleris shows "Get the app" next to Follow.
+3. **"Notify me" renders nothing.** `primaryCta` for `notify` returns `url: null` (line 380), and `[handle].tsx` line 54 requires a URL, so a pre launch game (the first niche) gets no main button. Smallest fix: for `notify`, show the Follow button with the label "Notify me at launch" (following already means updates), and replace the dead "Coming soon" chip with that. Done when Hauling Empire shows one clear action instead of a grey chip.
+
+### P1 (before public launch)
+
+4. **Show the domain on website links.** In `categories.ts` line 24, show `label (domain)` when the platform is `website`, and add `shopify|shop now|google ?maps|maps` to `PLATFORM_WORDS` (`index.js` line 556). Without this, `https://evil.example` labeled "Official store" still looks first party.
+5. **Tag and track the gift link.** `perkOut` returns `redeem_url` raw and `PerkSheet.tsx` line 71 opens it untracked. Pass it through `withUtm(url, "gift")` and log the tap, so a shop sees gift traffic in its own analytics. This is the attribution businesses trust most.
+6. **Give the money button equal weight.** On someone else's page Follow is lime and the main button is ghost (`[handle].tsx` lines 88 to 89). For a business the CTA tap is the product. Make it a solid white button, like the promo CTA in `PromoReel.tsx` line 271.
+7. **Promo tiles with a title and a gift chip** (`[handle].tsx` lines 118 to 122). Visitors still cannot tell 11 Hauling Empire tiles apart.
+8. **Real link safety scan** (carried over). `PUT /v1/me/links` and the perk `redeemUrl` are trusted as `safe` with no check. Add Google Web Risk and a redirect check before uploads or open signups. Brands will not sit next to a phishing link, and a gift link is the easiest place to hide one.
+9. **Video upload with the 10 to 30 s free cap** (waits on R2). This is the one change that moves Retention and Business readiness to 8. Until then, every non founder business has a page with zero traffic.
+10. **Weekly creator digest and the verified business flow** (carried over). Done when creator week 4 return is 40% or higher and a test domain verifies in under 1 minute.
+
+## Gaps that code cannot close
+
+* **Retention 8 for businesses needs real traffic.** Even with uploads, a business returns only if its numbers move. With 3 founder creators and no scouts yet, the free stats will show 0 for any new account. This closes with real scouts (the 3 week validation test) and 10 to 20 outreach creators, not more code.
+* **Proof for "why move $50 from Meta".** The tools to prove delivery now exist (free stats, UTM, gift claims). The proof itself (CTR, gift claims per 1,000 views, Trailer Test feedback) only exists after real users watch. Do not sell Boost or Trailer Test before the first 1,000 valid views on a non founder creator.
+
+## Expected after this list
+
+P0 items 1 to 3 (seed and copy changes, under a day): Business readiness 8 for app review, since every visible page then shows a working money button and a working gift. P1 items 4 to 8: Session time 8. Item 9 plus real scouts: Retention 8.
+
+Legal notes are not legal advice.

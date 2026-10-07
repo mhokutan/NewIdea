@@ -248,3 +248,55 @@ Only Retention stays below 8. It is mainly a product item, listed below because 
 6. **Optional originality polish:** replace the white segmented bars on Today's Drop with a numbered counter or lime ticket stubs (`apps/mobile/src/app/(tabs)/index.tsx`).
 
 Sources added in round 2: [Apple App Store Marketing Guidelines](https://developer.apple.com/app-store/marketing/guidelines/), [UK IPO journal, The Sunday Drop UK00004354196](https://www.ipo.gov.uk/t-tmj/tm-journals/2026-013/UK00004354196.html), live API responses from `api.promovote.com` (2026-10-07).
+
+## Round 3 (2026-10-07, night)
+
+This is still not legal advice. I checked `docs/review/brief-r3.md`, `apps/mobile/src/lib/i18n.ts` (en, es, tr), `apps/mobile/src/lib/categories.ts`, `apps/mobile/src/ui/Icon.tsx`, `apps/mobile/src/lib/theme.ts`, `apps/mobile/assets/fonts/` (Bricolage Grotesque with `OFL.txt`), `services/api/src/index.js` (staff name guard, report reasons, UTM), `services/api/migrations/0003_seed_launch.sql`, `web/landing/content/promos.json`, `web/landing/public/index.html` and `about.html`, `store/README.md`, `store/status.md`, and all 18 images in `docs/review/screens-r3/`. Founder context respected: trademark filing is decided later, and the "Calm" rename is a pending founder action.
+
+### What I verified
+
+| Item | Round 3 status | Evidence |
+|---|---|---|
+| "Open in the App Store" | Fixed | `i18n.ts` line 12 "Open in the App Store", line 78 "Abrir en el App Store", tr unchanged; screenshot 04 shows the button. Matches Apple Marketing Guidelines. |
+| Google Play on iOS | Fixed | `categories.ts` `ctaVisible` hides `google_play` on iOS; the "Google Play coming soon" line in `creator/[handle].tsx` renders only on Android. Removes a 2.3.10 (other platforms in metadata) risk on iOS. |
+| Report reasons | Better | Screenshot 03 lists "Pretending to be someone else", "Harmful link", "Copyright", "Uses my brand or trademark"; API `REPORT_REASONS` includes `trademark` and `impersonation`. This gives brand owners an in app path, which helps 5.2.1 and later DMCA style handling. |
+| Staff impersonation | Fixed | `STAFF_NAME` regex in `services/api/src/index.js` blocks "PromoVote", "admin", "moderator", "official support" and similar in names (unless verified) and bios. Protects our own mark from look alike accounts. |
+| Tagline | Fixed | "The social network for promos" on `about.html`; "The social media of ads" is gone from app and site. Less 3.2.2(iii) "ads app" signal. |
+| Brand font | OK | Bricolage Grotesque is SIL OFL 1.1 and `OFL.txt` ships beside it. OFL allows bundling in a commercial app; only the font name cannot be reused for a modified font. No risk. |
+| Logo and ring colors | OK | Pink and violet appear only in `theme.ts` tokens and the logo (screenshot 08); no creator avatar uses the gradient ring. Creator tiles stay rounded squares (screenshots 05, 06). Instagram distance kept. |
+| Verified badge | OK, watch | `Icon.tsx` uses SF Symbol `checkmark.seal.fill` on iOS and Material `verified` elsewhere, in lime (screenshot 06). Both are licensed system icon sets and the seal with check is a generic shape. Do not recolor it blue, which is the Meta / X look. SF Symbols may not be used in the app icon or store marketing art. |
+| Disclosure of founder content | Good | "Made by the PromoVote founder" under each founder creator and the Team picks note "Never paid. The founder makes some of these promos" (screenshot 04). Good for FTC style honesty and for review. |
+| Gifts | OK | Screenshot 17: "Gifts never depend on your calls or follows." Codes are the creator's own (LIVES20 is local test data). No third party marks in the gift UI. |
+| Today's Drop progress | Improved | The segment bar now fills in lime on dark grey (screenshots 01, 11), which reads less like white Instagram Stories bars. Optional item from round 2 is effectively closed. |
+| Third party store names | OK | "Wishlist on Steam", "View on Etsy", "Open on itch.io", "Open in Google Play" are plain nominative text with no logos. Fine. Do not add their badges without following each brand's badge rules. |
+| "Calm" promo | **Not fixed (founder action pending)** | `promos.json` lines 146 to 156 still have slug `poleris-calm` and "The Calm tab"; seed `0003_seed_launch.sql` lines 125 and 131 the same; `index.html` line 673 serves it on the website; screenshot 05 shows the "Calm" heading as the first Explore tile. |
+| App Review notes and long description | **Not written** | `store/README.md` still says "Ekran görüntüleri ve açıklama metni için şimdilik dur". Worse, its facts are now stale: "Uygulama içi satın alma var (consumable: Boost ve Trailer Test). Abonelik yok." and "Kullanıcı video yükleyebilir (moderasyonlu)", while v1 is fully free, Pro is planned for v1.1 and uploads are not open. If desktop Claude copies these into App Store Connect, the metadata will not match the build (Guideline 2.3.1 accurate metadata, 2.1 completeness). |
+| Trademark filing, handles, promovote.app | Not done (founder decides later) | No serial numbers in `CLAUDE.md`; `store/status.md` has no handle list. |
+
+Small note: `drop_fresh` "{n} new for you today" uses the words "for you" inside a sentence. That is ordinary English and not a tab label, so it is fine. Keep "For you" out of any tab or section name.
+
+### Scores, round 3
+
+| # | Area | R2 | R3 | Evidence (one sentence) |
+|---|---|---|---|---|
+| 1 | Retention | 7 | 8 | The 18:00 local reminder offered after the first finished drop, the forgiving weekly streak with saved weeks, and the one time "You called it" reveal (screenshots 13, 14) give three concrete reasons to come back. |
+| 2 | Session time | 8 | 8 | Swipe between home tabs and the creator player (screenshot 07, "1 / 11") add depth after the drop, but with 3 creators a session still runs out of new content fast. |
+| 3 | Originality | 8 | 8 | Call bar, ticket with outcome, Results with accuracy, gift card with dashed code and the Bricolage display type now look like one brand; the right rail of round icons is still the shared short video grammar. |
+| 4 | Trademark and trade dress safety | 8 | 8 | Staff name guard, trademark report reason, no gradient avatar rings and correct "the App Store" wording are all good, but the "Calm" promo is still live and still the first Explore tile, so I cannot raise this to 9. |
+| 5 | Brand protection and App Store readiness | 8 | 8 | Report, Block, contact, delete account and Google Play hidden on iOS meet 1.2, 2.3.10, 4.8 and 5.1.1(v); App Review notes and the long description are still missing and the store brief now contains facts that contradict the v1 build. |
+
+No row is below 8. Two items keep rows 4 and 5 from moving up and, in my view, should be closed before the first App Store submission because they are the cheapest way to avoid a rejection or a demand letter.
+
+### Remaining items (smallest first)
+
+**P0 (before App Store submission)**
+1. **Correct the store brief facts.** In `store/README.md` (BİLGİLER block): change the IAP line to "v1: no in app purchases, no subscriptions (Pro subscription planned for v1.1)", change the upload line to "Creators cannot upload in v1; the team posts promos sent by email. Report and Block on every promo, account deletion in app." Why: Guideline 2.3.1 and App Privacy answers must match the build. Done when desktop Claude cannot copy a stale claim into App Store Connect. Text only, five minutes.
+2. **Write the App Review notes and long description** (round 2 item 2, still open). Put the draft in `store/README.md` as its own block: "PromoVote is a community where scouts discover game trailers, app promos and creator videos and call which ones will blow up. Calls resolve in 7 days and build a reputation score with no cash value. Creators are separate accounts and cannot vote. All promos in this build are posted by the founder's three studios, marked 'Made by the PromoVote founder'. Report and Block are under More on every promo. Review account: review@promovote.com, tap Continue with email, code in the review field." Avoid "watch ads", "ad network", "For you", "earn". Why: 3.2.2(iii) and 2.1. Done when the text is in App Store Connect.
+3. **"Calm" rename (founder action).** Rename the section in the Poleris app, re-export `poleris-calm` and `poleris-calm-tr` (video and poster), then in `web/landing/content/promos.json` change the slug and "The Calm tab" / "La pestaña Calma" / "Sakinlik sekmesi", run `python3 web/landing/build.py`, regenerate the seed with `services/api/scripts/gen-seed-sql.py` (new migration, do not edit 0003), deploy the site and API, and confirm `GET /v1/explore` and promovote.com contain no "Calm tab". Lowercase `#calm` as a hashtag is fine. Why: 5.2.1 and Calm.com, Inc.'s CALM marks for meditation apps; it is the first Explore tile a reviewer sees. Interim option if the re-export takes time: set the two promos to not live so they leave Explore and the drop pool. This is the only item holding row 4 at 8.
+
+**P1 (before public launch)**
+4. **Reserve handles and promovote.app.** This does not need the filing decision and costs almost nothing: X, Instagram, TikTok, YouTube, Threads, Bluesky, Reddit, Twitch, Kick, Discord vanity. Record names and owner email in `store/status.md` (no passwords).
+5. **US filing when the founder decides** (word PROMOVOTE and the logo, classes 9, 35, 42, applicant MIA PERA TRANSPORTATION LLC). Practical point: once the app is public in the App Store, other people can see the name and file first in other countries; the US first use date is still on our side, but a 1(b) filing before public launch is the cheapest insurance. Not legal advice; an attorney should confirm.
+6. **Brand guide note** (round 1 item 13): lime verified seal never blue, two stop gradient only on the logo, the Pro story ring stays a solid lime arc (already a founder rule). One short section in `docs/` is enough.
+
+Gaps that only real users or content can close: session time beyond 8 needs more creators than the 3 founder studios, and the Charts screen (screenshot 05, "So far: 3") stays empty until real scouts call. Neither is a trademark issue, but a reviewer seeing only founder content plus an empty chart is another reason the App Review notes in item 2 must explain it plainly.
