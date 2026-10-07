@@ -14,7 +14,7 @@ const CTA_KINDS = ["website", "app_store", "google_play", "steam", "itch", "shop
 // Names and bios may not pose as PromoVote staff (impersonation is the most common scam on new platforms).
 const STAFF_NAME = /\b(promo ?vote|admin(istrator)?|moderator|official support|support team|trust (and|&) safety)\b/i;
 const HANDLE_RE = /^[a-z][a-z0-9_]{2,23}$/;
-const TERMS_VERSION = "2026-10-02";
+const TERMS_VERSION = "2026-10-07";
 const now = () => new Date().toISOString();
 const today = () => now().slice(0, 10);
 const uuid = () => crypto.randomUUID();
@@ -40,8 +40,10 @@ app.use("/v1/*", async (c, next) => {
   if (c.req.method === "GET" || c.req.method === "OPTIONS") return next();
   // Photo uploads check their own (larger) limit in the route.
   if (c.req.path !== "/v1/me/media" && +(c.req.header("Content-Length") || 0) > 16384) return c.json({ error: { code: "too_large", message: "Request too large." } }, 413);
-  if (c.env.WRITE_LIMIT && !c.req.path.startsWith("/v1/events/")) {
-    const { success } = await c.env.WRITE_LIMIT.limit({ key: c.req.header("CF-Connecting-IP") || "unknown" });
+  if (c.env.WRITE_LIMIT) {
+    // Events (views, taps) get their own bucket so watching never blocks a call, but a script cannot flood writes.
+    const ip = c.req.header("CF-Connecting-IP") || "unknown";
+    const { success } = await c.env.WRITE_LIMIT.limit({ key: c.req.path.startsWith("/v1/events/") ? `ev:${ip}` : ip });
     if (!success) return c.json({ error: { code: "rate_limited", message: "Too many requests. Wait a minute." } }, 429);
   }
   return next();
@@ -123,7 +125,7 @@ const pick = (map, lang, fallback) => (map && (map[lang] || map.en)) || fallback
 // ------------------------------------------------------------------ shapes
 const PROMO_SELECT = `
   select pr.id, pr.slug, pr.lang, pr.title, pr.description, pr.i18n, pr.cta_kind, pr.cta_url, pr.live_at,
-         (pr.has_perk or exists (select 1 from perks k where k.creator_profile_id = pr.creator_profile_id and k.status = 'active' and k.ends_at > strftime('%Y-%m-%dT%H:%M:%fZ', 'now') and (k.stock_left is null or k.stock_left > 0))) as has_perk,
+         (exists (select 1 from perks k where k.creator_profile_id = pr.creator_profile_id and k.status = 'active' and k.ends_at > strftime('%Y-%m-%dT%H:%M:%fZ', 'now') and (k.stock_left is null or k.stock_left > 0))) as has_perk,
          pr.public_view_bucket,
          v.mp4_url, v.webm_url, v.poster_url, v.stream_uid, v.duration_ms, v.width, v.height,
          p.handle, p.display_name, p.avatar_url, p.i18n as p_i18n, p.is_verified,
@@ -184,9 +186,17 @@ function promoOut(r, lang) {
 }
 
 // ------------------------------------------------------------------ public reads
+// Health: database reachable, last run of each job, and "stale" when a job is late (hourly resolve > 2 h, daily > 26 h).
 app.get("/health", async (c) => {
-  const { results } = await c.env.DB.prepare("select name, ran_at from job_runs").all().catch(() => ({ results: [] }));
-  return c.json({ ok: true, time: now(), jobs: Object.fromEntries(results.map((r) => [r.name, r.ran_at])) });
+  try {
+    const { results } = await c.env.DB.prepare("select name, ran_at from job_runs where name not like 'streaks:%'").all();
+    const jobs = Object.fromEntries(results.map((r) => [r.name, r.ran_at]));
+    const age = (k) => (jobs[k] ? Date.now() - new Date(jobs[k]).getTime() : Infinity);
+    const stale = [age("resolve_calls") > 2 * 3600e3 && "resolve_calls", age("daily") > 26 * 3600e3 && "daily"].filter(Boolean);
+    return c.json({ ok: true, time: now(), jobs, stale });
+  } catch (e) {
+    return c.json({ ok: false, time: now(), error: String(e?.message || e).slice(0, 200) }, 500);
+  }
 });
 
 // Live promos. The app runs the fair rotation per viewer (same rules as the website) until it moves server side.
@@ -307,7 +317,8 @@ app.get("/v1/explore", async (c) => {
               or lower(p.display_name) like ? escape '\\' or exists (select 1 from promo_hashtags h where h.promo_id = pr.id and h.tag like ? escape '\\'))`;
     args.push(like, like, like, like, like);
   }
-  const { results } = await c.env.DB.prepare(sql + " order by pr.live_at desc limit 100").bind(...args).all();
+  // Viewer language first, then English, then the rest (same rule as the drop and the feed).
+  const { results } = await c.env.DB.prepare(sql + " order by (pr.lang = ?) desc, (pr.lang = 'en') desc, pr.live_at desc limit 100").bind(...args, lang).all();
   return c.json({ promos: results.map((r) => promoOut(r, lang)) });
 });
 
@@ -366,7 +377,7 @@ app.get("/v1/profiles/:handle", async (c) => {
   if (p.type === "creator") {
     const [links, promos] = await db.batch([
       db.prepare("select platform, canonical_url, label from profile_links where profile_id = ? and safety_status = 'safe' order by position").bind(p.id),
-      db.prepare(PROMO_SELECT + " and pr.creator_profile_id = ? order by pr.is_pinned desc, pr.live_at desc limit 60").bind(p.id),
+      db.prepare(PROMO_SELECT + " and pr.creator_profile_id = ? order by pr.is_pinned desc, (pr.lang = ?) desc, (pr.lang = 'en') desc, pr.live_at desc limit 60").bind(p.id, lang),
     ]);
     Object.assign(out, {
       kind: pick(i.kind, lang, p.kind), category: p.category,
@@ -563,9 +574,11 @@ app.put("/v1/me/links", async (c) => {
   // A link a moderator blocked or flagged keeps that status when saved again (no laundering by re-saving).
   const { results: prev } = await db.prepare("select canonical_url, safety_status, click_count from profile_links where profile_id = ?").bind(v.profile.id).all();
   const prevBy = Object.fromEntries(prev.map((p) => [p.canonical_url, p]));
-  if (rows.some((r) => prevBy[r.url]?.safety_status === "blocked")) return fail(c, 400, "link_blocked", "One of these links was removed by our team and cannot be added again.");
+  // A URL our team blocked on any profile stays blocked everywhere, and blocked rows are never deleted.
+  const blocked = rows.length ? await db.prepare("select canonical_url from profile_links where safety_status = 'blocked' and canonical_url in (select value from json_each(?)) limit 1").bind(JSON.stringify(rows.map((r) => r.url))).first() : null;
+  if (blocked) return fail(c, 400, "link_blocked", "One of these links was removed by our team and cannot be added again.");
   await db.batch([
-    db.prepare("delete from profile_links where profile_id = ?").bind(v.profile.id),
+    db.prepare("delete from profile_links where profile_id = ? and safety_status != 'blocked'").bind(v.profile.id),
     ...rows.map((r) => db.prepare(
       "insert into profile_links (id, profile_id, platform, url_input, canonical_url, label, position, safety_status, last_scanned_at, click_count) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
     ).bind(uuid(), v.profile.id, r.platform, r.url, r.url, r.label, r.position, prevBy[r.url]?.safety_status || "safe", t, prevBy[r.url]?.click_count || 0)),
@@ -626,6 +639,7 @@ app.get("/media/*", async (c) => {
 // The claim handler below reads only the perk and the claimer's user id; do not add votes or follows to it.
 // Codes are stored encrypted (AES-GCM, key derived from BETTER_AUTH_SECRET).
 const PERK_KINDS = ["code", "discount", "beta_invite"];
+const GIFT_CONDITIONS = /\b(vote|votes|voting|follow|follows|following|like|likes|subscribe|review|reviews|rate|rating|call|calls|share|shares|comment|comments)\b/i;
 async function perkKey(env) {
   const base = await crypto.subtle.importKey("raw", new TextEncoder().encode(env.BETTER_AUTH_SECRET || "dev-secret"), "HKDF", false, ["deriveKey"]);
   return crypto.subtle.deriveKey({ name: "HKDF", hash: "SHA-256", salt: new TextEncoder().encode("promovote-perks"), info: new Uint8Array() }, base, { name: "AES-GCM", length: 256 }, false, ["encrypt", "decrypt"]);
@@ -638,6 +652,7 @@ async function sealCode(env, code) {
   return `${b64(iv)}.${b64(ct)}`;
 }
 async function openCode(env, sealed) {
+  if (sealed.startsWith("plain:")) return sealed.slice(6); // founder seed codes that are public anyway
   const [iv, ct] = sealed.split(".");
   return new TextDecoder().decode(await crypto.subtle.decrypt({ name: "AES-GCM", iv: unb64(iv) }, await perkKey(env), unb64(ct)));
 }
@@ -656,7 +671,14 @@ app.post("/v1/me/perks", async (c) => {
   const code = String(b.code || "").trim();
   if (code.length < 2 || code.length > 64) return fail(c, 400, "bad_code", "Enter the code people will use (2 to 64 characters).");
   const description = b.description ? String(b.description).trim().slice(0, 200) : null;
-  if (description && /(vote|follow|like|subscribe)/i.test(description)) return fail(c, 400, "no_conditions", "Gifts cannot ask for votes, follows or likes.");
+  // Gifts can never ask for anything in return, in the title or the description.
+  if (GIFT_CONDITIONS.test(`${title} ${description || ""}`)) return fail(c, 400, "no_conditions", "Gifts cannot ask for votes, follows, likes, reviews or shares.");
+  if (STAFF_NAME.test(`${title} ${description || ""}`)) return fail(c, 400, "reserved_name", "Gifts cannot say they come from PromoVote staff.");
+  // Only creators with a live promo (or verified) can offer gifts, so a brand new account cannot post a fake one.
+  if (!v.profile.is_verified) {
+    const live = await c.env.DB.prepare("select 1 from promos where creator_profile_id = ? and status = 'live' limit 1").bind(v.profile.id).first();
+    if (!live) return fail(c, 403, "gift_needs_promo", "Gifts open after your first promo is live.");
+  }
   let redeem = null;
   if (b.redeemUrl) { const r = checkLink(b.redeemUrl); if (r.error) return fail(c, 400, "bad_link", r.error); redeem = r.url; }
   const days = Math.max(1, Math.min(90, Math.floor(+b.days || 30)));
@@ -747,10 +769,10 @@ app.get("/v1/me/scout", async (c) => {
   const d = done.results[0] || {};
   c.header("Cache-Control", "no-store");
   return c.json({
-    score: st.scout_score, level: st.level, nextLevelAt: st.level * 100, streakWeeks: st.current_streak_weeks,
+    score: st.scout_score, level: st.level, nextLevelAt: nextLevelAt(st.level), streakWeeks: st.current_streak_weeks,
     streak: { weeks: st.current_streak_weeks || 0, best: st.best_streak_weeks || 0, freezes: st.freezes_available || 0, daysThisWeek: week.results[0]?.days || 0, daysNeeded: STREAK_DAYS },
     resolved: d.n || 0, right: d.right || 0, calledIt: d.called_it || 0,
-    open: open.results.map((r) => ({ promo: promoOut(r, lang), choice: r.call_choice, rank: r.call_rank, resolvesAt: new Date(new Date(r.call_at).getTime() + CALL_DAYS * 864e5).toISOString() })),
+    open: open.results.map((r) => ({ promo: promoOut(r, lang), choice: r.call_choice, rank: r.call_rank, resolvesAt: new Date(new Date(r.call_at).getTime() + CALL_DAYS * 864e5).toISOString(), finalBy: new Date(new Date(r.call_at).getTime() + RESOLVE_MAX_DAYS * 864e5).toISOString() })),
     accuracy: d.n ? Math.round((100 * (d.right || 0)) / d.n) : null,
     results: recent.results.map((r) => ({ promo: promoOut(r, lang), choice: r.call_choice, outcome: r.call_outcome, points: r.call_delta || 0, resolvedAt: r.call_resolved })),
     saved: saved.results.map((r) => promoOut(r, lang)),
@@ -907,7 +929,7 @@ app.get("/v1/me/state", async (c) => {
   if (!v?.profile) return c.json({ calls: {}, saves: [], following: [], blocked: [] });
   const db = c.env.DB;
   const [calls, saves, follows, blocks] = await db.batch([
-    db.prepare("select promo_id, choice, voter_ordinal, created_at, outcome from calls where scout_profile_id = ? order by created_at desc limit 500").bind(v.profile.id),
+    db.prepare("select promo_id, choice, voter_ordinal, created_at, outcome, score_delta from calls where scout_profile_id = ? order by created_at desc limit 500").bind(v.profile.id),
     db.prepare("select promo_id from saves where scout_profile_id = ? order by created_at desc limit 500").bind(v.profile.id),
     db.prepare("select p.handle from follows f join profiles p on p.id = f.creator_profile_id where f.follower_profile_id = ? limit 500").bind(v.profile.id),
     db.prepare("select p.handle from blocks b join profiles p on p.id = b.blocked_profile_id where b.blocker_profile_id = ? limit 500").bind(v.profile.id),
@@ -915,8 +937,9 @@ app.get("/v1/me/state", async (c) => {
   c.header("Cache-Control", "no-store");
   return c.json({
     calls: Object.fromEntries(calls.results.map((r) => [r.promo_id, {
-      choice: r.choice, rank: r.voter_ordinal, outcome: r.outcome,
+      choice: r.choice, rank: r.voter_ordinal, outcome: r.outcome, points: r.score_delta || 0,
       resolvesAt: new Date(new Date(r.created_at).getTime() + CALL_DAYS * 864e5).toISOString(),
+      finalBy: new Date(new Date(r.created_at).getTime() + RESOLVE_MAX_DAYS * 864e5).toISOString(),
     }])),
     saves: saves.results.map((r) => r.promo_id),
     following: follows.results.map((r) => r.handle),
@@ -975,6 +998,28 @@ async function trackEvent(c, table) {
   await db.prepare("insert or ignore into click_events (promo_id, viewer_key, day, is_guest) values (?, ?, ?, ?)").bind(promo.id, key, today(), guest).run();
   return c.json({ ok: true });
 }
+// Funnel steps (see docs/review: activation and D1/D7 come from these). Unknown names are ignored.
+// D7 example: select count(distinct a.viewer_key) from app_events a join app_events b on b.viewer_key = a.viewer_key
+//   and b.name = 'app_open' and b.day = date(a.day, '+7 day') where a.name = 'app_open' and a.day = ?;
+const APP_EVENTS = new Set(["app_open", "drop_view", "first_call", "call", "drop_complete", "sign_in_view", "sign_in_done", "onboarding_done", "reminder_on", "reveal_view", "share", "gift_claim"]);
+app.post("/v1/events/app", async (c) => {
+  const b = await c.req.json().catch(() => ({}));
+  if (!APP_EVENTS.has(b.name)) return c.json({ ok: true, counted: false });
+  const v = await viewer(c);
+  const key = v?.profile ? `p:${v.profile.id}` : DEVICE_RE.test(b.deviceId || "") ? `d:${b.deviceId}` : null;
+  if (!key) return fail(c, 400, "bad_device", "Missing device id.");
+  const r = await c.env.DB.prepare("insert or ignore into app_events (name, viewer_key, day) values (?, ?, ?)").bind(b.name, key, today()).run();
+  return c.json({ ok: true, counted: !!r.meta.changes });
+});
+
+// The stored form of an outbound link: no utm tags, no trailing slash (withUtm adds a "/" to bare domains).
+const plainUrl = (raw) => {
+  try {
+    const u = new URL(String(raw || ""));
+    for (const k of ["utm_source", "utm_medium", "utm_campaign"]) u.searchParams.delete(k);
+    return u.toString().replace(/\/$/, "");
+  } catch { return ""; }
+};
 // Profile link taps: one per viewer per link per day; the owner's own taps do not count.
 app.post("/v1/events/link", async (c) => {
   const b = await c.req.json().catch(() => ({}));
@@ -983,8 +1028,8 @@ app.post("/v1/events/link", async (c) => {
   if (!key) return fail(c, 400, "bad_device", "Missing device id.");
   const db = c.env.DB;
   const link = await db.prepare(
-    "select l.profile_id, l.canonical_url from profile_links l join profiles p on p.id = l.profile_id where p.handle = ? and p.status = 'active' and l.canonical_url = ? and l.safety_status = 'safe'",
-  ).bind(String(b.handle || "").toLowerCase(), String(b.url || "").replace(/[?&]utm_(source|medium|campaign)=[^&]*/g, "").replace(/\?$/, "")).first();
+    "select l.profile_id, l.canonical_url from profile_links l join profiles p on p.id = l.profile_id where p.handle = ? and p.status = 'active' and l.safety_status = 'safe' and rtrim(l.canonical_url, '/') = ?",
+  ).bind(String(b.handle || "").toLowerCase(), plainUrl(b.url)).first();
   if (!link) return c.json({ ok: true, counted: false });
   if (v?.profile?.id === link.profile_id) return c.json({ ok: true, counted: false });
   const r = await db.prepare("insert or ignore into link_click_events (profile_id, url, viewer_key, day) values (?, ?, ?, ?)").bind(link.profile_id, link.canonical_url, key, today()).run();
@@ -1091,70 +1136,105 @@ app.onError((e, c) => {
 // * Early multiplier by percentile among all valid calls on that promo: first 10% x3, next 20% x2, else x1.
 //   Right "Will blow up" = 10 x multiplier, right "Not for me" = 5. A wrong call never costs points.
 // Scout Score is reputation only, never cash.
+// A call needs this many later calls on the same promo to resolve. During the beta (fewer than BETA_SCOUTS
+// scouts calling in a week) 5 is enough, so early scouts are not left with void results.
 const RESOLVE_MIN_LATER = 10;
+const RESOLVE_MIN_LATER_BETA = 5;
+const BETA_SCOUTS = 50;
 const RESOLVE_MAX_DAYS = 21;
-const BAR_MIN_PROMOS = 10;
+const BAR_MIN_PROMOS = 5;
+// Levels: level L starts at 25 x (L - 1)^2 points, so one right early call reaches level 2.
+const levelFor = (score) => 1 + Math.floor(Math.sqrt(Math.max(0, score) / 25));
+const nextLevelAt = (level) => 25 * level * level;
+const LEVEL_SQL = `(case ${Array.from({ length: 19 }, (_, i) => 20 - i).map((l) => `when scout_score >= ${25 * (l - 1) * (l - 1)} then ${l}`).join(" ")} else 1 end)`;
 const SCORED_CALLS_PER_DAY = 7;
-async function crowdBar(db) {
+async function minLater(db) {
   const since = new Date(Date.now() - 7 * 864e5).toISOString();
+  const r = await db.prepare("select count(distinct scout_profile_id) as n from calls where created_at >= ?").bind(since).first();
+  return (r?.n || 0) < BETA_SCOUTS ? RESOLVE_MIN_LATER_BETA : RESOLVE_MIN_LATER;
+}
+// The bar a "Will blow up" share must reach: the median share of promos called in the last 14 days, never below 50%.
+async function crowdBar(db, need) {
+  const since = new Date(Date.now() - 14 * 864e5).toISOString();
   const { results } = await db.prepare(
     `select promo_id, avg(choice = 'will_blow_up') as share from calls where is_valid = 1 and created_at >= ?
      group by promo_id having count(*) >= ?`,
-  ).bind(since, RESOLVE_MIN_LATER).all();
+  ).bind(since, need).all();
   if (results.length < BAR_MIN_PROMOS) return 0.5;
   const shares = results.map((r) => r.share).sort((a, b) => a - b);
   const mid = Math.floor(shares.length / 2);
-  return shares.length % 2 ? shares[mid] : (shares[mid - 1] + shares[mid]) / 2;
+  return Math.max(0.5, shares.length % 2 ? shares[mid] : (shares[mid - 1] + shares[mid]) / 2);
 }
+// Set based so one run stays far under the Workers Free limit of 50 D1 queries per invocation:
+// about 10 queries per run whatever the number of due calls (up to RESOLVE_BATCH).
+const RESOLVE_BATCH = 500;
 async function resolveCalls(db) {
   const due = new Date(Date.now() - CALL_DAYS * 864e5).toISOString();
   const expire = new Date(Date.now() - RESOLVE_MAX_DAYS * 864e5).toISOString();
-  const bar = await crowdBar(db);
+  const need = await minLater(db);
+  const bar = await crowdBar(db, need);
+  const t = now();
+  const { results: batch } = await db.prepare(
+    `select id, scout_profile_id, promo_id, choice, voter_ordinal, score_eligible, created_at from calls
+     where outcome = 'pending' and is_valid = 1 and created_at < ? and (resolved_at is null or resolved_at < ?) order by created_at limit ?`,
+  ).bind(due, new Date(Date.now() - 20 * 3600e3).toISOString(), RESOLVE_BATCH).all();
   let done = 0;
-  for (let round = 0; round < 10; round++) {
-    const { results: batch } = await db.prepare(
-      `select id, scout_profile_id, promo_id, choice, voter_ordinal, score_eligible, created_at from calls
-       where outcome = 'pending' and is_valid = 1 and created_at < ? and (resolved_at is null or resolved_at < ?) limit 200`,
-    ).bind(due, new Date(Date.now() - 20 * 3600e3).toISOString()).all();
-    if (!batch.length) break;
+  if (batch.length) {
+    // Every valid call on the promos involved, in one query; later counts are computed here.
+    const promoIds = [...new Set(batch.map((c) => c.promo_id))];
+    const { results: all } = await db.prepare(
+      "select id, promo_id, choice, created_at from calls where is_valid = 1 and promo_id in (select value from json_each(?))",
+    ).bind(JSON.stringify(promoIds)).all();
+    const byPromo = new Map();
+    for (const c of all) { if (!byPromo.has(c.promo_id)) byPromo.set(c.promo_id, []); byPromo.get(c.promo_id).push(c); }
+    const recheck = [], resolved = [], perScout = new Map();
     for (const call of batch) {
-      const [later, total] = await db.batch([
-        db.prepare("select count(*) as n, sum(choice = 'will_blow_up') as up from calls where promo_id = ? and is_valid = 1 and created_at > ? and id != ?").bind(call.promo_id, call.created_at, call.id),
-        db.prepare("select count(*) as n from calls where promo_id = ? and is_valid = 1").bind(call.promo_id),
-      ]);
-      const n = later.results[0]?.n || 0, share = n ? (later.results[0].up || 0) / n : 0;
-      if (n < RESOLVE_MIN_LATER && call.created_at >= expire) {
-        // Not enough later scouts yet: check again tomorrow (resolved_at marks the last check).
-        await db.prepare("update calls set resolved_at = ? where id = ?").bind(now(), call.id).run();
-        continue;
-      }
-      let outcome = "void", delta = 0, mult = null;
-      if (n >= RESOLVE_MIN_LATER) {
+      const calls = byPromo.get(call.promo_id) || [];
+      const later = calls.filter((c) => c.created_at > call.created_at && c.id !== call.id);
+      const n = later.length, share = n ? later.filter((c) => c.choice === "will_blow_up").length / n : 0;
+      if (n < need && call.created_at >= expire) { recheck.push(call.id); continue; } // check again tomorrow
+      let o = "void", d = 0, m = null;
+      if (n >= need) {
         const right = call.choice === "will_blow_up" ? share >= bar : share < bar;
-        outcome = right ? "correct" : "incorrect";
-        const pct = (call.voter_ordinal || 1) / Math.max(1, total.results[0]?.n || 1);
-        mult = pct <= 0.1 ? 3 : pct <= 0.3 ? 2 : 1;
-        if (right && call.score_eligible) delta = call.choice === "will_blow_up" ? 10 * mult : 5;
+        o = right ? "correct" : "incorrect";
+        const pct = (call.voter_ordinal || 1) / Math.max(1, calls.length);
+        m = pct <= 0.1 ? 3 : pct <= 0.3 ? 2 : 1;
+        // Same pay for both sides, so tapping "Will blow up" on everything is not the best strategy.
+        if (right && call.score_eligible) d = 10 * m;
       }
-      const calledIt = outcome === "correct" && call.choice === "will_blow_up" && mult === 3 ? 1 : 0;
-      const stmts = [
-        db.prepare("update calls set outcome = ?, score_delta = ?, multiplier = ?, is_called_it = ?, resolved_at = ? where id = ?").bind(outcome, delta, mult, calledIt, now(), call.id),
-      ];
-      if (outcome !== "void") {
-        stmts.push(db.prepare("insert or ignore into scout_stats (profile_id) values (?)").bind(call.scout_profile_id));
-        stmts.push(db.prepare(
-          `update scout_stats set scout_score = scout_score + ?, level = 1 + cast((scout_score + ?) / 100 as integer),
-             calls_resolved_wbu = calls_resolved_wbu + ?, calls_correct_wbu = calls_correct_wbu + ?, called_it_count = called_it_count + ?, updated_at = ?
-           where profile_id = ?`,
-        ).bind(delta, delta, call.choice === "will_blow_up" ? 1 : 0, call.choice === "will_blow_up" && outcome === "correct" ? 1 : 0, calledIt, now(), call.scout_profile_id));
-        if (delta) stmts.push(db.prepare("insert into score_events (profile_id, delta, reason, call_id) values (?, ?, 'call_correct', ?)").bind(call.scout_profile_id, delta, call.id));
+      const ci = o === "correct" && call.choice === "will_blow_up" && m === 3 ? 1 : 0;
+      resolved.push({ id: call.id, o, d, m, ci, p: call.scout_profile_id });
+      if (o !== "void") {
+        const s = perScout.get(call.scout_profile_id) || { p: call.scout_profile_id, d: 0, wbu: 0, ok: 0, ci: 0 };
+        s.d += d; s.ci += ci;
+        if (call.choice === "will_blow_up") { s.wbu += 1; if (o === "correct") s.ok += 1; }
+        perScout.set(call.scout_profile_id, s);
       }
-      await db.batch(stmts);
-      done++;
     }
+    const R = JSON.stringify(resolved), S = JSON.stringify([...perScout.values()]);
+    const stmts = [];
+    if (recheck.length) stmts.push(db.prepare("update calls set resolved_at = ? where id in (select value from json_each(?))").bind(t, JSON.stringify(recheck)));
+    if (resolved.length) stmts.push(db.prepare(
+      `update calls set outcome = j.value ->> 'o', score_delta = j.value ->> 'd', multiplier = j.value ->> 'm', is_called_it = j.value ->> 'ci', resolved_at = ?
+       from json_each(?) j where calls.id = j.value ->> 'id'`,
+    ).bind(t, R));
+    if (perScout.size) {
+      stmts.push(db.prepare("insert or ignore into scout_stats (profile_id) select value ->> 'p' from json_each(?)").bind(S));
+      stmts.push(db.prepare(
+        `update scout_stats set scout_score = scout_score + (j.value ->> 'd'), calls_resolved_wbu = calls_resolved_wbu + (j.value ->> 'wbu'),
+           calls_correct_wbu = calls_correct_wbu + (j.value ->> 'ok'), called_it_count = called_it_count + (j.value ->> 'ci'), updated_at = ?
+         from json_each(?) j where scout_stats.profile_id = j.value ->> 'p'`,
+      ).bind(t, S));
+      stmts.push(db.prepare(`update scout_stats set level = ${LEVEL_SQL} where profile_id in (select value ->> 'p' from json_each(?))`).bind(S));
+      stmts.push(db.prepare(
+        "insert into score_events (profile_id, delta, reason, call_id) select value ->> 'p', value ->> 'd', 'call_correct', value ->> 'id' from json_each(?) where (value ->> 'd') > 0",
+      ).bind(R));
+    }
+    if (stmts.length) await db.batch(stmts);
+    done = resolved.length;
   }
   await db.prepare("insert into job_runs (name, ran_at, info) values ('resolve_calls', ?, ?) on conflict (name) do update set ran_at = excluded.ran_at, info = excluded.info")
-    .bind(now(), JSON.stringify({ resolved: done, bar })).run().catch(() => {});
+    .bind(t, JSON.stringify({ resolved: done, due: batch.length, bar, need })).run().catch(() => {});
   return done;
 }
 
@@ -1214,8 +1294,11 @@ async function daily(env) {
 
 export default {
   fetch: app.fetch,
-  // Hourly: resolve calls (so "Result Oct 14" is true in every time zone). Daily (04:17 UTC): cleanup and deletions.
+  // Hourly: resolve calls (so "Result Oct 14" is true in every time zone). Daily (04:17 UTC): deletions, cleanup and the
+  // weekly streak, in their own run so the two jobs never share the per invocation query budget.
   scheduled: (event, env, ctx) => ctx.waitUntil(
-    event.cron === "17 4 * * *" ? Promise.all([daily(env), resolveCalls(env.DB), weeklyStreaks(env.DB).catch((e) => console.error("streaks_failed", e?.message))]) : resolveCalls(env.DB).catch((e) => console.error("resolve_calls_failed", e?.message)),
+    event.cron === "17 4 * * *"
+      ? daily(env).catch((e) => console.error("daily_failed", e?.message)).then(() => weeklyStreaks(env.DB)).catch((e) => console.error("streaks_failed", e?.message))
+      : resolveCalls(env.DB).catch((e) => console.error("resolve_calls_failed", e?.message)),
   ),
 };
