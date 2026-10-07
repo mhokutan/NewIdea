@@ -1,4 +1,5 @@
 // Small typed client for https://api.promovote.com (services/api).
+import * as Crypto from 'expo-crypto';
 import * as SecureStore from 'expo-secure-store';
 import { Platform } from 'react-native';
 import { API_URL, authClient } from './auth';
@@ -28,8 +29,14 @@ export type Me = {
   needsOnboarding: boolean;
 };
 
+export type Call = {
+  choice: 'will_blow_up' | 'not_for_me'; rank: number | null; resolvesAt: string;
+  outcome?: 'pending' | 'correct' | 'incorrect' | 'void'; split?: { total: number; blowUpPct: number };
+};
+export type ViewerState = { calls: Record<string, Call>; saves: string[]; following: string[]; blocked: string[] };
+
 export class ApiError extends Error {
-  constructor(public status: number, public code: string, message: string) { super(message); }
+  constructor(public status: number, public code: string, message: string, public body?: any) { super(message); }
 }
 
 async function call<T>(path: string, init: RequestInit = {}): Promise<T> {
@@ -41,7 +48,7 @@ async function call<T>(path: string, init: RequestInit = {}): Promise<T> {
     credentials: Platform.OS === 'web' ? 'include' : 'omit',
   });
   const body = await res.json().catch(() => ({}));
-  if (!res.ok) throw new ApiError(res.status, body?.error?.code || 'error', body?.error?.message || 'Request failed');
+  if (!res.ok) throw new ApiError(res.status, body?.error?.code || 'error', body?.error?.message || 'Request failed', body);
   return body as T;
 }
 
@@ -57,7 +64,9 @@ export const api = {
   onboarding: (b: Record<string, unknown>) => call<{ ok: true; handle: string }>('/v1/onboarding', { method: 'POST', body: JSON.stringify(b) }),
   handle: (h: string) => call<{ available: boolean; reason: string | null }>('/v1/handles/' + encodeURIComponent(h)),
   follow: (h: string, on: boolean) => call('/v1/follows/' + h, { method: on ? 'POST' : 'DELETE', body: JSON.stringify({ source: 'feed' }) }),
-  vote: (promoId: string, choice: 'will_blow_up' | 'not_for_me') => call('/v1/calls', { method: 'POST', body: JSON.stringify({ promoId, choice }) }),
+  state: () => call<ViewerState>('/v1/me/state'),
+  vote: (promoId: string, choice: 'will_blow_up' | 'not_for_me') => call<{ ok: true; call: Call }>('/v1/calls', { method: 'POST', body: JSON.stringify({ promoId, choice }) }),
+  block: (handle: string) => call('/v1/blocks/' + encodeURIComponent(handle), { method: 'POST' }),
   save: (promoId: string, on: boolean) => call('/v1/saves/' + promoId, { method: on ? 'POST' : 'DELETE' }),
   view: async (promoId: string, seconds: number, completed: boolean) =>
     call('/v1/events/view', { method: 'POST', body: JSON.stringify({ promoId, seconds, completed, deviceId: await deviceId() }) }),
@@ -70,8 +79,8 @@ export const api = {
 let cachedDevice: string | null = null;
 async function deviceId() {
   if (cachedDevice) return cachedDevice;
-  if (Platform.OS === 'web') return (cachedDevice = crypto.randomUUID());
+  if (Platform.OS === 'web') return (cachedDevice = Crypto.randomUUID());
   let id = await SecureStore.getItemAsync('pv_device');
-  if (!id) { id = crypto.randomUUID(); await SecureStore.setItemAsync('pv_device', id); }
+  if (!id) { id = Crypto.randomUUID(); await SecureStore.setItemAsync('pv_device', id); }
   return (cachedDevice = id);
 }

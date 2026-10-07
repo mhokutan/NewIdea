@@ -1,6 +1,6 @@
 // Home feed: vertical promos with tabs. "For you" uses the same fair rotation as the website and never ends.
 // New, Top and Featured are server ordered lists (services/api /v1/home). Featured is a team pick, never paid.
-import { useLocalSearchParams } from 'expo-router';
+import { useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, FlatList, Platform, Pressable, ScrollView, StyleSheet, Text, View, type ViewToken } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -9,6 +9,7 @@ import { api, type Promo } from '@/lib/api';
 import { nextRound } from '@/lib/fair-queue';
 import { lang, t } from '@/lib/i18n';
 import { C } from '@/lib/theme';
+import { useViewerState } from '@/lib/viewer-state';
 import { Button } from '@/ui/Pill';
 import { Icon } from '@/ui/Icon';
 import { PromoReel } from '@/ui/PromoReel';
@@ -16,6 +17,9 @@ import { PromoReel } from '@/ui/PromoReel';
 type Item = { key: string; promo: Promo };
 // On web, NativeTabs draws the app menu as a floating bar at the top; keep the home tabs below it.
 const WEB_MENU = Platform.OS === 'web' ? 64 : 0;
+// On iOS the native tab bar floats over the screen (about 49 pt plus the home indicator), so the call bar
+// and buttons are lifted above it. Android's bottom navigation sits below the content.
+const TAB_BAR = Platform.OS === 'ios' ? 49 : 0;
 type Tab = 'for_you' | 'new' | 'top' | 'featured';
 
 const TABS: { id: Tab; label: Parameters<typeof t>[0] }[] = [
@@ -36,6 +40,10 @@ export default function Feed() {
   const [height, setHeight] = useState(0);
   const [active, setActive] = useState(0);
   const [muted, setMuted] = useState(true);
+  const [focused, setFocused] = useState(true);
+  useFocusEffect(useCallback(() => { setFocused(true); return () => setFocused(false); }, []));
+  const blocked = useViewerState().blocked;
+  const bottomInset = TAB_BAR ? TAB_BAR + insets.bottom : 0;
   const seen = useRef<Record<string, number>>({});
   const round = useRef(0);
 
@@ -98,10 +106,10 @@ export default function Feed() {
       ) : (
         <FlatList
           key={`${tab}-${v || 'feed'}`}
-          data={items}
+          data={blocked.length ? items.filter((i) => !blocked.includes(i.promo.creator.handle)) : items}
           keyExtractor={(i) => i.key}
           renderItem={({ item, index }) => (
-            <PromoReel promo={item.promo} active={index === active} height={height} muted={muted} onSeen={onSeen} />
+            <PromoReel promo={item.promo} active={focused && index === active} height={height} muted={muted} onSeen={onSeen} bottomInset={bottomInset} />
           )}
           pagingEnabled
           snapToInterval={height}
@@ -115,7 +123,6 @@ export default function Feed() {
           windowSize={3}
           initialNumToRender={2}
           maxToRenderPerBatch={2}
-          removeClippedSubviews
         />
       )}
       <View style={[styles.top, { paddingTop: insets.top + 6 + WEB_MENU }]} pointerEvents="box-none">

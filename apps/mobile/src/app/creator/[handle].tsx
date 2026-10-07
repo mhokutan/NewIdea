@@ -2,13 +2,15 @@
 import { Image } from 'expo-image';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Linking, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { ActivityIndicator, Linking, Platform, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { api, type Profile } from '@/lib/api';
 import { t } from '@/lib/i18n';
 import { C } from '@/lib/theme';
+import { asMember } from '@/lib/gate';
 import { useMe } from '@/lib/use-me';
+import { setFollowing } from '@/lib/viewer-state';
 import { Avatar } from '@/ui/Avatar';
 import { Icon } from '@/ui/Icon';
 import { Button } from '@/ui/Pill';
@@ -26,12 +28,12 @@ export default function CreatorScreen() {
   }, [handle]);
   useEffect(() => { load(); }, [load, me]);
 
-  const toggleFollow = async () => {
-    if (!me?.profile) return router.push(me ? '/me' : '/sign-in');
+  const toggleFollow = () => asMember(() => {
     const on = !p?.viewer?.following;
     setP((x) => x && { ...x, viewer: { isMe: false, following: on }, followers: x.followers != null ? x.followers + (on ? 1 : -1) : null });
-    api.follow(handle, on).catch(load);
-  };
+    setFollowing(handle, on);
+    api.follow(handle, on).catch(() => { setFollowing(handle, !on); load(); });
+  });
 
   if (error) return <View style={styles.center}><Text style={styles.text}>{t('error')}</Text><View style={{ width: 200, marginTop: 16 }}><Button label={t('retry')} onPress={() => { setError(false); load(); }} /></View></View>;
   if (!p) return <View style={styles.center}><ActivityIndicator color={C.lime} /></View>;
@@ -72,7 +74,7 @@ export default function CreatorScreen() {
             </Pressable>
           ))}
           {p.releaseStatus === 'soon' ? <Text style={[styles.link, styles.soon]}>{t('soon')}</Text> : null}
-          {p.androidStatus === 'soon' ? <Text style={[styles.link, styles.soon]}>{t('android_soon')}</Text> : null}
+          {Platform.OS === 'android' && p.androidStatus === 'soon' ? <Text style={[styles.link, styles.soon]}>{t('android_soon')}</Text> : null}
         </View>
         {p.founderOwned ? <Text style={styles.disc}>{t('founder_made')}</Text> : null}
 

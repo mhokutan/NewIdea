@@ -8,6 +8,7 @@ import { api, ApiError } from '@/lib/api';
 import { lang, t } from '@/lib/i18n';
 import { C } from '@/lib/theme';
 import { signOut, useMe } from '@/lib/use-me';
+import { LegalLinks } from '@/ui/LegalLinks';
 import { Button, Pill } from '@/ui/Pill';
 
 export default function MeScreen() {
@@ -30,6 +31,7 @@ export default function MeScreen() {
   return (
     <ScrollView style={{ flex: 1, backgroundColor: C.bg }} contentContainerStyle={{ padding: 16, paddingTop: insets.top + 16, paddingBottom: 48 }} keyboardShouldPersistTaps="handled">
       {body}
+      <LegalLinks />
     </ScrollView>
   );
 }
@@ -39,7 +41,11 @@ function Account() {
   const p = me!.profile!;
   const confirmDelete = () => Alert.alert(t('delete_account'), t('delete_q'), [
     { text: t('cancel'), style: 'cancel' },
-    { text: t('delete_account'), style: 'destructive', onPress: async () => { await api.deleteAccount().catch(() => {}); await signOut(); } },
+    { text: t('delete_account'), style: 'destructive', onPress: async () => {
+      try { await api.deleteAccount(); } catch { Alert.alert(t('delete_account'), t('delete_failed')); return; }
+      Alert.alert(t('delete_account'), t('delete_done'));
+      await signOut();
+    } },
   ]);
   return (
     <View style={{ gap: 14 }}>

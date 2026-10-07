@@ -476,7 +476,26 @@ async function livePromo(db, id) {
   ).bind(id).first();
 }
 
-// Votes: scouts only, one per promo, skip is free and not stored.
+// Votes ("calls"): scouts only, one per promo, skip is free and not stored. A call resolves 7 days after it
+// is made (per call, so late joiners can still be right). The crowd split is returned only after voting.
+const CALL_DAYS = 7;
+async function callInfo(db, promoId, profileId) {
+  const [mine, split] = await db.batch([
+    db.prepare("select choice, voter_ordinal, created_at, outcome from calls where promo_id = ? and scout_profile_id = ?").bind(promoId, profileId),
+    db.prepare("select sum(choice = 'will_blow_up') as up, count(*) as n from calls where promo_id = ? and is_valid = 1").bind(promoId),
+  ]);
+  const m = mine.results[0];
+  if (!m) return null;
+  const s = split.results[0] || { up: 0, n: 0 };
+  return {
+    choice: m.choice,
+    rank: m.voter_ordinal,
+    resolvesAt: new Date(new Date(m.created_at).getTime() + CALL_DAYS * 864e5).toISOString(),
+    outcome: m.outcome,
+    split: { total: s.n || 0, blowUpPct: s.n ? Math.round((100 * (s.up || 0)) / s.n) : 0 },
+  };
+}
+
 app.post("/v1/calls", async (c) => {
   const [v, err] = await requireProfile(c, "scout");
   if (err) return err;
@@ -485,9 +504,36 @@ app.post("/v1/calls", async (c) => {
   const db = c.env.DB;
   const promo = await livePromo(db, b.promoId);
   if (!promo) return fail(c, 404, "not_found", "Promo not found.");
-  const r = await db.prepare("insert or ignore into calls (id, scout_profile_id, promo_id, choice) values (?, ?, ?, ?)").bind(uuid(), v.profile.id, promo.id, b.choice).run();
-  if (!r.meta.changes) return fail(c, 409, "already_voted", "You already voted on this promo.");
-  return c.json({ ok: true }, 201);
+  const r = await db.prepare(
+    `insert or ignore into calls (id, scout_profile_id, promo_id, choice, voter_ordinal)
+     values (?, ?, ?, ?, (select count(*) + 1 from calls where promo_id = ?))`,
+  ).bind(uuid(), v.profile.id, promo.id, b.choice, promo.id).run();
+  const info = await callInfo(db, promo.id, v.profile.id);
+  if (!r.meta.changes) return c.json({ error: { code: "already_voted", message: "You already called this promo." }, call: info }, 409);
+  return c.json({ ok: true, call: info }, 201);
+});
+
+// What the signed in scout already did, so buttons show the right state after a restart.
+app.get("/v1/me/state", async (c) => {
+  const v = await viewer(c);
+  if (!v?.profile) return c.json({ calls: {}, saves: [], following: [], blocked: [] });
+  const db = c.env.DB;
+  const [calls, saves, follows, blocks] = await db.batch([
+    db.prepare("select promo_id, choice, voter_ordinal, created_at, outcome from calls where scout_profile_id = ? order by created_at desc limit 500").bind(v.profile.id),
+    db.prepare("select promo_id from saves where scout_profile_id = ? order by created_at desc limit 500").bind(v.profile.id),
+    db.prepare("select p.handle from follows f join profiles p on p.id = f.creator_profile_id where f.follower_profile_id = ? limit 500").bind(v.profile.id),
+    db.prepare("select p.handle from blocks b join profiles p on p.id = b.blocked_profile_id where b.blocker_profile_id = ? limit 500").bind(v.profile.id),
+  ]);
+  c.header("Cache-Control", "no-store");
+  return c.json({
+    calls: Object.fromEntries(calls.results.map((r) => [r.promo_id, {
+      choice: r.choice, rank: r.voter_ordinal, outcome: r.outcome,
+      resolvesAt: new Date(new Date(r.created_at).getTime() + CALL_DAYS * 864e5).toISOString(),
+    }])),
+    saves: saves.results.map((r) => r.promo_id),
+    following: follows.results.map((r) => r.handle),
+    blocked: blocks.results.map((r) => r.handle),
+  });
 });
 
 app.post("/v1/saves/:promoId", async (c) => {

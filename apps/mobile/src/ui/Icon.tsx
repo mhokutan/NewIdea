@@ -14,6 +14,9 @@ const MAP = {
   link: { ios: 'arrow.up.right', android: 'arrow_outward', web: 'arrow_outward' },
   back: { ios: 'chevron.left', android: 'arrow_back', web: 'arrow_back' },
   check: { ios: 'checkmark.seal.fill', android: 'verified', web: 'verified' },
+  chevrons: { ios: 'chevron.up.2', android: 'keyboard_double_arrow_up', web: 'keyboard_double_arrow_up' },
+  more: { ios: 'ellipsis', android: 'more_horiz', web: 'more_horiz' },
+  ticket: { ios: 'ticket.fill', android: 'confirmation_number', web: 'confirmation_number' },
 } as const;
 export type IconName = keyof typeof MAP;
 

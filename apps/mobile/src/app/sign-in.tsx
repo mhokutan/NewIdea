@@ -4,7 +4,7 @@
 import * as AppleAuthentication from 'expo-apple-authentication';
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { KeyboardAvoidingView, Linking, Platform, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { authClient } from '@/lib/auth';
 import { t } from '@/lib/i18n';
@@ -23,7 +23,13 @@ export default function SignIn() {
 
   const done = async (r: Result) => {
     setBusy(false);
-    if (r.ok) { await refreshMe(); router.replace('/me'); return; }
+    // Close the modal instead of replacing it: replace stacked a second copy of the tabs (and its video
+    // players) under the first one, which also broke the iOS share sheet.
+    if (r.ok) {
+      await refreshMe();
+      if (router.canDismiss()) router.dismiss(); else router.navigate('/');
+      return;
+    }
     if (!r.cancelled) setErr(r.message || t('error'));
   };
 
@@ -54,7 +60,12 @@ export default function SignIn() {
           </Pressable>
         )}
         {err ? <Text style={styles.err} accessibilityLiveRegion="polite">{err}</Text> : null}
-        <Text style={styles.fine}>{t('legal_note')}</Text>
+        <Text style={styles.fine}>
+          {t('legal_note')}{' '}
+          <Text style={styles.fineLink} accessibilityRole="link" onPress={() => Linking.openURL('https://promovote.com/terms')}>{t('help_terms')}</Text>
+          {'  ·  '}
+          <Text style={styles.fineLink} accessibilityRole="link" onPress={() => Linking.openURL('https://promovote.com/privacy')}>{t('help_privacy')}</Text>
+        </Text>
       </View>
     </KeyboardAvoidingView>
   );
@@ -104,5 +115,6 @@ const styles = StyleSheet.create({
   err: { color: C.danger, fontSize: 14 },
   emailLink: { alignSelf: 'center', paddingVertical: 10 },
   emailLinkText: { color: C.text2, fontSize: 15, fontWeight: '600', textDecorationLine: 'underline' },
+  fineLink: { color: C.text2, textDecorationLine: 'underline' },
   fine: { color: C.muted, fontSize: 12, lineHeight: 17, marginTop: 6 },
 });

@@ -3,6 +3,7 @@ import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 
+import { GateHost } from '@/lib/gate';
 import { C } from '@/lib/theme';
 
 SplashScreen.preventAutoHideAsync();
@@ -19,6 +20,7 @@ export default function RootLayout() {
         <Stack.Screen name="creator/[handle]" />
         <Stack.Screen name="sign-in" options={{ presentation: 'modal' }} />
       </Stack>
+      <GateHost />
     </ThemeProvider>
   );
 }
