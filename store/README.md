@@ -180,7 +180,32 @@ Policy and programs > App content bölümünü doldur:
 - Target audience: 18 and over.
 - Data safety: B4 maddesi 3'teki verilerle aynı. Şifreli iletim: evet. Kullanıcı silme isteyebilir: evet (uygulama içinde ve support@promovote.com).
 - Government apps, financial features, health, news: hayır.
-Store listing: App icon store/assets/play-icon-512.png, Feature graphic store/assets/feature-graphic-1024x500.png, short description yukarıdaki kısa açıklama. Ekran görüntüleri ve uzun açıklama için şimdilik dur.
+Store listing: App icon store/assets/play-icon-512.png, Feature graphic store/assets/feature-graphic-1024x500.png, short description yukarıdaki kısa açıklama. Ekran görüntüleri ve uzun açıklama: Bölüm G.
+
+====================
+BÖLÜM G. İNCELEMEYE GÖNDERME (kurucu onayı 2026-10-07: "masaüstü apple ve google a yüklesin")
+====================
+G1. App Store (iOS build 12)
+1. App Store Connect > Apps > PromoVote > iOS App > 1.0 Prepare for Submission.
+2. Build: "+" ile 1.0.0 (12) seç. TestFlight'ta 12 görünmüyorsa veya "Processing" ise bekle; 11 veya 10'u SEÇME. Export compliance sorulursa: sadece standart HTTPS şifreleme, muaf (app.json içinde ITSAppUsesNonExemptEncryption false zaten var).
+3. iPhone 6.9" Display ekran görüntüleri: store/assets/screens/ios/en/1-feed.png, 2-ticket.png, 3-reveal.png, 4-profile.png, 5-creator.png (bu sırayla). Daha küçük iPhone boyutlarını Apple bundan üretir. iPad yok (uygulama sadece iPhone).
+4. Promotional Text: "Today's Drop is 7 fresh promos a day. Call the next big hit."
+   Description: yukarıdaki UZUN AÇIKLAMA, aynen.
+   Keywords: indie games,game trailers,new apps,discover,predict,hits,promos,creators,scout,trends
+   Support URL: https://promovote.com (destek emaili support@promovote.com sayfanın altında)  Marketing URL: https://promovote.com
+   Copyright: 2026 Hazim Okutan
+5. Ürün sayfası header (Apple'ın yeni görsel alanı) ve arama sonucu görseli: bu alanlar App Store Connect'te görünüyorsa store/assets/header/header-3840x1646.png ve store/assets/header/search-3840x2560.png yükle. Alan yoksa veya kabul etmezse atla, gönderimi bekletme, status.md'ye yaz.
+6. App Review Information: Sign-in required evet, User name review@promovote.com, Password alanını kurucu girer (kodu kimseye yazma). Notes: yukarıdaki APP REVIEW NOTES, aynen. İletişim bilgileri zaten girili.
+7. Version Release: "Manually release this version" (onaydan sonra yayın tarihini kurucu seçer).
+8. "Add for Review" > "Submit to App Review". Sonucu status.md'ye yaz.
+İspanyolca (es-MX) ve Türkçe (tr) ekran görüntüleri store/assets/screens/ios/es ve tr klasörlerinde hazır. Şimdilik sadece en-US listing; o dillerde listing açılırsa metinleri bulut Claude çevirir.
+
+G2. Google Play (Android build 9, kapalı test)
+1. Build 9 Expo'da hazır olunca (https://expo.dev/accounts/mhokutan/projects/promovote/builds, Android, versionCode 9, durum Finished) .aab dosyasını indir. Build 9 bitmediyse store listing adımlarını yap, AAB'yi sonra yükle. Build 7'yi YÜKLEME (eski).
+2. Store listing > Main store listing: Full description = UZUN AÇIKLAMA. Phone screenshots: store/assets/screens/play/en/1-feed.png ... 5-creator.png (1080x1920, bu sırayla). Tablet ekran görüntüsü gerekmez.
+3. Test and release > Testing > Closed testing: yeni track veya "Closed testing - Alpha". Create release, .aab'yi yükle. Release name "1.0.0 (9)". Release notes (en-US): "First closed test of PromoVote: Today's Drop, calls, Scout Score, creator pages and gifts."
+4. Testers: email listesi. Google Personal hesap kuralı: production'a çıkmak için en az 12 test kullanıcısı 14 gün boyunca kapalı teste katılmış olmalı. Liste için kurucuya sor (en az 12 Gmail). Ülkeler: hepsi.
+5. "Send for review" ile gönder. Sonucu ve opt-in linkini (test kullanıcılarının katılma linki) status.md'ye yaz; link gizli değil.
 
 ====================
 BÖLÜM E. KEY'LERİ BULUT ORTAMINA EKLEME
