@@ -54,6 +54,7 @@ Status: validation stage. **promovote.com landing page is LIVE** (waitlist).
 * Before building: 3 week validation test (paid concierge reports + weekly trailer list).
 
 ## Team and skills
+* Model use (founder request 2026-10-07, cost): use Haiku (`model: "haiku"`) for simple subagent work: web fetches, file and code searches, link and copy checks, screenshot checks, translations of short UI strings, routine status reads. Keep the main session and the expert agents below on the default model (product, design, legal, security, architecture and app review scores need judgment).
 * Agents: `.claude/agents/` (mobile-product-designer, mobile-engineer, product-strategist, adtech-expert, consumer-growth-psychologist, marketplace-economist, trust-safety-legal, cto-architect, creator-economy-expert, skeptical-investor).
 * Project skills (`.claude/skills/`): `team-debate`, `domain-check`, `ad-review`, `unit-economics`, `design-references`, Taste (`design-taste-frontend`, `high-end-visual-design`, `redesign-existing-projects`, `image-to-code`), Vercel `web-design-guidelines`.
 * Plugins (`.claude/settings.json`): Cloudflare, Anthropic example-skills (frontend-design, webapp-testing), Impeccable, Addy Osmani web-quality-skills, Trail of Bits (insecure-defaults, sharp-edges, differential-review, supply-chain-risk-auditor, static-analysis).
