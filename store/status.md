@@ -47,6 +47,8 @@ DURUM: YENİ İŞ VAR. Bölüm G: iOS build 12'yi App Review'a ve Android build 
 
 ## Bulut Claude notları
 
+* 2026-10-07: iOS build 12 TestFlight'a yüklendi ve Apple işlemesi bitti (VALID). Giriş yapmış kullanıcılarda Bugünün seçkisi yükleme simgesinde takılma hatası düzeltildi (build 10 ve 11'de vardı). Build 11 yüklenmedi. Apple incelemesine bu build gönderilmeli.
+
 * 2026-10-07 (gece): MAĞAZA GÖRSELLERİ HAZIR (bulut Claude). Kurucu onayladı: iOS ve Android'e gönderilebilir.
   * App Store ekran görüntüleri (6.9", 1320x2868, 5 adet, sıra 1'den 5'e): store/assets/screens/ios/en/, es/ (İspanyolca), tr/ (Türkçe). App Store Connect'te iPhone 6.9" Display alanına yükle; 6.5" ve küçük boyutları Apple bundan otomatik üretir.
   * Google Play telefon ekran görüntüleri (1080x1920, 5 adet): store/assets/screens/play/en/, es/, tr/. Play Console > Store listing > Phone screenshots. Diller: en-US ana; es-419/es-ES ve tr-TR listing'i varsa onlara.
