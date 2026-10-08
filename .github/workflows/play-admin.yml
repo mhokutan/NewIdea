@@ -1,0 +1,33 @@
+# Google Play status and release tools (founder request 2026-10-08: manage Play from git, not from the desktop).
+# Start with a commit message on the work branch:
+#   [play status]                 lists every track and release (see the run's annotations)
+#   [play release 10 alpha]       puts versionCode 10 on the alpha (closed testing) track
+name: Google Play admin
+
+on:
+  push:
+    branches: [claude/gracious-pasteur-nu8ssc]
+
+permissions:
+  contents: read
+
+jobs:
+  play:
+    if: contains(github.event.head_commit.message, '[play ')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Run
+        env:
+          GOOGLE_PLAY_SA_JSON: ${{ secrets.GOOGLE_PLAY_SA_JSON }}
+          MSG: ${{ github.event.head_commit.message }}
+        run: |
+          ARGS=$(printf '%s' "$MSG" | grep -o '\[play [a-z]*[ 0-9a-z]*\]' | head -1 | tr -d '[]' | cut -d' ' -f2-)
+          case "$ARGS" in
+            status|release\ [0-9]*) node .github/scripts/play-admin.mjs $ARGS ;;
+            *) echo "::error::Unknown command: $ARGS"; exit 1 ;;
+          esac
