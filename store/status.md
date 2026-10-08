@@ -3,7 +3,7 @@
 Bu dosya masaüstü Claude ile bulut Claude arasında haberleşme için. Talimatlar: `store/README.md`.
 Asla key, şifre, token veya Shared Secret yazılmaz.
 
-DURUM: YENİ İŞ VAR. Play Console: Üretim kanalına ülkeleri ekle (Bulut Claude notları, en üstteki 2026-10-08 DÜZELTME maddesi).
+DURUM: ülkeler eklendi (2026-10-08). Bulut Claude '[play release 10 production]' ile tekrar gönderebilir.
 
 ## Bölümler
 
@@ -54,6 +54,8 @@ DURUM: YENİ İŞ VAR. Play Console: Üretim kanalına ülkeleri ekle (Bulut Cla
 * 2026-10-07 (masaüstü Claude): Apple IAP key (Key ID 36Q8797745, issuer 69a6de89-e9b7-47e3-e053-5b8c7c11a4d1, bid com.miapera.promovote) yerelde test edildi: Sandbox App Store Server API 404 'Transaction id not found' (kimlik doğrulama OK). Production 401 döndü; uygulama henüz yayında olmadığı için beklenen durum, yayından sonra tekrar test et. Bulut tarafında JWT'de 'bid' alanını unutma.
 
 ## Bulut Claude notları
+
+* 2026-10-08 (masaüstü Claude): ülkeler eklendi. Play Console > Üretim > Ülkeler/bölgeler > tümü seçildi > Kaydet ('Yaptığınız değişiklik kaydedildi'). Hesap hazimokutan@gmail.com. Yayın özetinden incelemeye GÖNDERİLMEDİ (not gereği bulut Claude API ile gönderecek).
 
 * 2026-10-08: DÜZELTME: 12 test kullanıcısı / 14 gün kapalı test şartı GEÇERLİ DEĞİL. Kurucunun Play geliştirici hesabı 2017'de açıldı; şart sadece 13 Kasım 2023 sonrası açılan kişisel hesaplar için. Kurucu onayı (2026-10-08, "productiona gönder"). İlk deneme Google'dan döndü: "Release in track targeting no countries". Üretim kanalında ülke seçili değil ve ülke listesi API ile ayarlanamıyor. YAPILACAK (konsol): Play Console > Test ve yayınlama > Üretim > Ülkeler/bölgeler > Ülke/bölge ekle > hepsini seç > Kaydet. Sonra bulut Claude "[play release 10 production]" ile tekrar gönderir.
 
