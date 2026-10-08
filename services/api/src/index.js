@@ -132,7 +132,7 @@ const pick = (map, lang, fallback) => (map && (map[lang] || map.en)) || fallback
 const PROMO_SELECT = `
   select pr.id, pr.slug, pr.lang, pr.title, pr.description, pr.i18n, pr.cta_kind, pr.cta_url, pr.live_at,
          (exists (select 1 from perks k where k.creator_profile_id = pr.creator_profile_id and k.status = 'active' and k.ends_at > strftime('%Y-%m-%dT%H:%M:%fZ', 'now') and (k.stock_left is null or k.stock_left > 0))) as has_perk,
-         pr.public_view_bucket, pr.is_pinned,
+         pr.public_view_bucket, pr.is_pinned, pr.ai_generated, d.ai_persona,
          (select count(*) from saves sv where sv.promo_id = pr.id) as save_count,
          v.mp4_url, v.webm_url, v.poster_url, v.stream_uid, v.duration_ms, v.width, v.height,
          p.handle, p.display_name, p.avatar_url, p.i18n as p_i18n, p.is_verified,
@@ -187,12 +187,14 @@ function promoOut(r, lang) {
     views: r.public_view_bucket,
     saves: r.save_count || 0, // neutral count (our "likes"); never the call split, which would bias calls
     pinned: !!r.is_pinned,
+    // Shown as "Made with AI". Promos of virtual creators always carry it.
+    aiGenerated: !!r.ai_generated || !!r.ai_persona,
     liveAt: r.live_at,
     creator: {
       handle: r.handle, name: r.display_name, avatar: r.avatar_url, mono: pi.mono || null,
       kind: pick(pi.kind, lang, null), category: r.category, verified: !!r.is_verified,
       releaseStatus: r.release_status, androidStatus: r.android_status, iosStatus: r.ios_status,
-      founderOwned: !!r.founder_owned,
+      founderOwned: !!r.founder_owned, aiPersona: !!r.ai_persona,
     },
   };
 }
@@ -382,7 +384,7 @@ app.get("/v1/profiles/:handle", async (c) => {
   const handle = c.req.param("handle").toLowerCase().replace(/^@/, "");
   const db = c.env.DB;
   const p = await db.prepare(
-    `select p.*, s.show_follower_count, s.show_view_counts, s.show_calls, d.kind, d.category, d.release_status, d.android_status, d.ios_status, d.founder_owned, d.founding_creator, d.primary_cta
+    `select p.*, s.show_follower_count, s.show_view_counts, s.show_calls, d.kind, d.category, d.release_status, d.android_status, d.ios_status, d.founder_owned, d.founding_creator, d.primary_cta, d.ai_persona
      from profiles p left join profile_settings s on s.profile_id = p.id left join creator_details d on d.profile_id = p.id
      where p.handle = ? and p.status = 'active'`,
   ).bind(handle).first();
@@ -408,7 +410,7 @@ app.get("/v1/profiles/:handle", async (c) => {
     Object.assign(out, {
       kind: pick(i.kind, lang, p.kind), category: p.category,
       releaseStatus: p.release_status, androidStatus: p.android_status, iosStatus: p.ios_status,
-      founderOwned: !!p.founder_owned, foundingCreator: !!p.founding_creator,
+      founderOwned: !!p.founder_owned, foundingCreator: !!p.founding_creator, aiPersona: !!p.ai_persona,
       followers: p.show_follower_count !== 0 ? p.follower_count : null,
       stats: { followers: p.show_follower_count !== 0 ? p.follower_count : null, saves: st.saves || 0, calls: st.calls || 0, promos: st.promos || 0 },
       newCreator: p.follower_count < 10,
@@ -852,6 +854,18 @@ app.get("/v1/me/scout", async (c) => {
 // Creator studio: setup checklist, links, promos and free stats (7 and 28 days). Delivery numbers stay free forever.
 // Activity (founder request 2026-10-07, like the TikTok and Instagram inbox). Built from existing rows, nothing stored.
 // Scouts: call results and new promos from followed creators. Creators: weekly totals only, never who followed or saved.
+// Creators mark their own promo as made or changed with AI (founder request 2026-10-08). The upload form will ask
+// the same question when uploads open. Promos of virtual creators are always labeled.
+app.patch("/v1/me/promos/:id", async (c) => {
+  const [v, err] = await requireProfile(c, "creator");
+  if (err) return err;
+  const b = await c.req.json().catch(() => ({}));
+  if (typeof b.aiGenerated !== "boolean") return fail(c, 400, "bad_request", "Send aiGenerated true or false.");
+  const r = await c.env.DB.prepare("update promos set ai_generated = ? where id = ? and creator_profile_id = ?").bind(b.aiGenerated ? 1 : 0, c.req.param("id"), v.profile.id).run();
+  if (!r.meta.changes) return fail(c, 404, "not_found", "Promo not found.");
+  return c.json({ ok: true, aiGenerated: b.aiGenerated });
+});
+
 app.get("/v1/me/activity", async (c) => {
   const [v, err] = await requireProfile(c);
   if (err) return err;
@@ -1141,7 +1155,7 @@ app.post("/v1/events/link", async (c) => {
 app.post("/v1/events/view", (c) => trackEvent(c, "view_events"));
 app.post("/v1/events/click", (c) => trackEvent(c, "click_events"));
 
-const REPORT_REASONS = ["impersonation", "spam_or_scam", "malicious_link", "nudity_or_sexual", "hate_or_harassment", "violence", "copyright", "trademark", "minor", "misleading_perk", "perk_not_working", "asks_for_votes_or_follows", "other"];
+const REPORT_REASONS = ["undisclosed_ai", "impersonation", "spam_or_scam", "malicious_link", "nudity_or_sexual", "hate_or_harassment", "violence", "copyright", "trademark", "minor", "misleading_perk", "perk_not_working", "asks_for_votes_or_follows", "other"];
 const REPORT_TARGETS = ["profile", "promo", "link", "perk", "hashtag", "bio", "avatar", "banner", "display_name"];
 app.post("/v1/reports", async (c) => {
   const v = await viewer(c);
@@ -1154,7 +1168,9 @@ app.post("/v1/reports", async (c) => {
   else if (b.targetType === "profile") targetProfile = (await db.prepare("select id from profiles where id = ? or handle = ?").bind(b.targetId, b.targetId).first())?.id;
   const priority = ["minor", "malicious_link"].includes(b.reason) ? 1 : ["spam_or_scam", "nudity_or_sexual", "hate_or_harassment", "violence"].includes(b.reason) ? 2 : 3;
   await db.prepare("insert into reports (id, reporter_user_id, target_type, target_id, target_profile_id, reason, details, priority) values (?, ?, ?, ?, ?, ?, ?, ?)")
-    .bind(uuid(), v.user.id, b.targetType, String(b.targetId).slice(0, 64), targetProfile || null, b.reason, b.details ? String(b.details).slice(0, 500) : null, priority).run();
+    // "Undisclosed AI" is stored as other with a tag: the reports table check list predates it.
+    .bind(uuid(), v.user.id, b.targetType, String(b.targetId).slice(0, 64), targetProfile || null, b.reason === "undisclosed_ai" ? "other" : b.reason,
+      b.reason === "undisclosed_ai" ? ("[undisclosed_ai] " + (b.details || "")).slice(0, 500) : b.details ? String(b.details).slice(0, 500) : null, priority).run();
   // Minor reports go to the top of the moderator queue. The profile is limited automatically only when at least
   // two different people report it as a minor within 7 days, so one person cannot take down an account.
   if (b.reason === "minor" && targetProfile) {

@@ -83,6 +83,7 @@ export default function CreatorScreen() {
             </View>
             <Text style={styles.handle}>@{p.handle}</Text>
             {p.newCreator && !p.verified ? <Text style={styles.newChip}>{t('new_creator')}</Text> : null}
+            {p.aiPersona ? <Text style={styles.newChip}>{t('ai_character')}</Text> : null}
           </View>
         </View>
         {p.stats ? (
@@ -138,6 +139,7 @@ export default function CreatorScreen() {
               {pr.video.poster ? <Image source={{ uri: pr.video.poster }} style={StyleSheet.absoluteFill} contentFit="cover" /> : null}
               <Text style={styles.dur}>0:{String(Math.round(pr.video.durationMs / 1000)).padStart(2, '0')}</Text>
               {pr.pinned ? <Text style={styles.pin}>{t('pinned')}</Text> : null}
+              {pr.aiGenerated ? <Text style={[styles.pin, styles.aiTile, pr.pinned && { top: 26 }]}>AI</Text> : null}
               {pr.views ? (
                 <View style={styles.views}><Icon name="play" size={11} color="#fff" /><Text style={styles.viewsText}>{compact(pr.views)}</Text></View>
               ) : null}
@@ -192,6 +194,7 @@ const styles = themed(() => ({
   statN: { color: C.text, fontSize: 20, ...F.display },
   statL: { color: C.muted, fontSize: 12, fontWeight: '600' },
   pin: { position: 'absolute', top: 6, left: 6, color: C.ink, fontSize: 10, fontWeight: '800', backgroundColor: C.lime, borderRadius: 6, paddingHorizontal: 5, paddingVertical: 2, overflow: 'hidden' },
+  aiTile: { color: '#fff', backgroundColor: 'rgba(8,8,12,0.7)' },
   views: { position: 'absolute', left: 6, bottom: 6, flexDirection: 'row', alignItems: 'center', gap: 3, backgroundColor: 'rgba(8,8,12,0.7)', borderRadius: 6, paddingHorizontal: 5, paddingVertical: 2 },
   viewsText: { color: '#fff', fontSize: 11, fontWeight: '700' },
   dur: { position: 'absolute', top: 6, right: 6, color: '#fff', fontSize: 11, fontWeight: '600', backgroundColor: 'rgba(8,8,12,0.7)', borderRadius: 6, paddingHorizontal: 5, paddingVertical: 2, overflow: 'hidden' },

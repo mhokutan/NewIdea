@@ -13,7 +13,7 @@ type Key = Parameters<typeof t>[0];
 const REASONS: [string, Key][] = [
   ['spam_or_scam', 'r_spam'], ['impersonation', 'r_impersonation'], ['hate_or_harassment', 'r_hate'], ['violence', 'r_violence'],
   ['nudity_or_sexual', 'r_sexual'], ['malicious_link', 'r_link'], ['copyright', 'r_copyright'], ['trademark', 'r_trademark'],
-  ['minor', 'r_minor'], ['other', 'r_other'],
+  ['minor', 'r_minor'], ['undisclosed_ai', 'r_ai'], ['other', 'r_other'],
 ];
 const PROFILE_REASONS = new Set(['spam_or_scam', 'impersonation', 'hate_or_harassment', 'nudity_or_sexual', 'malicious_link', 'trademark', 'minor', 'other']);
 

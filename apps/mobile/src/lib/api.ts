@@ -8,18 +8,18 @@ import { lang } from './i18n';
 export type Creator = {
   handle: string; name: string; avatar: string | null; mono: string | null; kind: string | null;
   category: string; verified: boolean; releaseStatus?: string; androidStatus?: string | null;
-  iosStatus?: string | null; founderOwned?: boolean;
+  iosStatus?: string | null; founderOwned?: boolean; aiPersona?: boolean;
 };
 export type Promo = {
   id: string; slug: string; lang: string; title: string; description: string | null; tags: string[];
   video: { mp4: string | null; webm: string | null; poster: string | null; hls: string | null; durationMs: number };
   cta: { kind: string; url: string | null } | null; ctaAndroid?: { kind: string; url: string } | null; hasPerk: boolean; liveAt: string; creator: Creator;
-  saves?: number; pinned?: boolean; views?: number | null;
+  saves?: number; pinned?: boolean; views?: number | null; aiGenerated?: boolean;
 };
 export type Profile = {
   handle: string; type: 'scout' | 'creator'; name: string; bio: string | null; avatar: string | null;
   banner: string | null; mono: string | null; verified: boolean; kind?: string; category?: string;
-  releaseStatus?: string; androidStatus?: string | null; iosStatus?: string | null; founderOwned?: boolean; followers?: number | null;
+  releaseStatus?: string; androidStatus?: string | null; iosStatus?: string | null; founderOwned?: boolean; aiPersona?: boolean; followers?: number | null;
   links?: Link[]; promos?: Promo[]; newCreator?: boolean; stats?: { score?: number; level?: number; calledIt?: number; followers?: number | null; saves?: number; calls?: number; promos?: number } | null;
   viewer?: { following: boolean; isMe: boolean }; primaryCta?: { kind: string; url: string | null } | null;
 };

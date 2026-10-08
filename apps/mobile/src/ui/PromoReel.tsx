@@ -207,6 +207,11 @@ export function PromoReel({ promo, active, height, muted, onSeen, bottomInset = 
             <Text maxFontSizeMultiplier={1.35} style={styles.giftText}>{t('gift')}</Text>
           </Pressable>
         ) : null}
+        {promo.aiGenerated ? (
+          <View style={styles.ai} accessible accessibilityLabel={t('made_with_ai')}>
+            <Text maxFontSizeMultiplier={1.3} style={styles.aiText}>{t('made_with_ai')}</Text>
+          </View>
+        ) : null}
         {/* Collapsed by default so the video stays visible. Tapping the text opens the full details. */}
         <Pressable onPress={() => setOpen(!open)} accessibilityRole="button" accessibilityState={{ expanded: open }} hitSlop={4}>
           <Text maxFontSizeMultiplier={1.35} style={styles.title} numberOfLines={open ? undefined : 1}>{promo.title}</Text>
@@ -302,6 +307,8 @@ const styles = StyleSheet.create({
   shadeOpen: { height: '80%' },
   pressed: { transform: [{ scale: 0.94 }], opacity: 0.85 },
   info: { position: 'absolute', left: 16, right: 84 },
+  ai: { alignSelf: 'flex-start', borderRadius: 6, paddingHorizontal: 7, paddingVertical: 3, backgroundColor: 'rgba(255,255,255,0.16)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.35)' },
+  aiText: { color: '#fff', fontSize: 12, fontWeight: '700' },
   whoRow: { flexDirection: 'row', alignItems: 'center', gap: 10, flexWrap: 'wrap' },
   followPill: { minHeight: 32, justifyContent: 'center', paddingHorizontal: 14, borderRadius: 99, borderWidth: 1.5, borderColor: D.lime, backgroundColor: 'rgba(10,10,15,0.45)' },
   followText: { color: D.lime, fontWeight: '800', fontSize: 14 },
