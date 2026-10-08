@@ -26,8 +26,8 @@ jobs:
           GOOGLE_PLAY_SA_JSON: ${{ secrets.GOOGLE_PLAY_SA_JSON }}
           MSG: ${{ github.event.head_commit.message }}
         run: |
-          ARGS=$(printf '%s' "$MSG" | grep -o '\[play [a-z]*[ 0-9a-z]*\]' | head -1 | tr -d '[]' | cut -d' ' -f2-)
+          ARGS=$(printf '%s' "$MSG" | grep -o '\[play [a-z-]*[ 0-9a-z]*\]' | head -1 | tr -d '[]' | cut -d' ' -f2-)
           case "$ARGS" in
-            status|release\ [0-9]*) node .github/scripts/play-admin.mjs $ARGS ;;
+            status|release\ [0-9]*|release-world\ [0-9]*) node .github/scripts/play-admin.mjs $ARGS ;;
             *) echo "::error::Unknown command: $ARGS"; exit 1 ;;
           esac

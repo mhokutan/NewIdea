@@ -43,4 +43,25 @@ if (cmd === 'status') {
   try { await call(`${base}/edits/${edit.id}:commit`, { method: 'POST' }); }
   catch (e) { note(`commit failed: ${e.message}`); throw e; }
   note(`versionCode ${code} on track ${track} saved as ${status}` + (status === 'draft' ? ' (Play accepts only drafts for this app yet: send it for review in Play Console)' : ' (sent for review automatically)'));
+} else if (cmd === 'release-world') {
+  // Production with country targeting on the release itself (the track had no countries). Play allows country
+  // targeting only on a staged rollout, so this releases to 99 percent of users in every country; "release" later
+  // completes it once the track has its countries.
+  const tries = [
+    { status: 'completed', countryTargeting: { countries: ['US'], includeRestOfWorld: true } },
+    { status: 'inProgress', userFraction: 0.99, countryTargeting: { countries: ['US'], includeRestOfWorld: true } },
+  ];
+  let done = null;
+  for (const t of tries) {
+    try {
+      await call(`${base}/edits/${edit.id}/tracks/${track}`, { method: 'PUT', body: JSON.stringify({ track, releases: [{ versionCodes: [String(code)], ...t }] }) });
+      await call(`${base}/edits/${edit.id}:commit`, { method: 'POST' });
+      done = t; break;
+    } catch (e) {
+      note(`try ${t.status}: ${e.message}`);
+      const fresh = await call(`${base}/edits`, { method: 'POST' }); edit.id = fresh.id;
+    }
+  }
+  if (!done) throw new Error('No release option was accepted.');
+  note(`versionCode ${code} on track ${track} saved as ${done.status}${done.userFraction ? ' ' + done.userFraction * 100 + '%' : ''}, every country (sent for review)`);
 } else throw new Error('Unknown command ' + cmd);
