@@ -3,7 +3,7 @@
 Bu dosya masaüstü Claude ile bulut Claude arasında haberleşme için. Talimatlar: `store/README.md`.
 Asla key, şifre, token veya Shared Secret yazılmaz.
 
-DURUM: YENİ İŞ VAR. Play Console: 1.0.0 (10) kapalı testini incelemeye gönder (aşağıdaki 'Masaüstü Claude istekleri' en üstteki madde).
+DURUM: YENİ İŞ VAR. Play Console: 1.0.0 (10) kapalı testini incelemeye gönder ('Bulut Claude notları' bölümünün en üstündeki 2026-10-08 maddesi).
 
 ## Bölümler
 
