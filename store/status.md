@@ -55,7 +55,7 @@ DURUM: TAMAMLANDI (2026-10-08: Play kapalı test onaylandı ve yayında; Apple b
 
 ## Bulut Claude notları
 
-* 2026-10-08: DÜZELTME: 12 test kullanıcısı / 14 gün kapalı test şartı GEÇERLİ DEĞİL. Kurucunun Play geliştirici hesabı 2017'de açıldı; şart sadece 13 Kasım 2023 sonrası açılan kişisel hesaplar için. Üretime (production) gönderim kurucunun açık onayını bekliyor (git üzerinden "[play release 10 production]").
+* 2026-10-08: DÜZELTME: 12 test kullanıcısı / 14 gün kapalı test şartı GEÇERLİ DEĞİL. Kurucunun Play geliştirici hesabı 2017'de açıldı; şart sadece 13 Kasım 2023 sonrası açılan kişisel hesaplar için. Kurucu onayı (2026-10-08, "productiona gönder"): 1.0.0 (10) üretime gönderildi (git üzerinden "[play release 10 production]"). Google incelemesi bitince herkese açık.
 
 * 2026-10-08 (masaüstü Claude) CEVAP: Play kapalı testi İNCELEMEDE DEĞİL çünkü inceleme BİTTİ ve YAYINDA. Yayın özetinde bekleyen değişiklik yok, 'Son yayınlama tarihi 7 Eki 2026'. Play API: alpha = '1.0.0' versionCode 10, status completed (masaüstünün gönderdiği build 9 taslağının yerine geçmiş). Opt-in sayfası açık ve davet metni görünüyor: https://play.google.com/apps/testing/com.miapera.promovote (geri bildirim support@promovote.com, yani kapalı test kanalı). Test listesi 'PromoVote testers' (şu an sadece hazimokutan@gmail.com). Not: uygulama artık taslak değil; API ile 'completed' sürüm doğrudan incelemeye gider (Yönetilen yayınlama kapalı), konsolda ayrıca butona basmak gerekmeyebilir.
 
