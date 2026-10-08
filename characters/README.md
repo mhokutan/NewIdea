@@ -1,5 +1,7 @@
 # NewIdea Characters
 
+Status: paused (founder, 2026-10-08), no video tool available. Kept for later.
+
 Virtual creators (AI characters) for PromoVote, TikTok, Instagram and YouTube Shorts.
 Founder decision 2026-10-08: they are always openly labeled as AI. Each character file holds the character bible,
 the look (for image and video tools), 3 video scripts and the profile texts.

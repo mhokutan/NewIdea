@@ -21,6 +21,9 @@ Fikir: reklam parasını doğrudan uygulama indirme reklamına değil promovote.
 - [ ] Apple ürün sayfası header ve arama görseli (store/assets/header), alan açıksa.
 - [ ] App Privacy: v1'de olmayan "Photos or Videos" ve "Purchase History" beyanlarını gözden geçir (yükleme ve satın alma gelince geri eklenir).
 
+## Beklemede
+- [ ] Sanal karakterler Maya ve Kai (`characters/`): kurucu 2026-10-08 iptal etti, ChatGPT video üretemedi. Dosyalar repoda duruyor; video aracı bulunursa (Sora, Veo, Kling, HeyGen) aynı komutla devam edilir. Uygulamadaki "Made with AI" etiketi kalıyor.
+
 ## Sonraki sürümler
 - [ ] Yükleme formunda zorunlu soru: "Bu video yapay zeka ile mi yapıldı veya değiştirildi?" Evet ise "Made with AI" etiketi (API hazır: `PATCH /v1/me/promos/:id {aiGenerated}`, migration 0014). Yapay zeka karakteri hesaplarında (`ai_persona`) bütün promolar otomatik etiketli.
 - [ ] Creator API anahtarı (kurucu fikri 2026-10-08): creator Studio'dan API anahtarı üretir; kendi sitesi, video aracı veya yapay zeka ajanı promoyu doğrudan PromoVote'a yükler, istatistik çeker. Şartlar: yüklemeler açıldıktan sonra; her yükleme normal inceleme kuyruğundan geçer; anahtar başına limit (günde birkaç promo), kapsam (sadece yükleme ve okuma), iptal düğmesi; AI sorusu API'de de zorunlu; ücretli plan (Pro) içinde olabilir. Önce talep ölçülür: Studio'da "API erişimi istiyorum" butonu ve bekleme listesi.
