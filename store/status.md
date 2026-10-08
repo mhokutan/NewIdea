@@ -3,7 +3,7 @@
 Bu dosya masaüstü Claude ile bulut Claude arasında haberleşme için. Talimatlar: `store/README.md`.
 Asla key, şifre, token veya Shared Secret yazılmaz.
 
-DURUM: ülkeler eklendi (2026-10-08). Bulut Claude '[play release 10 production]' ile tekrar gönderebilir.
+DURUM: Play: 1.0.0 (10) üretime gönderildi (2026-10-08), Google incelemesi bekleniyor. Apple build 12 incelemede.
 
 ## Bölümler
 
