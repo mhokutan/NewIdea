@@ -9,7 +9,7 @@ Scheduling: Metricool (founder has an account) with X connected, or X's own sche
 - **Email:** hello@promovote.com (forwards to the founder).
 - **Avatar:** `store/assets/social/x-avatar-800.png`
 - **Banner:** `store/assets/social/x-banner-1500x500.png`
-- **Bio (160 max):** The social network for promos. Watch short promos from new games, apps and shops, then call which ones will blow up. 18+
+- **Bio (160 max):** The social network for promos. Watch short promos from new games, apps and shops, then call which ones will blow up. (No "18+" in social bios: it reads as adult content. The age limit lives in the stores and the app.)
 - **Website:** https://promovote.com
 - **Location:** (empty)
 
