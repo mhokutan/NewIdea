@@ -44,6 +44,11 @@
     }
   },
   "promos": [
+    {"id": "hauling-empire-start-small", "creator": "haulingempire", "lang": "tr", "video": "hauling-empire-start-small", "dur": 28, "tags": ["truckgame", "tycoon", "mobilegame"],
+     "title": {"en": "Start small, grow your map", "es": "Empieza pequeño, haz crecer tu mapa", "tr": "Küçük başla, haritanı büyüt"},
+     "desc": {"en": "Small jobs, new regions, trucks at sea and your own fuel stations. No gems, no energy.",
+              "es": "Trabajos pequeños, nuevas regiones, camiones en el mar y tus propias gasolineras. Sin gemas, sin energía.",
+              "tr": "Küçük işler, yeni bölgeler, denize açılan tırlar ve kendi istasyonların. Elmas yok, enerji yok."}},
     {"id": "hauling-empire", "creator": "haulingempire", "lang": "en", "video": "hauling-empire", "dur": 28, "tags": ["truckgame", "tycoon", "simulation", "indiegame"],
      "title": {"en": "Hauling Empire: Truck Tycoon", "es": "Hauling Empire: Truck Tycoon", "tr": "Hauling Empire: Truck Tycoon"},
      "desc": {"en": "Run a trucking business: pick loads, plan routes and grow one van into a logistics empire. No gems, no energy timers.",
