@@ -41,5 +41,8 @@
         "repo": "pbakaus/impeccable"
       }
     }
+  },
+  "env": {
+    "HYPERFRAMES_NO_TELEMETRY": "1"
   }
 }
