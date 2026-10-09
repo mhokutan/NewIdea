@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PromoVote API | Developers</title>
+<meta name="description" content="Upload promos to PromoVote automatically from your own tools, video editors or AI agents. Request early access to the PromoVote API.">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/styles.css">
+<script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+<style>
+.dev{padding:64px 0 96px}
+.dev h1{font-size:clamp(38px,6vw,60px);line-height:1.05;margin:0 0 16px}
+.dev h1 em{font-style:normal;color:var(--lime)}
+.dev .lead{color:var(--muted);font-size:19px;max-width:620px;margin:0 0 28px}
+.dev h2{font-size:26px;margin:56px 0 14px}
+.dev p,.dev li{color:var(--muted)}
+.grid3{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px;margin-top:18px}
+.card3{background:var(--bg-2);border:1px solid rgba(255,255,255,.1);border-radius:16px;padding:20px}
+.card3 b{display:block;color:var(--text,#fff);font-size:17px;margin-bottom:6px}
+pre.code{background:#07070b;border:1px solid rgba(255,255,255,.1);border-radius:14px;padding:18px;overflow-x:auto;font-size:13.5px;line-height:1.55;color:#dcd9e8}
+pre.code .k{color:var(--lime)}
+.badge{display:inline-block;font-size:13px;font-weight:700;color:#101014;background:var(--lime);border-radius:99px;padding:4px 12px;margin-bottom:18px}
+.devform{max-width:520px;display:grid;gap:12px;margin-top:16px}
+.devform input,.devform textarea{width:100%;box-sizing:border-box;background:var(--bg-2);border:1px solid rgba(255,255,255,.14);border-radius:12px;color:#fff;padding:13px 14px;font:inherit}
+.devform label span{display:block;font-size:14px;color:var(--muted);margin-bottom:6px}
+.form-msg{min-height:1.2em;color:var(--lime)}
+.safe li{margin:6px 0}
+</style>
+</head>
+<body>
+<header class="nav scrolled"><div class="wrap nav-inner"><a href="/" class="logo"><img src="/favicon.svg" width="30" height="30" alt=""><span>PromoVote</span></a><a href="#access" class="btn btn-small">Request access</a></div></header>
+<main class="wrap dev">
+  <span class="badge">Early access</span>
+  <h1>The PromoVote API.<br><em>Post promos from anywhere.</em></h1>
+  <p class="lead">Upload promo videos to PromoVote straight from your own tools: your video editor, your release pipeline or your AI agent. Read your stats the same way. Built for game studios, app makers, shops and creators.</p>
+  <a href="#access" class="btn">Request early access</a>
+
+  <h2>What you will be able to do</h2>
+  <div class="grid3">
+    <div class="card3"><b>Upload promos</b>Send a 10 to 30 second vertical video with a title, tags and your store or shop link. It goes live after review.</div>
+    <div class="card3"><b>Read your stats</b>Views, completion, saves, link taps and follows for every promo, ready for your own dashboard.</div>
+    <div class="card3"><b>Automate releases</b>Post a new trailer when you ship an update, from CI, a scheduler or an AI agent.</div>
+  </div>
+
+  <h2>A first look</h2>
+  <pre class="code"><span class="k">POST</span> https://api.promovote.com/v1/promos
+Authorization: Bearer pv_live_••••••••
+Content-Type: application/json
+
+{
+  "title": "Hauling Empire: Truck Tycoon",
+  "video_url": "https://your-cdn.example/trailer.mp4",
+  "tags": ["tycoon", "indiegame"],
+  "cta": { "kind": "google_play", "url": "https://play.google.com/store/apps/details?id=..." },
+  "made_with_ai": false
+}</pre>
+  <p>The final shape may change before launch. Early access members help us shape it.</p>
+
+  <h2>Safe by design</h2>
+  <ul class="safe">
+    <li>Every upload goes through the same review as promos posted in the app. Nothing skips moderation.</li>
+    <li>Keys are scoped (upload, read stats) and can be revoked at any time. Daily limits per key.</li>
+    <li>"Made with AI" is a required field. Undisclosed AI content can be reported and removed.</li>
+    <li>The API never buys reach: no feed position, no chart position, no votes. Same fair rotation for everyone.</li>
+  </ul>
+
+  <h2 id="access">Request early access</h2>
+  <p>Tell us what you would build. We will email you when keys open. 18+ only.</p>
+  <form class="devform" id="devform" novalidate>
+    <label><span>Email</span><input type="email" name="email" required autocomplete="email" placeholder="you@studio.com"></label>
+    <label><span>Your site, store page or tool (optional)</span><input type="url" name="link" placeholder="https://"></label>
+    <div class="cf-turnstile" data-sitekey="0x4AAAAAAFMH6xbA0dPcxH_-" data-theme="dark" data-size="flexible"></div>
+    <button type="submit" class="btn">Request access</button>
+    <p class="form-msg" role="status" aria-live="polite"></p>
+  </form>
+</main>
+<footer class="footer"><div class="wrap"><p class="copy">© 2026 PromoVote · <a href="/privacy">Privacy</a> · <a href="/terms">Terms</a> · <a href="/support">Support</a> · <a href="mailto:hello@promovote.com">hello@promovote.com</a></p></div></footer>
+<script>
+(() => {
+  const f = document.getElementById("devform"), msg = f.querySelector(".form-msg"), btn = f.querySelector("button");
+  f.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const email = f.email.value.trim();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { msg.textContent = "Please enter a valid email."; return; }
+    const token = f.querySelector("[name='cf-turnstile-response']")?.value;
+    if (!token) { msg.textContent = "Please wait for the human check, then try again."; return; }
+    btn.disabled = true; msg.textContent = "Sending...";
+    try {
+      const r = await fetch("/api/waitlist", { method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, role: "api", link: f.link.value, turnstileToken: token }) });
+      const j = await r.json().catch(() => ({}));
+      if (j.ok) { f.reset(); msg.textContent = "You are on the API early access list. We will email you when keys open."; }
+      else { msg.textContent = "Something went wrong. Please try again."; window.turnstile?.reset(); }
+    } catch { msg.textContent = "Network error. Please try again."; window.turnstile?.reset(); }
+    btn.disabled = false;
+  });
+})();
+</script>
+</body>
+</html>

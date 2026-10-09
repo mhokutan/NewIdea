@@ -6,7 +6,8 @@
   "workers_dev": false,
   "routes": [
     { "pattern": "promovote.com", "custom_domain": true },
-    { "pattern": "www.promovote.com", "custom_domain": true }
+    { "pattern": "www.promovote.com", "custom_domain": true },
+    { "pattern": "developer.promovote.com", "custom_domain": true }
   ],
   "assets": {
     "directory": "./public",

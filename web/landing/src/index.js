@@ -1,4 +1,4 @@
-const ROLES = new Set(["creator", "developer", "brand", "viewer"]);
+const ROLES = new Set(["creator", "developer", "brand", "viewer", "api"]);
 
 // Creator perks are only revealed after a verified waitlist signup (never in page source).
 const PERKS = {
@@ -171,7 +171,7 @@ async function handleVisit(request, env) {
 }
 
 const ADMIN_HEADERS = { "Cache-Control": "no-store", "X-Robots-Tag": "noindex, nofollow", ...SECURITY_HEADERS };
-const ROLE_LABELS = { creator: "Creator / Streamer", developer: "Game developer", brand: "Brand / Business", viewer: "Viewer" };
+const ROLE_LABELS = { creator: "Creator / Streamer", developer: "Game developer", brand: "Brand / Business", viewer: "Viewer", api: "API early access" };
 
 async function handleAdmin(request, env, url) {
   if (!env.ADMIN_PASSWORD) return new Response("Not found", { status: 404 });
@@ -303,6 +303,10 @@ export default {
   async fetch(request, env) {
     const url = new URL(request.url);
 
+    // developer.promovote.com is the API early access page (founder idea 2026-10-09).
+    if (url.hostname === "developer.promovote.com") {
+      return Response.redirect("https://promovote.com/developers", 301);
+    }
     if (url.hostname === "www.promovote.com") {
       url.hostname = "promovote.com";
       return Response.redirect(url.toString(), 301);
