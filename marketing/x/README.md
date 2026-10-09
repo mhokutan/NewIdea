@@ -24,7 +24,7 @@ Founder setup (once):
    X_API_KEY, X_API_SECRET, X_ACCESS_TOKEN, X_ACCESS_SECRET. Never paste them in chat or in the repo.
 Without the 4 secrets the job does nothing.
 Cost (X pay per use, Oct 2026): a plain post about $0.015, a post with any link about $0.20. Auto posts carry no link (the link is in the bio and the pinned post); only the launch day post has the store link.
-Status 2026-10-09: keys work (X answered 402 credits depleted, so auth is fine). Waiting for the founder to buy X API credits.
+Status 2026-10-09: LIVE. First auto post published 14:27 UTC (credits 20.00 to 19.98). 17 more queued, one a day at 14:07 UTC.
 
 ## Rules
 - Hashtags: 1 or 2 per post, never more (more looks like spam on X).
