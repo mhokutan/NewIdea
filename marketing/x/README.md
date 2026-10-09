@@ -28,6 +28,18 @@ Watch 7 short promos a day from new games, apps and shops. Call "Will blow up" o
 No paid spots in the charts. Ever.
 promovote.com #indiegames #apps
 
+## Coming soon (post right after the pinned post)
+PromoVote is coming soon to iPhone and Android.
+7 short promos a day from new games, apps and shops. One tap to call what will blow up. Results in 7 days.
+Follow so you don't miss launch day.
+promovote.com #indiegames #apps
+
+## Who to follow (30 to 50 a day at most, a new account that follows too fast gets limited)
+- Platforms: @AppStore, @GooglePlay, @itchio, @Steam, @ProductHunt
+- The founder studios' own accounts (Hauling Empire, Poleris, Nicheable) if they exist
+- Search #indiedev, #gamedev, #indiegames, #buildinpublic > People: active small and mid size accounts (1K to 50K followers) who posted in the last month. Future creators.
+- Game discovery accounts (search "indie game showcase", "new mobile games")
+
 ## First 10 posts (one a day, about 9:00 to 11:00 a.m. ET)
 1. Every app, game and shop starts with zero fans. PromoVote is where you find them first. promovote.com #indiedev #startup
 2. How it works: 7 promos a day. One tap to call it. Results in 7 days. Your Scout Score grows when you are right. (Reputation only, no cash value.) #buildinpublic
