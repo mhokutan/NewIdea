@@ -62,6 +62,21 @@ C7. Game devs: scouts call "Will blow up" or "Not for me" on your trailer. That 
 
 C8. Creators, game studios, new shops: get your promo ready. 10 to 30 seconds, vertical, your best moment first. Uploads open soon. Join the list: promovote.com #creators #indiedev
 
+## AI and store posts (use these hashtags only where the post is really about them)
+Rule: #AI #Claude #ChatGPT only on posts about building PromoVote with AI (true: the founder builds with Claude).
+#GooglePlay #AppStore #AppleDeveloper only on posts about the store submission or launch. Never on unrelated posts
+(X treats unrelated hashtags as spam) and never in a way that suggests a partnership with Apple, Google, Anthropic or OpenAI.
+
+A1. One founder, a day job, and AI. I am building PromoVote, a social network for promos, with Claude as my dev team: the app, the API, store screenshots, even the review checklists. #AI #Claude #buildinpublic
+
+A2. Things AI did for PromoVote this week: fixed a video loading bug, wrote the App Store screenshots, and caught a Google bot hitting our server 31,000 times a day. Things it did not do: decide what the product is. #AI #Claude #indiedev
+
+A3. Ask ChatGPT or Claude for a good new indie game and you get the same famous names. PromoVote is where the ones nobody knows yet show up first. #AI #ChatGPT #indiegames
+
+S1. Submitted PromoVote to Apple and Google Play this week. First time through Apple's review for a social app: privacy forms, age rating, a review account. Fingers crossed. #AppleDeveloper #GooglePlay #buildinpublic
+
+S2. Lesson from shipping on Google Play: a new production track has no countries until you add them in Play Console. Our first release bounced with "targeting no countries". #GooglePlay #androiddev
+
 ## First 10 posts (one a day, about 9:00 to 11:00 a.m. ET)
 1. Every app, game and shop starts with zero fans. PromoVote is where you find them first. promovote.com #indiedev #startup
 2. How it works: 7 promos a day. One tap to call it. Results in 7 days. Your Scout Score grows when you are right. (Reputation only, no cash value.) #buildinpublic
