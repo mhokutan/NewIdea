@@ -22,6 +22,9 @@ Scheduling: Metricool (founder has an account) with X connected, or X's own sche
 - Store links: App Store and Google Play only when live. Use promovote.com until then.
 - No em dashes or en dashes.
 
+## Posted log
+- 2026-10-09: pinned post, coming soon post, C1 (founder posted).
+
 ## Pinned post
 We built a place where promos are the content.
 Watch 7 short promos a day from new games, apps and shops. Call "Will blow up" or "Not for me". 7 days later you see if you were right.
