@@ -1414,6 +1414,41 @@ async function daily(env) {
   ]);
 }
 
+// ------------------------------------------------------------------ social posting (PromoVote's own X account)
+// OAuth 1.0a user context (the app's key and secret plus the account's access token and secret, all Worker secrets).
+const pct = (s) => encodeURIComponent(s).replace(/[!'()*]/g, (ch) => "%" + ch.charCodeAt(0).toString(16).toUpperCase());
+async function xPost(env, text) {
+  const url = "https://api.x.com/2/tweets";
+  const oauth = {
+    oauth_consumer_key: env.X_API_KEY, oauth_nonce: crypto.randomUUID().replace(/-/g, ""), oauth_signature_method: "HMAC-SHA1",
+    oauth_timestamp: String(Math.floor(Date.now() / 1000)), oauth_token: env.X_ACCESS_TOKEN, oauth_version: "1.0",
+  };
+  // JSON bodies are not part of the signature base string.
+  const params = Object.keys(oauth).sort().map((k) => `${pct(k)}=${pct(oauth[k])}`).join("&");
+  const base = `POST&${pct(url)}&${pct(params)}`;
+  const key = await crypto.subtle.importKey("raw", new TextEncoder().encode(`${pct(env.X_API_SECRET)}&${pct(env.X_ACCESS_SECRET)}`), { name: "HMAC", hash: "SHA-1" }, false, ["sign"]);
+  const sig = btoa(String.fromCharCode(...new Uint8Array(await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(base)))));
+  const header = "OAuth " + Object.entries({ ...oauth, oauth_signature: sig }).map(([k, v]) => `${pct(k)}="${pct(v)}"`).join(", ");
+  const r = await fetch(url, { method: "POST", headers: { Authorization: header, "Content-Type": "application/json" }, body: JSON.stringify({ text }) });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(`${r.status} ${j.detail || j.title || JSON.stringify(j).slice(0, 200)}`);
+  return j.data?.id;
+}
+
+// One due post per hourly run at most, so a backlog never floods the account.
+async function postDueSocial(env) {
+  if (!env.X_API_KEY || !env.X_API_SECRET || !env.X_ACCESS_TOKEN || !env.X_ACCESS_SECRET) return;
+  const db = env.DB;
+  const p = await db.prepare("select id, body from social_posts where status = 'queued' and network = 'x' and scheduled_at <= ? order by scheduled_at limit 1").bind(now()).first();
+  if (!p) return;
+  try {
+    const id = await xPost(env, p.body);
+    await db.prepare("update social_posts set status = 'posted', posted_at = ?, external_id = ?, error = null where id = ?").bind(now(), id || null, p.id).run();
+  } catch (e) {
+    await db.prepare("update social_posts set status = 'failed', error = ? where id = ?").bind(String(e?.message || e).slice(0, 300), p.id).run();
+  }
+}
+
 export default {
   fetch: app.fetch,
   // Hourly: resolve calls (so "Result Oct 14" is true in every time zone). Daily (04:17 UTC): deletions, cleanup and the
@@ -1421,6 +1456,7 @@ export default {
   scheduled: (event, env, ctx) => ctx.waitUntil(
     event.cron === "17 4 * * *"
       ? daily(env).catch((e) => console.error("daily_failed", e?.message)).then(() => weeklyStreaks(env.DB)).catch((e) => console.error("streaks_failed", e?.message))
-      : resolveCalls(env.DB).catch((e) => console.error("resolve_calls_failed", e?.message)),
+      : resolveCalls(env.DB).catch((e) => console.error("resolve_calls_failed", e?.message))
+        .then(() => postDueSocial(env)).catch((e) => console.error("social_failed", e?.message)),
   ),
 };

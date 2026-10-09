@@ -13,6 +13,17 @@ Scheduling: Metricool (founder has an account) with X connected, or X's own sche
 - **Website:** https://promovote.com
 - **Location:** (empty)
 
+## Auto posting (built 2026-10-09, not live yet)
+The API Worker (`services/api`) posts one due post per hour from D1 table `social_posts` (migration 0015) with the X API.
+Queue draft: `marketing/x/queue.md`. Goes live only after the founder's OK: apply migration 0015, deploy the API, load the queue.
+Founder setup (once):
+1. developer.x.com, sign in with the PromoVote X account, sign up for the free tier (check the current post limit).
+2. Create a Project and an App. App settings > User authentication: permissions **Read and write**.
+3. Keys and tokens: copy API Key and Secret, then generate Access Token and Secret (after setting Read and write).
+4. Cloudflare dashboard > Workers > promovote-api > Settings > Variables and Secrets > add 4 secrets:
+   X_API_KEY, X_API_SECRET, X_ACCESS_TOKEN, X_ACCESS_SECRET. Never paste them in chat or in the repo.
+Without the 4 secrets the job does nothing.
+
 ## Rules
 - Hashtags: 1 or 2 per post, never more (more looks like spam on X).
 - Website: Profile > Edit profile > Website (not asked at signup).
