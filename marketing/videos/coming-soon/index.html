@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1080, height=1920" />
+    <title>PromoVote coming soon</title>
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <style>
+      @font-face { font-family: "Bricolage"; src: url("assets/fonts/bricolage-latin.woff2") format("woff2"); font-weight: 200 800; }
+      @font-face { font-family: "Inter"; src: url("assets/fonts/inter-latin.woff2") format("woff2"); font-weight: 100 900; }
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      html, body { width: 1080px; height: 1920px; overflow: hidden; background: #0a0a0f; }
+      #root { position: relative; width: 100%; height: 100%; overflow: hidden; background: #0a0a0f; color: #f5f4f8; font-family: "Inter", sans-serif; }
+
+      /* Shared background: two soft brand glows that drift for the whole film. */
+      #bg { position: absolute; inset: 0; }
+      .glow { position: absolute; width: 1300px; height: 1300px; border-radius: 50%; filter: blur(140px); opacity: 0.55; }
+      #glow-pink { left: -520px; top: -380px; background: radial-gradient(circle, #ff5470 0%, rgba(255, 84, 112, 0) 65%); }
+      #glow-violet { right: -560px; bottom: -420px; background: radial-gradient(circle, #8b5cff 0%, rgba(139, 92, 255, 0) 65%); }
+
+      .scene { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+      .display { font-family: "Bricolage", sans-serif; font-weight: 800; letter-spacing: -0.035em; line-height: 0.95; text-align: center; }
+      .lime { color: #c6ff3d; }
+
+      /* Scene 1: logo */
+      #logo-wrap { display: flex; flex-direction: column; align-items: center; gap: 56px; }
+      #mark { width: 340px; height: 340px; display: block; }
+      #wordmark { font-size: 150px; }
+
+      /* Scene 2: kinetic line */
+      #s2 { gap: 28px; }
+      #s2-lead { font-size: 70px; font-weight: 600; color: #a3a1b5; letter-spacing: -0.02em; }
+      #word-box { position: relative; width: 1000px; height: 230px; }
+      .word { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 210px; }
+
+      /* Scene 3: phone */
+      #s3 { justify-content: flex-start; padding-top: 150px; gap: 70px; }
+      #s3-head { font-size: 112px; max-width: 960px; }
+      #phone { position: relative; width: 640px; height: 1330px; border-radius: 92px; padding: 18px; background: #1c1c29; box-shadow: 0 0 0 3px #2a2a3a, 0 60px 140px rgba(0, 0, 0, 0.6); }
+      #screen { position: relative; width: 100%; height: 100%; border-radius: 76px; overflow: hidden; background: #0a0a0f; }
+      .shot { position: absolute; left: 0; top: 0; width: 100%; height: 100%; object-fit: cover; object-position: top center; display: block; }
+
+      /* Scene 4: end card */
+      #s4 { gap: 64px; }
+      #end-mark { width: 170px; height: 170px; display: block; }
+      #end-head { font-size: 150px; }
+      #stores { display: flex; gap: 28px; }
+      .store { display: flex; align-items: center; height: 120px; padding: 0 48px; border-radius: 60px; border: 3px solid #3a3a4d; background: #15151f; font-size: 50px; font-weight: 700; letter-spacing: -0.01em; }
+      #url { font-size: 64px; font-weight: 700; color: #c6ff3d; letter-spacing: -0.01em; }
+    </style>
+  </head>
+  <body>
+    <div id="root" data-composition-id="main" data-start="0" data-duration="14" data-width="1080" data-height="1920">
+      <div id="bg" class="clip" data-start="0" data-duration="14" data-track-index="0">
+        <div id="glow-pink" class="glow" data-layout-allow-overflow></div>
+        <div id="glow-violet" class="glow" data-layout-allow-overflow></div>
+      </div>
+
+      <section id="s1" class="scene clip" data-start="0" data-duration="2.7" data-track-index="1">
+        <div id="logo-wrap">
+          <svg id="mark" viewBox="0 0 64 64">
+            <defs>
+              <linearGradient id="g1" x1="0" y1="0" x2="64" y2="64" gradientUnits="userSpaceOnUse"><stop stop-color="#ff5470" /><stop offset="1" stop-color="#8b5cff" /></linearGradient>
+            </defs>
+            <circle id="mark-ring" cx="32" cy="32" r="29" fill="#14141f" stroke="url(#g1)" stroke-width="5" pathLength="1" stroke-dasharray="1" />
+            <path id="chev-a" d="M20 35 32 23 44 35" fill="none" stroke="#c6ff3d" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" pathLength="1" stroke-dasharray="1" />
+            <path id="chev-b" d="M20 46 32 34 44 46" fill="none" stroke="#c6ff3d" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" pathLength="1" stroke-dasharray="1" />
+          </svg>
+          <div id="wordmark" class="display">PromoVote</div>
+        </div>
+      </section>
+
+      <section id="s2" class="scene clip" data-start="2.5" data-duration="3.2" data-track-index="2">
+        <div id="s2-lead">Short promos from new</div>
+        <div id="word-box">
+          <div id="w1" class="word display lime">games</div>
+          <div id="w2" class="word display lime">apps</div>
+          <div id="w3" class="word display lime">shops</div>
+        </div>
+      </section>
+
+      <section id="s3" class="scene clip" data-start="5.5" data-duration="5" data-track-index="3">
+        <div id="s3-head" class="display">Call the next <span class="lime">big hit</span></div>
+        <div id="phone">
+          <div id="screen">
+            <img id="shot1" class="shot" data-layout-allow-overflow src="assets/screens/1-feed.jpg" alt="" />
+            <img id="shot2" class="shot" data-layout-allow-overflow src="assets/screens/2-ticket.jpg" alt="" />
+            <img id="shot3" class="shot" data-layout-allow-overflow src="assets/screens/3-reveal.jpg" alt="" />
+          </div>
+        </div>
+      </section>
+
+      <section id="s4" class="scene clip" data-start="10.3" data-duration="3.7" data-track-index="4">
+        <svg id="end-mark" viewBox="0 0 64 64">
+          <defs>
+            <linearGradient id="g2" x1="0" y1="0" x2="64" y2="64" gradientUnits="userSpaceOnUse"><stop stop-color="#ff5470" /><stop offset="1" stop-color="#8b5cff" /></linearGradient>
+          </defs>
+          <circle cx="32" cy="32" r="29" fill="#14141f" stroke="url(#g2)" stroke-width="5" />
+          <path d="M20 35 32 23 44 35M20 46 32 34 44 46" fill="none" stroke="#c6ff3d" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" />
+        </svg>
+        <div id="end-head" class="display">Coming <span class="lime">soon</span></div>
+        <div id="stores">
+          <div id="st1" class="store">App Store</div>
+          <div id="st2" class="store">Google Play</div>
+        </div>
+        <div id="url">promovote.com</div>
+      </section>
+    </div>
+    <script>
+      const tl = gsap.timeline({ paused: true });
+
+      // Background drift (whole film).
+      tl.fromTo("#glow-pink", { x: 0, y: 0 }, { x: 260, y: 520, duration: 14, ease: "sine.inOut" }, 0);
+      tl.fromTo("#glow-violet", { x: 0, y: 0 }, { x: -240, y: -560, duration: 14, ease: "sine.inOut" }, 0);
+
+      // Scene 1: ring draws, chevrons draw upward, wordmark rises.
+      tl.fromTo("#mark-ring", { strokeDashoffset: 1 }, { strokeDashoffset: 0, duration: 0.8, ease: "power2.inOut" }, 0.15);
+      tl.fromTo("#chev-b", { strokeDashoffset: 1 }, { strokeDashoffset: 0, duration: 0.4, ease: "power2.out" }, 0.6);
+      tl.fromTo("#chev-a", { strokeDashoffset: 1 }, { strokeDashoffset: 0, duration: 0.4, ease: "power2.out" }, 0.8);
+      tl.fromTo("#mark", { scale: 0.86 }, { scale: 1, duration: 1.2, ease: "power3.out" }, 0.1);
+      tl.fromTo("#wordmark", { y: 60, opacity: 0 }, { y: 0, opacity: 1, duration: 0.7, ease: "power3.out" }, 1.0);
+      tl.to("#logo-wrap", { y: -80, opacity: 0, duration: 0.4, ease: "power2.in" }, 2.3);
+
+      // Scene 2: one lead line, three words swap in place.
+      tl.fromTo("#s2-lead", { y: 40, opacity: 0 }, { y: 0, opacity: 1, duration: 0.5, ease: "power3.out" }, 2.6);
+      const words = ["#w1", "#w2", "#w3"];
+      words.forEach((w, i) => {
+        const t = 2.75 + i * 0.85;
+        tl.fromTo(w, { yPercent: 70, opacity: 0, rotationX: -50 }, { yPercent: 0, opacity: 1, rotationX: 0, duration: 0.45, ease: "back.out(1.6)" }, t);
+        if (i < words.length - 1) tl.to(w, { yPercent: -70, opacity: 0, duration: 0.3, ease: "power2.in" }, t + 0.6);
+      });
+      tl.to(["#s2-lead", "#w3"], { y: -60, opacity: 0, duration: 0.35, ease: "power2.in" }, 5.3);
+
+      // Scene 3: headline, phone rises, screens slide like a swipe.
+      tl.fromTo("#s3-head", { y: 50, opacity: 0 }, { y: 0, opacity: 1, duration: 0.6, ease: "power3.out" }, 5.6);
+      tl.fromTo("#phone", { y: 900, rotation: 6 }, { y: 0, rotation: 0, duration: 1.0, ease: "power4.out" }, 5.7);
+      tl.fromTo("#shot2", { xPercent: 100 }, { xPercent: 0, duration: 0.55, ease: "power3.inOut" }, 7.5);
+      tl.fromTo("#shot1", { xPercent: 0 }, { xPercent: -30, duration: 0.55, ease: "power3.inOut" }, 7.5);
+      tl.fromTo("#shot3", { xPercent: 100 }, { xPercent: 0, duration: 0.55, ease: "power3.inOut" }, 8.9);
+      tl.fromTo("#shot2", { xPercent: 0 }, { xPercent: -30, duration: 0.55, ease: "power3.inOut", immediateRender: false }, 8.9);
+      tl.fromTo("#phone", { scale: 1 }, { scale: 1.04, duration: 3.6, ease: "none", immediateRender: false }, 6.7);
+      tl.to(["#s3-head", "#phone"], { opacity: 0, y: -80, duration: 0.4, ease: "power2.in" }, 10.1);
+
+      // Scene 4: end card.
+      tl.fromTo("#end-mark", { scale: 0.6, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.6, ease: "back.out(1.8)" }, 10.4);
+      tl.fromTo("#end-head", { y: 70, opacity: 0 }, { y: 0, opacity: 1, duration: 0.7, ease: "power3.out" }, 10.55);
+      tl.fromTo("#st1", { y: 40, opacity: 0 }, { y: 0, opacity: 1, duration: 0.5, ease: "power3.out" }, 11.0);
+      tl.fromTo("#st2", { y: 40, opacity: 0 }, { y: 0, opacity: 1, duration: 0.5, ease: "power3.out" }, 11.12);
+      tl.fromTo("#url", { opacity: 0 }, { opacity: 1, duration: 0.5, ease: "power2.out" }, 11.5);
+
+      window.__timelines["main"] = tl;
+      tl.seek(0);
+    </script>
+  </body>
+</html>
