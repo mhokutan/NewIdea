@@ -1456,7 +1456,9 @@ export default {
   scheduled: (event, env, ctx) => ctx.waitUntil(
     event.cron === "17 4 * * *"
       ? daily(env).catch((e) => console.error("daily_failed", e?.message)).then(() => weeklyStreaks(env.DB)).catch((e) => console.error("streaks_failed", e?.message))
-      : resolveCalls(env.DB).catch((e) => console.error("resolve_calls_failed", e?.message))
-        .then(() => postDueSocial(env)).catch((e) => console.error("social_failed", e?.message)),
+      // Social posts go out on the hour (founder request: round times like 13:00).
+      : event.cron === "0 * * * *"
+        ? postDueSocial(env).catch((e) => console.error("social_failed", e?.message))
+        : resolveCalls(env.DB).catch((e) => console.error("resolve_calls_failed", e?.message)),
   ),
 };

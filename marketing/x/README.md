@@ -24,7 +24,7 @@ Founder setup (once):
    X_API_KEY, X_API_SECRET, X_ACCESS_TOKEN, X_ACCESS_SECRET. Never paste them in chat or in the repo.
 Without the 4 secrets the job does nothing.
 Cost (X pay per use, Oct 2026): a plain post about $0.015, a post with any link about $0.20. Auto posts carry no link (the link is in the bio and the pinned post); only the launch day post has the store link.
-Status 2026-10-09: LIVE. First auto post published 14:27 UTC (credits 20.00 to 19.98). Founder decision 2026-10-09: 5 posts a day, 4 without a link (14:07, 17:07, 20:07, 23:07 UTC) and the last one with promovote.com (02:07 UTC). About $0.28 a day, the $20 credit lasts about 71 days. Top up the queue every 2 weeks (reminder set for 2026-10-19).
+Status 2026-10-09: LIVE. First auto post published 14:27 UTC (credits 20.00 to 19.98). Founder decision 2026-10-09: 5 posts a day, 4 without a link and the last one with promovote.com. Times (founder request, on the hour, busiest X hours): 9:00, 11:00, 13:00, 16:00 and 19:00 (link) New York time = 13, 15, 17, 20, 23 UTC while daylight saving lasts (one hour earlier in New York after Nov 1). The API runs postDueSocial on its own cron "0 * * * *". About $0.28 a day, the $20 credit lasts about 71 days. Top up the queue every 2 weeks (reminder set for 2026-10-19).
 
 ## Rules
 - Hashtags: 1 or 2 per post, never more (more looks like spam on X).

@@ -12,7 +12,7 @@
   ],
   // Profile photos and banners (R2 enabled 2026-10-07, bucket created with the Cloudflare connector).
   "r2_buckets": [{ "binding": "MEDIA", "bucket_name": "promovote-media" }],
-  "triggers": { "crons": ["17 4 * * *", "7 * * * *"] },
+  "triggers": { "crons": ["17 4 * * *", "7 * * * *", "0 * * * *"] },
   // 60 writes per minute per IP on /v1 (votes, saves, follows, events, reports).
   "ratelimits": [{ "name": "WRITE_LIMIT", "namespace_id": "1001", "simple": { "limit": 60, "period": 60 } }],
   "vars": {
