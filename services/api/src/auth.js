@@ -33,13 +33,14 @@ export function authOptions(env, database, sendCode) {
     account: { accountLinking: { enabled: true, trustedProviders: ["apple", "google"] } },
     session: { expiresIn: 60 * 60 * 24 * 30, updateAge: 60 * 60 * 24 },
     rateLimit: { enabled: true, storage: "database", window: 60, max: 30 },
-    advanced: { database: { generateId: () => crypto.randomUUID() } },
+    advanced: { database: { generateId: () => crypto.randomUUID() }, ipAddress: { ipAddressHeaders: ["cf-connecting-ip"] } },
     plugins: [
       expo(),
       emailOTP({
         otpLength: 6,
         expiresIn: 600,
         allowedAttempts: 5,
+        storeOTP: "hashed",
         // The app review account uses a fixed code (Worker secret REVIEW_CODE); everyone else gets a random one.
         generateOTP: ({ email }) => (env?.REVIEW_CODE && email === env?.REVIEW_EMAIL ? env.REVIEW_CODE : undefined),
         sendVerificationOTP: async ({ email, otp, type }) => sendCode(email, otp, type),

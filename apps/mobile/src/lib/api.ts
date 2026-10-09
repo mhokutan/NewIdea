@@ -89,7 +89,7 @@ export const api = {
   me: () => call<Me>('/v1/me'),
   scout: () => call<ScoutSummary>('/v1/me/scout'),
   creatorPerk: (handle: string) => call<{ perk: Perk | null }>('/v1/creators/' + encodeURIComponent(handle) + '/perk'),
-  claimPerk: (id: string) => call<{ ok: true; perk: Perk; code: string | null }>('/v1/perks/' + id + '/claim', { method: 'POST' }),
+  claimPerk: (id: string) => call<{ ok: true; perk: Perk; code: string | null }>('/v1/perks/' + encodeURIComponent(id) + '/claim', { method: 'POST' }),
   myPerks: () => call<{ wallet: WalletItem[]; own: (Perk & { claims: number })[] }>('/v1/me/perks'),
   createPerk: (b: Record<string, unknown>) => call<{ ok: true; id: string }>('/v1/me/perks', { method: 'POST', body: JSON.stringify(b) }),
   endPerk: (id: string) => call('/v1/me/perks/' + id, { method: 'DELETE' }),
@@ -100,11 +100,11 @@ export const api = {
   uploadMedia: (kind: 'avatar' | 'banner', uri: string) => uploadMedia(kind, uri),
   onboarding: (b: Record<string, unknown>) => call<{ ok: true; handle: string }>('/v1/onboarding', { method: 'POST', body: JSON.stringify(b) }),
   handle: (h: string) => call<{ available: boolean; reason: string | null }>('/v1/handles/' + encodeURIComponent(h)),
-  follow: (h: string, on: boolean, source: 'feed' | 'profile' | 'explore' = 'feed') => call<{ ok: true; following: boolean; followers: number | null }>('/v1/follows/' + h, { method: on ? 'POST' : 'DELETE', body: JSON.stringify({ source }) }),
+  follow: (h: string, on: boolean, source: 'feed' | 'profile' | 'explore' = 'feed') => call<{ ok: true; following: boolean; followers: number | null }>('/v1/follows/' + encodeURIComponent(h), { method: on ? 'POST' : 'DELETE', body: JSON.stringify({ source }) }),
   state: () => call<ViewerState>('/v1/me/state'),
   vote: (promoId: string, choice: 'will_blow_up' | 'not_for_me') => call<{ ok: true; call: Call }>('/v1/calls', { method: 'POST', body: JSON.stringify({ promoId, choice }) }),
   block: (handle: string) => call('/v1/blocks/' + encodeURIComponent(handle), { method: 'POST' }),
-  save: (promoId: string, on: boolean) => call('/v1/saves/' + promoId, { method: on ? 'POST' : 'DELETE' }),
+  save: (promoId: string, on: boolean) => call('/v1/saves/' + encodeURIComponent(promoId), { method: on ? 'POST' : 'DELETE' }),
   view: async (promoId: string, seconds: number, completed: boolean) =>
     call('/v1/events/view', { method: 'POST', body: JSON.stringify({ promoId, seconds, completed, deviceId: await deviceId() }) }),
   /** Funnel step, fire and forget (one row per step per viewer per day on the server). */

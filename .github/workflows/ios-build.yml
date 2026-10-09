@@ -30,9 +30,9 @@ jobs:
       run:
         working-directory: apps/mobile
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: 22
           cache: npm
@@ -50,7 +50,7 @@ jobs:
       - name: Build (local, signed with the EAS credentials)
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
-        run: npx -y eas-cli@latest build --platform ios --profile production --local --non-interactive --output "$RUNNER_TEMP/promovote.ipa"
+        run: npx -y eas-cli@24.12.1 build --platform ios --profile production --local --non-interactive --output "$RUNNER_TEMP/promovote.ipa"
 
       - name: Upload to App Store Connect
         env:
@@ -68,4 +68,7 @@ jobs:
           fi
           chmod 600 "$KEY"
           xcrun altool --upload-app --type ios --file "$RUNNER_TEMP/promovote.ipa" --apiKey "$ASC_KEY_ID" --apiIssuer "$ASC_ISSUER_ID"
-          rm -f "$KEY"
+
+      - name: Remove the App Store Connect key
+        if: always()
+        run: rm -f ~/.appstoreconnect/private_keys/AuthKey_*.p8

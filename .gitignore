@@ -2,3 +2,16 @@
 
 # graphify knowledge graph (generated, rebuild with: graphify update .)
 graphify-out/
+
+# Secrets and signing files (security review 2026-10-09)
+.env
+.env.*
+!.env.example
+.dev.vars
+*.p8
+*.jks
+*.keystore
+google-services.json
+GoogleService-Info.plist
+credentials.json
+service-account*.json

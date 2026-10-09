@@ -8,8 +8,9 @@ import { Link, router } from 'expo-router';
 import { useVideoPlayer, VideoView } from 'expo-video';
 import { useEffect, useRef, useState } from 'react';
 import Animated, { FadeInDown } from 'react-native-reanimated';
-import { AccessibilityInfo, ActivityIndicator, Linking, Platform, Pressable, Share, StyleSheet, Text, View } from 'react-native';
+import { AccessibilityInfo, ActivityIndicator, Platform, Pressable, Share, StyleSheet, Text, View } from 'react-native';
 
+import { openExternal } from '@/lib/links';
 import { api, ApiError, type Call, type Promo } from '@/lib/api';
 import { asMember, asScout } from '@/lib/gate';
 import { compact } from '@/lib/format';
@@ -142,7 +143,7 @@ export function PromoReel({ promo, active, height, muted, onSeen, bottomInset = 
     if (!cta?.url) return;
     tap();
     api.click(promo.id).catch(() => {});
-    Linking.openURL(cta.url);
+    openExternal(cta.url);
   };
   // Ticket line: the result once the call resolved, otherwise the result date, rank and crowd split.
   const done = !!call?.outcome && call.outcome !== 'pending';

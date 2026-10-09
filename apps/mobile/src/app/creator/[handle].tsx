@@ -2,9 +2,10 @@
 import { Image } from 'expo-image';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Linking, Platform, Pressable, ScrollView, Share, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { ActivityIndicator, Platform, Pressable, ScrollView, Share, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { openExternal } from '@/lib/links';
 import { api, type Perk, type Profile } from '@/lib/api';
 import { compact } from '@/lib/format';
 import { t } from '@/lib/i18n';
@@ -42,7 +43,7 @@ export default function CreatorScreen() {
     const bump = (x: Profile, n: number | null) => ({ ...x, viewer: { isMe: false, following: on }, followers: n, stats: x.stats ? { ...x.stats, followers: n } : x.stats });
     setP((x) => x && bump(x, x.followers != null ? Math.max(0, x.followers + (on ? 1 : -1)) : null));
     setFollowing(handle, on);
-    api.follow(handle, on, 'profile')
+    api.follow(p?.handle || handle, on, 'profile')
       .then((r) => { if (r.followers != null) setP((x) => x && x.followers != null ? bump(x, r.followers) : x); })
       .catch(() => { setFollowing(handle, !on); load(); });
   });
@@ -104,13 +105,13 @@ export default function CreatorScreen() {
         ) : (
           <View style={styles.actions}>
             <View style={{ flex: 1 }}><Button label={notify ? (p.viewer?.following ? t('notify_on') : t('cta_notify')) : p.viewer?.following ? t('following') : t('follow')} ghost={!!p.viewer?.following} onPress={toggleFollow} /></View>
-            {main ? <View style={{ flex: 1 }}><Button label={t(ctaLabel(main.kind))} ghost onPress={() => { api.linkTap(handle, main.url!).catch(() => {}); Linking.openURL(main.url!); }} /></View> : null}
+            {main ? <View style={{ flex: 1 }}><Button label={t(ctaLabel(main.kind))} ghost onPress={() => { api.linkTap(handle, main.url!).catch(() => {}); openExternal(main.url); }} /></View> : null}
           </View>
         )}
         {p.bio ? <Text style={styles.bio}>{p.bio}</Text> : null}
         <View style={styles.links}>
           {(p.links || []).filter((l) => ctaVisible(l.platform, Platform.OS)).map((l) => (
-            <Pressable key={l.url} onPress={() => { api.linkTap(handle, l.url).catch(() => {}); Linking.openURL(l.url); }} style={styles.link} accessibilityRole="link">
+            <Pressable key={l.url} onPress={() => { api.linkTap(handle, l.url).catch(() => {}); openExternal(l.url); }} style={styles.link} accessibilityRole="link">
               <Text style={styles.linkText}>{linkName(l.platform, l.url, l.label)}</Text>
               <Icon name="link" size={14} color={C.text} />
             </Pressable>

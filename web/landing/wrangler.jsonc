@@ -16,6 +16,8 @@
     "not_found_handling": "404-page",
     "run_worker_first": true
   },
+  // 20 requests per minute per IP on /admin and /api/v.
+  "ratelimits": [{ "name": "LIMIT", "namespace_id": "1002", "simple": { "limit": 20, "period": 60 } }],
   "d1_databases": [
     { "binding": "DB", "database_name": "promovote-waitlist", "database_id": "05af65d5-9b4d-454e-8b70-ca4a15269396" }
   ],

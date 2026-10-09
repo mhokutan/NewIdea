@@ -25,6 +25,8 @@ app.use("*", async (c, next) => {
   await next();
   c.header("X-Content-Type-Options", "nosniff");
   c.header("Referrer-Policy", "no-referrer");
+  c.header("Strict-Transport-Security", "max-age=31536000; includeSubDomains");
+  c.header("X-Frame-Options", "DENY");
   if (!c.res.headers.get("Cache-Control")) c.header("Cache-Control", "no-store");
 });
 app.use("*", cors({
@@ -45,7 +47,12 @@ app.post("/v1/webhooks/apple", (c) => c.body(null, 200));
 app.use("/v1/*", async (c, next) => {
   if (c.req.method === "GET" || c.req.method === "OPTIONS") return next();
   // Photo uploads check their own (larger) limit in the route.
-  if (c.req.path !== "/v1/me/media" && +(c.req.header("Content-Length") || 0) > 16384) return c.json({ error: { code: "too_large", message: "Request too large." } }, 413);
+  if (c.req.path !== "/v1/me/media") {
+    // A chunked body has no Content-Length and could skip the size check, so it is refused.
+    // Requests without a body (taps like save or claim) still pass.
+    if (/chunked/i.test(c.req.header("Transfer-Encoding") || "")) return c.json({ error: { code: "length_required", message: "Content-Length required." } }, 411);
+    if (+(c.req.header("Content-Length") || 0) > 16384) return c.json({ error: { code: "too_large", message: "Request too large." } }, 413);
+  }
   if (c.env.WRITE_LIMIT) {
     // Events (views, taps) get their own bucket so watching never blocks a call, but a script cannot flood writes.
     const ip = c.req.header("CF-Connecting-IP") || "unknown";
@@ -209,7 +216,8 @@ app.get("/health", async (c) => {
     const stale = [age("resolve_calls") > 2 * 3600e3 && "resolve_calls", age("daily") > 26 * 3600e3 && "daily"].filter(Boolean);
     return c.json({ ok: true, time: now(), jobs, stale });
   } catch (e) {
-    return c.json({ ok: false, time: now(), error: String(e?.message || e).slice(0, 200) }, 500);
+    console.error("health_failed", e?.message);
+    return c.json({ ok: false, time: now(), error: "database_unavailable" }, 500);
   }
 });
 
@@ -403,7 +411,7 @@ app.get("/v1/profiles/:handle", async (c) => {
       db.prepare(`select (select count(*) from saves s join promos pr on pr.id = s.promo_id where pr.creator_profile_id = ?1 and pr.status = 'live') as saves,
         (select count(*) from calls ca join promos pr on pr.id = ca.promo_id where pr.creator_profile_id = ?1 and pr.status = 'live' and ca.is_valid = 1) as calls,
         (select count(*) from promos where creator_profile_id = ?1 and status = 'live') as promos`).bind(p.id),
-      db.prepare("select promo_id, count(*) as n from view_events where is_boost = 0 and promo_id in (select id from promos where creator_profile_id = ? and status = 'live') group by promo_id").bind(p.id),
+      db.prepare("select promo_id, count(*) as n from view_events where is_boost = 0 and is_guest = 0 and promo_id in (select id from promos where creator_profile_id = ? and status = 'live') group by promo_id").bind(p.id),
     ]);
     const st = counts.results[0] || {};
     const viewMap = Object.fromEntries(views.results.map((x) => [x.promo_id, x.n]));
@@ -712,7 +720,7 @@ app.get("/media/*", async (c) => {
 const PERK_KINDS = ["code", "discount", "beta_invite"];
 const GIFT_CONDITIONS = /\b(vote|votes|voting|follow|follows|following|like|likes|subscribe|review|reviews|rate|rating|call|calls|share|shares|comment|comments)\b/i;
 async function perkKey(env) {
-  const base = await crypto.subtle.importKey("raw", new TextEncoder().encode(env.BETTER_AUTH_SECRET || "dev-secret"), "HKDF", false, ["deriveKey"]);
+  const base = await crypto.subtle.importKey("raw", new TextEncoder().encode(env.BETTER_AUTH_SECRET || (() => { throw new Error("BETTER_AUTH_SECRET missing"); })()), "HKDF", false, ["deriveKey"]);
   return crypto.subtle.deriveKey({ name: "HKDF", hash: "SHA-256", salt: new TextEncoder().encode("promovote-perks"), info: new Uint8Array() }, base, { name: "AES-GCM", length: 256 }, false, ["encrypt", "decrypt"]);
 }
 const b64 = (u8) => btoa(String.fromCharCode(...u8));
@@ -783,18 +791,19 @@ app.get("/v1/creators/:handle/perk", async (c) => {
 
 // Claim: needs a signed in account, nothing else (see RULE above).
 app.post("/v1/perks/:id/claim", async (c) => {
-  const v = await viewer(c);
-  if (!v) return fail(c, 401, "auth_required", "Sign in to get this gift.");
+  const [v, err] = await requireProfile(c);
+  if (err) return err;
   const db = c.env.DB, id = c.req.param("id");
   const k = await db.prepare("select * from perks where id = ? and status = 'active' and ends_at > ?").bind(id, now()).first();
   if (!k) return fail(c, 404, "perk_ended", "This gift has ended.");
-  const prior = await db.prepare("select 1 from perk_claims where perk_id = ? and user_id = ?").bind(id, v.user.id).first();
-  if (!prior) {
-    if (k.stock_left !== null) {
-      const r = await db.prepare("update perks set stock_left = stock_left - 1 where id = ? and stock_left > 0").bind(id).run();
-      if (!r.meta.changes) return fail(c, 410, "perk_gone", "All gifts have been claimed.");
+  // Claim first, then take stock only for a new claim, so two taps at once never use two units.
+  const ins = await db.prepare("insert or ignore into perk_claims (perk_id, user_id) values (?, ?)").bind(id, v.user.id).run();
+  if (ins.meta.changes && k.stock_left !== null) {
+    const r = await db.prepare("update perks set stock_left = stock_left - 1 where id = ? and stock_left > 0").bind(id).run();
+    if (!r.meta.changes) {
+      await db.prepare("delete from perk_claims where perk_id = ? and user_id = ?").bind(id, v.user.id).run();
+      return fail(c, 410, "perk_gone", "All gifts have been claimed.");
     }
-    await db.prepare("insert or ignore into perk_claims (perk_id, user_id) values (?, ?)").bind(id, v.user.id).run();
   }
   const code = await db.prepare("select code_encrypted from perk_codes where perk_id = ? limit 1").bind(id).first();
   return c.json({ ok: true, perk: perkOut(k), code: code ? await openCode(c.env, code.code_encrypted) : null });
@@ -1171,24 +1180,8 @@ app.post("/v1/reports", async (c) => {
     // "Undisclosed AI" is stored as other with a tag: the reports table check list predates it.
     .bind(uuid(), v.user.id, b.targetType, String(b.targetId).slice(0, 64), targetProfile || null, b.reason === "undisclosed_ai" ? "other" : b.reason,
       b.reason === "undisclosed_ai" ? ("[undisclosed_ai] " + (b.details || "")).slice(0, 500) : b.details ? String(b.details).slice(0, 500) : null, priority).run();
-  // Minor reports go to the top of the moderator queue. The profile is limited automatically only when at least
-  // two different people report it as a minor within 7 days, so one person cannot take down an account.
-  if (b.reason === "minor" && targetProfile) {
-    const since = new Date(Date.now() - 7 * 864e5).toISOString();
-    // Only reporters whose own profile is at least 7 days old count. Verified and founder owned profiles are
-    // never limited automatically; a moderator decides.
-    const old = new Date(Date.now() - 7 * 864e5).toISOString();
-    const r = await db.prepare(
-      `select count(distinct r.reporter_user_id) as n from reports r join profiles rp on rp.owner_user_id = r.reporter_user_id
-       where r.target_profile_id = ? and r.reason = 'minor' and r.created_at >= ? and rp.created_at < ?`,
-    ).bind(targetProfile, since, old).first();
-    if ((r?.n || 0) >= 2) {
-      await db.prepare(
-        `update profiles set status = 'limited' where id = ? and status = 'active' and is_verified = 0
-         and not exists (select 1 from creator_details d where d.profile_id = profiles.id and d.founder_owned = 1)`,
-      ).bind(targetProfile).run();
-    }
-  }
+  // Minor reports go to the top of the moderator queue (priority 1). A moderator decides; nothing is limited
+  // automatically, so a few fake accounts cannot take down a creator (security review 2026-10-09).
   return c.json({ ok: true }, 201);
 });
 

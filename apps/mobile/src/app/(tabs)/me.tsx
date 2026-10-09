@@ -4,10 +4,11 @@
 import { Image } from 'expo-image';
 import { Link, router, useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Alert, Linking, Platform, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { ActivityIndicator, Alert, Platform, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import * as Clipboard from 'expo-clipboard';
+import { openExternal } from '@/lib/links';
 import { api, type Perk, type ScoutSummary, type Studio, type WalletItem } from '@/lib/api';
 import { CATEGORIES } from '@/lib/categories';
 import { compact } from '@/lib/format';
@@ -242,7 +243,7 @@ function WalletRow({ item }: { item: WalletItem }) {
           </Pressable>
         ) : null}
         <Text style={styles.small}>{ended ? t('gift_none') : fmt(t('gift_ends'), { date: shortDate(item.endsAt) })}</Text>
-        {item.redeemUrl && !ended ? <Pressable onPress={() => Linking.openURL(item.redeemUrl!)} accessibilityRole="link" hitSlop={8}><Text style={{ color: C.accent, fontWeight: '700' }}>{t('open_link')} ›</Text></Pressable> : null}
+        {item.redeemUrl && !ended ? <Pressable onPress={() => openExternal(item.redeemUrl)} accessibilityRole="link" hitSlop={8}><Text style={{ color: C.accent, fontWeight: '700' }}>{t('open_link')} ›</Text></Pressable> : null}
       </View>
     </View>
   );

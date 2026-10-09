@@ -82,7 +82,7 @@ async function handleWaitlist(request, env) {
   const country = request.cf?.country || null;
 
   await env.DB.prepare(
-    "INSERT INTO waitlist (email, role, link, country) VALUES (?1, ?2, ?3, ?4) ON CONFLICT(email) DO UPDATE SET role = excluded.role, link = COALESCE(excluded.link, waitlist.link)"
+    "INSERT INTO waitlist (email, role, link, country) VALUES (?1, ?2, ?3, ?4) ON CONFLICT(email) DO UPDATE SET link = COALESCE(waitlist.link, excluded.link)"
   )
     .bind(email, role, link, country)
     .run();
@@ -338,6 +338,12 @@ export default {
       return serveMedia(request, env);
     }
 
+    // Per IP limits (security review 2026-10-09): admin login guesses and visit counter padding.
+    if (env.LIMIT && (url.pathname === "/admin" || url.pathname.startsWith("/admin/") || url.pathname === "/api/v")) {
+      const ip = request.headers.get("CF-Connecting-IP") || "unknown";
+      const { success } = await env.LIMIT.limit({ key: (url.pathname === "/api/v" ? "v:" : "a:") + ip });
+      if (!success) return new Response("Too many requests", { status: 429, headers: { "Retry-After": "60" } });
+    }
     if (url.pathname === "/admin" || url.pathname.startsWith("/admin/")) {
       return handleAdmin(request, env, url);
     }

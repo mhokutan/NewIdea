@@ -2,9 +2,10 @@
 // or follows (server rule in services/api, "perks").
 import * as Clipboard from 'expo-clipboard';
 import { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Linking, Modal, Platform, Pressable, Text, View } from 'react-native';
+import { ActivityIndicator, Modal, Platform, Pressable, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { openExternal } from '@/lib/links';
 import { api, type Perk } from '@/lib/api';
 import { asMember } from '@/lib/gate';
 import { lang, t } from '@/lib/i18n';
@@ -68,7 +69,7 @@ export function PerkSheet({ handle, name, visible, onClose, onReopen }: { handle
                   <Text style={styles.codeText} selectable>{code}</Text>
                   <Text style={styles.copy}>{copied ? t('copied') : t('copy')}</Text>
                 </Pressable>
-                {perk.redeemUrl ? <Button label={t('open_link')} onPress={() => Linking.openURL(perk.redeemUrl!)} /> : null}
+                {perk.redeemUrl ? <Button label={t('open_link')} onPress={() => openExternal(perk.redeemUrl)} /> : null}
               </View>
             ) : (
               <View style={{ marginTop: 6 }}><Button label={t('get_code')} onPress={claim} /></View>
