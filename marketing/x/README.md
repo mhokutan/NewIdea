@@ -7,7 +7,7 @@ Scheduling: Metricool (founder has an account) with X connected, or X's own sche
 - **Handle:** @PromoVote. If taken: @PromoVoteApp, then @getpromovote.
 - **Name:** PromoVote
 - **Email:** hello@promovote.com (forwards to the founder).
-- **Avatar:** `store/assets/app-store-icon-1024.png`
+- **Avatar:** `store/assets/social/x-avatar-800.png`
 - **Banner:** `store/assets/social/x-banner-1500x500.png`
 - **Bio (160 max):** The social network for promos. Watch short promos from new games, apps and shops, then call which ones will blow up. 18+
 - **Website:** https://promovote.com
