@@ -8,7 +8,7 @@ import { Link, router } from 'expo-router';
 import { useVideoPlayer, VideoView } from 'expo-video';
 import { useEffect, useRef, useState } from 'react';
 import Animated, { FadeInDown } from 'react-native-reanimated';
-import { AccessibilityInfo, Linking, Platform, Pressable, Share, StyleSheet, Text, View } from 'react-native';
+import { AccessibilityInfo, ActivityIndicator, Linking, Platform, Pressable, Share, StyleSheet, Text, View } from 'react-native';
 
 import { api, ApiError, type Call, type Promo } from '@/lib/api';
 import { asMember, asScout } from '@/lib/gate';
@@ -58,6 +58,34 @@ export function PromoReel({ promo, active, height, muted, onSeen, bottomInset = 
     if (active && !paused) player.play(); else player.pause();
     if (!active) { watched.current = 0; reported.current = false; }
   }, [active, paused, player]);
+
+  // Loading and recovery (founder request 2026-10-09): a spinner while the active video is not playing yet, and a
+  // reload after an error or a stall, so a slow network never looks like a frozen app.
+  const [status, setStatus] = useState(player.status);
+  const [playing, setPlaying] = useState(player.playing);
+  const retries = useRef(0);
+  useEventListener(player, 'statusChange', ({ status: st }) => setStatus(st));
+  useEventListener(player, 'playingChange', ({ isPlaying }) => setPlaying(isPlaying));
+  useEffect(() => {
+    if (!active || paused || playing || !source) return;
+    // Error: reload the source after 3 s. Stalled while ready (no progress): ask to play again after 6 s.
+    const wait = status === 'error' ? 3000 : 6000;
+    const id = setTimeout(() => {
+      if (retries.current >= 4) return;
+      retries.current += 1;
+      if (status === 'error') player.replaceAsync({ uri: source }).then(() => player.play()).catch(() => {});
+      else player.play();
+    }, wait);
+    return () => clearTimeout(id);
+  }, [active, paused, playing, status, source, player]);
+  useEffect(() => { if (playing) retries.current = 0; }, [playing]);
+  const loading = active && !paused && !playing && !!source;
+  // Shown only after 0.7 s, so a normal start never flashes a spinner.
+  const [slow, setSlow] = useState(false);
+  useEffect(() => {
+    const id = setTimeout(() => setSlow(loading), loading ? 700 : 0);
+    return () => clearTimeout(id);
+  }, [loading]);
 
   // A view counts after 3 seconds on screen, once per promo per session.
   useEventListener(player, 'timeUpdate', ({ currentTime }) => {
@@ -180,6 +208,7 @@ export function PromoReel({ promo, active, height, muted, onSeen, bottomInset = 
           else if (a === 'more') setMenu(true);
         }} />
       {paused ? <View style={styles.paused} pointerEvents="none"><Icon name="play" size={34} /></View> : null}
+      {loading && slow ? <View style={styles.paused} pointerEvents="none" accessibilityLabel={t('loading')}><ActivityIndicator color="#fff" size="large" /></View> : null}
 
       <Fade colors={['rgba(6,6,10,0)', 'rgba(6,6,10,0.82)', 'rgba(6,6,10,0.96)']} locations={[0, 0.45, 1]} style={[styles.shade, open && styles.shadeOpen]} />
 
