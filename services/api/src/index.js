@@ -1429,10 +1429,13 @@ async function xPost(env, text) {
 }
 
 // One due post per hourly run at most, so a backlog never floods the account.
-async function postDueSocial(env) {
+// graceMs: the hourly :07 run passes 5 minutes so it only picks up a post the :00 run missed (Cloudflare skipped
+// every "0 * * * *" run on 2026-10-09), never one the :00 run is about to send.
+async function postDueSocial(env, graceMs = 0) {
   if (!env.X_API_KEY || !env.X_API_SECRET || !env.X_ACCESS_TOKEN || !env.X_ACCESS_SECRET) return;
   const db = env.DB;
-  const p = await db.prepare("select id, body from social_posts where status = 'queued' and network = 'x' and scheduled_at <= ? order by scheduled_at limit 1").bind(now()).first();
+  const due = new Date(Date.now() - graceMs).toISOString();
+  const p = await db.prepare("select id, body from social_posts where status = 'queued' and network = 'x' and scheduled_at <= ? order by scheduled_at limit 1").bind(due).first();
   if (!p) return;
   try {
     const id = await xPost(env, p.body);
@@ -1452,6 +1455,7 @@ export default {
       // Social posts go out on the hour (founder request: round times like 13:00).
       : event.cron === "0 * * * *"
         ? postDueSocial(env).catch((e) => console.error("social_failed", e?.message))
-        : resolveCalls(env.DB).catch((e) => console.error("resolve_calls_failed", e?.message)),
+        : resolveCalls(env.DB).catch((e) => console.error("resolve_calls_failed", e?.message))
+          .then(() => postDueSocial(env, 5 * 60 * 1000)).catch((e) => console.error("social_failed", e?.message)),
   ),
 };
