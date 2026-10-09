@@ -1410,21 +1410,67 @@ async function daily(env) {
 // ------------------------------------------------------------------ social posting (PromoVote's own X account)
 // OAuth 1.0a user context (the app's key and secret plus the account's access token and secret, all Worker secrets).
 const pct = (s) => encodeURIComponent(s).replace(/[!'()*]/g, (ch) => "%" + ch.charCodeAt(0).toString(16).toUpperCase());
-async function xPost(env, text) {
-  const url = "https://api.x.com/2/tweets";
+// Signs one request. Query parameters are part of the signature; JSON and multipart bodies are not.
+async function xAuth(env, method, url, query = {}) {
   const oauth = {
     oauth_consumer_key: env.X_API_KEY, oauth_nonce: crypto.randomUUID().replace(/-/g, ""), oauth_signature_method: "HMAC-SHA1",
     oauth_timestamp: String(Math.floor(Date.now() / 1000)), oauth_token: env.X_ACCESS_TOKEN, oauth_version: "1.0",
   };
-  // JSON bodies are not part of the signature base string.
-  const params = Object.keys(oauth).sort().map((k) => `${pct(k)}=${pct(oauth[k])}`).join("&");
-  const base = `POST&${pct(url)}&${pct(params)}`;
+  const all = { ...oauth, ...query };
+  const params = Object.keys(all).sort().map((k) => `${pct(k)}=${pct(all[k])}`).join("&");
+  const base = `${method}&${pct(url)}&${pct(params)}`;
   const key = await crypto.subtle.importKey("raw", new TextEncoder().encode(`${pct(env.X_API_SECRET)}&${pct(env.X_ACCESS_SECRET)}`), { name: "HMAC", hash: "SHA-1" }, false, ["sign"]);
   const sig = btoa(String.fromCharCode(...new Uint8Array(await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(base)))));
-  const header = "OAuth " + Object.entries({ ...oauth, oauth_signature: sig }).map(([k, v]) => `${pct(k)}="${pct(v)}"`).join(", ");
-  const r = await fetch(url, { method: "POST", headers: { Authorization: header, "Content-Type": "application/json" }, body: JSON.stringify({ text }) });
+  return "OAuth " + Object.entries({ ...oauth, oauth_signature: sig }).map(([k, v]) => `${pct(k)}="${pct(v)}"`).join(", ");
+}
+
+async function xCall(env, method, url, { query = {}, json, form } = {}) {
+  const qs = Object.keys(query).length ? "?" + Object.entries(query).map(([k, v]) => `${pct(k)}=${pct(v)}`).join("&") : "";
+  const headers = { Authorization: await xAuth(env, method, url, query) };
+  let body;
+  if (json) { headers["Content-Type"] = "application/json"; body = JSON.stringify(json); }
+  else if (form) body = form;
+  const r = await fetch(url + qs, { method, headers, body });
   const j = await r.json().catch(() => ({}));
   if (!r.ok) throw new Error(`${r.status} ${j.detail || j.title || JSON.stringify(j).slice(0, 200)}`);
+  return j;
+}
+
+// Chunked v2 media upload for a video (or image) at a public https URL on our own domain; returns the media id.
+async function xUploadMedia(env, mediaUrl) {
+  if (!/^https:\/\/promovote\.com\//.test(mediaUrl)) throw new Error("media_url must be on https://promovote.com/");
+  // Through the service binding when present: a Worker fetching another Worker on the same zone by URL can be refused.
+  const res = env.LANDING ? await env.LANDING.fetch(new Request(mediaUrl)) : await fetch(mediaUrl);
+  if (!res.ok) throw new Error(`media fetch ${res.status}`);
+  const type = (res.headers.get("content-type") || "video/mp4").split(";")[0];
+  const blob = await res.blob();
+  const video = type.startsWith("video/");
+  const init = await xCall(env, "POST", "https://api.x.com/2/media/upload/initialize", {
+    json: { media_type: type, total_bytes: blob.size, media_category: video ? "tweet_video" : "tweet_image" },
+  });
+  const id = init.data?.id;
+  if (!id) throw new Error("media init: no id");
+  const CHUNK = 4 * 1024 * 1024;
+  for (let i = 0, seg = 0; i < blob.size; i += CHUNK, seg++) {
+    const form = new FormData();
+    form.append("segment_index", String(seg));
+    form.append("media", blob.slice(i, i + CHUNK), "chunk");
+    await xCall(env, "POST", `https://api.x.com/2/media/upload/${id}/append`, { form });
+  }
+  let info = (await xCall(env, "POST", `https://api.x.com/2/media/upload/${id}/finalize`)).data?.processing_info;
+  // Videos are processed by X after finalize; wait until ready (at most about 2 minutes).
+  for (let n = 0; info && info.state !== "succeeded"; n++) {
+    if (info.state === "failed" || n > 20) throw new Error(`media processing ${info.state}: ${JSON.stringify(info.error || {}).slice(0, 120)}`);
+    await new Promise((ok) => setTimeout(ok, Math.min(10, info.check_after_secs || 3) * 1000));
+    info = (await xCall(env, "GET", "https://api.x.com/2/media/upload", { query: { command: "STATUS", media_id: id } })).data?.processing_info;
+  }
+  return id;
+}
+
+async function xPost(env, text, mediaUrl) {
+  const json = { text };
+  if (mediaUrl) json.media = { media_ids: [await xUploadMedia(env, mediaUrl)] };
+  const j = await xCall(env, "POST", "https://api.x.com/2/tweets", { json });
   return j.data?.id;
 }
 
@@ -1435,10 +1481,10 @@ async function postDueSocial(env, graceMs = 0) {
   if (!env.X_API_KEY || !env.X_API_SECRET || !env.X_ACCESS_TOKEN || !env.X_ACCESS_SECRET) return;
   const db = env.DB;
   const due = new Date(Date.now() - graceMs).toISOString();
-  const p = await db.prepare("select id, body from social_posts where status = 'queued' and network = 'x' and scheduled_at <= ? order by scheduled_at limit 1").bind(due).first();
+  const p = await db.prepare("select id, body, media_url from social_posts where status = 'queued' and network = 'x' and scheduled_at <= ? order by scheduled_at limit 1").bind(due).first();
   if (!p) return;
   try {
-    const id = await xPost(env, p.body);
+    const id = await xPost(env, p.body, p.media_url);
     await db.prepare("update social_posts set status = 'posted', posted_at = ?, external_id = ?, error = null where id = ?").bind(now(), id || null, p.id).run();
   } catch (e) {
     await db.prepare("update social_posts set status = 'failed', error = ? where id = ?").bind(String(e?.message || e).slice(0, 300), p.id).run();
