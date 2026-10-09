@@ -2,6 +2,12 @@
 
 Kurucu ile konuşulan, zamanı gelince yapılacak işler. Bitince [x] yapılır ve tarih yazılır.
 
+## Güvenlik (taramadan kalanlar, 2026-10-09, rapor: docs/review/security-2026-10-09.md)
+- [ ] Bir sonraki build'den ÖNCE: Apple ve Google girişine nonce ekle (expo-crypto), TestFlight'ta gerçek telefonda dene.
+- [ ] Mağaza incelemeleri bitince (kurucu): REVIEW_CODE'u değiştir veya kaldır; uzun ve rastgele olsun.
+- [ ] Admin panelini Cloudflare Access arkasına al (ücretsiz, 5 dakika; adımları Claude yazar).
+- [ ] Bir sonraki Expo SDK güncellemesinde mobil paket açıklarını toplu düzelt (npm audit fix --force KULLANMA).
+
 ## Uygulama mağazada onaylanınca
 
 ### Web sitesinden uygulama reklamı testi (kurucu fikri 2026-10-07)
