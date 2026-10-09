@@ -23,7 +23,7 @@ Scheduling: Metricool (founder has an account) with X connected, or X's own sche
 - No em dashes or en dashes.
 
 ## Posted log
-- 2026-10-09: pinned post, coming soon post, C1 (founder posted).
+- 2026-10-09: C1 posted by the founder. The rest (pinned, coming soon, first 10, C2 to C8) not yet.
 
 ## Pinned post
 We built a place where promos are the content.
