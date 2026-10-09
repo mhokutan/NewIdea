@@ -11,7 +11,12 @@ Founder idea 2026-10-09. Phase 1 is live: https://developer.promovote.com redire
 ## Phase 2: design
 - Keys: `pv_live_...`, created in Studio, shown once, stored as a SHA-256 hash, scopes `promos:write`, `stats:read`.
   Revoke anytime. Last used time and IP country shown in Studio.
-- Limits: per key per day (free: 2 uploads, Pro: 10), plus the normal monthly upload limits. 429 with Retry-After.
+- Limits for Pro (founder decision 2026-10-09): 5 uploads a day and 60 a month per account, videos up to 60 s and 100 MB,
+  stats reads 60 a minute per key, at most 3 keys per account. Over the limit: 429 with Retry-After, nothing is processed.
+  A later "Business" plan for agencies and studios (for example 50 uploads a day) at a higher price.
+- Protection so the API never takes the system down: uploads go into the review queue and are processed in order (no
+  synchronous work); a global daily cap on all API uploads pauses new uploads and alerts us when hit; keys switch off
+  automatically after repeated rejections; duplicate video hashes are refused; all traffic stays behind Cloudflare.
 - Endpoints: `POST /v1/promos` (video_url or upload URL, title, tags, cta, made_with_ai required), `GET /v1/promos/:id`,
   `GET /v1/stats?range=7d`. Webhook when a promo is approved or rejected.
 - Never sold through the API: feed position, chart position, votes, reach to non followers. Same fair rotation.
