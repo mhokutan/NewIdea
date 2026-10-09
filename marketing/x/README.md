@@ -40,6 +40,25 @@ promovote.com #indiegames #apps
 - Search #indiedev, #gamedev, #indiegames, #buildinpublic > People: active small and mid size accounts (1K to 50K followers) who posted in the last month. Future creators.
 - Game discovery accounts (search "indie game showcase", "new mobile games")
 
+## Creator call posts (streamers, game devs, new shops)
+Honest: uploads are not open yet, no promised reach numbers. Mix these in between the first 10 posts.
+
+C1. Indie devs: your trailer deserves more than 40 views and a Discord ping. On PromoVote, promos ARE the content. Get ready. promovote.com #indiedev #gamedev
+
+C2. Streamers and creators: one short clip, a page with all your links, and an audience that is here to discover new people. Coming soon to iPhone and Android. #streamer #contentcreator
+
+C3. Just opened an Etsy shop or a small online store? Your first customers are out there. PromoVote puts new shops in front of people who want to find them first. #smallbusiness #etsyseller
+
+C4. Built an app nobody has heard of yet? Good. That is exactly who PromoVote is for. Free creator page, real stats for every promo. promovote.com #buildinpublic #indieapps
+
+C5. No algorithm that buries you because you have 12 followers. Every creator gets fair turns in Today's Drop. Paid boosts are labeled and never touch the charts. #indiedev #creators
+
+C6. What you get as a creator: a page with your logo, banner and links, a main button (store, shop or channel), gifts for scouts, and stats for views, saves and link taps. Free. #contentcreator #gamedev
+
+C7. Game devs: scouts call "Will blow up" or "Not for me" on your trailer. That is real feedback from players before you spend on ads. #gamedev #indiegames
+
+C8. Creators, game studios, new shops: get your promo ready. 10 to 30 seconds, vertical, your best moment first. Uploads open soon. Join the list: promovote.com #creators #indiedev
+
 ## First 10 posts (one a day, about 9:00 to 11:00 a.m. ET)
 1. Every app, game and shop starts with zero fans. PromoVote is where you find them first. promovote.com #indiedev #startup
 2. How it works: 7 promos a day. One tap to call it. Results in 7 days. Your Scout Score grows when you are right. (Reputation only, no cash value.) #buildinpublic
