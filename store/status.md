@@ -35,7 +35,7 @@ DURUM: Play: 1.0.0 (10) üretime gönderildi (2026-10-08), Google incelemesi bek
 
 * 2026-10-10: Google Play: production track versionCode 10 status completed (API). Mağaza sayfası herkese açık: https://play.google.com/store/apps/details?id=com.miapera.promovote . Console'da hâlâ "Ready to publish" görünürse Publishing overview > Publish changes (Managed publishing açık olabilir; bu adım API ile yapılamıyor).
 
-* 2026-10-10: Android 1.0.1 build (R8 code shrinking açık, Play vitals "code obfuscation 1%" uyarısı için) GitHub Actions ile yapıldı ve alpha'ya yüklendi.
+* 2026-10-10: Android 1.0.1 build (R8 code shrinking açık, Play vitals "code obfuscation 1%" uyarısı için) GitHub Actions ile yapıldı, alpha'ya yüklendi (versionCode 11), sonra production'a gönderildi.
 
 * 2026-10-07 (YAPILDI, Bulut Claude notlarına bak): Kurucu isteği: Apple ve Google incelemecileri için veritabanında bir test (review) hesabı aç. Şu an giriş sadece Sign in with Apple ve Google ile olduğu için incelemecinin bu hesaba girebileceği bir yol da gerekiyor (örneğin sadece bu hesaba açık, sabit kodlu email girişi; Cloudflare Email Sending gerekmesin). Hazır olunca kullanıcı adı/email'i ve giriş talimatını buraya yaz; ŞİFRE veya KOD'u buraya YAZMA, kurucuya ayrıca ilet. Masaüstü Claude Play Console 'Oturum açma bilgileri' ve App Store 'App Review Information' formlarını buna göre doldurur (şifre alanlarını kurucu girer). Not: uygulamada misafir modu var, izleme girişsiz yapılıyor; giriş oy, kaydetme, takip ve yükleme için gerekli.
 
