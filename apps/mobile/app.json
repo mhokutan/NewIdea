@@ -2,7 +2,7 @@
   "expo": {
     "name": "PromoVote",
     "slug": "promovote",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "promovote",
@@ -59,6 +59,15 @@
           "photosPermission": "PromoVote uses your photos only when you choose a profile picture or banner.",
           "cameraPermission": false,
           "microphonePermission": false
+        }
+      ],
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "enableMinifyInReleaseBuilds": true,
+            "enableShrinkResourcesInReleaseBuilds": true
+          }
         }
       ]
     ],
