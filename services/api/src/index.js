@@ -1474,26 +1474,27 @@ async function xPost(env, text, mediaUrl) {
   return j.data?.id;
 }
 
-// Reads public stats for posts from the last 30 days (100 ids per request). Runs from the hourly job when the last
-// refresh is older than 12 hours, so reads stay at about two per post per day.
+// Reads public stats twice per post: once a day after posting and once three days after (reads are billed per post,
+// so refreshing every post every day would soon cost more than posting). Runs from the hourly job; 100 ids per request.
 async function refreshSocialStats(env) {
   if (!env.X_API_KEY || !env.X_ACCESS_TOKEN) return;
   const db = env.DB;
-  const last = await db.prepare("select ran_at from job_runs where name = 'social_stats'").first();
-  if (last && Date.now() - new Date(last.ran_at).getTime() < 12 * 3600e3) return;
-  const since = new Date(Date.now() - 30 * 864e5).toISOString();
-  const { results } = await db.prepare("select id, external_id from social_posts where status = 'posted' and external_id is not null and posted_at >= ?").bind(since).all();
-  for (let i = 0; i < results.length; i += 100) {
-    const batch = results.slice(i, i + 100);
-    const j = await xCall(env, "GET", "https://api.x.com/2/tweets", { query: { ids: batch.map((r) => r.external_id).join(","), "tweet.fields": "public_metrics" } });
-    const byExt = new Map((j.data || []).map((t) => [t.id, t.public_metrics || {}]));
-    await db.batch(batch.filter((r) => byExt.has(r.external_id)).map((r) => {
-      const m = byExt.get(r.external_id);
-      return db.prepare("update social_posts set impressions = ?, likes = ?, reposts = ?, replies = ?, bookmarks = ?, stats_at = ? where id = ?")
-        .bind(m.impression_count ?? null, m.like_count ?? 0, m.retweet_count ?? 0, m.reply_count ?? 0, m.bookmark_count ?? 0, now(), r.id);
-    }));
-  }
-  await db.prepare("insert into job_runs (name, ran_at) values ('social_stats', ?) on conflict (name) do update set ran_at = excluded.ran_at").bind(now()).run();
+  const ago = (h) => new Date(Date.now() - h * 3600e3).toISOString();
+  const { results } = await db.prepare(
+    `select id, external_id from social_posts where status = 'posted' and external_id is not null and (
+       (stats_at is null and posted_at <= ?1) or
+       (posted_at <= ?2 and posted_at > ?3 and stats_at < strftime('%Y-%m-%dT%H:%M:%fZ', posted_at, '+60 hours')))
+     limit 100`,
+  ).bind(ago(24), ago(72), ago(120)).all();
+  if (!results.length) return;
+  const j = await xCall(env, "GET", "https://api.x.com/2/tweets", { query: { ids: results.map((r) => r.external_id).join(","), "tweet.fields": "public_metrics" } });
+  const byExt = new Map((j.data || []).map((t) => [t.id, t.public_metrics || {}]));
+  // Deleted posts come back without data; stamp them too so they are not read again.
+  await db.batch(results.map((r) => {
+    const m = byExt.get(r.external_id) || {};
+    return db.prepare("update social_posts set impressions = coalesce(?, impressions), likes = coalesce(?, likes), reposts = coalesce(?, reposts), replies = coalesce(?, replies), bookmarks = coalesce(?, bookmarks), stats_at = ? where id = ?")
+      .bind(m.impression_count ?? null, m.like_count ?? null, m.retweet_count ?? null, m.reply_count ?? null, m.bookmark_count ?? null, now(), r.id);
+  }));
 }
 
 // One due post per hourly run at most, so a backlog never floods the account.

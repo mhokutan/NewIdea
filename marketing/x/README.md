@@ -104,3 +104,8 @@ S2. Lesson from shipping on Google Play: a new production track has no countries
 
 ## Launch day (when a store approves)
 PromoVote is live on [Google Play / the App Store]. 7 promos a day, one tap to call it, results in 7 days. Who will spot the next big hit first? [store link] #indiegames #apps
+
+## Stats and video posts (2026-10-10)
+* The API Worker reads public stats (impressions, likes, reposts, replies, bookmarks) for each post twice: about 24 h and 72 h after posting. Columns on `social_posts` (migration 0018).
+* First read (2026-10-10 04:07 UTC): 8 to 20 views per post; the only engagement (reposts) came from the two video posts. Decision: the 17:00 UTC slot is a promo video post every day from 2026-10-10 to 2026-10-21 (ids `video-<promo>`, `media_url` on promovote.com). The text posts that held those slots moved to the end; the queue now runs to 2026-10-24.
+* Any post can carry a video: set `media_url` to a file under https://promovote.com/ (the Worker uploads it to X in chunks).
