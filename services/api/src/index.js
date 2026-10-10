@@ -1474,6 +1474,28 @@ async function xPost(env, text, mediaUrl) {
   return j.data?.id;
 }
 
+// Reads public stats for posts from the last 30 days (100 ids per request). Runs from the hourly job when the last
+// refresh is older than 12 hours, so reads stay at about two per post per day.
+async function refreshSocialStats(env) {
+  if (!env.X_API_KEY || !env.X_ACCESS_TOKEN) return;
+  const db = env.DB;
+  const last = await db.prepare("select ran_at from job_runs where name = 'social_stats'").first();
+  if (last && Date.now() - new Date(last.ran_at).getTime() < 12 * 3600e3) return;
+  const since = new Date(Date.now() - 30 * 864e5).toISOString();
+  const { results } = await db.prepare("select id, external_id from social_posts where status = 'posted' and external_id is not null and posted_at >= ?").bind(since).all();
+  for (let i = 0; i < results.length; i += 100) {
+    const batch = results.slice(i, i + 100);
+    const j = await xCall(env, "GET", "https://api.x.com/2/tweets", { query: { ids: batch.map((r) => r.external_id).join(","), "tweet.fields": "public_metrics" } });
+    const byExt = new Map((j.data || []).map((t) => [t.id, t.public_metrics || {}]));
+    await db.batch(batch.filter((r) => byExt.has(r.external_id)).map((r) => {
+      const m = byExt.get(r.external_id);
+      return db.prepare("update social_posts set impressions = ?, likes = ?, reposts = ?, replies = ?, bookmarks = ?, stats_at = ? where id = ?")
+        .bind(m.impression_count ?? null, m.like_count ?? 0, m.retweet_count ?? 0, m.reply_count ?? 0, m.bookmark_count ?? 0, now(), r.id);
+    }));
+  }
+  await db.prepare("insert into job_runs (name, ran_at) values ('social_stats', ?) on conflict (name) do update set ran_at = excluded.ran_at").bind(now()).run();
+}
+
 // One due post per hourly run at most, so a backlog never floods the account.
 // graceMs: the hourly :07 run passes 5 minutes so it only picks up a post the :00 run missed (Cloudflare skipped
 // every "0 * * * *" run on 2026-10-09), never one the :00 run is about to send.
@@ -1502,6 +1524,7 @@ export default {
       : event.cron === "0 * * * *"
         ? postDueSocial(env).catch((e) => console.error("social_failed", e?.message))
         : resolveCalls(env.DB).catch((e) => console.error("resolve_calls_failed", e?.message))
-          .then(() => postDueSocial(env, 5 * 60 * 1000)).catch((e) => console.error("social_failed", e?.message)),
+          .then(() => postDueSocial(env, 5 * 60 * 1000)).catch((e) => console.error("social_failed", e?.message))
+          .then(() => refreshSocialStats(env)).catch((e) => console.error("social_stats_failed", e?.message)),
   ),
 };
