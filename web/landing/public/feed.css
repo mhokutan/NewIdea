@@ -195,3 +195,33 @@ a.who:focus-visible { outline: 2px solid #fff; outline-offset: 4px; }
 .reel-hashtags a:hover { text-decoration: underline; text-underline-offset: 3px; }
 .reel-hashtags a:focus-visible { outline: 2px solid #fff; outline-offset: 2px; border-radius: 4px; }
 @media (max-width: 480px) { .topnav-how { display: none; } }
+
+/* Early access bar under the top bar */
+.join-nudge {
+  position: fixed; z-index: 29; left: 50%; transform: translateX(-50%);
+  top: calc(max(12px, env(safe-area-inset-top)) + 60px);
+  width: min(calc(100vw - 32px), 460px);
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 8px 10px 16px; border-radius: 999px;
+  background: rgba(21, 21, 31, 0.92); border: 1px solid rgba(198, 255, 61, 0.35);
+  backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+  color: #f5f4f8; font-size: 14px; font-weight: 600; line-height: 1.25;
+  animation: nudge-in 0.4s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+.join-nudge-t { flex: 1; min-width: 0; }
+.join-nudge .btn { flex: none; white-space: nowrap; }
+.join-nudge-x {
+  flex: none; width: 32px; height: 32px; display: grid; place-items: center;
+  border: 0; border-radius: 50%; background: transparent; color: #a3a1b5; cursor: pointer;
+}
+.join-nudge-x svg { width: 16px; height: 16px; fill: currentColor; stroke: currentColor; }
+.join-nudge-x:hover { color: #fff; }
+.join-nudge-x:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+@keyframes nudge-in { from { opacity: 0; transform: translate(-50%, -12px); } to { opacity: 1; transform: translate(-50%, 0); } }
+@media (prefers-reduced-motion: reduce) { .join-nudge { animation: none; } }
+/* Narrow screens: keep clear of the sound button on the right. */
+@media (max-width: 600px) {
+  .join-nudge { left: 12px; right: 68px; width: auto; transform: none; font-size: 13px; padding: 8px 4px 8px 14px; gap: 6px; }
+  @keyframes nudge-in-m { from { opacity: 0; transform: translateY(-12px); } to { opacity: 1; transform: none; } }
+  .join-nudge { animation-name: nudge-in-m; }
+}

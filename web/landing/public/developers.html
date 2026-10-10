@@ -25,6 +25,13 @@ pre.code .k{color:var(--lime)}
 .devform label span{display:block;font-size:14px;color:var(--muted);margin-bottom:6px}
 .form-msg{min-height:1.2em;color:var(--lime)}
 .safe li{margin:6px 0}
+.devform-hero{max-width:560px;margin-top:4px}
+.devrow{display:flex;gap:10px;flex-wrap:wrap}
+.devrow input{flex:1 1 240px}
+.devrow .btn{flex:0 0 auto}
+.devform .fine{font-size:13px;color:var(--dim);margin:0}
+.devform .fine a{color:var(--muted)}
+.visually-hidden{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 </style>
 </head>
 <body>
@@ -33,7 +40,16 @@ pre.code .k{color:var(--lime)}
   <span class="badge">Early access</span>
   <h1>The PromoVote API.<br><em>Post promos from anywhere.</em></h1>
   <p class="lead">Upload promo videos to PromoVote straight from your own tools: your video editor, your release pipeline or your AI agent. Read your stats the same way. Built for game studios, app makers, shops and creators.</p>
-  <a href="#access" class="btn">Request early access</a>
+  <form class="devform devform-hero" novalidate aria-label="Request early access">
+    <div class="devrow">
+      <label class="visually-hidden" for="hero-email">Email</label>
+      <input id="hero-email" type="email" name="email" required autocomplete="email" placeholder="you@studio.com">
+      <button type="submit" class="btn">Get early access</button>
+    </div>
+    <div class="cf-turnstile" data-sitekey="0x4AAAAAAFMH6xbA0dPcxH_-" data-theme="dark" data-size="flexible" data-appearance="interaction-only"></div>
+    <p class="form-msg" role="status" aria-live="polite"></p>
+    <p class="fine">Free while in early access. One email when keys open, no spam. <a href="/privacy">Privacy</a></p>
+  </form>
 
   <h2>What you will be able to do</h2>
   <div class="grid3">
@@ -66,10 +82,10 @@ Content-Type: application/json
 
   <h2 id="access">Request early access</h2>
   <p>Tell us what you would build. We will email you when keys open. 18+ only.</p>
-  <form class="devform" id="devform" novalidate>
+  <form class="devform" id="devform" novalidate aria-label="Request early access with details">
     <label><span>Email</span><input type="email" name="email" required autocomplete="email" placeholder="you@studio.com"></label>
     <label><span>Your site, store page or tool (optional)</span><input type="url" name="link" placeholder="https://"></label>
-    <div class="cf-turnstile" data-sitekey="0x4AAAAAAFMH6xbA0dPcxH_-" data-theme="dark" data-size="flexible"></div>
+    <div class="cf-turnstile" data-sitekey="0x4AAAAAAFMH6xbA0dPcxH_-" data-theme="dark" data-size="flexible" data-appearance="interaction-only"></div>
     <button type="submit" class="btn">Request access</button>
     <p class="form-msg" role="status" aria-live="polite"></p>
   </form>

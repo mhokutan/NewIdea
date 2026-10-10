@@ -160,6 +160,28 @@
 
     const reels = () => [...feed.querySelectorAll("[data-reel]")];
 
+    // Early access bar (2026-10-10): visitors watched but never found "Join". Shows after 6 s of watching,
+    // opens the same join sheet, and stays away for 3 days once dismissed or after joining.
+    const NUDGE_KEY = "pv_nudge_off";
+    const nudgeOff = () => store.get("pv_joined") === "1" || Date.now() < Number(store.get(NUDGE_KEY) || 0);
+    if (!nudgeOff()) {
+      setTimeout(() => {
+        if (nudgeOff() || document.querySelector(".sheet:not([hidden])")) return;
+        const bar = document.createElement("div");
+        bar.className = "join-nudge";
+        bar.setAttribute("role", "region");
+        bar.setAttribute("aria-label", T("nudge_t"));
+        bar.innerHTML = `<span class="join-nudge-t"></span><button type="button" class="btn btn-small" data-sheet="join"></button><button type="button" class="join-nudge-x"><svg aria-hidden="true"><use href="/icons.svg#i-x"/></svg></button>`;
+        bar.querySelector(".join-nudge-t").textContent = T("nudge_t");
+        bar.querySelector("[data-sheet]").textContent = T("nudge_b");
+        bar.querySelector(".join-nudge-x").setAttribute("aria-label", T("nudge_x"));
+        const hide = () => { store.set(NUDGE_KEY, String(Date.now() + 3 * 864e5)); bar.remove(); };
+        bar.querySelector(".join-nudge-x").addEventListener("click", hide);
+        bar.querySelector("[data-sheet]").addEventListener("click", () => bar.remove());
+        document.body.appendChild(bar);
+      }, 6000);
+    }
+
     soundBtn = document.createElement("button");
     soundBtn.type = "button";
     soundBtn.className = "sound-btn";
