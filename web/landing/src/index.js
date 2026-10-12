@@ -342,7 +342,7 @@ function heOpsPage(path, ops, range) {
     // 4. Products
     out.push(sec("Ürünler (30 gün)"));
     const prods = Array.isArray(sales.by_product_30d) ? sales.by_product_30d : null;
-    out.push(!prods ? none : !prods.length ? '<p class="empty">Bu dönemde satış yok.</p>' : `<div class="tablewrap"><table><thead><tr><th>Ürün</th><th>Mağaza</th><th>Adet</th><th>USD</th></tr></thead><tbody>${prods.map((r) => `<tr><td>${esc(r.product ?? r.product_id ?? r.sku ?? "")}</td><td>${esc(r.store ?? r.platform ?? "")}</td><td>${fnum(r.count ?? r.units) ?? ""}</td><td>${usd(r.usd ?? r.revenue_usd) ?? ""}</td></tr>`).join("")}</tbody></table></div>`);
+    out.push(!prods ? none : !prods.length ? '<p class="empty">Bu dönemde satış yok.</p>' : `<div class="tablewrap"><table><thead><tr><th>Ürün</th><th>Mağaza</th><th>Adet</th><th>USD</th></tr></thead><tbody>${prods.map((r) => `<tr><td>${esc(r.product_id ?? "")}</td><td>${esc({ apple: "Apple", google: "Google" }[r.store] ?? r.store ?? "")}</td><td>${fnum(r.count) ?? ""}</td><td>${usd(r.usd) ?? ""}</td></tr>`).join("")}</tbody></table></div>`);
     // 5. Subscriptions
     out.push(sec("Abonelikler (30 gün)"));
     const sub = sales.subscriptions_30d;
