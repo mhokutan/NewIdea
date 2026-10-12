@@ -206,6 +206,10 @@ ${body}
   return new Response(html, { headers: { "Content-Type": "text/html; charset=utf-8", ...ADMIN_HEADERS } });
 }
 
+const RANGES = [7, 30, 90];
+const rangeOf = (url) => { const r = Number(url.searchParams.get("range")); return RANGES.includes(r) ? r : 30; };
+const rangePills = (path, range) => `<div class="tabs" style="border:0;padding:0;margin:0 0 18px">${RANGES.map((r) => `<a class="tab${r === range ? " on" : ""}" href="${path}?range=${r}"${r === range ? ' aria-current="true"' : ""}>${r} gün</a>`).join("")}</div>`;
+
 const tilesHtml = (items) => `<div class="tiles">${items.map(([l, n]) => `<div class="tile"><b>${n}</b><span>${esc(l)}</span></div>`).join("")}</div>`;
 
 // Hauling Empire store and player stats (its own Supabase function, daily totals only). The key stays on this
@@ -286,7 +290,8 @@ ${tilesHtml([["Toplam kayıt", rows.length], ["Bugün", today], ...Object.keys(R
   }
 
   if (path === "/admin/visitors") {
-    const since = new Date(Date.now() - 13 * 864e5).toISOString().slice(0, 10);
+    const range = rangeOf(url);
+    const since = new Date(Date.now() - (range - 1) * 864e5).toISOString().slice(0, 10);
     const [{ results: daily }, { results: refs }, { results: vCountries }, { results: pages }] = await env.DB.batch([
       env.DB.prepare("SELECT day, COUNT(DISTINCT visitor) v, COUNT(*) pv, SUM(device = 'mobile') m FROM visits WHERE day >= ? GROUP BY day ORDER BY day DESC").bind(since),
       env.DB.prepare("SELECT ref k, COUNT(DISTINCT day || visitor) n FROM visits WHERE day >= ? AND ref IS NOT NULL GROUP BY ref ORDER BY n DESC LIMIT 10").bind(since),
@@ -299,8 +304,9 @@ ${tilesHtml([["Toplam kayıt", rows.length], ["Bugün", today], ...Object.keys(R
       : '<tr><td colspan="4" class="dim center">Henüz ziyaret yok.</td></tr>';
     const total = daily.reduce((a, d) => a + d.v, 0);
     return adminPage(path, "Ziyaretçiler", `<div class="top"><h1>Gerçek ziyaretçiler</h1></div>
-<p class="countries">Son 14 gün. Botlar, tarayıcı robotları ve senin admin tarayıcın sayılmaz. Kaynağı gizleyen uygulamalardan (X uygulaması gibi) gelenler "doğrudan" görünür.</p>
-${tilesHtml([["14 günde ziyaretçi", total], ["Bugün", daily[0] && daily[0].day === new Date().toISOString().slice(0, 10) ? daily[0].v : 0]])}
+${rangePills(path, range)}
+<p class="countries">Son ${range} gün. Botlar, tarayıcı robotları ve senin admin tarayıcın sayılmaz. Kaynağı gizleyen uygulamalardan (X uygulaması gibi) gelenler "doğrudan" görünür.</p>
+${tilesHtml([[`${range} günde ziyaretçi`, total], ["Bugün", daily[0] && daily[0].day === new Date().toISOString().slice(0, 10) ? daily[0].v : 0]])}
 <div class="tablewrap"><table><thead><tr><th>Gün (UTC)</th><th>Ziyaretçi</th><th>Sayfa görüntüleme</th><th>Mobil görüntüleme</th></tr></thead><tbody>${visitRows}</tbody></table></div>
 <p class="countries" style="margin-top:16px">Nereden geldi: ${list(refs)}<br>Ülkeler: ${list(vCountries)}<br>Sayfalar: ${list(pages)}</p>`);
   }
@@ -350,30 +356,32 @@ ${tilesHtml([["Paylaşılan", sum.posted?.n || 0], ["Sırada", sum.queued?.n || 
     const num = (v) => (typeof v === "number" && isFinite(v) ? v : null);
     const NA = '<span class="dim">veri henüz yok</span>';
     const show = (v, pct) => { v = num(v); return v === null ? NA : pct ? `%${(v * 100).toFixed(pct === 2 ? 2 : 0)}` : String(Math.round(v * 100) / 100); };
-    const last7 = rows.slice(0, 7);
+    const range = rangeOf(url);
+    const last7 = rows.slice(0, range);
     const sum7 = (k) => { const vals = last7.map((r) => num(r[k])).filter((v) => v !== null); return vals.length ? vals.reduce((a, v) => a + v, 0) : null; };
     const avg7 = (k) => { const vals = last7.map((r) => num(r[k])).filter((v) => v !== null); return vals.length ? vals.reduce((a, v) => a + v, 0) / vals.length : null; };
     const latest = (k) => { for (const r of rows) if (num(r[k]) !== null) return num(r[k]); return null; };
     const tile = (l, v) => [l, v === null ? '<span class="dim" style="font-size:16px">veri henüz yok</span>' : v];
     const tiles = tilesHtml([
-      tile("7 günde yeni oyuncu", sum7("new_players")),
-      tile("7 günde indirme", sum7("downloads")),
-      tile(apple ? "7 günde sayfa görüntüleme" : "7 günde mağaza ziyareti", sum7("store_page_views")),
-      tile("Ertesi gün geri gelen (ort.)", avg7("d1") === null ? null : `%${Math.round(avg7("d1") * 100)}`),
+      tile(`${range} günde yeni oyuncu`, sum7("new_players")),
+      tile(`${range} günde indirme`, sum7("downloads")),
+      tile(apple ? `${range} günde sayfa görüntüleme` : `${range} günde mağaza ziyareti`, sum7("store_page_views")),
+      tile("Ertesi gün geri gelen (ortalama)", avg7("d1") === null ? null : `%${Math.round(avg7("d1") * 100)}`),
       tile("Puan", latest("rating_avg") === null ? null : `${latest("rating_avg").toFixed(1)} (${latest("ratings_count") ?? 0})`),
       tile("Çökme oranı", latest("crash_rate") === null ? null : `%${(latest("crash_rate") * 100).toFixed(2)}`),
     ]);
     // Simple bar chart of new players, last 30 days (server-drawn SVG, no scripts).
-    const series = rows.slice(0, 30).reverse();
+    const series = rows.slice(0, range).reverse();
     const maxV = Math.max(1, ...series.map((r) => num(r.new_players) || 0));
-    const bw = 18, gap = 6, h = 120;
+    const bw = range > 30 ? 6 : 18, gap = range > 30 ? 2 : 6, h = 120;
     const bars = series.map((r, i) => { const v = num(r.new_players) || 0; const bh = Math.round((v / maxV) * (h - 20)); return `<rect x="${i * (bw + gap)}" y="${h - bh}" width="${bw}" height="${bh}" rx="4" fill="#c6ff3d"><title>${esc(r.date)}: ${v}</title></rect>`; }).join("");
-    const chart = series.length ? `<h2 style="font-size:20px;margin:28px 0 10px">Günlük yeni oyuncu (son 30 gün)</h2><div class="tablewrap" style="padding:16px"><svg viewBox="0 0 ${Math.max(1, series.length * (bw + gap))} ${h}" width="100%" height="${h}" preserveAspectRatio="none" role="img" aria-label="Günlük yeni oyuncu">${bars}</svg></div>` : "";
+    const chart = series.length ? `<h2 style="font-size:20px;margin:28px 0 10px">Günlük yeni oyuncu (son ${range} gün)</h2><div class="tablewrap" style="padding:16px"><svg viewBox="0 0 ${Math.max(1, series.length * (bw + gap))} ${h}" width="100%" height="${h}" preserveAspectRatio="none" role="img" aria-label="Günlük yeni oyuncu">${bars}</svg></div>` : "";
     const table = rows.length
-      ? rows.slice(0, 30).map((r) => `<tr><td>${esc(r.date)}</td><td>${show(r.new_players)}</td><td>${show(r.downloads)}</td><td>${show(r.store_page_views)}</td><td>${show(r.d1, 1)}</td><td>${show(r.d7, 1)}</td><td>${show(r.crash_rate, 2)}</td>${apple ? "" : `<td>${show(r.anr_rate, 2)}</td>`}<td>${show(r.rating_avg)}</td></tr>`).join("")
+      ? rows.slice(0, range).map((r) => `<tr><td>${esc(r.date)}</td><td>${show(r.new_players)}</td><td>${show(r.downloads)}</td><td>${show(r.store_page_views)}</td><td>${show(r.d1, 1)}</td><td>${show(r.d7, 1)}</td><td>${show(r.crash_rate, 2)}</td>${apple ? "" : `<td>${show(r.anr_rate, 2)}</td>`}<td>${show(r.rating_avg)}</td></tr>`).join("")
       : `<tr><td colspan="${apple ? 8 : 9}" class="dim center">Henüz veri yok.</td></tr>`;
     return adminPage(path, store, `${products}<div class="top"><h1>${store}: Hauling Empire</h1></div>
 <p class="countries">${srcLine} Sadece biten günler görünür (UTC). Yeni oyuncu 5'ten azsa geri gelme oranı gizlenir.</p>
+${rangePills(path, range)}
 ${tiles}
 ${chart}
 <h2 style="font-size:20px;margin:28px 0 10px">Günlük tablo</h2>
