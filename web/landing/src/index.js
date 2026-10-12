@@ -218,7 +218,7 @@ async function heStats(env) {
   const hit = await cache.match(cacheKey);
   if (hit) return { ok: true, ...(await hit.json()) };
   try {
-    const res = await fetch(env.HE_STATS_URL_DEV || HE_STATS_URL, { headers: { Authorization: `Bearer ${env.HE_STATS_KEY}` }, signal: AbortSignal.timeout(5000) });
+    const res = await fetch(HE_STATS_URL, { headers: { Authorization: `Bearer ${env.HE_STATS_KEY}` }, signal: AbortSignal.timeout(5000) });
     if (!res.ok) { console.error("he_stats_status", res.status); return { ok: false, reason: "http_" + res.status }; }
     const text = await res.text();
     if (text.length > 500000) return { ok: false, reason: "too_big" };
