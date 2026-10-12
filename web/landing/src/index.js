@@ -211,7 +211,7 @@ ${body}
 
 const RANGES = [7, 30, 90];
 const rangeOf = (url) => { const r = Number(url.searchParams.get("range")); return RANGES.includes(r) ? r : 30; };
-const rangePills = (path, range) => `<div class="tabs" style="border:0;padding:0;margin:0 0 18px">${RANGES.map((r) => `<a class="tab${r === range ? " on" : ""}" href="${path}?range=${r}"${r === range ? ' aria-current="true"' : ""}>${r} gün</a>`).join("")}</div>`;
+const rangePills = (path, range, extra = "") => `<div class="tabs" style="border:0;padding:0;margin:0 0 18px">${RANGES.map((r) => `<a class="tab${r === range ? " on" : ""}" href="${path}?range=${r}${extra}"${r === range ? ' aria-current="true"' : ""}>${r} gün</a>`).join("")}</div>`;
 
 const tilesHtml = (items) => `<div class="tiles">${items.map(([l, n]) => `<div class="tile"><b>${n}</b><span>${esc(l)}</span></div>`).join("")}</div>`;
 
@@ -395,6 +395,47 @@ function heOpsPage(path, ops, range) {
   return out.join("\n");
 }
 
+// Store pages for products without their own feed (PromoVote, Poleris): rows written by the API Worker's daily
+// collector into promovote-db metrics_daily (Apple sales reports, Google Play report files).
+async function storeMetricsPage(env, path, prod, name, apple, range) {
+  const store = apple ? "App Store" : "Google Play";
+  const source = apple ? "app_store" : "google_play";
+  if (!env.APPDB) return `<div class="top"><h1>${store}: ${esc(name)}</h1></div><p class="empty">Veri yok</p>`;
+  const since = new Date(Date.now() - range * 864e5).toISOString().slice(0, 10);
+  const [{ results }, last] = await Promise.all([
+    env.APPDB.prepare("SELECT date, metric, value FROM metrics_daily WHERE product_id = ? AND source = ? AND date >= ? ORDER BY date DESC").bind(prod, source, since).all(),
+    env.APPDB.prepare("SELECT name, ran_at FROM job_runs WHERE name IN ('store_stats', 'store_stats_note')").all(),
+  ]);
+  const runs = Object.fromEntries((last.results || []).map((r) => [r.name, r.ran_at]));
+  const byDate = {};
+  for (const r of results) (byDate[r.date] ||= {})[r.metric] = r.value;
+  const dates = Object.keys(byDate).sort().reverse();
+  const sum = (m) => { const v = dates.map((d) => byDate[d][m]).filter((x) => typeof x === "number"); return v.length ? v.reduce((a, x) => a + x, 0) : null; };
+  const latest = (m) => { for (const d of dates) if (typeof byDate[d][m] === "number") return byDate[d][m]; return null; };
+  const main = apple ? "downloads" : "installs";
+  const tiles = apple
+    ? [ctile(`${range} günde indirme`, sum("downloads")), ctile("Yeniden indirme", sum("redownloads")), ctile("Güncelleme", sum("updates")), ctile("Uygulama içi satın alma (adet)", sum("iap_units"))]
+    : [ctile(`${range} günde yükleme`, sum("installs")), ctile("Kaldırma", sum("uninstalls")), ctile("Aktif cihaz", latest("active_devices")), ctile("Puan", latest("rating_avg") === null ? null : latest("rating_avg").toFixed(1)), ctile("Çökme", sum("crashes")), ctile("ANR", sum("anrs"))];
+  const series = dates.slice().reverse();
+  const maxV = Math.max(1, ...series.map((d) => byDate[d][main] || 0));
+  const bw = range > 30 ? 6 : 18, gap = range > 30 ? 2 : 6, h = 120;
+  const bars = series.map((d, i) => { const v = byDate[d][main] || 0; const bh = Math.round((v / maxV) * (h - 20)); return `<rect x="${i * (bw + gap)}" y="${h - bh}" width="${bw}" height="${bh}" rx="4" fill="#c6ff3d"><title>${esc(d)}: ${v}</title></rect>`; }).join("");
+  const v = (x) => (typeof x === "number" ? Math.round(x * 100) / 100 : '<span class="dim">veri yok</span>');
+  const cols = apple ? [["downloads", "İndirme"], ["redownloads", "Yeniden indirme"], ["updates", "Güncelleme"], ["iap_units", "Satın alma"]] : [["installs", "Yükleme"], ["uninstalls", "Kaldırma"], ["active_devices", "Aktif cihaz"], ["rating_avg", "Puan"], ["crashes", "Çökme"], ["anrs", "ANR"]];
+  const table = dates.length
+    ? dates.map((d) => `<tr><td>${esc(d)}</td>${cols.map(([k]) => `<td>${v(byDate[d][k])}</td>`).join("")}</tr>`).join("")
+    : `<tr><td colspan="${cols.length + 1}" class="dim center">Henüz veri yok.</td></tr>`;
+  const note = apple ? "Apple satış raporu her gün güncellenir, 1 gün gecikmeli gelir." : "Google rapor dosyaları 2 ile 4 gün gecikmeli gelir; yeni bağlanan hesapta ilk veri 24 saat sürebilir.";
+  const status = runs.store_stats_note && runs.store_stats_note !== "ok" ? ` Son toplama notu: ${esc(runs.store_stats_note)}.` : "";
+  return `<div class="top"><h1>${store}: ${esc(name)}</h1></div>
+<p class="countries">${note} Son toplama: ${esc(String(runs.store_stats || "henüz yok").slice(0, 16).replace("T", " "))} UTC.${status}</p>
+${rangePills(path, range, `&p=${prod}`)}
+${ctiles(tiles)}
+${series.length ? `<h2 style="font-size:20px;margin:28px 0 10px">Günlük ${apple ? "indirme" : "yükleme"} (son ${range} gün)</h2><div class="tablewrap" style="padding:16px"><svg viewBox="0 0 ${Math.max(1, series.length * (bw + gap))} ${h}" width="100%" height="${h}" preserveAspectRatio="none" role="img" aria-label="Günlük ${apple ? "indirme" : "yükleme"}">${bars}</svg></div>` : ""}
+<h2 style="font-size:20px;margin:28px 0 10px">Günlük tablo</h2>
+<div class="tablewrap"><table><thead><tr><th>Gün</th>${cols.map(([, l]) => `<th>${l}</th>`).join("")}</tr></thead><tbody>${table}</tbody></table></div>`;
+}
+
 async function handleAdmin(request, env, url) {
   if (!env.ADMIN_PASSWORD) return new Response("Not found", { status: 404 });
   if (!isAdmin(request, env)) {
@@ -509,7 +550,11 @@ ${tilesHtml([["Paylaşılan", sum.posted?.n || 0], ["Sırada", sum.queued?.n || 
     const apple = path === "/admin/app-store";
     const platform = apple ? "ios" : "android";
     const store = apple ? "App Store" : "Google Play";
-    const products = `<div class="tabs" style="border:0;margin-top:14px"><span class="tab on">Hauling Empire</span><span class="tab dim" title="Bağlanınca açılacak">Poleris (yakında)</span><span class="tab dim" title="Bağlanınca açılacak">PromoVote (yakında)</span></div>`;
+    const PRODUCTS = [["haulingempire", "Hauling Empire"], ["poleris", "Poleris"], ["promovote", "PromoVote"]];
+    const prod = PRODUCTS.some(([k]) => k === url.searchParams.get("p")) ? url.searchParams.get("p") : "haulingempire";
+    const range0 = rangeOf(url);
+    const products = `<div class="tabs" style="border:0;margin-top:14px">${PRODUCTS.map(([k, n]) => `<a class="tab${k === prod ? " on" : ""}" href="${path}?p=${k}&range=${range0}">${n}</a>`).join("")}</div>`;
+    if (prod !== "haulingempire") return adminPage(path, store, products + (await storeMetricsPage(env, path, prod, PRODUCTS.find(([k]) => k === prod)[1], apple, range0)));
     const [data, opsR] = await Promise.all([heStats(env), heOps(env, 30)]);
     if (!data.ok) {
       const msg = data.reason === "no_key"
@@ -548,7 +593,7 @@ ${tilesHtml([["Paylaşılan", sum.posted?.n || 0], ["Sırada", sum.queued?.n || 
       : `<tr><td colspan="${apple ? 8 : 9}" class="dim center">Henüz veri yok.</td></tr>`;
     return adminPage(path, store, `${products}<div class="top"><h1>${store}: Hauling Empire</h1></div>
 <p class="countries">${srcLine} Sadece biten günler görünür (UTC). Yeni oyuncu 5'ten azsa geri gelme oranı gizlenir.</p>
-${rangePills(path, range)}
+${rangePills(path, range, "&p=haulingempire")}
 ${tiles}
 ${heSalesCard(opsR.ok ? opsR.data : null)}
 ${chart}
