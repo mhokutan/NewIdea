@@ -225,6 +225,41 @@ async function handleAdmin(request, env, url) {
 <div class="tablewrap"><table><thead><tr><th>Day (UTC)</th><th>Visitors</th><th>Page views</th><th>Mobile views</th></tr></thead><tbody>${visitRows}</tbody></table></div>
 <p class="countries" style="margin-top:16px">Came from: ${list(refs)}<br>Countries: ${list(vCountries)}<br>Pages: ${list(pages)}</p>`;
 
+  // X posts (founder request 2026-10-12): stats are read by the API Worker about 24 h and 72 h after each post.
+  let xHtml = "";
+  if (env.APPDB) {
+    try {
+      const [{ results: xPosts }, { results: xSum }] = await env.APPDB.batch([
+        env.APPDB.prepare("SELECT posted_at, body, external_id, impressions, likes, reposts, replies, bookmarks, media_url IS NOT NULL AS video FROM social_posts WHERE status = 'posted' ORDER BY posted_at DESC LIMIT 40"),
+        env.APPDB.prepare("SELECT status, COUNT(*) n, MAX(scheduled_at) last FROM social_posts GROUP BY status"),
+      ]);
+      const sum = Object.fromEntries(xSum.map((r) => [r.status, r]));
+      const n = (v) => (v === null || v === undefined ? '<span class="dim">bekliyor</span>' : v);
+      const withStats = xPosts.filter((p) => p.impressions !== null);
+      const total = (k) => withStats.reduce((a, p) => a + (p[k] || 0), 0);
+      const xTiles = [
+        ["Paylaşılan", sum.posted?.n || 0],
+        ["Sırada", sum.queued?.n || 0],
+        ["Hata", sum.failed?.n || 0],
+        ["Toplam görüntülenme", total("impressions")],
+        ["Beğeni", total("likes")],
+        ["Repost", total("reposts")],
+      ].map(([l, v]) => `<div class="tile"><b>${v}</b><span>${esc(l)}</span></div>`).join("");
+      const xRows = xPosts.length
+        ? xPosts.map((p) => `<tr><td class="dim">${esc(String(p.posted_at).slice(0, 16).replace("T", " "))}</td><td style="white-space:normal;min-width:260px">${p.video ? '<span class="role role-developer">video</span> ' : ""}${
+            p.external_id ? `<a href="https://x.com/i/status/${esc(p.external_id)}" target="_blank" rel="noopener noreferrer">${esc(String(p.body).slice(0, 90))}</a>` : esc(String(p.body).slice(0, 90))
+          }</td><td>${n(p.impressions)}</td><td>${n(p.likes)}</td><td>${n(p.reposts)}</td><td>${n(p.replies)}</td><td>${n(p.bookmarks)}</td></tr>`).join("")
+        : '<tr><td colspan="7" class="dim center">Henüz paylaşım yok.</td></tr>';
+      xHtml = `<h2 style="margin:40px 0 6px">X paylaşımları</h2>
+<p class="countries">İstatistikler her paylaşımdan yaklaşık 24 ve 72 saat sonra okunur; yeni paylaşımlarda "bekliyor" yazar. Sıradaki son paylaşım: ${esc(String(sum.queued?.last || "yok").slice(0, 10))}.</p>
+<div class="tiles">${xTiles}</div>
+<div class="tablewrap"><table><thead><tr><th>Zaman (UTC)</th><th>Paylaşım</th><th>Görüntülenme</th><th>Beğeni</th><th>Repost</th><th>Yanıt</th><th>Kaydetme</th></tr></thead><tbody>${xRows}</tbody></table></div>`;
+    } catch (err) {
+      console.error("admin_x_error", err?.message);
+      xHtml = '<h2 style="margin:40px 0 6px">X paylaşımları</h2><p class="countries">Veri alınamadı.</p>';
+    }
+  }
+
   const topCountries = Object.entries(byCountry).sort((a, b) => b[1] - a[1]).slice(0, 6);
 
   const tiles = [
@@ -262,6 +297,7 @@ td a{color:#b394ff}.dim{color:var(--dim)}.center{text-align:center}.role{padding
 <p class="countries">Top countries: ${topCountries.length ? topCountries.map(([c, n]) => `${esc(c)} (${n})`).join(", ") : "none yet"}</p>
 <div class="tablewrap"><table><thead><tr><th>#</th><th>Email</th><th>Role</th><th>Link</th><th>Country</th><th>Joined</th></tr></thead><tbody>${table}</tbody></table></div>
 ${visitsHtml}
+${xHtml}
 </main><script src="/v-ignore.js"></script></body></html>`;
   return new Response(html, { headers: { "Content-Type": "text/html; charset=utf-8", ...ADMIN_HEADERS } });
 }
