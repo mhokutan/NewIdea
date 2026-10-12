@@ -173,6 +173,41 @@ async function handleVisit(request, env) {
 const ADMIN_HEADERS = { "Cache-Control": "no-store", "X-Robots-Tag": "noindex, nofollow", ...SECURITY_HEADERS };
 const ROLE_LABELS = { creator: "Creator / Streamer", developer: "Game developer", brand: "Brand / Business", viewer: "Viewer", api: "API early access" };
 
+// Admin is split into pages (founder request 2026-10-12): waitlist, visitors, X, App Store, Google Play.
+// Store pages fill in when the Hauling Empire stats endpoint is connected (secret stays on this Worker).
+const ADMIN_TABS = [
+  ["/admin", "Bekleme listesi"],
+  ["/admin/visitors", "Ziyaretçiler"],
+  ["/admin/x", "X"],
+  ["/admin/app-store", "App Store"],
+  ["/admin/google-play", "Google Play"],
+];
+
+function adminPage(path, title, body) {
+  const nav = ADMIN_TABS.map(([href, label]) => `<a href="${href}" class="tab${href === path ? " on" : ""}"${href === path ? ' aria-current="page"' : ""}>${esc(label)}</a>`).join("");
+  const html = `<!doctype html><html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow"><title>${esc(title)} | PromoVote admin</title><link rel="icon" href="/favicon.svg"><link rel="stylesheet" href="/styles.css">
+<style>
+.admin{padding:32px 16px 80px}.admin h1{font-size:34px;margin:0}.top{display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;margin:22px 0 24px}
+.tabs{display:flex;gap:8px;flex-wrap:wrap;border-bottom:1px solid var(--line);padding-bottom:12px}.tab{padding:8px 14px;border-radius:99px;color:var(--muted);text-decoration:none;font-weight:600;font-size:14px;background:var(--surface)}
+.tab:hover{color:#fff}.tab.on{background:var(--lime);color:#101014}
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:16px}.tile{padding:18px;border-radius:16px;background:var(--surface);border:1px solid var(--line)}
+.tile b{display:block;font:800 30px var(--display)}.tile span{color:var(--muted);font-size:14px}.countries{color:var(--muted);font-size:14px;margin-bottom:24px}
+.tablewrap{overflow-x:auto;border:1px solid var(--line);border-radius:16px}table{width:100%;border-collapse:collapse;font-size:14px}
+th,td{padding:12px 14px;text-align:left;border-bottom:1px solid var(--line);white-space:nowrap}th{color:var(--muted);font-weight:600;background:var(--surface)}
+td a{color:#b394ff}.dim{color:var(--dim)}.center{text-align:center}.role{padding:3px 10px;border-radius:99px;font-size:12px;background:var(--surface-2)}
+.role-creator{color:#ff8fa3}.role-developer{color:var(--lime)}.role-brand{color:#b394ff}.role-viewer{color:#7dd3fc}
+.empty{padding:28px;border:1px dashed var(--line);border-radius:16px;color:var(--muted);line-height:1.6}
+</style></head><body><main class="wrap admin">
+<p class="kicker" style="margin:0 0 12px">PromoVote yönetim paneli</p>
+<nav class="tabs" aria-label="Admin">${nav}</nav>
+${body}
+</main><script src="/v-ignore.js"></script></body></html>`;
+  return new Response(html, { headers: { "Content-Type": "text/html; charset=utf-8", ...ADMIN_HEADERS } });
+}
+
+const tilesHtml = (items) => `<div class="tiles">${items.map(([l, n]) => `<div class="tile"><b>${n}</b><span>${esc(l)}</span></div>`).join("")}</div>`;
+
 async function handleAdmin(request, env, url) {
   if (!env.ADMIN_PASSWORD) return new Response("Not found", { status: 404 });
   if (!isAdmin(request, env)) {
@@ -181,125 +216,110 @@ async function handleAdmin(request, env, url) {
       headers: { "WWW-Authenticate": 'Basic realm="PromoVote admin", charset="UTF-8"', ...ADMIN_HEADERS },
     });
   }
+  const path = url.pathname.replace(/\/+$/, "") || "/admin";
 
-  const { results: rows } = await env.DB.prepare(
-    "SELECT id, email, role, link, country, created_at FROM waitlist ORDER BY id DESC"
-  ).all();
+  if (path === "/admin" || path === "/admin/export.csv") {
+    const { results: rows } = await env.DB.prepare(
+      "SELECT id, email, role, link, country, created_at FROM waitlist ORDER BY id DESC"
+    ).all();
 
-  if (url.pathname === "/admin/export.csv") {
-    const cell = (v) => {
-      let t = String(v ?? "");
-      if (/^[=+\-@\t\r]/.test(t)) t = `'${t}`; // block spreadsheet formula injection
-      return `"${t.replace(/"/g, '""')}"`;
-    };
-    const csv = ["id,email,role,link,country,created_at_utc"]
-      .concat(rows.map((r) => [r.id, r.email, r.role, r.link, r.country, r.created_at].map(cell).join(",")))
-      .join("\n");
-    return new Response(csv, {
-      headers: { "Content-Type": "text/csv; charset=utf-8", "Content-Disposition": 'attachment; filename="promovote-waitlist.csv"', ...ADMIN_HEADERS },
-    });
+    if (path === "/admin/export.csv") {
+      const cell = (v) => {
+        let t = String(v ?? "");
+        if (/^[=+\-@\t\r]/.test(t)) t = `'${t}`; // block spreadsheet formula injection
+        return `"${t.replace(/"/g, '""')}"`;
+      };
+      const csv = ["id,email,role,link,country,created_at_utc"]
+        .concat(rows.map((r) => [r.id, r.email, r.role, r.link, r.country, r.created_at].map(cell).join(",")))
+        .join("\n");
+      return new Response(csv, {
+        headers: { "Content-Type": "text/csv; charset=utf-8", "Content-Disposition": 'attachment; filename="promovote-waitlist.csv"', ...ADMIN_HEADERS },
+      });
+    }
+
+    const byRole = {};
+    const byCountry = {};
+    let today = 0;
+    const todayStr = new Date().toISOString().slice(0, 10);
+    for (const r of rows) {
+      byRole[r.role] = (byRole[r.role] || 0) + 1;
+      if (r.country) byCountry[r.country] = (byCountry[r.country] || 0) + 1;
+      if (String(r.created_at).startsWith(todayStr)) today++;
+    }
+    const topCountries = Object.entries(byCountry).sort((a, b) => b[1] - a[1]).slice(0, 6);
+    const table = rows.length
+      ? rows
+          .map(
+            (r) => `<tr><td>${r.id}</td><td>${esc(r.email)}</td><td><span class="role role-${esc(r.role)}">${esc(ROLE_LABELS[r.role] || r.role)}</span></td><td>${
+              r.link ? `<a href="${esc(r.link)}" target="_blank" rel="noopener noreferrer">${esc(r.link.replace(/^https?:\/\//, ""))}</a>` : '<span class="dim">yok</span>'
+            }</td><td>${esc(r.country || "")}</td><td class="dim">${esc(r.created_at)} UTC</td></tr>`
+          )
+          .join("")
+      : '<tr><td colspan="6" class="dim center">Henüz kayıt yok.</td></tr>';
+    return adminPage(path, "Bekleme listesi", `<div class="top"><h1>Bekleme listesi</h1><a class="btn btn-small" href="/admin/export.csv">CSV indir</a></div>
+${tilesHtml([["Toplam kayıt", rows.length], ["Bugün", today], ...Object.keys(ROLE_LABELS).map((k) => [ROLE_LABELS[k], byRole[k] || 0])])}
+<p class="countries">En çok ülke: ${topCountries.length ? topCountries.map(([c, n]) => `${esc(c)} (${n})`).join(", ") : "henüz yok"}</p>
+<div class="tablewrap"><table><thead><tr><th>#</th><th>E-posta</th><th>Rol</th><th>Link</th><th>Ülke</th><th>Tarih</th></tr></thead><tbody>${table}</tbody></table></div>`);
   }
 
-  const byRole = {};
-  const byCountry = {};
-  let today = 0;
-  const todayStr = new Date().toISOString().slice(0, 10);
-  for (const r of rows) {
-    byRole[r.role] = (byRole[r.role] || 0) + 1;
-    if (r.country) byCountry[r.country] = (byCountry[r.country] || 0) + 1;
-    if (String(r.created_at).startsWith(todayStr)) today++;
+  if (path === "/admin/visitors") {
+    const since = new Date(Date.now() - 13 * 864e5).toISOString().slice(0, 10);
+    const [{ results: daily }, { results: refs }, { results: vCountries }, { results: pages }] = await env.DB.batch([
+      env.DB.prepare("SELECT day, COUNT(DISTINCT visitor) v, COUNT(*) pv, SUM(device = 'mobile') m FROM visits WHERE day >= ? GROUP BY day ORDER BY day DESC").bind(since),
+      env.DB.prepare("SELECT ref k, COUNT(DISTINCT day || visitor) n FROM visits WHERE day >= ? AND ref IS NOT NULL GROUP BY ref ORDER BY n DESC LIMIT 10").bind(since),
+      env.DB.prepare("SELECT country k, COUNT(DISTINCT day || visitor) n FROM visits WHERE day >= ? AND country IS NOT NULL GROUP BY country ORDER BY n DESC LIMIT 10").bind(since),
+      env.DB.prepare("SELECT path k, COUNT(*) n FROM visits WHERE day >= ? GROUP BY path ORDER BY n DESC LIMIT 10").bind(since),
+    ]);
+    const list = (rows) => (rows.length ? rows.map((r) => `${esc(r.k)} (${r.n})`).join(", ") : "henüz yok");
+    const visitRows = daily.length
+      ? daily.map((d) => `<tr><td>${esc(d.day)}</td><td>${d.v}</td><td>${d.pv}</td><td>${d.m}</td></tr>`).join("")
+      : '<tr><td colspan="4" class="dim center">Henüz ziyaret yok.</td></tr>';
+    const total = daily.reduce((a, d) => a + d.v, 0);
+    return adminPage(path, "Ziyaretçiler", `<div class="top"><h1>Gerçek ziyaretçiler</h1></div>
+<p class="countries">Son 14 gün. Botlar, tarayıcı robotları ve senin admin tarayıcın sayılmaz. Kaynağı gizleyen uygulamalardan (X uygulaması gibi) gelenler "doğrudan" görünür.</p>
+${tilesHtml([["14 günde ziyaretçi", total], ["Bugün", daily[0] && daily[0].day === new Date().toISOString().slice(0, 10) ? daily[0].v : 0]])}
+<div class="tablewrap"><table><thead><tr><th>Gün (UTC)</th><th>Ziyaretçi</th><th>Sayfa görüntüleme</th><th>Mobil görüntüleme</th></tr></thead><tbody>${visitRows}</tbody></table></div>
+<p class="countries" style="margin-top:16px">Nereden geldi: ${list(refs)}<br>Ülkeler: ${list(vCountries)}<br>Sayfalar: ${list(pages)}</p>`);
   }
-  const since = new Date(Date.now() - 13 * 864e5).toISOString().slice(0, 10);
-  const [{ results: daily }, { results: refs }, { results: vCountries }, { results: pages }] = await env.DB.batch([
-    env.DB.prepare("SELECT day, COUNT(DISTINCT visitor) v, COUNT(*) pv, SUM(device = 'mobile') m FROM visits WHERE day >= ? GROUP BY day ORDER BY day DESC").bind(since),
-    env.DB.prepare("SELECT ref k, COUNT(DISTINCT day || visitor) n FROM visits WHERE day >= ? AND ref IS NOT NULL GROUP BY ref ORDER BY n DESC LIMIT 10").bind(since),
-    env.DB.prepare("SELECT country k, COUNT(DISTINCT day || visitor) n FROM visits WHERE day >= ? AND country IS NOT NULL GROUP BY country ORDER BY n DESC LIMIT 10").bind(since),
-    env.DB.prepare("SELECT path k, COUNT(*) n FROM visits WHERE day >= ? GROUP BY path ORDER BY n DESC LIMIT 10").bind(since),
-  ]);
-  const list = (rows) => (rows.length ? rows.map((r) => `${esc(r.k)} (${r.n})`).join(", ") : "none yet");
-  const visitRows = daily.length
-    ? daily.map((d) => `<tr><td>${esc(d.day)}</td><td>${d.v}</td><td>${d.pv}</td><td>${d.m}</td></tr>`).join("")
-    : '<tr><td colspan="4" class="dim center">No visits counted yet.</td></tr>';
-  const visitsHtml = `<h2 style="margin:40px 0 6px">Real visitors (last 14 days)</h2>
-<p class="countries">Browsers that ran the page script. Bots, scanners and your own admin browser are not counted.</p>
-<div class="tablewrap"><table><thead><tr><th>Day (UTC)</th><th>Visitors</th><th>Page views</th><th>Mobile views</th></tr></thead><tbody>${visitRows}</tbody></table></div>
-<p class="countries" style="margin-top:16px">Came from: ${list(refs)}<br>Countries: ${list(vCountries)}<br>Pages: ${list(pages)}</p>`;
 
-  // X posts (founder request 2026-10-12): stats are read by the API Worker about 24 h and 72 h after each post.
-  let xHtml = "";
-  if (env.APPDB) {
+  if (path === "/admin/x") {
+    // Stats are read by the API Worker about 24 h and 72 h after each post.
+    if (!env.APPDB) return adminPage(path, "X", '<div class="top"><h1>X paylaşımları</h1></div><p class="empty">Uygulama veritabanı bağlı değil.</p>');
     try {
       const [{ results: xPosts }, { results: xSum }] = await env.APPDB.batch([
-        env.APPDB.prepare("SELECT posted_at, body, external_id, impressions, likes, reposts, replies, bookmarks, media_url IS NOT NULL AS video FROM social_posts WHERE status = 'posted' ORDER BY posted_at DESC LIMIT 40"),
+        env.APPDB.prepare("SELECT posted_at, body, external_id, impressions, likes, reposts, replies, bookmarks, media_url IS NOT NULL AS video FROM social_posts WHERE status = 'posted' ORDER BY posted_at DESC LIMIT 60"),
         env.APPDB.prepare("SELECT status, COUNT(*) n, MAX(scheduled_at) last FROM social_posts GROUP BY status"),
       ]);
       const sum = Object.fromEntries(xSum.map((r) => [r.status, r]));
       const n = (v) => (v === null || v === undefined ? '<span class="dim">bekliyor</span>' : v);
       const withStats = xPosts.filter((p) => p.impressions !== null);
       const total = (k) => withStats.reduce((a, p) => a + (p[k] || 0), 0);
-      const xTiles = [
-        ["Paylaşılan", sum.posted?.n || 0],
-        ["Sırada", sum.queued?.n || 0],
-        ["Hata", sum.failed?.n || 0],
-        ["Toplam görüntülenme", total("impressions")],
-        ["Beğeni", total("likes")],
-        ["Repost", total("reposts")],
-      ].map(([l, v]) => `<div class="tile"><b>${v}</b><span>${esc(l)}</span></div>`).join("");
       const xRows = xPosts.length
         ? xPosts.map((p) => `<tr><td class="dim">${esc(String(p.posted_at).slice(0, 16).replace("T", " "))}</td><td style="white-space:normal;min-width:260px">${p.video ? '<span class="role role-developer">video</span> ' : ""}${
             p.external_id ? `<a href="https://x.com/i/status/${esc(p.external_id)}" target="_blank" rel="noopener noreferrer">${esc(String(p.body).slice(0, 90))}</a>` : esc(String(p.body).slice(0, 90))
           }</td><td>${n(p.impressions)}</td><td>${n(p.likes)}</td><td>${n(p.reposts)}</td><td>${n(p.replies)}</td><td>${n(p.bookmarks)}</td></tr>`).join("")
         : '<tr><td colspan="7" class="dim center">Henüz paylaşım yok.</td></tr>';
-      xHtml = `<h2 style="margin:40px 0 6px">X paylaşımları</h2>
+      return adminPage(path, "X", `<div class="top"><h1>X paylaşımları</h1></div>
 <p class="countries">İstatistikler her paylaşımdan yaklaşık 24 ve 72 saat sonra okunur; yeni paylaşımlarda "bekliyor" yazar. Sıradaki son paylaşım: ${esc(String(sum.queued?.last || "yok").slice(0, 10))}.</p>
-<div class="tiles">${xTiles}</div>
-<div class="tablewrap"><table><thead><tr><th>Zaman (UTC)</th><th>Paylaşım</th><th>Görüntülenme</th><th>Beğeni</th><th>Repost</th><th>Yanıt</th><th>Kaydetme</th></tr></thead><tbody>${xRows}</tbody></table></div>`;
+${tilesHtml([["Paylaşılan", sum.posted?.n || 0], ["Sırada", sum.queued?.n || 0], ["Hata", sum.failed?.n || 0], ["Toplam görüntülenme", total("impressions")], ["Beğeni", total("likes")], ["Repost", total("reposts")]])}
+<div class="tablewrap"><table><thead><tr><th>Zaman (UTC)</th><th>Paylaşım</th><th>Görüntülenme</th><th>Beğeni</th><th>Repost</th><th>Yanıt</th><th>Kaydetme</th></tr></thead><tbody>${xRows}</tbody></table></div>`);
     } catch (err) {
       console.error("admin_x_error", err?.message);
-      xHtml = '<h2 style="margin:40px 0 6px">X paylaşımları</h2><p class="countries">Veri alınamadı.</p>';
+      return adminPage(path, "X", '<div class="top"><h1>X paylaşımları</h1></div><p class="empty">Veri alınamadı. Biraz sonra tekrar dene.</p>');
     }
   }
 
-  const topCountries = Object.entries(byCountry).sort((a, b) => b[1] - a[1]).slice(0, 6);
+  if (path === "/admin/app-store" || path === "/admin/google-play") {
+    const apple = path === "/admin/app-store";
+    const name = apple ? "App Store" : "Google Play";
+    const items = apple
+      ? "sayfa görüntüleme, indirme, yeni oyuncu, ertesi gün ve 7. gün geri gelme, çökme oranı, puan"
+      : "mağaza ziyareti, indirme, yeni oyuncu, ertesi gün ve 7. gün geri gelme, çökme ve ANR oranı, puan";
+    return adminPage(path, name, `<div class="top"><h1>${name}</h1></div>
+<p class="empty">Hauling Empire'ın ${name} istatistikleri bağlanınca burada sade Türkçe görünecek: ${items}. Veriler her sabah güncellenir. Bağlantıyı Hauling Empire oturumu hazırlıyor.</p>`);
+  }
 
-  const tiles = [
-    ["Total signups", rows.length],
-    ["Today", today],
-    ...Object.keys(ROLE_LABELS).map((k) => [ROLE_LABELS[k], byRole[k] || 0]),
-  ]
-    .map(([l, n]) => `<div class="tile"><b>${n}</b><span>${esc(l)}</span></div>`)
-    .join("");
-
-  const table = rows.length
-    ? rows
-        .map(
-          (r) => `<tr><td>${r.id}</td><td>${esc(r.email)}</td><td><span class="role role-${esc(r.role)}">${esc(ROLE_LABELS[r.role] || r.role)}</span></td><td>${
-            r.link ? `<a href="${esc(r.link)}" target="_blank" rel="noopener noreferrer">${esc(r.link.replace(/^https?:\/\//, ""))}</a>` : '<span class="dim">none</span>'
-          }</td><td>${esc(r.country || "")}</td><td class="dim">${esc(r.created_at)} UTC</td></tr>`
-        )
-        .join("")
-    : '<tr><td colspan="6" class="dim center">No signups yet.</td></tr>';
-
-  const html = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="robots" content="noindex, nofollow"><title>Waitlist | PromoVote admin</title><link rel="icon" href="/favicon.svg"><link rel="stylesheet" href="/styles.css">
-<style>
-.admin{padding:40px 0 80px}.admin h1{font-size:36px;margin:0}.top{display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;margin-bottom:28px}
-.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:16px}.tile{padding:18px;border-radius:16px;background:var(--surface);border:1px solid var(--line)}
-.tile b{display:block;font:800 30px var(--display)}.tile span{color:var(--muted);font-size:14px}.countries{color:var(--muted);font-size:14px;margin-bottom:24px}
-.tablewrap{overflow-x:auto;border:1px solid var(--line);border-radius:16px}table{width:100%;border-collapse:collapse;font-size:14px}
-th,td{padding:12px 14px;text-align:left;border-bottom:1px solid var(--line);white-space:nowrap}th{color:var(--muted);font-weight:600;background:var(--surface)}
-td a{color:#b394ff}.dim{color:var(--dim)}.center{text-align:center}.role{padding:3px 10px;border-radius:99px;font-size:12px;background:var(--surface-2)}
-.role-creator{color:#ff8fa3}.role-developer{color:var(--lime)}.role-brand{color:#b394ff}.role-viewer{color:#7dd3fc}
-</style></head><body><main class="wrap admin">
-<div class="top"><div><p class="kicker" style="margin:0 0 6px">PromoVote admin</p><h1>Waitlist</h1></div>
-<a class="btn btn-small" href="/admin/export.csv">Download CSV</a></div>
-<div class="tiles">${tiles}</div>
-<p class="countries">Top countries: ${topCountries.length ? topCountries.map(([c, n]) => `${esc(c)} (${n})`).join(", ") : "none yet"}</p>
-<div class="tablewrap"><table><thead><tr><th>#</th><th>Email</th><th>Role</th><th>Link</th><th>Country</th><th>Joined</th></tr></thead><tbody>${table}</tbody></table></div>
-${visitsHtml}
-${xHtml}
-</main><script src="/v-ignore.js"></script></body></html>`;
-  return new Response(html, { headers: { "Content-Type": "text/html; charset=utf-8", ...ADMIN_HEADERS } });
+  return adminPage(path, "Bulunamadı", '<div class="top"><h1>Sayfa bulunamadı</h1></div>');
 }
 
 // Static assets ignore Range headers, but Safari needs 206 responses to play <video>.
