@@ -181,6 +181,7 @@ const ADMIN_TABS = [
   ["/admin/x", "X"],
   ["/admin/app-store", "App Store"],
   ["/admin/google-play", "Google Play"],
+  ["/admin/hauling-empire/oyun", "Hauling Empire oyun"],
 ];
 
 function adminPage(path, title, body) {
@@ -197,6 +198,8 @@ function adminPage(path, title, body) {
 th,td{padding:12px 14px;text-align:left;border-bottom:1px solid var(--line);white-space:nowrap}th{color:var(--muted);font-weight:600;background:var(--surface)}
 td a{color:#b394ff}.dim{color:var(--dim)}.center{text-align:center}.role{padding:3px 10px;border-radius:99px;font-size:12px;background:var(--surface-2)}
 .role-creator{color:#ff8fa3}.role-developer{color:var(--lime)}.role-brand{color:#b394ff}.role-viewer{color:#7dd3fc}
+.lv-g b{color:#4ade80}.lv-y b{color:#facc15}.lv-r b{color:#f87171}.warnbar{margin:18px 0 0;padding:12px 16px;border-radius:12px;background:rgba(250,204,21,.14);border:1px solid rgba(250,204,21,.5);color:#fde68a}
+.fun{display:grid;grid-template-columns:minmax(120px,220px) 1fr 90px;gap:12px;align-items:center;padding:5px 0;font-size:14px}.fun-l{color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.fun-b{height:12px;border-radius:99px;background:var(--surface-2);overflow:hidden;display:block}.fun-b i{display:block;height:100%;background:var(--lime);border-radius:99px}.fun-n{text-align:right}
 .empty{padding:28px;border:1px dashed var(--line);border-radius:16px;color:var(--muted);line-height:1.6}
 </style></head><body><main class="wrap admin">
 <p class="kicker" style="margin:0 0 12px">PromoVote yönetim paneli</p>
@@ -233,6 +236,163 @@ async function heStats(env) {
     console.error("he_stats_error", err?.message);
     return { ok: false, reason: "fetch_failed" };
   }
+}
+
+// Hauling Empire in-game feed (feed=ops): players online, daily activity, sales, funnel, health. Cached 5 minutes.
+async function heOps(env, days) {
+  if (!env.HE_STATS_KEY) return { ok: false, reason: "no_key" };
+  const cache = caches.default;
+  const cacheKey = new Request(`https://promovote.com/__cache/he-ops-v1-${days}`);
+  const hit = await cache.match(cacheKey);
+  if (hit) return { ok: true, data: await hit.json() };
+  try {
+    const res = await fetch(`https://bcwahdyqpbzyqllszeng.supabase.co/functions/v1/store-stats?feed=ops&days=${days}`, { headers: { Authorization: `Bearer ${env.HE_STATS_KEY}` }, signal: AbortSignal.timeout(5000) });
+    if (!res.ok) { console.error("he_ops_status", res.status); return { ok: false, reason: "http_" + res.status }; }
+    const text = await res.text();
+    if (text.length > 1000000) return { ok: false, reason: "too_big" };
+    const data = JSON.parse(text);
+    await cache.put(cacheKey, new Response(JSON.stringify(data), { headers: { "Content-Type": "application/json", "Cache-Control": "max-age=300" } }));
+    return { ok: true, data };
+  } catch (err) {
+    console.error("he_ops_error", err?.message);
+    return { ok: false, reason: "fetch_failed" };
+  }
+}
+
+const fnum = (v) => (typeof v === "number" && isFinite(v) ? v : null);
+const usd = (v) => (fnum(v) === null ? null : "$" + fnum(v).toFixed(2));
+// level: "g" green, "y" yellow, "r" red, "" neutral
+const ctile = (label, value, level = "", note = "") => `<div class="tile${level ? " lv-" + level : ""}"><b>${value === null || value === undefined ? '<span class="dim" style="font-size:16px">Veri yok</span>' : value}</b><span>${esc(label)}</span>${note ? `<small class="dim" style="display:block;margin-top:4px">${note}</small>` : ""}</div>`;
+const ctiles = (items) => `<div class="tiles">${items.join("")}</div>`;
+const lvl3 = (v, yAt, rAt) => (fnum(v) === null ? "" : v >= rAt ? "r" : v >= yAt ? "y" : "g");
+
+function heSalesCard(ops) {
+  const d = ops && ops.sales;
+  if (!d) return '<h2 style="font-size:20px;margin:28px 0 10px">Satışlar (30 gün)</h2><p class="empty">Veri yok</p>';
+  const days = Array.isArray(d.days) ? d.days : [];
+  const sum = (k) => days.reduce((a, r) => a + (fnum(r[k]) || 0), 0);
+  const total = sum("apple_usd") + sum("google_usd");
+  const ref = sum("refunds_usd");
+  const refPct = total > 0 ? ref / total : 0;
+  return `<h2 style="font-size:20px;margin:28px 0 10px">Satışlar (son 30 gün)</h2>${ctiles([
+    ctile("Apple (USD)", usd(sum("apple_usd"))),
+    ctile("Google (USD)", usd(sum("google_usd"))),
+    ctile("İade (USD)", usd(ref), ref > 0 ? (refPct >= 0.1 ? "r" : refPct >= 0.05 ? "y" : "g") : "g"),
+    ctile("Şimdi etkin abonelik", fnum(d.subscriptions_30d?.active_now)),
+  ])}`;
+}
+
+function heOpsPage(path, ops, range) {
+  const st = ops.status || {};
+  const failed = Array.isArray(st.failed) && st.failed.length ? `<p class="countries">Alınamayan bölümler: ${st.failed.map((f) => esc(typeof f === "string" ? f : JSON.stringify(f))).join(", ")}</p>` : "";
+  const banner = st.ok === false ? '<div class="warnbar">Bazı veriler eksik ya da gecikmeli. Aşağıda "Veri yok" yazan bölümler güncel değil.</div>' : "";
+  const sec = (t) => `<h2 style="font-size:22px;margin:34px 0 12px">${esc(t)}</h2>`;
+  const none = '<p class="empty">Veri yok</p>';
+  const out = [banner, `<div class="top"><h1>Hauling Empire: oyun</h1></div>`, `<p class="countries">Son güncelleme: ${esc(String(ops.generated_at || "").slice(0, 16).replace("T", " "))} UTC. Veriler 5 dakika önbellekte tutulur.</p>`, failed, rangePills(path, range)];
+
+  // 1. Now
+  out.push(sec("Şu an"));
+  out.push(ops.now ? ctiles([ctile("Son 5 dakikada oyunda", fnum(ops.now.players_online_5min)), ctile("Online modda", fnum(ops.now.online_mode_live))]) : none);
+
+  // 2. Days
+  out.push(sec("Günler"));
+  const days = Array.isArray(ops.days) ? ops.days.slice().sort((a, b) => (a.date < b.date ? -1 : 1)) : [];
+  if (!days.length) out.push(none);
+  else {
+    const maxD = Math.max(1, ...days.map((r) => (fnum(r.dau_ios) || 0) + (fnum(r.dau_android) || 0)));
+    const bw = days.length > 31 ? 6 : 16, gap = days.length > 31 ? 2 : 5, h = 130;
+    const bars = days.map((r, i) => {
+      const a = fnum(r.dau_ios) || 0, g = fnum(r.dau_android) || 0;
+      const ha = Math.round((a / maxD) * (h - 16)), hg = Math.round((g / maxD) * (h - 16));
+      const op = r.partial ? ' opacity="0.4"' : "";
+      return `<g${op}><rect x="${i * (bw + gap)}" y="${h - ha - hg}" width="${bw}" height="${ha}" fill="#8b5cff"><title>${esc(r.date)} iOS: ${a}</title></rect><rect x="${i * (bw + gap)}" y="${h - hg}" width="${bw}" height="${hg}" fill="#c6ff3d"><title>${esc(r.date)} Android: ${g}</title></rect></g>`;
+    }).join("");
+    out.push(`<div class="tablewrap" style="padding:16px"><p class="countries" style="margin:0 0 8px">Günlük aktif oyuncu: <span style="color:#8b5cff">■</span> iOS <span style="color:#c6ff3d">■</span> Android</p><svg viewBox="0 0 ${days.length * (bw + gap)} ${h}" width="100%" height="${h}" preserveAspectRatio="none" role="img" aria-label="Günlük aktif oyuncu">${bars}</svg></div>`);
+    const v = (x) => (fnum(x) === null ? '<span class="dim">veri yok</span>' : x);
+    const rows = days.slice().reverse().map((r) => `<tr${r.partial ? ' class="dim"' : ""}><td>${esc(r.date)}${r.partial ? " (bugün, devam ediyor)" : ""}</td><td>${v(r.dau_ios)}</td><td>${v(r.dau_android)}</td><td>${v(r.sessions)}</td><td>${v(r.new_accounts)}</td><td>${fnum(r.avg_session_min) === null ? '<span class="dim">veri yok</span>' : fnum(r.avg_session_min).toFixed(1) + " dk"}</td><td>${v(r.ad_rewards)} / ${v(r.ad_taps)}</td></tr>`).join("");
+    out.push(`<div class="tablewrap" style="margin-top:12px"><table><thead><tr><th>Gün</th><th>Aktif iOS</th><th>Aktif Android</th><th>Oturum</th><th>Yeni hesap</th><th>Ort. oturum</th><th>Reklam ödülü / dokunma</th></tr></thead><tbody>${rows}</tbody></table></div>`);
+  }
+
+  // 3. Sales
+  out.push(sec("Satışlar"));
+  const sales = ops.sales;
+  if (!sales) out.push(none);
+  else {
+    const sd = Array.isArray(sales.days) ? sales.days.slice().sort((a, b) => (a.date < b.date ? -1 : 1)) : [];
+    const sum = (k) => sd.reduce((a, r) => a + (fnum(r[k]) || 0), 0);
+    const total = sum("apple_usd") + sum("google_usd");
+    const refPct = total > 0 ? sum("refunds_usd") / total : 0;
+    const refLv = sum("refunds_usd") > 0 ? (refPct >= 0.1 ? "r" : refPct >= 0.05 ? "y" : "g") : "g";
+    out.push(ctiles([
+      ctile(`Apple (${range} gün)`, usd(sum("apple_usd")), "", `${sum("apple_count")} satış`),
+      ctile(`Google (${range} gün)`, usd(sum("google_usd")), "", `${sum("google_count")} satış`),
+      ctile("İade", usd(sum("refunds_usd")), refLv, `${sum("refunds_count")} adet`),
+      `<div class="tile" style="opacity:.6"><b>${fnum(sales.test_purchases_30d) ?? "Veri yok"}</b><span>Test satın almaları (sayılmaz, 30 gün)</span></div>`,
+    ]));
+    if (sd.length) {
+      const maxS = Math.max(1, ...sd.map((r) => Math.max(fnum(r.apple_usd) || 0, fnum(r.google_usd) || 0)));
+      const bw = sd.length > 31 ? 3 : 7, gap = sd.length > 31 ? 2 : 4, h = 110, step = bw * 2 + gap;
+      const bars = sd.map((r, i) => {
+        const a = fnum(r.apple_usd) || 0, g = fnum(r.google_usd) || 0;
+        const ha = Math.round((a / maxS) * (h - 10)), hg = Math.round((g / maxS) * (h - 10));
+        return `<rect x="${i * step}" y="${h - ha}" width="${bw}" height="${ha}" fill="#8b5cff"><title>${esc(r.date)} Apple $${a}</title></rect><rect x="${i * step + bw}" y="${h - hg}" width="${bw}" height="${hg}" fill="#c6ff3d"><title>${esc(r.date)} Google $${g}</title></rect>`;
+      }).join("");
+      out.push(`<div class="tablewrap" style="padding:16px"><p class="countries" style="margin:0 0 8px">Günlük satış (USD): <span style="color:#8b5cff">■</span> Apple <span style="color:#c6ff3d">■</span> Google</p><svg viewBox="0 0 ${sd.length * step} ${h}" width="100%" height="${h}" preserveAspectRatio="none" role="img" aria-label="Günlük satış">${bars}</svg></div>`);
+    }
+    // 4. Products
+    out.push(sec("Ürünler (30 gün)"));
+    const prods = Array.isArray(sales.by_product_30d) ? sales.by_product_30d : null;
+    out.push(!prods ? none : !prods.length ? '<p class="empty">Bu dönemde satış yok.</p>' : `<div class="tablewrap"><table><thead><tr><th>Ürün</th><th>Mağaza</th><th>Adet</th><th>USD</th></tr></thead><tbody>${prods.map((r) => `<tr><td>${esc(r.product ?? r.product_id ?? r.sku ?? "")}</td><td>${esc(r.store ?? r.platform ?? "")}</td><td>${fnum(r.count ?? r.units) ?? ""}</td><td>${usd(r.usd ?? r.revenue_usd) ?? ""}</td></tr>`).join("")}</tbody></table></div>`);
+    // 5. Subscriptions
+    out.push(sec("Abonelikler (30 gün)"));
+    const sub = sales.subscriptions_30d;
+    out.push(!sub ? none : ctiles([ctile("Yeni", fnum(sub.new)), ctile("Yenilenen", fnum(sub.renewed)), ctile("İptal / süresi biten", fnum(sub.cancelled_or_expired)), ctile("Şimdi etkin", fnum(sub.active_now))]));
+  }
+
+  // 6. Online
+  out.push(sec("Online"));
+  const on = ops.online;
+  out.push(!on ? none : ctiles([
+    ctile("Dünya", fnum(on.worlds)), ctile("Şirket", fnum(on.companies)), ctile("Dernek", fnum(on.guilds)),
+    ctile("Mesaj (7 gün)", fnum(on.messages_7d)), ctile("Dernek mesajı (7 gün)", fnum(on.guild_messages_7d)),
+    ctile("Açık şikayet", fnum(on.reports_open), lvl3(on.reports_open, 1, 10)),
+    ctile("Açık hile işareti", fnum(on.cheat_flags_open), lvl3(on.cheat_flags_open, 1, 10)),
+  ]));
+
+  // 7. Funnel
+  out.push(sec("Huni"));
+  const fun = Array.isArray(ops.funnel) ? ops.funnel : null;
+  if (!fun || !fun.length) out.push(none);
+  else {
+    const top = Math.max(1, fnum(fun[0].players) || 0);
+    out.push(`<div class="tablewrap" style="padding:16px 18px">${fun.map((f, i) => {
+      const n = fnum(f.players) || 0, prev = i ? fnum(fun[i - 1].players) || 0 : null;
+      const pct = prev ? Math.round((n / prev) * 100) : null;
+      return `<div class="fun"><span class="fun-l">${esc(f.step)}</span><span class="fun-b"><i style="width:${Math.max(1, Math.round((n / top) * 100))}%"></i></span><span class="fun-n">${n}${pct === null ? "" : ` <span class="dim">(%${pct})</span>`}</span></div>`;
+    }).join("")}</div>`);
+  }
+
+  // 8. Health
+  out.push(sec("Sağlık"));
+  const he = ops.health;
+  if (!he) out.push(none);
+  else {
+    const cf = fnum(he.crash_free_sessions_7d);
+    const cron = Array.isArray(he.cron_failures_24h) ? he.cron_failures_24h : null;
+    out.push(ctiles([
+      ctile("Çökmesiz oturum (7 gün)", cf === null ? null : `%${(cf * 100).toFixed(2)}`, cf === null ? "" : cf >= 0.99 ? "g" : cf >= 0.97 ? "y" : "r"),
+      ctile("Açık olay", fnum(he.incidents_open), lvl3(he.incidents_open, 1, 3)),
+      ctile("Gönderilmemiş uyarı", fnum(he.alerts_unsent), lvl3(he.alerts_unsent, 1, 5)),
+      ctile("Hatalı zamanlanmış iş (24 saat)", cron === null ? null : cron.length, cron === null ? "" : cron.length ? "r" : "g"),
+      ctile("Veritabanı (MB)", fnum(he.db_size_mb), lvl3(he.db_size_mb, 6000, 7500)),
+    ]));
+    if (cron && cron.length) out.push(`<p class="countries">Hatalı işler: ${cron.map((c) => esc(typeof c === "string" ? c : c.job ?? c.name ?? JSON.stringify(c))).join(", ")}</p>`);
+    const errs = Array.isArray(he.top_errors_7d) ? he.top_errors_7d : [];
+    out.push(`<h3 style="margin:18px 0 8px;font-size:16px">En sık hatalar (7 gün)</h3>${errs.length ? `<div class="tablewrap"><table><thead><tr><th>Hata</th><th>Sayı</th></tr></thead><tbody>${errs.map((e) => `<tr><td style="white-space:normal">${esc(e.group ?? "")}</td><td>${fnum(e.count) ?? ""}</td></tr>`).join("")}</tbody></table></div>` : '<p class="empty">Hata yok.</p>'}`);
+    const tabs = Array.isArray(he.largest_tables) ? he.largest_tables : [];
+    if (tabs.length) out.push(`<h3 style="margin:18px 0 8px;font-size:16px">En büyük tablolar</h3><div class="tablewrap"><table><thead><tr><th>Tablo</th><th>MB</th></tr></thead><tbody>${tabs.map((t) => `<tr><td>${esc(t.table ?? "")}</td><td>${fnum(t.mb) ?? ""}</td></tr>`).join("")}</tbody></table></div>`);
+  }
+  return out.join("\n");
 }
 
 async function handleAdmin(request, env, url) {
@@ -338,12 +498,19 @@ ${tilesHtml([["Paylaşılan", sum.posted?.n || 0], ["Sırada", sum.queued?.n || 
     }
   }
 
+  if (path === "/admin/hauling-empire/oyun") {
+    const range = rangeOf(url);
+    const r = await heOps(env, range);
+    if (!r.ok) return adminPage(path, "Hauling Empire: oyun", `<div class="top"><h1>Hauling Empire: oyun</h1></div><p class="empty">${r.reason === "no_key" ? "Bağlantı anahtarı (HE_STATS_KEY) yok." : "Oyun verileri şu an alınamadı. Biraz sonra tekrar dene."}</p>`);
+    return adminPage(path, "Hauling Empire: oyun", heOpsPage(path, r.data, range));
+  }
+
   if (path === "/admin/app-store" || path === "/admin/google-play") {
     const apple = path === "/admin/app-store";
     const platform = apple ? "ios" : "android";
     const store = apple ? "App Store" : "Google Play";
     const products = `<div class="tabs" style="border:0;margin-top:14px"><span class="tab on">Hauling Empire</span><span class="tab dim" title="Bağlanınca açılacak">Poleris (yakında)</span><span class="tab dim" title="Bağlanınca açılacak">PromoVote (yakında)</span></div>`;
-    const data = await heStats(env);
+    const [data, opsR] = await Promise.all([heStats(env), heOps(env, 30)]);
     if (!data.ok) {
       const msg = data.reason === "no_key"
         ? "Hauling Empire bağlantı anahtarı (HE_STATS_KEY) henüz bu Worker'a girilmedi. Girilince veriler burada görünür."
@@ -383,6 +550,7 @@ ${tilesHtml([["Paylaşılan", sum.posted?.n || 0], ["Sırada", sum.queued?.n || 
 <p class="countries">${srcLine} Sadece biten günler görünür (UTC). Yeni oyuncu 5'ten azsa geri gelme oranı gizlenir.</p>
 ${rangePills(path, range)}
 ${tiles}
+${heSalesCard(opsR.ok ? opsR.data : null)}
 ${chart}
 <h2 style="font-size:20px;margin:28px 0 10px">Günlük tablo</h2>
 <div class="tablewrap"><table><thead><tr><th>Gün</th><th>Yeni oyuncu</th><th>İndirme</th><th>${apple ? "Sayfa görüntüleme" : "Mağaza ziyareti"}</th><th>Ertesi gün</th><th>7. gün</th><th>Çökme</th>${apple ? "" : "<th>ANR</th>"}<th>Puan</th></tr></thead><tbody>${table}</tbody></table></div>`);
