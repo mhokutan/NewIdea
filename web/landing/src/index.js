@@ -208,6 +208,29 @@ ${body}
 
 const tilesHtml = (items) => `<div class="tiles">${items.map(([l, n]) => `<div class="tile"><b>${n}</b><span>${esc(l)}</span></div>`).join("")}</div>`;
 
+// Hauling Empire store and player stats (its own Supabase function, daily totals only). The key stays on this
+// Worker; the answer is cached for an hour so admin page views never hammer the endpoint.
+const HE_STATS_URL = "https://bcwahdyqpbzyqllszeng.supabase.co/functions/v1/store-stats?days=90";
+async function heStats(env) {
+  if (!env.HE_STATS_KEY) return { ok: false, reason: "no_key" };
+  const cache = caches.default;
+  const cacheKey = new Request("https://promovote.com/__cache/he-stats-v1");
+  const hit = await cache.match(cacheKey);
+  if (hit) return { ok: true, ...(await hit.json()) };
+  try {
+    const res = await fetch(env.HE_STATS_URL_DEV || HE_STATS_URL, { headers: { Authorization: `Bearer ${env.HE_STATS_KEY}` }, signal: AbortSignal.timeout(5000) });
+    if (!res.ok) { console.error("he_stats_status", res.status); return { ok: false, reason: "http_" + res.status }; }
+    const text = await res.text();
+    if (text.length > 500000) return { ok: false, reason: "too_big" };
+    const data = JSON.parse(text);
+    await cache.put(cacheKey, new Response(JSON.stringify(data), { headers: { "Content-Type": "application/json", "Cache-Control": "max-age=3600" } }));
+    return { ok: true, ...data };
+  } catch (err) {
+    console.error("he_stats_error", err?.message);
+    return { ok: false, reason: "fetch_failed" };
+  }
+}
+
 async function handleAdmin(request, env, url) {
   if (!env.ADMIN_PASSWORD) return new Response("Not found", { status: 404 });
   if (!isAdmin(request, env)) {
@@ -311,12 +334,50 @@ ${tilesHtml([["Paylaşılan", sum.posted?.n || 0], ["Sırada", sum.queued?.n || 
 
   if (path === "/admin/app-store" || path === "/admin/google-play") {
     const apple = path === "/admin/app-store";
-    const name = apple ? "App Store" : "Google Play";
-    const items = apple
-      ? "sayfa görüntüleme, indirme, yeni oyuncu, ertesi gün ve 7. gün geri gelme, çökme oranı, puan"
-      : "mağaza ziyareti, indirme, yeni oyuncu, ertesi gün ve 7. gün geri gelme, çökme ve ANR oranı, puan";
-    return adminPage(path, name, `<div class="top"><h1>${name}</h1></div>
-<p class="empty">Hauling Empire'ın ${name} istatistikleri bağlanınca burada sade Türkçe görünecek: ${items}. Veriler her sabah güncellenir. Bağlantıyı Hauling Empire oturumu hazırlıyor.</p>`);
+    const platform = apple ? "ios" : "android";
+    const store = apple ? "App Store" : "Google Play";
+    const products = `<div class="tabs" style="border:0;margin-top:14px"><span class="tab on">Hauling Empire</span><span class="tab dim" title="Bağlanınca açılacak">Poleris (yakında)</span><span class="tab dim" title="Bağlanınca açılacak">PromoVote (yakında)</span></div>`;
+    const data = await heStats(env);
+    if (!data.ok) {
+      const msg = data.reason === "no_key"
+        ? "Hauling Empire bağlantı anahtarı (HE_STATS_KEY) henüz bu Worker'a girilmedi. Girilince veriler burada görünür."
+        : "Hauling Empire verileri şu an alınamadı. Biraz sonra tekrar dene.";
+      return adminPage(path, store, `${products}<div class="top"><h1>${store}: Hauling Empire</h1></div><p class="empty">${esc(msg)}</p>`);
+    }
+    const SRC = { ok: "güncel", late: "gecikmeli", missing_key: "anahtar yok", error: "hata", unknown: "henüz bağlanmadı" };
+    const srcLine = `Kaynaklar: ${apple ? "Apple" : "Google"} ${esc(SRC[data.sources?.[apple ? "apple" : "google"]] || "bilinmiyor")}, oyun sunucusu ${esc(SRC[data.sources?.game_server] || "bilinmiyor")}. Son güncelleme: ${esc(String(data.generated_at || "").slice(0, 16).replace("T", " "))} UTC.`;
+    const rows = (Array.isArray(data.rows) ? data.rows : []).filter((r) => r && r.platform === platform && /^\d{4}-\d{2}-\d{2}$/.test(String(r.date))).sort((x, y) => (x.date < y.date ? 1 : -1));
+    const num = (v) => (typeof v === "number" && isFinite(v) ? v : null);
+    const NA = '<span class="dim">veri henüz yok</span>';
+    const show = (v, pct) => { v = num(v); return v === null ? NA : pct ? `%${(v * 100).toFixed(pct === 2 ? 2 : 0)}` : String(Math.round(v * 100) / 100); };
+    const last7 = rows.slice(0, 7);
+    const sum7 = (k) => { const vals = last7.map((r) => num(r[k])).filter((v) => v !== null); return vals.length ? vals.reduce((a, v) => a + v, 0) : null; };
+    const avg7 = (k) => { const vals = last7.map((r) => num(r[k])).filter((v) => v !== null); return vals.length ? vals.reduce((a, v) => a + v, 0) / vals.length : null; };
+    const latest = (k) => { for (const r of rows) if (num(r[k]) !== null) return num(r[k]); return null; };
+    const tile = (l, v) => [l, v === null ? '<span class="dim" style="font-size:16px">veri henüz yok</span>' : v];
+    const tiles = tilesHtml([
+      tile("7 günde yeni oyuncu", sum7("new_players")),
+      tile("7 günde indirme", sum7("downloads")),
+      tile(apple ? "7 günde sayfa görüntüleme" : "7 günde mağaza ziyareti", sum7("store_page_views")),
+      tile("Ertesi gün geri gelen (ort.)", avg7("d1") === null ? null : `%${Math.round(avg7("d1") * 100)}`),
+      tile("Puan", latest("rating_avg") === null ? null : `${latest("rating_avg").toFixed(1)} (${latest("ratings_count") ?? 0})`),
+      tile("Çökme oranı", latest("crash_rate") === null ? null : `%${(latest("crash_rate") * 100).toFixed(2)}`),
+    ]);
+    // Simple bar chart of new players, last 30 days (server-drawn SVG, no scripts).
+    const series = rows.slice(0, 30).reverse();
+    const maxV = Math.max(1, ...series.map((r) => num(r.new_players) || 0));
+    const bw = 18, gap = 6, h = 120;
+    const bars = series.map((r, i) => { const v = num(r.new_players) || 0; const bh = Math.round((v / maxV) * (h - 20)); return `<rect x="${i * (bw + gap)}" y="${h - bh}" width="${bw}" height="${bh}" rx="4" fill="#c6ff3d"><title>${esc(r.date)}: ${v}</title></rect>`; }).join("");
+    const chart = series.length ? `<h2 style="font-size:20px;margin:28px 0 10px">Günlük yeni oyuncu (son 30 gün)</h2><div class="tablewrap" style="padding:16px"><svg viewBox="0 0 ${Math.max(1, series.length * (bw + gap))} ${h}" width="100%" height="${h}" preserveAspectRatio="none" role="img" aria-label="Günlük yeni oyuncu">${bars}</svg></div>` : "";
+    const table = rows.length
+      ? rows.slice(0, 30).map((r) => `<tr><td>${esc(r.date)}</td><td>${show(r.new_players)}</td><td>${show(r.downloads)}</td><td>${show(r.store_page_views)}</td><td>${show(r.d1, 1)}</td><td>${show(r.d7, 1)}</td><td>${show(r.crash_rate, 2)}</td>${apple ? "" : `<td>${show(r.anr_rate, 2)}</td>`}<td>${show(r.rating_avg)}</td></tr>`).join("")
+      : `<tr><td colspan="${apple ? 8 : 9}" class="dim center">Henüz veri yok.</td></tr>`;
+    return adminPage(path, store, `${products}<div class="top"><h1>${store}: Hauling Empire</h1></div>
+<p class="countries">${srcLine} Sadece biten günler görünür (UTC). Yeni oyuncu 5'ten azsa geri gelme oranı gizlenir.</p>
+${tiles}
+${chart}
+<h2 style="font-size:20px;margin:28px 0 10px">Günlük tablo</h2>
+<div class="tablewrap"><table><thead><tr><th>Gün</th><th>Yeni oyuncu</th><th>İndirme</th><th>${apple ? "Sayfa görüntüleme" : "Mağaza ziyareti"}</th><th>Ertesi gün</th><th>7. gün</th><th>Çökme</th>${apple ? "" : "<th>ANR</th>"}<th>Puan</th></tr></thead><tbody>${table}</tbody></table></div>`);
   }
 
   return adminPage(path, "Bulunamadı", '<div class="top"><h1>Sayfa bulunamadı</h1></div>');
