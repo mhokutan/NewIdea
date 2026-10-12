@@ -201,12 +201,14 @@ td a{color:#b394ff}.dim{color:var(--dim)}.center{text-align:center}.role{padding
 .role-creator{color:#ff8fa3}.role-developer{color:var(--lime)}.role-brand{color:#b394ff}.role-viewer{color:#7dd3fc}
 .lv-g b{color:#4ade80}.lv-y b{color:#facc15}.lv-r b{color:#f87171}.warnbar{margin:18px 0 0;padding:12px 16px;border-radius:12px;background:rgba(250,204,21,.14);border:1px solid rgba(250,204,21,.5);color:#fde68a}
 .fun{display:grid;grid-template-columns:minmax(120px,220px) 1fr 90px;gap:12px;align-items:center;padding:5px 0;font-size:14px}.fun-l{color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.fun-b{height:12px;border-radius:99px;background:var(--surface-2);overflow:hidden;display:block}.fun-b i{display:block;height:100%;background:var(--lime);border-radius:99px}.fun-n{text-align:right}
+.badge-on{padding:2px 9px;border-radius:99px;font-size:12px;font-weight:700;background:rgba(198,255,61,.15);color:var(--lime)}.badge-solo{padding:2px 9px;border-radius:99px;font-size:12px;font-weight:700;background:var(--surface-2);color:var(--muted)}
+.tsearch{width:100%;max-width:360px;margin:0 0 10px;padding:10px 14px;border-radius:12px;border:1px solid var(--line);background:var(--surface);color:#fff;font:inherit}
 .empty{padding:28px;border:1px dashed var(--line);border-radius:16px;color:var(--muted);line-height:1.6}
 </style></head><body><main class="wrap admin">
 <p class="kicker" style="margin:0 0 12px">PromoVote yönetim paneli</p>
 <nav class="tabs" aria-label="Admin">${nav}</nav>
 ${body}
-</main><script src="/v-ignore.js"></script></body></html>`;
+</main><script src="/v-ignore.js"></script><script src="/admin-table.js" defer></script></body></html>`;
   return new Response(html, { headers: { "Content-Type": "text/html; charset=utf-8", ...ADMIN_HEADERS } });
 }
 
@@ -289,6 +291,70 @@ function heSalesCard(ops) {
   ])}`;
 }
 
+const ago = (iso) => {
+  const t = Date.parse(iso || "");
+  if (!t) return "-";
+  const m = Math.max(0, Math.round((Date.now() - t) / 60000));
+  if (m < 1) return "az önce";
+  if (m < 60) return `${m} dk önce`;
+  const h = Math.round(m / 60);
+  if (h < 24) return `${h} sa önce`;
+  return `${Math.round(h / 24)} gün önce`;
+};
+const dash = (v) => (v === null || v === undefined || v === "" ? "-" : esc(v));
+const PLAT = { ios: "iOS", android: "Android", web: "Web" };
+
+// Player list (Hauling Empire ops feed). Names only, no email, ids or IPs (owner decision 2026-10-12).
+function playersSection(players) {
+  const sec = (t) => `<h2 style="font-size:22px;margin:34px 0 12px">${esc(t)}</h2>`;
+  if (players === undefined) return "";
+  if (!players) return sec("Şu an oyunda") + '<p class="empty">Veri yok</p>';
+  const on = Array.isArray(players.online_now) ? players.online_now : [];
+  const rec = Array.isArray(players.recent_7d) ? players.recent_7d.slice(0, 200) : [];
+  const reg = (r) => dash(r ? String(r).toUpperCase() : null);
+  const onRows = on.length
+    ? on.map((p) => `<tr><td>${dash(p.company)}</td><td>${dash(p.username)}</td><td>${dash(PLAT[p.platform] || p.platform)}</td><td>${reg(p.region)}</td><td>${p.mode === "online" ? '<span class="badge-on">online</span>' : p.mode ? '<span class="badge-solo">solo</span>' : "-"}</td><td data-v="${Date.parse(p.last_seen || "") || 0}">${esc(ago(p.last_seen))}</td></tr>`).join("")
+    : '<tr data-empty="1"><td colspan="6" class="dim center">Şu an kimse oyunda değil.</td></tr>';
+  const day = (iso) => (iso ? esc(String(iso).slice(0, 16).replace("T", " ")) : "-");
+  const recRows = rec.length
+    ? rec.map((p) => `<tr data-search="${esc(`${p.company || ""} ${p.username || ""}`.toLowerCase())}"><td>${dash(p.company)}</td><td>${dash(p.username)}</td><td>${dash(PLAT[p.platform] || p.platform)}</td><td>${reg(p.region)}</td><td data-v="${Date.parse(p.first_seen || "") || 0}">${day(p.first_seen)}</td><td data-v="${Date.parse(p.last_seen || "") || 0}">${day(p.last_seen)} <span class="dim">(${esc(ago(p.last_seen))})</span></td><td>${fnum(p.days_active) ?? "-"}</td><td>${fnum(p.sessions) ?? "-"}</td></tr>`).join("")
+    : '<tr data-empty="1"><td colspan="8" class="dim center">Son 7 günde oyuncu yok.</td></tr>';
+  return `${sec("Şu an oyunda")}<div class="tablewrap"><table id="tbl-online" data-sortable><thead><tr><th>Şirket</th><th>Kullanıcı</th><th>Platform</th><th>Bölge</th><th>Mod</th><th>Son görülme</th></tr></thead><tbody>${onRows}</tbody></table></div>
+${sec(`Son 7 gün oyuncular (${rec.length})`)}<input class="tsearch" type="search" placeholder="Şirket veya kullanıcı adı ara" aria-label="Şirket veya kullanıcı adı ara" data-filter="tbl-recent">
+<div class="tablewrap"><table id="tbl-recent" data-sortable><thead><tr><th>Şirket</th><th>Kullanıcı</th><th>Platform</th><th>Bölge</th><th>İlk görülme</th><th>Son görülme</th><th>Aktif gün</th><th>Oturum</th></tr></thead><tbody>${recRows}</tbody></table></div>`;
+}
+
+// Download sources (store feed) and top search terms, for the Hauling Empire store pages.
+const SRC_KEYS = [["downloads_search", "Arama", "#c6ff3d"], ["downloads_browse", "Gözatma", "#8b5cff"], ["downloads_referral_app", "Başka uygulama", "#ff5470"], ["downloads_referral_web", "Web", "#38bdf8"], ["downloads_other", "Diğer", "#6f6d82"]];
+function sourcesSection(rows, range, terms, apple) {
+  const sec = (t) => `<h2 style="font-size:20px;margin:28px 0 10px">${esc(t)}</h2>`;
+  const series = rows.slice(0, range).reverse();
+  const known = series.filter((r) => SRC_KEYS.some(([k]) => fnum(r[k]) !== null));
+  let out = sec("Nereden geldiler");
+  if (!known.length) out += '<p class="empty">Henüz veri yok. Kaynaklar, günde 5 ve üstü indirme olunca ve mağaza anahtarları girilince görünür.</p>';
+  else {
+    const total = (r) => SRC_KEYS.reduce((a, [k]) => a + (fnum(r[k]) || 0), 0);
+    const maxV = Math.max(1, ...series.map(total));
+    const bw = range > 30 ? 6 : 16, gap = range > 30 ? 2 : 5, h = 130;
+    const bars = series.map((r, i) => {
+      let y = h;
+      return SRC_KEYS.map(([k, l, c]) => { const v = fnum(r[k]) || 0; const bh = Math.round((v / maxV) * (h - 16)); y -= bh; return bh ? `<rect x="${i * (bw + gap)}" y="${y}" width="${bw}" height="${bh}" fill="${c}"><title>${esc(r.date)} ${l}: ${v}</title></rect>` : ""; }).join("");
+    }).join("");
+    const legend = SRC_KEYS.map(([, l, c]) => `<span style="color:${c}">■</span> ${l}`).join(" ");
+    out += `<div class="tablewrap" style="padding:16px"><p class="countries" style="margin:0 0 8px">${legend}</p><svg viewBox="0 0 ${series.length * (bw + gap)} ${h}" width="100%" height="${h}" preserveAspectRatio="none" role="img" aria-label="İndirme kaynakları">${bars}</svg></div>`;
+  }
+  const last7 = rows.slice(0, 7);
+  const sums = SRC_KEYS.map(([k, l]) => [l, last7.reduce((a, r) => a + (fnum(r[k]) || 0), 0), last7.some((r) => fnum(r[k]) !== null)]);
+  const all = sums.reduce((a, x) => a + x[1], 0);
+  out += sec("Son 7 gün kaynaklar") + (sums.some((x) => x[2]) ? ctiles(sums.map(([l, v]) => ctile(l, v, "", all ? `%${Math.round((v / all) * 100)}` : ""))) : '<p class="empty">Henüz veri yok.</p>');
+  const plat = apple ? "ios" : "android";
+  const t = Array.isArray(terms) ? terms.filter((x) => x && x.platform === plat) : [];
+  out += sec("En çok aranan kelimeler (7 gün)") + (t.length
+    ? `<div class="tablewrap"><table data-sortable><thead><tr><th>Kelime</th><th>Platform</th><th>Kurulum</th></tr></thead><tbody>${t.map((x) => `<tr><td>${esc(x.term ?? "")}</td><td>${esc(PLAT[x.platform] || x.platform || "")}</td><td>${fnum(x.installs) ?? "-"}</td></tr>`).join("")}</tbody></table></div>`
+    : '<p class="empty">Henüz veri yok (yalnız Google Play).</p>');
+  return out;
+}
+
 function heOpsPage(path, ops, range, name = "Hauling Empire", kind = "oyun") {
   const st = ops.status || {};
   const failed = Array.isArray(st.failed) && st.failed.length ? `<p class="countries">Alınamayan bölümler: ${st.failed.map((f) => esc(typeof f === "string" ? f : JSON.stringify(f))).join(", ")}</p>` : "";
@@ -300,6 +366,8 @@ function heOpsPage(path, ops, range, name = "Hauling Empire", kind = "oyun") {
   // 1. Now
   out.push(sec("Şu an"));
   out.push(ops.now ? ctiles([ctile("Son 5 dakikada aktif", fnum(ops.now.players_online_5min ?? ops.now.users_online_5min)), ...("online_mode_live" in ops.now ? [ctile("Online modda", fnum(ops.now.online_mode_live))] : [])]) : none);
+
+  out.push(playersSection(ops.players));
 
   // 2. Days
   out.push(sec("Günler"));
@@ -633,6 +701,7 @@ ${rangePills(path, range, "&p=haulingempire")}
 ${tiles}
 ${heSalesCard(opsR.ok ? opsR.data : null)}
 ${chart}
+${sourcesSection(rows, range, data.top_search_terms_7d, apple)}
 <h2 style="font-size:20px;margin:28px 0 10px">Günlük tablo</h2>
 <div class="tablewrap"><table><thead><tr><th>Gün</th><th>Yeni oyuncu</th><th>İndirme</th><th>${apple ? "Sayfa görüntüleme" : "Mağaza ziyareti"}</th><th>Ertesi gün</th><th>7. gün</th><th>Çökme</th>${apple ? "" : "<th>ANR</th>"}<th>Puan</th></tr></thead><tbody>${table}</tbody></table></div>`);
   }
