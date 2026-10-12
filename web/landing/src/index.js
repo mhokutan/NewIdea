@@ -182,6 +182,7 @@ const ADMIN_TABS = [
   ["/admin/app-store", "App Store"],
   ["/admin/google-play", "Google Play"],
   ["/admin/hauling-empire/oyun", "Hauling Empire oyun"],
+  ["/admin/poleris/uygulama", "Poleris uygulama"],
 ];
 
 function adminPage(path, title, body) {
@@ -238,26 +239,32 @@ async function heStats(env) {
   }
 }
 
-// Hauling Empire in-game feed (feed=ops): players online, daily activity, sales, funnel, health. Cached 5 minutes.
-async function heOps(env, days) {
-  if (!env.HE_STATS_KEY) return { ok: false, reason: "no_key" };
+// Product feeds (each product's own read-only endpoint, daily totals only). Keys stay on this Worker.
+const FEEDS = {
+  haulingempire: { name: "Hauling Empire", url: "https://bcwahdyqpbzyqllszeng.supabase.co/functions/v1/store-stats", key: (env) => env.HE_STATS_KEY },
+  poleris: { name: "Poleris", url: "https://gcbcaunmxznaixwnnfux.supabase.co/functions/v1/store-stats", key: (env) => env.POLERIS_STATS_KEY },
+};
+async function productFeed(env, prod, query, ttl) {
+  const f = FEEDS[prod];
+  if (!f || !f.key(env)) return { ok: false, reason: "no_key" };
   const cache = caches.default;
-  const cacheKey = new Request(`https://promovote.com/__cache/he-ops-v1-${days}`);
+  const cacheKey = new Request(`https://promovote.com/__cache/feed-v1-${prod}-${encodeURIComponent(query)}`);
   const hit = await cache.match(cacheKey);
   if (hit) return { ok: true, data: await hit.json() };
   try {
-    const res = await fetch(`https://bcwahdyqpbzyqllszeng.supabase.co/functions/v1/store-stats?feed=ops&days=${days}`, { headers: { Authorization: `Bearer ${env.HE_STATS_KEY}` }, signal: AbortSignal.timeout(5000) });
-    if (!res.ok) { console.error("he_ops_status", res.status); return { ok: false, reason: "http_" + res.status }; }
+    const res = await fetch(`${f.url}?${query}`, { headers: { Authorization: `Bearer ${f.key(env)}` }, signal: AbortSignal.timeout(5000) });
+    if (!res.ok) { console.error("feed_status", prod, res.status); return { ok: false, reason: "http_" + res.status }; }
     const text = await res.text();
     if (text.length > 1000000) return { ok: false, reason: "too_big" };
     const data = JSON.parse(text);
-    await cache.put(cacheKey, new Response(JSON.stringify(data), { headers: { "Content-Type": "application/json", "Cache-Control": "max-age=300" } }));
+    await cache.put(cacheKey, new Response(JSON.stringify(data), { headers: { "Content-Type": "application/json", "Cache-Control": `max-age=${ttl}` } }));
     return { ok: true, data };
   } catch (err) {
-    console.error("he_ops_error", err?.message);
+    console.error("feed_error", prod, err?.message);
     return { ok: false, reason: "fetch_failed" };
   }
 }
+const heOps = (env, days) => productFeed(env, "haulingempire", `feed=ops&days=${days}`, 300);
 
 const fnum = (v) => (typeof v === "number" && isFinite(v) ? v : null);
 const usd = (v) => (fnum(v) === null ? null : "$" + fnum(v).toFixed(2));
@@ -282,17 +289,17 @@ function heSalesCard(ops) {
   ])}`;
 }
 
-function heOpsPage(path, ops, range) {
+function heOpsPage(path, ops, range, name = "Hauling Empire", kind = "oyun") {
   const st = ops.status || {};
   const failed = Array.isArray(st.failed) && st.failed.length ? `<p class="countries">Alınamayan bölümler: ${st.failed.map((f) => esc(typeof f === "string" ? f : JSON.stringify(f))).join(", ")}</p>` : "";
   const banner = st.ok === false ? '<div class="warnbar">Bazı veriler eksik ya da gecikmeli. Aşağıda "Veri yok" yazan bölümler güncel değil.</div>' : "";
   const sec = (t) => `<h2 style="font-size:22px;margin:34px 0 12px">${esc(t)}</h2>`;
   const none = '<p class="empty">Veri yok</p>';
-  const out = [banner, `<div class="top"><h1>Hauling Empire: oyun</h1></div>`, `<p class="countries">Son güncelleme: ${esc(String(ops.generated_at || "").slice(0, 16).replace("T", " "))} UTC. Veriler 5 dakika önbellekte tutulur.</p>`, failed, rangePills(path, range)];
+  const out = [banner, `<div class="top"><h1>${esc(name)}: ${esc(kind)}</h1></div>`, `<p class="countries">Son güncelleme: ${esc(String(ops.generated_at || "").slice(0, 16).replace("T", " "))} UTC. Veriler 5 dakika önbellekte tutulur.</p>`, failed, rangePills(path, range)];
 
   // 1. Now
   out.push(sec("Şu an"));
-  out.push(ops.now ? ctiles([ctile("Son 5 dakikada oyunda", fnum(ops.now.players_online_5min)), ctile("Online modda", fnum(ops.now.online_mode_live))]) : none);
+  out.push(ops.now ? ctiles([ctile("Son 5 dakikada aktif", fnum(ops.now.players_online_5min ?? ops.now.users_online_5min)), ...("online_mode_live" in ops.now ? [ctile("Online modda", fnum(ops.now.online_mode_live))] : [])]) : none);
 
   // 2. Days
   out.push(sec("Günler"));
@@ -309,8 +316,22 @@ function heOpsPage(path, ops, range) {
     }).join("");
     out.push(`<div class="tablewrap" style="padding:16px"><p class="countries" style="margin:0 0 8px">Günlük aktif oyuncu: <span style="color:#8b5cff">■</span> iOS <span style="color:#c6ff3d">■</span> Android</p><svg viewBox="0 0 ${days.length * (bw + gap)} ${h}" width="100%" height="${h}" preserveAspectRatio="none" role="img" aria-label="Günlük aktif oyuncu">${bars}</svg></div>`);
     const v = (x) => (fnum(x) === null ? '<span class="dim">veri yok</span>' : x);
-    const rows = days.slice().reverse().map((r) => `<tr${r.partial ? ' class="dim"' : ""}><td>${esc(r.date)}${r.partial ? " (bugün, devam ediyor)" : ""}</td><td>${v(r.dau_ios)}</td><td>${v(r.dau_android)}</td><td>${v(r.sessions)}</td><td>${v(r.new_accounts)}</td><td>${fnum(r.avg_session_min) === null ? '<span class="dim">veri yok</span>' : fnum(r.avg_session_min).toFixed(1) + " dk"}</td><td>${v(r.ad_rewards)} / ${v(r.ad_taps)}</td></tr>`).join("");
-    out.push(`<div class="tablewrap" style="margin-top:12px"><table><thead><tr><th>Gün</th><th>Aktif iOS</th><th>Aktif Android</th><th>Oturum</th><th>Yeni hesap</th><th>Ort. oturum</th><th>Reklam ödülü / dokunma</th></tr></thead><tbody>${rows}</tbody></table></div>`);
+    const has = (k) => days.some((r) => fnum(r[k]) !== null);
+    const C = [
+      ["Aktif iOS", (r) => v(r.dau_ios), true], ["Aktif Android", (r) => v(r.dau_android), true],
+      ["Oturum", (r) => v(r.sessions), has("sessions")], ["Yeni hesap", (r) => v(r.new_accounts), true],
+      ["Ort. oturum", (r) => (fnum(r.avg_session_min) === null ? '<span class="dim">veri yok</span>' : fnum(r.avg_session_min).toFixed(1) + " dk"), has("avg_session_min")],
+      ["Reklam ödülü / dokunma", (r) => `${v(r.ad_rewards)} / ${v(r.ad_taps)}`, has("ad_rewards") || has("ad_taps")],
+    ].filter((c) => c[2]);
+    const rows = days.slice().reverse().map((r) => `<tr${r.partial ? ' class="dim"' : ""}><td>${esc(r.date)}${r.partial ? " (bugün, devam ediyor)" : ""}</td>${C.map((c) => `<td>${c[1](r)}</td>`).join("")}</tr>`).join("");
+    out.push(`<div class="tablewrap" style="margin-top:12px"><table><thead><tr><th>Gün</th>${C.map((c) => `<th>${c[0]}</th>`).join("")}</tr></thead><tbody>${rows}</tbody></table></div>`);
+    const STD = new Set(["date", "dau_ios", "dau_android", "sessions", "new_accounts", "avg_session_min", "ad_rewards", "ad_taps", "partial"]);
+    const LABEL = { installs: "Yükleme", onboarding_done: "Tanıtımı bitiren", rituals_started: "Ritüel başlatan", rituals_completed: "Ritüel bitiren", paywall_views: "Ödeme ekranı gören", trial_starts: "Deneme başlatan", purchase_events: "Satın alan", notif_permission_granted: "Bildirim izni veren", share_exports: "Paylaşan" };
+    const extraKeys = [...new Set(days.flatMap((r) => Object.keys(r).filter((k) => !STD.has(k) && (typeof r[k] === "number" || r[k] === null))))];
+    if (extraKeys.length) {
+      const rowsX = days.slice().reverse().map((r) => `<tr${r.partial ? ' class="dim"' : ""}><td>${esc(r.date)}</td>${extraKeys.map((k) => `<td>${fnum(r[k]) ?? '<span class="dim">veri yok</span>'}</td>`).join("")}</tr>`).join("");
+      out.push(`<h3 style="margin:22px 0 8px;font-size:16px">Uygulamaya özel (o gün olayı yaşayan cihaz sayısı)</h3><div class="tablewrap"><table><thead><tr><th>Gün</th>${extraKeys.map((k) => `<th>${esc(LABEL[k] || k)}</th>`).join("")}</tr></thead><tbody>${rowsX}</tbody></table></div>`);
+    }
   }
 
   // 3. Sales
@@ -323,13 +344,14 @@ function heOpsPage(path, ops, range) {
     const total = sum("apple_usd") + sum("google_usd");
     const refPct = total > 0 ? sum("refunds_usd") / total : 0;
     const refLv = sum("refunds_usd") > 0 ? (refPct >= 0.1 ? "r" : refPct >= 0.05 ? "y" : "g") : "g";
+    const noUsd = sd.length && sd.every((r) => fnum(r.apple_usd) === null && fnum(r.google_usd) === null);
     out.push(ctiles([
-      ctile(`Apple (${range} gün)`, usd(sum("apple_usd")), "", `${sum("apple_count")} satış`),
-      ctile(`Google (${range} gün)`, usd(sum("google_usd")), "", `${sum("google_count")} satış`),
-      ctile("İade", usd(sum("refunds_usd")), refLv, `${sum("refunds_count")} adet`),
+      noUsd ? ctile(`Apple satış adedi (${range} gün)`, sum("apple_count"), "", "Fiyat tutulmuyor") : ctile(`Apple (${range} gün)`, usd(sum("apple_usd")), "", `${sum("apple_count")} satış`),
+      noUsd ? ctile(`Google satış adedi (${range} gün)`, sum("google_count"), "", "Fiyat tutulmuyor") : ctile(`Google (${range} gün)`, usd(sum("google_usd")), "", `${sum("google_count")} satış`),
+      noUsd ? ctile("İade", sd.some((r) => fnum(r.refunds_count) !== null) ? sum("refunds_count") : null) : ctile("İade", usd(sum("refunds_usd")), refLv, `${sum("refunds_count")} adet`),
       `<div class="tile" style="opacity:.6"><b>${fnum(sales.test_purchases_30d) ?? "Veri yok"}</b><span>Test satın almaları (sayılmaz, 30 gün)</span></div>`,
     ]));
-    if (sd.length) {
+    if (sd.length && !noUsd) {
       const maxS = Math.max(1, ...sd.map((r) => Math.max(fnum(r.apple_usd) || 0, fnum(r.google_usd) || 0)));
       const bw = sd.length > 31 ? 3 : 7, gap = sd.length > 31 ? 2 : 4, h = 110, step = bw * 2 + gap;
       const bars = sd.map((r, i) => {
@@ -397,7 +419,7 @@ function heOpsPage(path, ops, range) {
 
 // Store pages for products without their own feed (PromoVote, Poleris): rows written by the API Worker's daily
 // collector into promovote-db metrics_daily (Apple sales reports, Google Play report files).
-async function storeMetricsPage(env, path, prod, name, apple, range) {
+async function storeMetricsPage(env, path, prod, name, apple, range, feed = null) {
   const store = apple ? "App Store" : "Google Play";
   const source = apple ? "app_store" : "google_play";
   if (!env.APPDB) return `<div class="top"><h1>${store}: ${esc(name)}</h1></div><p class="empty">Veri yok</p>`;
@@ -416,6 +438,13 @@ async function storeMetricsPage(env, path, prod, name, apple, range) {
   const tiles = apple
     ? [ctile(`${range} günde indirme`, sum("downloads")), ctile("Yeniden indirme", sum("redownloads")), ctile("Güncelleme", sum("updates")), ctile("Uygulama içi satın alma (adet)", sum("iap_units"))]
     : [ctile(`${range} günde yükleme`, sum("installs")), ctile("Kaldırma", sum("uninstalls")), ctile("Aktif cihaz", latest("active_devices")), ctile("Puan", latest("rating_avg") === null ? null : latest("rating_avg").toFixed(1)), ctile("Çökme", sum("crashes")), ctile("ANR", sum("anrs"))];
+  if (feed && feed.ok) {
+    const plat = apple ? "ios" : "android";
+    const fr = (Array.isArray(feed.data.rows) ? feed.data.rows : []).filter((r) => r && r.platform === plat).sort((x, y) => (x.date < y.date ? 1 : -1)).slice(0, range);
+    const fs = (k) => { const vals = fr.map((r) => fnum(r[k])).filter((x) => x !== null); return vals.length ? vals.reduce((a, x) => a + x, 0) : null; };
+    const fa = (k) => { const vals = fr.map((r) => fnum(r[k])).filter((x) => x !== null); return vals.length ? vals.reduce((a, x) => a + x, 0) / vals.length : null; };
+    tiles.push(ctile(`${range} günde ilk açılış (uygulamadan)`, fs("new_players")), ctile("Ertesi gün geri gelen (ortalama)", fa("d1") === null ? null : `%${Math.round(fa("d1") * 100)}`));
+  }
   const series = dates.slice().reverse();
   const maxV = Math.max(1, ...series.map((d) => byDate[d][main] || 0));
   const bw = range > 30 ? 6 : 18, gap = range > 30 ? 2 : 6, h = 120;
@@ -539,6 +568,13 @@ ${tilesHtml([["Paylaşılan", sum.posted?.n || 0], ["Sırada", sum.queued?.n || 
     }
   }
 
+  if (path === "/admin/poleris/uygulama") {
+    const range = rangeOf(url);
+    const r = await productFeed(env, "poleris", `feed=ops&days=${range}`, 300);
+    if (!r.ok) return adminPage(path, "Poleris: uygulama", `<div class="top"><h1>Poleris: uygulama</h1></div><p class="empty">${r.reason === "no_key" ? "Bağlantı anahtarı (POLERIS_STATS_KEY) yok." : "Poleris verileri şu an alınamadı. Biraz sonra tekrar dene."}</p>`);
+    return adminPage(path, "Poleris: uygulama", heOpsPage(path, r.data, range, "Poleris", "uygulama"));
+  }
+
   if (path === "/admin/hauling-empire/oyun") {
     const range = rangeOf(url);
     const r = await heOps(env, range);
@@ -554,7 +590,7 @@ ${tilesHtml([["Paylaşılan", sum.posted?.n || 0], ["Sırada", sum.queued?.n || 
     const prod = PRODUCTS.some(([k]) => k === url.searchParams.get("p")) ? url.searchParams.get("p") : "haulingempire";
     const range0 = rangeOf(url);
     const products = `<div class="tabs" style="border:0;margin-top:14px">${PRODUCTS.map(([k, n]) => `<a class="tab${k === prod ? " on" : ""}" href="${path}?p=${k}&range=${range0}">${n}</a>`).join("")}</div>`;
-    if (prod !== "haulingempire") return adminPage(path, store, products + (await storeMetricsPage(env, path, prod, PRODUCTS.find(([k]) => k === prod)[1], apple, range0)));
+    if (prod !== "haulingempire") return adminPage(path, store, products + (await storeMetricsPage(env, path, prod, PRODUCTS.find(([k]) => k === prod)[1], apple, range0, FEEDS[prod] ? await productFeed(env, prod, "days=90", 3600) : null)));
     const [data, opsR] = await Promise.all([heStats(env), heOps(env, 30)]);
     if (!data.ok) {
       const msg = data.reason === "no_key"
