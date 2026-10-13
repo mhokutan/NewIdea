@@ -109,3 +109,9 @@ PromoVote is live on [Google Play / the App Store]. 7 promos a day, one tap to c
 * The API Worker reads public stats (impressions, likes, reposts, replies, bookmarks) for each post twice: about 24 h and 72 h after posting. Columns on `social_posts` (migration 0018).
 * First read (2026-10-10 04:07 UTC): 8 to 20 views per post; the only engagement (reposts) came from the two video posts. Decision: the 17:00 UTC slot is a promo video post every day from 2026-10-10 to 2026-10-21 (ids `video-<promo>`, `media_url` on promovote.com). The text posts that held those slots moved to the end; the queue now runs to 2026-10-24.
 * Any post can carry a video: set `media_url` to a file under https://promovote.com/ (the Worker uploads it to X in chunks).
+
+## "Drop your link" posts (founder decision 2026-10-13)
+* Every day the 13:00 and 20:00 UTC text slots ask one audience to drop their game, app, shop or clip (indie devs, app makers, Etsy shops, streamers, founders). Texts never repeat; 17:00 stays the daily video.
+* Promise is only "we check every reply and invite favorites to Team Picks". Before featuring anyone: ask them in DM, make sure the video is theirs, run the `ad-review` checklist.
+* Never "follow or repost to be picked" (no reward for following).
+* Replies on other accounts' "drop your link" posts are done by hand by the founder, never by the API (X automation rules).
