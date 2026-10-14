@@ -26,6 +26,7 @@ Fikir: reklam parasını doğrudan uygulama indirme reklamına değil promovote.
 - [ ] Apple App Information: Secondary category "Social Networking", Content Rights "Yes" (inceleme sırasında kilitliyse onaydan sonra, yayından önce).
 - [ ] Apple ürün sayfası header ve arama görseli (store/assets/header), alan açıksa.
 - [ ] App Privacy: v1'de olmayan "Photos or Videos" ve "Purchase History" beyanlarını gözden geçir (yükleme ve satın alma gelince geri eklenir).
+- [ ] Mağaza ASO (kurucu isteği 2026-10-14, ücretli ASO servisi yok, kendimiz yapıyoruz). Google Play aramada en çok başlık (30), kısa açıklama (80) ve uzun açıklama (4000) okunur; puan, indirme ve silinmeme de sıralamayı etkiler. Öneri PromoVote: başlık `PromoVote: Discover New Games` (29), kısa açıklama `Watch short trailers of new indie games & apps. Call the next big hit early.` (77); uzun açıklama "new games, indie games, game discovery, game trailers" kelimelerine göre yeniden yazılır. Sonra Hauling Empire (truck, tycoon, trucking simulator) ve Poleris için aynısı. Apple'da başlık, alt başlık ve 100 karakterlik keyword alanı. Build gerekmez; kurucu veya masaüstü Claude Play Console'a yapıştırır.
 
 ## Beklemede
 - [ ] Sanal karakterler Maya ve Kai (`characters/`): kurucu 2026-10-08 iptal etti, ChatGPT video üretemedi. Dosyalar repoda duruyor; video aracı bulunursa (Sora, Veo, Kling, HeyGen) aynı komutla devam edilir. Uygulamadaki "Made with AI" etiketi kalıyor.
