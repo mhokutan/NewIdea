@@ -115,3 +115,8 @@ PromoVote is live on [Google Play / the App Store]. 7 promos a day, one tap to c
 * Promise is only "we check every reply and invite favorites to Team Picks". Before featuring anyone: ask them in DM, make sure the video is theirs, run the `ad-review` checklist.
 * Never "follow or repost to be picked" (no reward for following).
 * Replies on other accounts' "drop your link" posts are done by hand by the founder, never by the API (X automation rules).
+
+## 8 posts a day (founder decision 2026-10-14)
+* Real cost so far: $1.08 for 28 posts (Oct 9 to 13), about $0.22 a day; a link post is about $0.09, not $0.20.
+* New prime time slots added from 2026-10-14: 12:00 UTC (8am New York, Europe afternoon, builder questions), 16:00 UTC (noon New York, lunch questions for players) and 01:00 UTC (9pm New York, evening players). With 13, 15, 17 (video), 20 and 23 UTC that makes 8 a day. The new slots carry no link (about $0.015 each).
+* After Nov 1 (US daylight saving ends) every slot lands one hour earlier in New York; shift new posts one hour later in UTC.
