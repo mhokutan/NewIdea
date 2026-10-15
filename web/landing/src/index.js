@@ -175,18 +175,24 @@ const ROLE_LABELS = { creator: "Creator / Streamer", developer: "Game developer"
 
 // Admin is split into pages (founder request 2026-10-12): waitlist, visitors, X, App Store, Google Play.
 // Store pages fill in when the Hauling Empire stats endpoint is connected (secret stays on this Worker).
-const ADMIN_TABS = [
-  ["/admin", "Bekleme listesi"],
-  ["/admin/visitors", "Ziyaretçiler"],
-  ["/admin/x", "X"],
-  ["/admin/app-store", "App Store"],
-  ["/admin/google-play", "Google Play"],
-  ["/admin/hauling-empire/oyun", "Hauling Empire oyun"],
-  ["/admin/poleris/uygulama", "Poleris uygulama"],
+// Admin navigation: one row of product groups, then the pages of the chosen group (founder: flat tabs were confusing).
+const ADMIN_GROUPS = [
+  ["Durum", "Hepsi tek bakışta", [["/admin", "Genel durum"]]],
+  ["PromoVote", "Site, X, mağazalar", [["/admin/bekleme", "Bekleme listesi"], ["/admin/visitors", "Ziyaretçiler"], ["/admin/x", "X"], ["/admin/app-store?p=promovote", "App Store"], ["/admin/google-play?p=promovote", "Google Play"]]],
+  ["Hauling Empire", "Oyun ve mağazalar", [["/admin/hauling-empire/oyun", "Oyun"], ["/admin/app-store?p=haulingempire", "App Store"], ["/admin/google-play?p=haulingempire", "Google Play"]]],
+  ["Poleris", "Uygulama ve mağazalar", [["/admin/poleris/uygulama", "Uygulama"], ["/admin/app-store?p=poleris", "App Store"], ["/admin/google-play?p=poleris", "Google Play"]]],
 ];
 
 function adminPage(path, title, body) {
-  const nav = ADMIN_TABS.map(([href, label]) => `<a href="${href}" class="tab${href === path ? " on" : ""}"${href === path ? ' aria-current="page"' : ""}>${esc(label)}</a>`).join("");
+  const group = ADMIN_GROUPS.find(([, , items]) => items.some(([h]) => h === path));
+  const page = group?.[2].find(([h]) => h === path);
+  const groupsHtml = ADMIN_GROUPS.map(([name, sub, items]) => {
+    const on = group?.[0] === name;
+    return `<a href="${items[0][0]}" class="grp${on ? " on" : ""}"${on ? ' aria-current="true"' : ""}><b>${esc(name)}</b><span>${esc(sub)}</span></a>`;
+  }).join("");
+  const subHtml = group && group[2].length > 1 ? `<nav class="subnav" aria-label="${esc(group[0])} sayfaları">${group[2].map(([h, l]) => `<a href="${h}" class="tab${h === path ? " on" : ""}"${h === path ? ' aria-current="page"' : ""}>${esc(l)}</a>`).join("")}</nav>` : "";
+  const crumb = group ? `${esc(group[0])}${page && group[2].length > 1 ? ` <span class="dim">›</span> ${esc(page[1])}` : ""}` : "PromoVote yönetim paneli";
+  const nav = `<div class="adminbar"><p class="kicker" style="margin:0">${crumb}</p><a href="/cdn-cgi/access/logout" class="logout">Çıkış</a></div><nav class="grps" aria-label="Ürünler">${groupsHtml}</nav>${subHtml}`;
   const html = `<!doctype html><html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex, nofollow"><title>${esc(title)} | PromoVote admin</title><link rel="icon" href="/favicon.svg"><link rel="stylesheet" href="/styles.css">
 <style>
@@ -203,10 +209,21 @@ td a{color:#b394ff}.dim{color:var(--dim)}.center{text-align:center}.role{padding
 .fun{display:grid;grid-template-columns:minmax(120px,220px) 1fr 90px;gap:12px;align-items:center;padding:5px 0;font-size:14px}.fun-l{color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.fun-b{height:12px;border-radius:99px;background:var(--surface-2);overflow:hidden;display:block}.fun-b i{display:block;height:100%;background:var(--lime);border-radius:99px}.fun-n{text-align:right}
 .badge-on{padding:2px 9px;border-radius:99px;font-size:12px;font-weight:700;background:rgba(198,255,61,.15);color:var(--lime)}.badge-solo{padding:2px 9px;border-radius:99px;font-size:12px;font-weight:700;background:var(--surface-2);color:var(--muted)}
 .tsearch{width:100%;max-width:360px;margin:0 0 10px;padding:10px 14px;border-radius:12px;border:1px solid var(--line);background:var(--surface);color:#fff;font:inherit}
+.adminbar{display:flex;justify-content:space-between;align-items:center;gap:12px;margin:0 0 14px}.logout{color:var(--muted);font-size:14px;font-weight:600;text-decoration:none;padding:6px 12px;border-radius:99px;border:1px solid var(--line)}.logout:hover{color:#fff;border-color:var(--muted)}
+.grps{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}.grp{display:flex;flex-direction:column;gap:3px;padding:14px 16px;border-radius:16px;background:var(--surface);border:1.5px solid var(--line);text-decoration:none;transition:border-color .2s,transform .15s}
+.grp b{font:700 17px var(--display);color:#fff}.grp span{font-size:13px;color:var(--muted)}.grp:hover{border-color:var(--muted)}.grp:active{transform:scale(.98)}.grp.on{border-color:var(--lime);background:rgba(198,255,61,.07)}.grp.on b{color:var(--lime)}
+.subnav{display:flex;gap:8px;flex-wrap:wrap;margin:14px 0 0;padding:0 0 14px;border-bottom:1px solid var(--line)}.tab.on{background:var(--lime);color:#0a0a0f}
+@media (max-width:700px){.grps{grid-template-columns:repeat(2,minmax(0,1fr))}.grp{padding:12px 14px}.grp b{font-size:15px}}
+.tile b,td,.st-v{font-variant-numeric:tabular-nums}
+.st-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px;margin-top:8px}.st-card{padding:20px;border-radius:18px;background:var(--surface);border:1px solid var(--line)}
+.st-head{display:flex;justify-content:space-between;align-items:center;gap:10px;margin:0 0 12px}.st-head h2{font:700 20px var(--display);margin:0}.st-head a{color:var(--muted);font-size:13px;text-decoration:none}.st-head a:hover{color:#fff}
+.st-row{display:flex;justify-content:space-between;align-items:baseline;gap:12px;padding:9px 0;border-top:1px solid var(--line);font-size:14px}.st-row>span{color:var(--muted)}.st-v{font-weight:700;text-align:right}
+.chip{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:99px;font-size:12px;font-weight:700;white-space:nowrap}.chip::before{content:"";width:7px;height:7px;border-radius:50%;background:currentColor}
+.chip-g{color:#4ade80;background:rgba(74,222,128,.12)}.chip-y{color:#facc15;background:rgba(250,204,21,.12)}.chip-r{color:#f87171;background:rgba(248,113,113,.12)}
+.st-note{margin:10px 0 0;padding:10px 12px;border-radius:10px;font-size:13px;line-height:1.5;background:rgba(250,204,21,.08);color:#fde68a}
 .empty{padding:28px;border:1px dashed var(--line);border-radius:16px;color:var(--muted);line-height:1.6}
 </style></head><body><main class="wrap admin">
-<p class="kicker" style="margin:0 0 12px">PromoVote yönetim paneli</p>
-<nav class="tabs" aria-label="Admin">${nav}<a href="/cdn-cgi/access/logout" class="tab" style="margin-left:auto">Çıkış</a></nav>
+${nav}
 ${body}
 </main><script src="/v-ignore.js"></script><script src="/admin-table.js" defer></script></body></html>`;
   return new Response(html, { headers: { "Content-Type": "text/html; charset=utf-8", ...ADMIN_HEADERS } });
@@ -355,16 +372,20 @@ function sourcesSection(rows, range, terms, apple) {
   return out;
 }
 
+// Which sections a product ops feed actually sent, so a missing one is visible instead of silently blank.
+const OPS_SECTIONS = [["now", "Şu an"], ["players", "Oyuncular"], ["days", "Günler"], ["sales", "Satışlar"], ["sales.by_product_30d", "Ürüne göre"], ["sales.test_purchases_30d", "Test alımları"], ["online", "Online"], ["funnel", "Huni"], ["health", "Sağlık"]];
+function opsMissing(ops, skip = []) {
+  const has = (k) => k.split(".").reduce((o, x) => (o && typeof o === "object" && x in o ? o[x] : undefined), ops) !== undefined;
+  return OPS_SECTIONS.filter(([k]) => !skip.includes(k) && !has(k)).map(([, l]) => l);
+}
+
 function heOpsPage(path, ops, range, name = "Hauling Empire", kind = "oyun") {
   const st = ops.status || {};
   const failed = Array.isArray(st.failed) && st.failed.length ? `<p class="countries">Alınamayan bölümler: ${st.failed.map((f) => esc(typeof f === "string" ? f : JSON.stringify(f))).join(", ")}</p>` : "";
   const banner = st.ok === false ? '<div class="warnbar">Bazı veriler eksik ya da gecikmeli. Aşağıda "Veri yok" yazan bölümler güncel değil.</div>' : "";
   const sec = (t) => `<h2 style="font-size:22px;margin:34px 0 12px">${esc(t)}</h2>`;
   const none = '<p class="empty">Veri yok</p>';
-  // Which sections the feed actually sent, so a missing one is visible instead of silently blank.
-  const SECTIONS = [["now", "Şu an"], ["players", "Oyuncular"], ["days", "Günler"], ["sales", "Satışlar"], ["sales.by_product_30d", "Ürüne göre"], ["sales.test_purchases_30d", "Test alımları"], ["online", "Online"], ["funnel", "Huni"], ["health", "Sağlık"]];
-  const has = (k) => k.split(".").reduce((o, x) => (o && typeof o === "object" && x in o ? o[x] : undefined), ops) !== undefined;
-  const missing = SECTIONS.filter(([k]) => !has(k)).map(([, l]) => l);
+  const missing = opsMissing(ops, kind === "oyun" ? [] : ["players"]);
   const feedLine = `<p class="countries" style="margin-top:-14px">Beslemede ${missing.length ? `olmayan bölümler: <b>${missing.map(esc).join(", ")}</b> (oyun tarafı henüz göndermiyor)` : "bütün bölümler var"}.</p>`;
   const out = [banner, `<div class="top"><h1>${esc(name)}: ${esc(kind)}</h1></div>`, `<p class="countries">Son güncelleme: ${esc(String(ops.generated_at || "").slice(0, 16).replace("T", " "))} UTC. Veriler 5 dakika önbellekte tutulur.</p>`, feedLine, failed, rangePills(path, range)];
 
@@ -539,6 +560,85 @@ ${series.length ? `<h2 style="font-size:20px;margin:28px 0 10px">Günlük ${appl
 <div class="tablewrap"><table><thead><tr><th>Gün</th>${cols.map(([, l]) => `<th>${l}</th>`).join("")}</tr></thead><tbody>${table}</tbody></table></div>`;
 }
 
+// Status page (/admin): one card per product with plain green / yellow / red signals, so the founder sees at a glance
+// what works and what is missing. Every source is read in parallel and a failing source only marks its own card.
+async function statusPage(env) {
+  const today = new Date().toISOString().slice(0, 10);
+  const chip = (lv, t) => `<span class="chip chip-${lv}">${esc(t)}</span>`;
+  const row = (l, v) => `<div class="st-row"><span>${esc(l)}</span><b class="st-v">${v}</b></div>`;
+  const card = (title, href, lv, label, rows, note = "") => `<section class="st-card"><div class="st-head"><h2>${esc(title)}</h2>${chip(lv, label)}</div>${rows.join("")}${note ? `<p class="st-note">${note}</p>` : ""}<div class="st-head" style="margin:12px 0 0;justify-content:flex-end"><a href="${href}">Ayrıntılar ›</a></div></section>`;
+  const safe = (pr) => pr.catch(() => null);
+  const app = env.APPDB;
+  const [site, wl, xs, store, he, heS, pol] = await Promise.all([
+    safe(env.DB.prepare("SELECT COUNT(DISTINCT visitor) v FROM visits WHERE day = ?").bind(today).first()),
+    safe(env.DB.prepare("SELECT COUNT(*) n, SUM(substr(created_at, 1, 10) = ?) t FROM waitlist").bind(today).first()),
+    app ? safe(app.prepare("SELECT (SELECT max(posted_at) FROM social_posts WHERE status = 'posted') last, (SELECT min(scheduled_at) FROM social_posts WHERE status = 'queued') next, (SELECT max(scheduled_at) FROM social_posts WHERE status = 'queued') until, (SELECT count(*) FROM social_posts WHERE status = 'queued') queued, (SELECT count(*) FROM social_posts WHERE status = 'failed' AND scheduled_at > datetime('now', '-3 days')) failed").first()) : null,
+    app ? safe(app.prepare("SELECT (SELECT ran_at FROM job_runs WHERE name = 'store_stats') ran, (SELECT ran_at FROM job_runs WHERE name = 'store_stats_note') note, (SELECT sum(value) FROM metrics_daily WHERE product_id = 'promovote' AND metric IN ('downloads', 'installs') AND date >= date('now', '-7 days')) dl").first()) : null,
+    safe(heOps(env, 7)), safe(heStats(env)), safe(productFeed(env, "poleris", "feed=ops&days=7", 300)),
+  ]);
+  const when = (iso) => (iso ? `${esc(String(iso).slice(0, 16).replace("T", " "))} UTC` : '<span class="dim">yok</span>');
+  const cards = [];
+
+  // PromoVote: site + waitlist + X + store reports
+  {
+    const daysLeft = xs?.until ? Math.floor((Date.parse(xs.until) - Date.now()) / 864e5) : null;
+    const problems = [];
+    if (!xs) problems.push("X verisi okunamadı.");
+    else if (!xs.queued) problems.push("X sırası boş, yeni post çıkmıyor.");
+    else if (daysLeft !== null && daysLeft < 3) problems.push(`X sırası ${daysLeft} gün içinde bitiyor.`);
+    if (xs?.failed) problems.push(`Son 3 günde ${xs.failed} X postu gönderilemedi.`);
+    const note = store?.note && store.note !== "ok" ? `Mağaza raporu notu: ${esc(store.note)}` : "";
+    const lv = problems.length ? (xs?.queued ? "y" : "r") : "g";
+    cards.push(card("PromoVote", "/admin/bekleme", lv, lv === "g" ? "Çalışıyor" : "Dikkat", [
+      row("Bugün siteye gelen", site ? fnum(site.v) ?? 0 : '<span class="dim">okunamadı</span>'),
+      row("Bekleme listesi", wl ? `${fnum(wl.n) ?? 0} kişi${wl.t ? ` (bugün +${wl.t})` : ""}` : '<span class="dim">okunamadı</span>'),
+      row("Son X postu", when(xs?.last)),
+      row("Sıradaki X postu", when(xs?.next)),
+      row("X sırası", xs ? `${xs.queued} post${daysLeft !== null ? `, ${daysLeft} gün yeter` : ""}` : '<span class="dim">okunamadı</span>'),
+      row("Uygulama indirme (7 gün)", store?.dl !== null && store?.dl !== undefined ? fnum(store.dl) : '<span class="dim">henüz yok</span>'),
+      row("Mağaza raporları son okuma", when(store?.ran)),
+    ], [...problems.map(esc), note].filter(Boolean).join("<br>")));
+  }
+
+  // Hauling Empire: game feed + store feed
+  {
+    const ops = he?.ok ? he.data : null;
+    const missing = ops ? opsMissing(ops) : [];
+    const lv = !ops ? "r" : missing.length || ops.status?.ok === false ? "y" : "g";
+    const label = !ops ? "Bağlantı yok" : lv === "y" ? "Eksik veri" : "Çalışıyor";
+    const online = ops?.now ? fnum(ops.now.players_online_5min ?? ops.now.users_online_5min) : null;
+    const notes = [];
+    if (!ops) notes.push(he?.reason === "no_key" ? "Bağlantı anahtarı (HE_STATS_KEY) yok." : "Oyun verisi şu an alınamıyor.");
+    if (missing.length) notes.push(`Oyun tarafı henüz göndermiyor: <b>${missing.map(esc).join(", ")}</b>. Hauling Empire masaüstüne "yeni alanları canlıya al" de.`);
+    if (heS && !heS.ok) notes.push("Mağaza verisi şu an alınamıyor.");
+    cards.push(card("Hauling Empire", "/admin/hauling-empire/oyun", lv, label, [
+      row("Oyun verisi", ops ? chip("g", "geliyor") : chip("r", "gelmiyor")),
+      row("Son güncelleme", when(ops?.generated_at)),
+      row("Şu an oyunda", online ?? '<span class="dim">veri yok</span>'),
+      row("Oyuncu listesi", ops ? (Array.isArray(ops.players?.recent_7d) ? `${ops.players.recent_7d.length} oyuncu (7 gün)` : '<span class="dim">gelmiyor</span>') : '<span class="dim">-</span>'),
+      row("Mağaza verisi", heS?.ok ? chip("g", "geliyor") : chip("r", "gelmiyor")),
+    ], notes.join("<br>")));
+  }
+
+  // Poleris: app feed
+  {
+    const ops = pol?.ok ? pol.data : null;
+    const missing = ops ? opsMissing(ops, ["players", "sales.by_product_30d", "sales.test_purchases_30d"]) : [];
+    const lv = !ops ? "r" : missing.length || ops.status?.ok === false ? "y" : "g";
+    const last = Array.isArray(ops?.days) ? ops.days.slice().sort((a, b) => (a.date < b.date ? 1 : -1))[0] : null;
+    cards.push(card("Poleris", "/admin/poleris/uygulama", lv, !ops ? "Bağlantı yok" : lv === "y" ? "Eksik veri" : "Çalışıyor", [
+      row("Uygulama verisi", ops ? chip("g", "geliyor") : chip("r", "gelmiyor")),
+      row("Son güncelleme", when(ops?.generated_at)),
+      row("Son gün aktif (iOS + Android)", last ? (fnum(last.dau_ios) || 0) + (fnum(last.dau_android) || 0) : '<span class="dim">veri yok</span>'),
+      row("Son gün yükleme", last && fnum(last.installs) !== null ? fnum(last.installs) : '<span class="dim">veri yok</span>'),
+    ], !ops ? (pol?.reason === "no_key" ? "Bağlantı anahtarı (POLERIS_STATS_KEY) yok." : "Poleris verisi şu an alınamıyor.") : missing.length ? `Poleris tarafı henüz göndermiyor: <b>${missing.map(esc).join(", ")}</b>.` : ""));
+  }
+
+  return `<div class="top"><h1>Genel durum</h1></div>
+<p class="countries" style="margin-top:-12px">Yeşil: çalışıyor. Sarı: çalışıyor ama bir şey eksik. Kırmızı: veri gelmiyor. Ayrıntı için kartın altındaki linke bas.</p>
+<div class="st-grid">${cards.join("")}</div>`;
+}
+
 async function handleAdmin(request, env, url) {
   if (!env.ADMIN_PASSWORD) return new Response("Not found", { status: 404 });
   if (!isAdmin(request, env)) {
@@ -549,7 +649,9 @@ async function handleAdmin(request, env, url) {
   }
   const path = url.pathname.replace(/\/+$/, "") || "/admin";
 
-  if (path === "/admin" || path === "/admin/export.csv") {
+  if (path === "/admin") return adminPage(path, "Genel durum", await statusPage(env));
+
+  if (path === "/admin/bekleme" || path === "/admin/export.csv") {
     const { results: rows } = await env.DB.prepare(
       "SELECT id, email, role, link, country, created_at FROM waitlist ORDER BY id DESC"
     ).all();
@@ -663,14 +765,14 @@ ${tilesHtml([["Paylaşılan", sum.posted?.n || 0], ["Sırada", sum.queued?.n || 
     const PRODUCTS = [["haulingempire", "Hauling Empire"], ["poleris", "Poleris"], ["promovote", "PromoVote"]];
     const prod = PRODUCTS.some(([k]) => k === url.searchParams.get("p")) ? url.searchParams.get("p") : "haulingempire";
     const range0 = rangeOf(url);
-    const products = `<div class="tabs" style="border:0;margin-top:14px">${PRODUCTS.map(([k, n]) => `<a class="tab${k === prod ? " on" : ""}" href="${path}?p=${k}&range=${range0}">${n}</a>`).join("")}</div>`;
-    if (prod !== "haulingempire") return adminPage(path, store, products + (await storeMetricsPage(env, path, prod, PRODUCTS.find(([k]) => k === prod)[1], apple, range0, FEEDS[prod] ? await productFeed(env, prod, "days=90", 3600) : null)));
+    const products = ""; // the product switch lives in the top navigation now
+    if (prod !== "haulingempire") return adminPage(`${path}?p=${prod}`, store, products + (await storeMetricsPage(env, path, prod, PRODUCTS.find(([k]) => k === prod)[1], apple, range0, FEEDS[prod] ? await productFeed(env, prod, "days=90", 3600) : null)));
     const [data, opsR] = await Promise.all([heStats(env), heOps(env, 30)]);
     if (!data.ok) {
       const msg = data.reason === "no_key"
         ? "Hauling Empire bağlantı anahtarı (HE_STATS_KEY) henüz bu Worker'a girilmedi. Girilince veriler burada görünür."
         : "Hauling Empire verileri şu an alınamadı. Biraz sonra tekrar dene.";
-      return adminPage(path, store, `${products}<div class="top"><h1>${store}: Hauling Empire</h1></div><p class="empty">${esc(msg)}</p>`);
+      return adminPage(`${path}?p=${prod}`, store, `${products}<div class="top"><h1>${store}: Hauling Empire</h1></div><p class="empty">${esc(msg)}</p>`);
     }
     const SRC = { ok: "güncel", late: "gecikmeli", missing_key: "anahtar yok", error: "hata", unknown: "henüz bağlanmadı" };
     const srcLine = `Kaynaklar: ${apple ? "Apple" : "Google"} ${esc(SRC[data.sources?.[apple ? "apple" : "google"]] || "bilinmiyor")}, oyun sunucusu ${esc(SRC[data.sources?.game_server] || "bilinmiyor")}. Son güncelleme: ${esc(String(data.generated_at || "").slice(0, 16).replace("T", " "))} UTC.`;
@@ -701,7 +803,7 @@ ${tilesHtml([["Paylaşılan", sum.posted?.n || 0], ["Sırada", sum.queued?.n || 
     const table = rows.length
       ? rows.slice(0, range).map((r) => `<tr><td>${esc(r.date)}</td><td>${show(r.new_players)}</td><td>${show(r.downloads)}</td><td>${show(r.store_page_views)}</td><td>${show(r.d1, 1)}</td><td>${show(r.d7, 1)}</td><td>${show(r.crash_rate, 2)}</td>${apple ? "" : `<td>${show(r.anr_rate, 2)}</td>`}<td>${show(r.rating_avg)}</td></tr>`).join("")
       : `<tr><td colspan="${apple ? 8 : 9}" class="dim center">Henüz veri yok.</td></tr>`;
-    return adminPage(path, store, `${products}<div class="top"><h1>${store}: Hauling Empire</h1></div>
+    return adminPage(`${path}?p=${prod}`, store, `${products}<div class="top"><h1>${store}: Hauling Empire</h1></div>
 <p class="countries">${srcLine} Sadece biten günler görünür (UTC). Yeni oyuncu 5'ten azsa geri gelme oranı gizlenir.</p>
 ${rangePills(path, range, "&p=haulingempire")}
 ${tiles}
