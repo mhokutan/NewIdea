@@ -206,7 +206,7 @@ td a{color:#b394ff}.dim{color:var(--dim)}.center{text-align:center}.role{padding
 .empty{padding:28px;border:1px dashed var(--line);border-radius:16px;color:var(--muted);line-height:1.6}
 </style></head><body><main class="wrap admin">
 <p class="kicker" style="margin:0 0 12px">PromoVote yönetim paneli</p>
-<nav class="tabs" aria-label="Admin">${nav}</nav>
+<nav class="tabs" aria-label="Admin">${nav}<a href="/cdn-cgi/access/logout" class="tab" style="margin-left:auto">Çıkış</a></nav>
 ${body}
 </main><script src="/v-ignore.js"></script><script src="/admin-table.js" defer></script></body></html>`;
   return new Response(html, { headers: { "Content-Type": "text/html; charset=utf-8", ...ADMIN_HEADERS } });
@@ -361,7 +361,12 @@ function heOpsPage(path, ops, range, name = "Hauling Empire", kind = "oyun") {
   const banner = st.ok === false ? '<div class="warnbar">Bazı veriler eksik ya da gecikmeli. Aşağıda "Veri yok" yazan bölümler güncel değil.</div>' : "";
   const sec = (t) => `<h2 style="font-size:22px;margin:34px 0 12px">${esc(t)}</h2>`;
   const none = '<p class="empty">Veri yok</p>';
-  const out = [banner, `<div class="top"><h1>${esc(name)}: ${esc(kind)}</h1></div>`, `<p class="countries">Son güncelleme: ${esc(String(ops.generated_at || "").slice(0, 16).replace("T", " "))} UTC. Veriler 5 dakika önbellekte tutulur.</p>`, failed, rangePills(path, range)];
+  // Which sections the feed actually sent, so a missing one is visible instead of silently blank.
+  const SECTIONS = [["now", "Şu an"], ["players", "Oyuncular"], ["days", "Günler"], ["sales", "Satışlar"], ["sales.by_product_30d", "Ürüne göre"], ["sales.test_purchases_30d", "Test alımları"], ["online", "Online"], ["funnel", "Huni"], ["health", "Sağlık"]];
+  const has = (k) => k.split(".").reduce((o, x) => (o && typeof o === "object" && x in o ? o[x] : undefined), ops) !== undefined;
+  const missing = SECTIONS.filter(([k]) => !has(k)).map(([, l]) => l);
+  const feedLine = `<p class="countries" style="margin-top:-14px">Beslemede ${missing.length ? `olmayan bölümler: <b>${missing.map(esc).join(", ")}</b> (oyun tarafı henüz göndermiyor)` : "bütün bölümler var"}.</p>`;
+  const out = [banner, `<div class="top"><h1>${esc(name)}: ${esc(kind)}</h1></div>`, `<p class="countries">Son güncelleme: ${esc(String(ops.generated_at || "").slice(0, 16).replace("T", " "))} UTC. Veriler 5 dakika önbellekte tutulur.</p>`, feedLine, failed, rangePills(path, range)];
 
   // 1. Now
   out.push(sec("Şu an"));
