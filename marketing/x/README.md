@@ -121,7 +121,7 @@ PromoVote is live on [Google Play / the App Store]. 7 promos a day, one tap to c
 * New prime time slots added from 2026-10-14: 12:00 UTC (8am New York, Europe afternoon, builder questions), 16:00 UTC (noon New York, lunch questions for players) and 01:00 UTC (9pm New York, evening players). With 13, 15, 17 (video), 20 and 23 UTC that makes 8 a day. The new slots carry no link (about $0.015 each).
 * After Nov 1 (US daylight saving ends) every slot lands one hour earlier in New York; shift new posts one hour later in UTC.
 
-## X video bonus (founder decision 2026-10-15)
+## X video bonus (dropped 2026-10-15: it needs a paid plan; founder said skip)
 * X offer seen in the app: "Earn $5,000 for posting your own videos", 15 videos on 15 different days within 30 days, enroll by 2026-10-30. Founder enrolls in the X app and reads the Terms (Premium, ID and tax form may be needed; not tax advice).
 * One distinct video every day at 17:00 UTC from 2026-10-15 to 2026-10-30 (16 days, no video used twice). Text posts that held 17:00 moved to 18:00.
-* To do before 2026-10-30: make new videos (HyperFrames) so the daily video runs on to mid November as a buffer.
+* The daily distinct video at 17:00 UTC stays anyway (video posts get the most reposts).
