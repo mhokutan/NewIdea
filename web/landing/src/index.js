@@ -417,7 +417,6 @@ function heOpsPage(path, ops, range, name = "Hauling Empire", kind = "oyun") {
       noUsd ? ctile(`Apple satış adedi (${range} gün)`, sum("apple_count"), "", "Fiyat tutulmuyor") : ctile(`Apple (${range} gün)`, usd(sum("apple_usd")), "", `${sum("apple_count")} satış`),
       noUsd ? ctile(`Google satış adedi (${range} gün)`, sum("google_count"), "", "Fiyat tutulmuyor") : ctile(`Google (${range} gün)`, usd(sum("google_usd")), "", `${sum("google_count")} satış`),
       noUsd ? ctile("İade", sd.some((r) => fnum(r.refunds_count) !== null) ? sum("refunds_count") : null) : ctile("İade", usd(sum("refunds_usd")), refLv, `${sum("refunds_count")} adet`),
-      `<div class="tile" style="opacity:.6"><b>${fnum(sales.test_purchases_30d) ?? "Veri yok"}</b><span>Test satın almaları (sayılmaz, 30 gün)</span></div>`,
     ]));
     if (sd.length && !noUsd) {
       const maxS = Math.max(1, ...sd.map((r) => Math.max(fnum(r.apple_usd) || 0, fnum(r.google_usd) || 0)));
@@ -429,10 +428,12 @@ function heOpsPage(path, ops, range, name = "Hauling Empire", kind = "oyun") {
       }).join("");
       out.push(`<div class="tablewrap" style="padding:16px"><p class="countries" style="margin:0 0 8px">Günlük satış (USD): <span style="color:#8b5cff">■</span> Apple <span style="color:#c6ff3d">■</span> Google</p><svg viewBox="0 0 ${sd.length * step} ${h}" width="100%" height="${h}" preserveAspectRatio="none" role="img" aria-label="Günlük satış">${bars}</svg></div>`);
     }
-    // 4. Products
-    out.push(sec("Ürünler (30 gün)"));
-    const prods = Array.isArray(sales.by_product_30d) ? sales.by_product_30d : null;
-    out.push(!prods ? none : !prods.length ? '<p class="empty">Bu dönemde satış yok.</p>' : `<div class="tablewrap"><table><thead><tr><th>Ürün</th><th>Mağaza</th><th>Adet</th><th>USD</th></tr></thead><tbody>${prods.map((r) => `<tr><td>${esc(r.product_id ?? "")}</td><td>${esc({ apple: "Apple", google: "Google" }[r.store] ?? r.store ?? "")}</td><td>${fnum(r.count) ?? ""}</td><td>${usd(r.usd) ?? ""}</td></tr>`).join("")}</tbody></table></div>`);
+    // 4. Products (most dollars first) and the small test purchases label
+    out.push(sec("Ürüne göre (30 gün)"));
+    const testN = fnum(sales.test_purchases_30d);
+    if (testN !== null) out.push(`<p class="countries" style="margin:-4px 0 10px"><span class="badge-solo">Test alımları: ${testN}</span> <span class="dim">(toplamlara sayılmaz)</span></p>`);
+    const prods = Array.isArray(sales.by_product_30d) ? sales.by_product_30d.slice().sort((a, b) => (fnum(b.usd) || 0) - (fnum(a.usd) || 0) || (fnum(b.count) || 0) - (fnum(a.count) || 0)) : null;
+    out.push(!prods || !prods.length ? '<p class="empty">Henüz satış yok</p>' : `<div class="tablewrap"><table data-sortable><thead><tr><th>Ürün</th><th>Mağaza</th><th>Adet</th><th>Dolar</th></tr></thead><tbody>${prods.map((r) => `<tr><td>${esc(r.product_id ?? "")}</td><td>${esc({ apple: "Apple", google: "Google" }[r.store] ?? r.store ?? "")}</td><td>${fnum(r.count) ?? "-"}</td><td data-v="${fnum(r.usd) ?? 0}">${fnum(r.usd) === null ? "-" : usd(r.usd)}</td></tr>`).join("")}</tbody></table></div>`);
     // 5. Subscriptions
     out.push(sec("Abonelikler (30 gün)"));
     const sub = sales.subscriptions_30d;
