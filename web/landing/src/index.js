@@ -221,11 +221,12 @@ td a{color:#b394ff}.dim{color:var(--dim)}.center{text-align:center}.role{padding
 .chip{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:99px;font-size:12px;font-weight:700;white-space:nowrap}.chip::before{content:"";width:7px;height:7px;border-radius:50%;background:currentColor}
 .chip-g{color:#4ade80;background:rgba(74,222,128,.12)}.chip-y{color:#facc15;background:rgba(250,204,21,.12)}.chip-r{color:#f87171;background:rgba(248,113,113,.12)}
 .st-note{margin:10px 0 0;padding:10px 12px;border-radius:10px;font-size:13px;line-height:1.5;background:rgba(250,204,21,.08);color:#fde68a}
+.morebtn{display:block;margin:10px auto 0;padding:10px 18px;border-radius:99px;border:1px solid var(--line);background:var(--surface);color:#fff;font:600 14px var(--body,inherit);cursor:pointer}.morebtn:hover{border-color:var(--lime);color:var(--lime)}
 .empty{padding:28px;border:1px dashed var(--line);border-radius:16px;color:var(--muted);line-height:1.6}
 </style></head><body><main class="wrap admin">
 ${nav}
 ${body}
-</main><script src="/v-ignore.js"></script><script src="/admin-table.js" defer></script></body></html>`;
+</main><script src="/v-ignore.js"></script><script src="/admin-table.js?v=2" defer></script></body></html>`;
   return new Response(html, { headers: { "Content-Type": "text/html; charset=utf-8", ...ADMIN_HEADERS } });
 }
 
@@ -336,9 +337,9 @@ function playersSection(players) {
   const recRows = rec.length
     ? rec.map((p) => `<tr data-search="${esc(`${p.company || ""} ${p.username || ""}`.toLowerCase())}"><td>${dash(p.company)}</td><td>${dash(p.username)}</td><td>${dash(PLAT[p.platform] || p.platform)}</td><td>${reg(p.region)}</td><td data-v="${Date.parse(p.first_seen || "") || 0}">${day(p.first_seen)}</td><td data-v="${Date.parse(p.last_seen || "") || 0}">${day(p.last_seen)} <span class="dim">(${esc(ago(p.last_seen))})</span></td><td>${fnum(p.days_active) ?? "-"}</td><td>${fnum(p.sessions) ?? "-"}</td></tr>`).join("")
     : '<tr data-empty="1"><td colspan="8" class="dim center">Son 7 günde oyuncu yok.</td></tr>';
-  return `${sec("Şu an oyunda")}<div class="tablewrap"><table id="tbl-online" data-sortable><thead><tr><th>Şirket</th><th>Kullanıcı</th><th>Platform</th><th>Bölge</th><th>Mod</th><th>Son görülme</th></tr></thead><tbody>${onRows}</tbody></table></div>
+  return `${sec("Şu an oyunda")}<div class="tablewrap"><table id="tbl-online" data-sortable data-collapse="10"><thead><tr><th>Şirket</th><th>Kullanıcı</th><th>Platform</th><th>Bölge</th><th>Mod</th><th>Son görülme</th></tr></thead><tbody>${onRows}</tbody></table></div>
 ${sec(`Son 7 gün oyuncular (${rec.length})`)}<input class="tsearch" type="search" placeholder="Şirket veya kullanıcı adı ara" aria-label="Şirket veya kullanıcı adı ara" data-filter="tbl-recent">
-<div class="tablewrap"><table id="tbl-recent" data-sortable><thead><tr><th>Şirket</th><th>Kullanıcı</th><th>Platform</th><th>Bölge</th><th>İlk görülme</th><th>Son görülme</th><th>Aktif gün</th><th>Oturum</th></tr></thead><tbody>${recRows}</tbody></table></div>`;
+<div class="tablewrap"><table id="tbl-recent" data-sortable data-collapse="10"><thead><tr><th>Şirket</th><th>Kullanıcı</th><th>Platform</th><th>Bölge</th><th>İlk görülme</th><th>Son görülme</th><th>Aktif gün</th><th>Oturum</th></tr></thead><tbody>${recRows}</tbody></table></div>`;
 }
 
 // Download sources (store feed) and top search terms, for the Hauling Empire store pages.
@@ -389,6 +390,8 @@ function heOpsPage(path, ops, range, name = "Hauling Empire", kind = "oyun") {
   const feedLine = `<p class="countries" style="margin-top:-14px">Beslemede ${missing.length ? `olmayan bölümler: <b>${missing.map(esc).join(", ")}</b> (oyun tarafı henüz göndermiyor)` : "bütün bölümler var"}.</p>`;
   const out = [banner, `<div class="top"><h1>${esc(name)}: ${esc(kind)}</h1></div>`, `<p class="countries">Son güncelleme: ${esc(String(ops.generated_at || "").slice(0, 16).replace("T", " "))} UTC. Veriler 5 dakika önbellekte tutulur.</p>`, feedLine, failed, rangePills(path, range)];
 
+  const headLen = out.length;
+
   // 1. Now
   out.push(sec("Şu an"));
   out.push(ops.now ? ctiles([ctile("Son 5 dakikada aktif", fnum(ops.now.players_online_5min ?? ops.now.users_online_5min)), ...("online_mode_live" in ops.now ? [ctile("Online modda", fnum(ops.now.online_mode_live))] : [])]) : none);
@@ -428,7 +431,8 @@ function heOpsPage(path, ops, range, name = "Hauling Empire", kind = "oyun") {
     }
   }
 
-  // 3. Sales
+  // 3. Sales (founder 2026-10-16: money first, so this block is moved to the top below)
+  const salesAt = out.length;
   out.push(sec("Satışlar"));
   const sales = ops.sales;
   if (!sales) out.push(none);
@@ -465,6 +469,8 @@ function heOpsPage(path, ops, range, name = "Hauling Empire", kind = "oyun") {
     const sub = sales.subscriptions_30d;
     out.push(!sub ? none : ctiles([ctile("Yeni", fnum(sub.new)), ctile("Yenilenen", fnum(sub.renewed)), ctile("İptal / süresi biten", fnum(sub.cancelled_or_expired)), ctile("Şimdi etkin", fnum(sub.active_now))]));
   }
+
+  out.splice(headLen, 0, ...out.splice(salesAt));
 
   // 6. Online
   out.push(sec("Online"));
@@ -806,8 +812,8 @@ ${tilesHtml([["Paylaşılan", sum.posted?.n || 0], ["Sırada", sum.queued?.n || 
     return adminPage(`${path}?p=${prod}`, store, `${products}<div class="top"><h1>${store}: Hauling Empire</h1></div>
 <p class="countries">${srcLine} Sadece biten günler görünür (UTC). Yeni oyuncu 5'ten azsa geri gelme oranı gizlenir.</p>
 ${rangePills(path, range, "&p=haulingempire")}
-${tiles}
 ${heSalesCard(opsR.ok ? opsR.data : null)}
+${tiles}
 ${chart}
 ${sourcesSection(rows, range, data.top_search_terms_7d, apple)}
 <h2 style="font-size:20px;margin:28px 0 10px">Günlük tablo</h2>
