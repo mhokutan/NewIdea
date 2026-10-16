@@ -119,6 +119,7 @@ export const api = {
   event: (name: string) => { deviceId().then((d) => call('/v1/events/app', { method: 'POST', body: JSON.stringify({ name, deviceId: d }) })).catch(() => {}); },
   linkTap: async (handle: string, url: string) => call('/v1/events/link', { method: 'POST', body: JSON.stringify({ handle, url, deviceId: await deviceId() }) }),
   click: async (promoId: string) => call('/v1/events/click', { method: 'POST', body: JSON.stringify({ promoId, deviceId: await deviceId() }) }),
+  duel: async (a: string, b: string, pick: string) => call<{ ok: true; counted: boolean }>('/v1/duel', { method: 'POST', body: JSON.stringify({ a, b, pick, deviceId: await deviceId() }) }),
   report: (targetType: string, targetId: string, reason: string) => call('/v1/reports', { method: 'POST', body: JSON.stringify({ targetType, targetId, reason }) }),
   deleteAccount: () => call('/v1/me', { method: 'DELETE' }),
   myPromos: () => call<{ quota: UploadQuota; promos: MyPromo[] }>('/v1/me/promos'),

@@ -1373,6 +1373,22 @@ app.post("/v1/events/app", async (c) => {
   return c.json({ ok: true, counted: !!r.meta.changes });
 });
 
+// Duel picks from the app: one per pair per viewer per day. Both promos must be live. Read only by the admin page.
+app.post("/v1/duel", async (c) => {
+  const b = await c.req.json().catch(() => ({}));
+  const a = String(b.a || ""), d = String(b.b || ""), pick = String(b.pick || "");
+  if (!a || !d || a === d || (pick !== a && pick !== d)) return fail(c, 400, "bad_pick", "Bad pick.");
+  const v = await viewer(c);
+  const key = v?.profile ? `p:${v.profile.id}` : DEVICE_RE.test(b.deviceId || "") ? `d:${b.deviceId}` : null;
+  if (!key) return fail(c, 400, "bad_device", "Missing device id.");
+  const db = c.env.DB;
+  const live = await db.prepare("select count(*) n from promos where id in (?, ?) and status = 'live'").bind(a, d).first();
+  if (live?.n !== 2) return c.json({ ok: true, counted: false });
+  const [x, y] = a < d ? [a, d] : [d, a];
+  const r = await db.prepare("insert or ignore into duel_picks (day, a, b, pick, viewer_key) values (?, ?, ?, ?, ?)").bind(today(), x, y, pick, key).run();
+  return c.json({ ok: true, counted: !!r.meta.changes });
+});
+
 // The stored form of an outbound link: no utm tags, no trailing slash (withUtm adds a "/" to bare domains).
 const plainUrl = (raw) => {
   try {

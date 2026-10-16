@@ -600,13 +600,14 @@ async function statusPage(env) {
   const card = (title, href, lv, label, rows, note = "") => `<section class="st-card"><div class="st-head"><h2>${esc(title)}</h2>${chip(lv, label)}</div>${rows.join("")}${note ? `<p class="st-note">${note}</p>` : ""}<div class="st-head" style="margin:12px 0 0;justify-content:flex-end"><a href="${href}">Ayrıntılar ›</a></div></section>`;
   const safe = (pr) => pr.catch(() => null);
   const app = env.APPDB;
-  const [site, wl, xs, store, he, heS, pol, rq] = await Promise.all([
+  const [site, wl, xs, store, he, heS, pol, rq, ad] = await Promise.all([
     safe(env.DB.prepare("SELECT COUNT(DISTINCT visitor) v FROM visits WHERE day = ?").bind(today).first()),
     safe(env.DB.prepare("SELECT COUNT(*) n, SUM(substr(created_at, 1, 10) = ?) t, (SELECT COUNT(*) FROM duel_picks WHERE day >= date('now', '-6 days')) dp, (SELECT COUNT(DISTINCT visitor) FROM duel_picks WHERE day >= date('now', '-6 days')) dv FROM waitlist").bind(today).first()),
     app ? safe(app.prepare("SELECT (SELECT max(posted_at) FROM social_posts WHERE status = 'posted') last, (SELECT min(scheduled_at) FROM social_posts WHERE status = 'queued') next, (SELECT max(scheduled_at) FROM social_posts WHERE status = 'queued') until, (SELECT count(*) FROM social_posts WHERE status = 'queued') queued, (SELECT count(*) FROM social_posts WHERE status = 'failed' AND scheduled_at > datetime('now', '-3 days')) failed").first()) : null,
     app ? safe(app.prepare("SELECT (SELECT ran_at FROM job_runs WHERE name = 'store_stats') ran, (SELECT ran_at FROM job_runs WHERE name = 'store_stats_note') note, (SELECT sum(value) FROM metrics_daily WHERE product_id = 'promovote' AND metric IN ('downloads', 'installs') AND date >= date('now', '-7 days')) dl").first()) : null,
     safe(heOps(env, 7)), safe(heStats(env)), safe(productFeed(env, "poleris", "feed=ops&days=7", 300)),
     safe(reviewApi(env, "GET", "/v1/admin/review")),
+    app ? safe(app.prepare("SELECT count(*) n, count(DISTINCT viewer_key) v FROM duel_picks WHERE day >= date('now', '-6 days')").first()) : null,
   ]);
   const when = (iso) => (iso ? `${esc(String(iso).slice(0, 16).replace("T", " "))} UTC` : '<span class="dim">yok</span>');
   const cards = [];
@@ -627,7 +628,8 @@ async function statusPage(env) {
       row("Onay bekleyen video", waiting === null ? '<span class="dim">okunamadı</span>' : waiting ? `<a href="/admin/onay" style="color:#facc15">${waiting} video</a>` : "0"),
       row("Bugün siteye gelen", site ? fnum(site.v) ?? 0 : '<span class="dim">okunamadı</span>'),
       row("Bekleme listesi", wl ? `${fnum(wl.n) ?? 0} kişi${wl.t ? ` (bugün +${wl.t})` : ""}` : '<span class="dim">okunamadı</span>'),
-      row("Düello seçimi (7 gün)", wl ? `${fnum(wl.dp) ?? 0} seçim, ${fnum(wl.dv) ?? 0} kişi` : '<span class="dim">okunamadı</span>'),
+      row("Düello seçimi, site (7 gün)", wl ? `${fnum(wl.dp) ?? 0} seçim, ${fnum(wl.dv) ?? 0} kişi` : '<span class="dim">okunamadı</span>'),
+      row("Düello seçimi, uygulama (7 gün)", ad ? `${fnum(ad.n) ?? 0} seçim, ${fnum(ad.v) ?? 0} kişi` : '<span class="dim">okunamadı</span>'),
       row("Son X postu", when(xs?.last)),
       row("Sıradaki X postu", when(xs?.next)),
       row("X sırası", xs ? `${xs.queued} post${daysLeft !== null ? `, ${daysLeft} gün yeter` : ""}` : '<span class="dim">okunamadı</span>'),

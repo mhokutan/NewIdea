@@ -70,6 +70,17 @@ export default function Explore() {
         </View>
       </View>
 
+      {/* Duel (founder request 2026-10-16): two promos at once, pick the one that blows up first. */}
+      <View style={[styles.pad, { marginTop: 14 }]}>
+        <Pressable onPress={() => router.push('/duel')} style={({ pressed }) => [styles.duel, pressed && { opacity: 0.85 }]} accessibilityRole="button" accessibilityLabel={`${t('d_title')}. ${t('d_card')}`}>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.duelT}>{t('d_title')}</Text>
+            <Text style={styles.duelB}>{t('d_card')}</Text>
+          </View>
+          <View style={styles.duelBtn}><Text style={styles.duelBtnT}>{t('d_play')}</Text></View>
+        </Pressable>
+      </View>
+
       {/* Charts: real ranks only. Until enough scouts call promos this week, an honest progress card. */}
       <View style={[styles.pad, { marginTop: 14 }]}>
         <View style={styles.charts}>
@@ -163,4 +174,9 @@ const styles = themed(() => ({
   rankTitle: { color: C.text, fontSize: 14, fontWeight: '700' },
   h2: { color: C.text, fontSize: 20, ...F.display },
   chartsText: { color: C.text2, fontSize: 15, marginTop: 6 },
+  duel: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 16, borderRadius: 18, backgroundColor: C.surface, borderWidth: 1.5, borderColor: C.lime },
+  duelT: { color: C.text, fontSize: 20, ...F.display },
+  duelB: { color: C.text2, fontSize: 14, marginTop: 4, lineHeight: 19 },
+  duelBtn: { minHeight: 44, justifyContent: 'center', paddingHorizontal: 14, borderRadius: 14, backgroundColor: C.lime },
+  duelBtnT: { color: C.ink, fontWeight: '800', fontSize: 14 },
 }));

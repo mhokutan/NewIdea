@@ -2,6 +2,7 @@
 import { getLocales } from 'expo-localization';
 
 const en = {
+  d_title: "Duel", d_sub: "Which one blows up first?", d_card: "Two promos at once. Pick the one you think blows up first.", d_play: "Play Duel", d_sound: "Tap a video for sound", d_pick: "This one blows up", d_called: "Your pick", d_next: "Next duel", d_progress: "Duel {n} of {total}", d_vs: "vs", d_done_t: "Duels done", d_done_b: "Duel picks are just for fun. Your calls in the feed build your Scout Score.", d_again: "Play again", d_back: "Back",
   tab_feed: 'Feed', tab_explore: 'Explore', tab_me: 'Profile',
   home_drop: "Today's Drop", home_new: 'New', home_picks: 'Team picks', home_top: 'Charts',
   drop_done_t: "That's today's drop", drop_done_calls: 'You made {n} of {size} calls.', drop_done_p: "Results come in 7 days.", keep_watching: 'Keep watching',
@@ -79,6 +80,7 @@ const en = {
 };
 type Key = keyof typeof en;
 const es: Partial<Record<Key, string>> = {
+  d_title: "Duelo", d_sub: "¿Cuál explota primero?", d_card: "Dos promos a la vez. Elige la que crees que explota primero.", d_play: "Jugar Duelo", d_sound: "Toca un video para oír el sonido", d_pick: "Esta explota", d_called: "Tu elección", d_next: "Siguiente duelo", d_progress: "Duelo {n} de {total}", d_vs: "vs", d_done_t: "Duelos listos", d_done_b: "Las elecciones del Duelo son solo por diversión. Tus apuestas en el feed suman a tu Scout Score.", d_again: "Jugar otra vez", d_back: "Volver",
   tab_feed: 'Feed', tab_explore: 'Explorar', tab_me: 'Perfil',
   home_drop: 'Drop de hoy', home_new: 'Nuevo', home_picks: 'Elegidos', home_top: 'Rankings',
   drop_done_t: 'Ese fue el drop de hoy', drop_done_calls: 'Hiciste {n} de {size} predicciones.', drop_done_p: "Los resultados llegan en 7 días.", keep_watching: 'Seguir mirando',
@@ -155,6 +157,7 @@ const es: Partial<Record<Key, string>> = {
   loading: "Cargando",
 };
 const tr: Partial<Record<Key, string>> = {
+  d_title: "Düello", d_sub: "Hangisi önce patlar?", d_card: "Aynı anda iki promo. Önce patlayacağını düşündüğünü seç.", d_play: "Düello oyna", d_sound: "Ses için bir videoya dokun", d_pick: "Bu patlar", d_called: "Senin seçimin", d_next: "Sonraki düello", d_progress: "Düello {n} / {total}", d_vs: "vs", d_done_t: "Düellolar bitti", d_done_b: "Düello seçimleri sadece eğlence için. Akıştaki tahminlerin Kaşif Puanı kazandırır.", d_again: "Tekrar oyna", d_back: "Geri",
   tab_feed: 'Akış', tab_explore: 'Keşfet', tab_me: 'Profil',
   home_drop: "Günün seçkisi", home_new: 'Yeni', home_picks: "Ekip seçimi", home_top: 'Listeler',
   drop_done_t: 'Bugünün seçkisi bitti', drop_done_calls: '{size} videodan {n} tanesine tahmin yaptın.', drop_done_p: "Sonuçlar 7 gün sonra gelir.", keep_watching: 'İzlemeye devam et',
