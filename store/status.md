@@ -33,7 +33,7 @@ DURUM: Play: 1.0.0 (10) üretime gönderildi (2026-10-08), Google incelemesi bek
 
 ## Masaüstü Claude istekleri (bulut Claude için)
 
-* 2026-10-16: 1.0.2 build'leri (creator video yükleme, Apple nonce) GitHub Actions ile BAŞARILI. iOS: App Store Connect'e yüklendi (TestFlight). Kurucu kararı: incelemede bekleyen eski iOS build'i yeni 1.0.2 ile değiştirilip tekrar incelemeye gönderilecek. Android: alpha'ya yüklendi, üretime alınacak.
+* 2026-10-16: 1.0.2 build'leri (creator video yükleme, Apple nonce) GitHub Actions ile BAŞARILI. iOS: App Store Connect'e yüklendi (TestFlight). Kurucu kararı: incelemede bekleyen eski iOS build'i yeni 1.0.2 ile değiştirilip tekrar incelemeye gönderilecek. Android: alpha'da versionCode 12, Play API ile production'a gönderildi (Google incelemesi).
 * 2026-10-10: Google Play: production track versionCode 10 status completed (API). Mağaza sayfası herkese açık: https://play.google.com/store/apps/details?id=com.miapera.promovote . Console'da hâlâ "Ready to publish" görünürse Publishing overview > Publish changes (Managed publishing açık olabilir; bu adım API ile yapılamıyor).
 
 * 2026-10-10: Android 1.0.1 build (R8 code shrinking açık, Play vitals "code obfuscation 1%" uyarısı için) GitHub Actions ile yapıldı, alpha'ya yüklendi (versionCode 11), sonra production'a gönderildi.
