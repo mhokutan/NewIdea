@@ -17,7 +17,7 @@ creators = data["creators"]
 promos = data["promos"]
 e = html.escape
 
-LOGO = """<span class="logo-mark" aria-hidden="true"><svg viewBox="0 0 64 64"><rect width="64" height="64" rx="14" fill="#0a0a0a"/><path d="M19 32 32 19 45 32M19 45 32 32 45 45" fill="none" stroke="#ffd60a" stroke-width="6.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span>"""
+LOGO = """<span class="logo-mark" aria-hidden="true"><svg viewBox="0 0 64 64"><path d="M14 33 32 15 50 33" fill="none" stroke="#ffd60a" stroke-width="9.5" stroke-miterlimit="10"/><path d="M14 51 32 33 50 51" fill="none" stroke="#ffd60a" stroke-width="9.5" stroke-miterlimit="10"/></svg></span>"""
 
 LANG_SELECT = """<label class="lang-pick"><span class="visually-hidden" data-i18n="lang_label">Language</span>
         <select class="lang-select" aria-label="Language">
