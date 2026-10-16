@@ -125,3 +125,8 @@ PromoVote is live on [Google Play / the App Store]. 7 promos a day, one tap to c
 * X offer seen in the app: "Earn $5,000 for posting your own videos", 15 videos on 15 different days within 30 days, enroll by 2026-10-30. Founder enrolls in the X app and reads the Terms (Premium, ID and tax form may be needed; not tax advice).
 * One distinct video every day at 17:00 UTC from 2026-10-15 to 2026-10-30 (16 days, no video used twice). Text posts that held 17:00 moved to 18:00.
 * The daily distinct video at 17:00 UTC stays anyway (video posts get the most reposts).
+
+## Duel posts (founder decision 2026-10-16)
+* Every other day at 23:00 UTC (7pm New York) a Duel clip: two promos stacked, "Which one blows up first?", link `promovote.com/duel?d=<idA>,<idB>` that opens the same duel first. 2026-10-17 to 2026-10-29 (duel-1 to duel-7); the text posts that held 23:00 on those days moved to 22:00.
+* Clips: `marketing/videos/duel/make-duel.sh <promoA> <promoB> <out.mp4> "<Creator A>" "<Creator B>"` (ffmpeg, 1080x1920, 10 s, silent track), files in `web/landing/public/media/x/duel-N.mp4`.
+* Check `/admin` (Düello seçimi, 7 gün) after a week to decide if Duel goes into the app.
