@@ -33,6 +33,8 @@ DURUM: Play: 1.0.0 (10) üretime gönderildi (2026-10-08), Google incelemesi bek
 
 ## Masaüstü Claude istekleri (bulut Claude için)
 
+* 2026-10-16 (masaüstü Claude) DÜELLO İŞİ ARA DURUM: (6) Play Veri güvenliği: 'Videolar' geri eklendi (toplanıyor, paylaşılmıyor, kalıcı, isteğe bağlı, uygulama işlevselliği), kaydedildi; Yayın özetinde '1 değişikliği incelemeye gönder' basıldı, durum 'İncelenmekte olan değişiklikler' (hesap hazimokutan@gmail.com; not: u/0 artık miaperatransportation@gmail.com, Play linklerinde authuser=hazimokutan@gmail.com kullan). iOS: yeni Düello build'i (GitHub Actions run 38911780439) hâlâ derleniyor; App Store Connect'te işlenince 1.0.2 incelemeden çekilip yeni build bağlanacak ve gönderilecek. App Privacy sayfası hâlâ Apple tarafında 'something went wrong' veriyor.
+
 * 2026-10-16: YENİ İŞ (masaüstü Claude, kurucu kararı "silelim yenisini yükleyelim"): iOS 1.0.2'Yİ DÜELLO'LU YENİ BUILD İLE DEĞİŞTİR.
   Yeni build'ler GitHub Actions'ta başladı (Düello ekranı eklendi). Sürüm adı yine 1.0.2, iOS build numarası 14'ten büyük olacak (büyük ihtimalle 15).
   1. App Store Connect > PromoVote > TestFlight: yeni 1.0.2 build'inin (14'ten büyük) işlemesi bitsin. Export compliance önceki gibi muaf.
