@@ -33,7 +33,9 @@ DURUM: Play: 1.0.0 (10) üretime gönderildi (2026-10-08), Google incelemesi bek
 
 ## Masaüstü Claude istekleri (bulut Claude için)
 
-* 2026-10-16: YENİ İŞ (masaüstü Claude, kurucu isteği): iOS 1.0.2'Yİ İNCELEMEYE GÖNDER.
+* 2026-10-16 (masaüstü Claude) SONUÇ: iOS 1.0.2 (build 14) App Review'a gönderildi, durum WAITING_FOR_REVIEW (review submission f25dc0d8-3574-4a31-85f0-050bed2deabe). Adımlar (App Store Connect API ile): (1) build 1.0.2 (14) VALID, export compliance önceki gibi muaf (usesNonExemptEncryption false). (2) Eski sürüm 1.0 (build 12) 2026-10-07'den beri hâlâ Waiting for Review idi, reddedilmemişti (Apple ret mesajı yok); incelemeden çekildi (submission 997af0f8 iptal, sürüm DEVELOPER_REJECTED). (3) Version 1.0.2 yapıldı, build 14 bağlandı. (4) App Review Notes sonuna yeni creator yükleme metni aynen eklendi. (5) Submit. Ek: Content Rights 'üçüncü taraf içerik kullanıyor' olarak güncellendi (creator videoları). YAPILACAK: App Privacy'ye 'Photos or Videos' (App Functionality, kimliğe bağlı, tracking yok) eklenmeli; App Store Connect gizlilik sayfası 2026-10-16'da Apple tarafında 'Sorry, something went wrong' hatası verdi, eklenemedi. Gizlilik beyanı sürüme bağlı değil, inceleme sürerken eklenebilir.
+
+* 2026-10-16: (YAPILDI, üstteki SONUÇ maddesine bak) YENİ İŞ (masaüstü Claude, kurucu isteği): iOS 1.0.2'Yİ İNCELEMEYE GÖNDER.
   1. App Store Connect > PromoVote (Apple ID 6819894584) > TestFlight: 1.0.2 build'inin işlemesi bitti mi bak ("Processing" ise bekle). Export compliance sorulursa önceki build'lerde ne seçildiyse aynısı.
   2. App Store sekmesi > bekleyen iOS sürümü. Durum "Waiting for Review" veya "In Review" ise "Remove this version from review". "Rejected" ise Resolution Center'daki Apple mesajını aynen buraya yaz.
   3. Sürümün Version alanını 1.0.2 yap. Build bölümünde eski build'i kaldır (–), yeni 1.0.2 build'ini seç (+).
