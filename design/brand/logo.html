@@ -1,0 +1,111 @@
+<title>PromoVote Logo</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;800;900&display=swap">
+<style>
+/* Layout: three logo rows (concept, app icon, site header, light use), then a color proportion section for app and site. */
+:root{--bg:#0a0a0a;--card:#141415;--fg:#f5f5f7;--muted:#a1a1a6;--line:rgba(255,255,255,.1);--y:#ffd60a;--ink:#0a0a0a;--light:#f5f5f7;
+  --font:"Geist",-apple-system,ui-sans-serif,system-ui,sans-serif;color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font:16px/1.5 var(--font);padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:40px 64px}
+.wrap{max-width:1080px;margin:0 auto;display:grid;gap:28px}
+h1{font-weight:900;font-size:clamp(32px,5vw,52px);letter-spacing:-.045em;line-height:1.02;margin:0 0 10px}
+h2{font-weight:800;font-size:26px;letter-spacing:-.035em;margin:0}
+.lead{color:var(--muted);margin:0;max-width:62ch}
+.row{background:var(--card);border:1px solid var(--line);border-radius:24px;padding:26px;display:grid;gap:20px}
+.row header{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;align-items:baseline}
+.row header p{margin:4px 0 0;color:var(--muted);max-width:60ch}
+.tag{font-size:13px;font-weight:600;color:var(--ink);background:var(--y);border-radius:999px;padding:4px 10px;white-space:nowrap}
+.uses{display:grid;grid-template-columns:auto auto minmax(0,1fr) minmax(0,1fr);gap:16px;align-items:stretch}
+.use{border-radius:18px;border:1px solid var(--line);display:grid;place-items:center;padding:18px;min-height:150px;position:relative}
+.use small{position:absolute;left:12px;bottom:8px;font-size:11px;color:var(--muted)}
+.icon{width:96px;height:96px;border-radius:22px;display:grid;place-items:center;box-shadow:0 10px 30px rgba(0,0,0,.4)}
+.icon svg{width:62px;height:62px}
+.bar{width:100%;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 14px;border-radius:14px;background:#0a0a0a;border:1px solid var(--line)}
+.bar nav{display:flex;gap:12px;font-size:12px;color:var(--muted)}
+.bar .cta{font-size:12px;font-weight:700;background:var(--y);color:var(--ink);border-radius:999px;padding:6px 11px}
+.lite{background:var(--light)}
+.lite .bar{background:#fff;border-color:rgba(0,0,0,.08)}
+/* wordmark */
+.wm{display:inline-flex;align-items:flex-end;font-weight:900;letter-spacing:-.055em;line-height:1;color:var(--wm,#f5f5f7);font-size:var(--s,22px)}
+.wm svg{height:.98em;width:.86em;margin:0 -.04em 0 -.02em;transform:translateY(.1em)}
+.mk{display:inline-flex;align-items:center;gap:8px;font-weight:800;letter-spacing:-.04em;font-size:var(--s,18px);color:var(--wm,#f5f5f7)}
+.mk svg{width:1.5em;height:1.5em}
+.big{font-size:clamp(40px,7vw,64px)}
+/* colors */
+.ratio{display:flex;height:56px;border-radius:14px;overflow:hidden;border:1px solid var(--line)}
+.ratio div{display:flex;align-items:flex-end;padding:8px 10px;font-size:13px;font-weight:700}
+.cols{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+.cols h3{margin:0 0 10px;font-size:18px;letter-spacing:-.02em}
+.list{margin:12px 0 0;padding:0;list-style:none;display:grid;gap:8px;font-size:14px;color:var(--muted)}
+.list b{color:var(--fg);font-weight:600}
+.sw{display:inline-block;width:12px;height:12px;border-radius:3px;margin-right:6px;vertical-align:-1px;border:1px solid var(--line)}
+@media (max-width:900px){.uses{grid-template-columns:1fr 1fr}.cols{grid-template-columns:1fr}}
+@media (max-width:480px){.uses{grid-template-columns:1fr}}
+</style>
+
+<div class="wrap">
+<header>
+  <h1>Logo ve renk dengesi</h1>
+  <p class="lead">Renkler sabit: siyah, beyaz ve sarı. Aşağıda üç logo taslağı var; her biri uygulama ikonu, site başlığı ve açık zemin üstünde. En altta renklerin uygulamada ve sitede hangi oranda, tam olarak nerede kullanıldığı.</p>
+</header>
+
+<!-- Concept 1: wordmark, the V of Vote is a rising tick -->
+<section class="row">
+  <header><div><h2>1. Yükselen tik</h2><p>"Vote" kelimesindeki V harfi bir oy tikine dönüşüyor ve sağ kolu yukarı oka çıkıyor. Oy ver ve "patlar" fikri tek işarette. Netflix ve Coca-Cola gibi yazı odaklı.</p></div><span class="tag">Önerim</span></header>
+  <div class="use" style="min-height:130px"><span class="wm big">Promo<svg viewBox="0 0 64 64" aria-hidden="true"><path d="M8 10 27 54 45 20" fill="none" stroke="#ffd60a" stroke-width="11" stroke-linecap="round" stroke-linejoin="round"/><path d="M53 4 51 27 36 19Z" fill="#ffd60a" stroke="#ffd60a" stroke-width="4" stroke-linejoin="round"/></svg>ote</span><small>Ana logo</small></div>
+  <div class="uses">
+    <div class="use"><div class="icon" style="background:#0a0a0a;border:1px solid #2c2c2e"><svg viewBox="0 0 64 64" aria-label="İkon, siyah"><path d="M10 33 25 49 44 23" fill="none" stroke="#ffd60a" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/><path d="M54 10 49 28 36 16Z" fill="#ffd60a" stroke="#ffd60a" stroke-width="3.5" stroke-linejoin="round"/></svg></div><small>Uygulama ikonu</small></div>
+    <div class="use"><div class="icon" style="background:#ffd60a"><svg viewBox="0 0 64 64" aria-label="İkon, sarı"><path d="M10 33 25 49 44 23" fill="none" stroke="#0a0a0a" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/><path d="M54 10 49 28 36 16Z" fill="#0a0a0a" stroke="#0a0a0a" stroke-width="3.5" stroke-linejoin="round"/></svg></div><small>Sarı ikon</small></div>
+    <div class="use"><div class="bar"><span class="wm" style="--s:20px">Promo<svg viewBox="0 0 64 64" aria-hidden="true"><path d="M8 10 27 54 45 20" fill="none" stroke="#ffd60a" stroke-width="11" stroke-linecap="round" stroke-linejoin="round"/><path d="M53 4 51 27 36 19Z" fill="#ffd60a" stroke="#ffd60a" stroke-width="4" stroke-linejoin="round"/></svg>ote</span><nav><span>Explore</span><span>Duel</span></nav><span class="cta">Join</span></div><small>Site başlığı</small></div>
+    <div class="use lite"><div class="bar"><span class="wm" style="--s:20px;--wm:#0a0a0a">Promo<svg viewBox="0 0 64 64" aria-hidden="true"><path d="M8 10 27 54 45 20" fill="none" stroke="#0a0a0a" stroke-width="11" stroke-linecap="round" stroke-linejoin="round"/><path d="M53 4 51 27 36 19Z" fill="#0a0a0a" stroke="#0a0a0a" stroke-width="4" stroke-linejoin="round"/></svg>ote</span><nav><span>Explore</span><span>Duel</span></nav><span class="cta">Join</span></div><small style="color:#6e6e73">Açık zemin</small></div>
+  </div>
+</section>
+
+<!-- Concept 2: monogram P with an arrow stem -->
+<section class="row">
+  <header><div><h2>2. P ok</h2><p>P harfinin gövdesi yukarı bir oka dönüşüyor. Tek harflik, çok güçlü bir uygulama ikonu. Yanında yazı sade kalıyor.</p></div></header>
+  <div class="use" style="min-height:130px"><span class="mk big"><svg viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="15" fill="#ffd60a"/><path d="M23 50V17" stroke="#0a0a0a" stroke-width="8.5" stroke-linecap="round"/><path d="M14 24 23 13 32 24" fill="none" stroke="#0a0a0a" stroke-width="8.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M28 21h9a9.5 9.5 0 0 1 0 19h-14" fill="none" stroke="#0a0a0a" stroke-width="8.5" stroke-linecap="round" stroke-linejoin="round"/></svg>PromoVote</span><small>Ana logo</small></div>
+  <div class="uses">
+    <div class="use"><div class="icon" style="background:#ffd60a"><svg viewBox="0 0 64 64" aria-label="İkon, sarı"><path d="M23 50V17" stroke="#0a0a0a" stroke-width="8.5" stroke-linecap="round"/><path d="M14 24 23 13 32 24" fill="none" stroke="#0a0a0a" stroke-width="8.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M28 21h9a9.5 9.5 0 0 1 0 19h-14" fill="none" stroke="#0a0a0a" stroke-width="8.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div><small>Uygulama ikonu</small></div>
+    <div class="use"><div class="icon" style="background:#0a0a0a;border:1px solid #2c2c2e"><svg viewBox="0 0 64 64" aria-label="İkon, siyah"><path d="M23 50V17" stroke="#ffd60a" stroke-width="8.5" stroke-linecap="round"/><path d="M14 24 23 13 32 24" fill="none" stroke="#ffd60a" stroke-width="8.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M28 21h9a9.5 9.5 0 0 1 0 19h-14" fill="none" stroke="#ffd60a" stroke-width="8.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div><small>Siyah ikon</small></div>
+    <div class="use"><div class="bar"><span class="mk" style="--s:16px"><svg viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="15" fill="#ffd60a"/><path d="M23 50V17" stroke="#0a0a0a" stroke-width="8.5" stroke-linecap="round"/><path d="M14 24 23 13 32 24" fill="none" stroke="#0a0a0a" stroke-width="8.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M28 21h9a9.5 9.5 0 0 1 0 19h-14" fill="none" stroke="#0a0a0a" stroke-width="8.5" stroke-linecap="round" stroke-linejoin="round"/></svg>PromoVote</span><nav><span>Explore</span><span>Duel</span></nav><span class="cta">Join</span></div><small>Site başlığı</small></div>
+    <div class="use lite"><div class="bar"><span class="mk" style="--s:16px;--wm:#0a0a0a"><svg viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="15" fill="#0a0a0a"/><path d="M23 50V17" stroke="#ffd60a" stroke-width="8.5" stroke-linecap="round"/><path d="M14 24 23 13 32 24" fill="none" stroke="#ffd60a" stroke-width="8.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M28 21h9a9.5 9.5 0 0 1 0 19h-14" fill="none" stroke="#ffd60a" stroke-width="8.5" stroke-linecap="round" stroke-linejoin="round"/></svg>PromoVote</span><nav><span>Explore</span><span>Duel</span></nav><span class="cta">Join</span></div><small style="color:#6e6e73">Açık zemin</small></div>
+  </div>
+</section>
+
+<!-- Concept 3: sharp double chevron -->
+<section class="row">
+  <header><div><h2>3. Keskin çift ok</h2><p>Bugünkü işaretin daha kalın ve köşeli hali. Yuvarlak uçlar yerine kesik uçlar, daha sert ve sportif. Tanıdık kalır ama daha olgun durur.</p></div></header>
+  <div class="use" style="min-height:130px"><span class="mk big"><svg viewBox="0 0 64 64" aria-hidden="true"><path d="M14 33 32 15 50 33" fill="none" stroke="#ffd60a" stroke-width="9.5" stroke-linejoin="miter" stroke-miterlimit="10"/><path d="M14 51 32 33 50 51" fill="none" stroke="#ffd60a" stroke-width="9.5" stroke-linejoin="miter" stroke-miterlimit="10"/></svg>PromoVote</span><small>Ana logo</small></div>
+  <div class="uses">
+    <div class="use"><div class="icon" style="background:#0a0a0a;border:1px solid #2c2c2e"><svg viewBox="0 0 64 64" aria-label="İkon, siyah"><path d="M14 33 32 15 50 33" fill="none" stroke="#ffd60a" stroke-width="9.5" stroke-miterlimit="10"/><path d="M14 51 32 33 50 51" fill="none" stroke="#ffd60a" stroke-width="9.5" stroke-miterlimit="10"/></svg></div><small>Uygulama ikonu</small></div>
+    <div class="use"><div class="icon" style="background:#ffd60a"><svg viewBox="0 0 64 64" aria-label="İkon, sarı"><path d="M14 33 32 15 50 33" fill="none" stroke="#0a0a0a" stroke-width="9.5" stroke-miterlimit="10"/><path d="M14 51 32 33 50 51" fill="none" stroke="#0a0a0a" stroke-width="9.5" stroke-miterlimit="10"/></svg></div><small>Sarı ikon</small></div>
+    <div class="use"><div class="bar"><span class="mk" style="--s:16px"><svg viewBox="0 0 64 64" aria-hidden="true"><path d="M14 33 32 15 50 33" fill="none" stroke="#ffd60a" stroke-width="9.5" stroke-miterlimit="10"/><path d="M14 51 32 33 50 51" fill="none" stroke="#ffd60a" stroke-width="9.5" stroke-miterlimit="10"/></svg>PromoVote</span><nav><span>Explore</span><span>Duel</span></nav><span class="cta">Join</span></div><small>Site başlığı</small></div>
+    <div class="use lite"><div class="bar"><span class="mk" style="--s:16px;--wm:#0a0a0a"><svg viewBox="0 0 64 64" aria-hidden="true"><path d="M14 33 32 15 50 33" fill="none" stroke="#0a0a0a" stroke-width="9.5" stroke-miterlimit="10"/><path d="M14 51 32 33 50 51" fill="none" stroke="#0a0a0a" stroke-width="9.5" stroke-miterlimit="10"/></svg>PromoVote</span><nav><span>Explore</span><span>Duel</span></nav><span class="cta">Join</span></div><small style="color:#6e6e73">Açık zemin</small></div>
+  </div>
+</section>
+
+<section class="row">
+  <header><div><h2>Renk dengesi</h2><p>Büyük markaların kuralı: bir renk hakim, biri destek, biri sadece vurgu. Sarı az kullanıldığı için her göründüğünde dikkat çeker. Her yere sarı koymak markayı ucuzlatır.</p></div></header>
+  <div class="cols">
+    <div>
+      <h3>Koyu tema (site ve uygulama)</h3>
+      <div class="ratio"><div style="flex:75;background:#0a0a0a;color:#a1a1a6">Siyah ve koyu gri 75%</div><div style="flex:20;background:#f5f5f7;color:#0a0a0a">Beyaz 20%</div><div style="flex:5;background:#ffd60a;color:#0a0a0a;justify-content:center;padding:8px 0">5%</div></div>
+      <ul class="list">
+        <li><span class="sw" style="background:#0a0a0a"></span><b>Siyah:</b> zemin, kartlar, alt menü, videoların etrafı</li>
+        <li><span class="sw" style="background:#f5f5f7"></span><b>Beyaz:</b> yazılar, ikonlar, genel düğmeler (Takip et, Profili düzenle, Giriş yap)</li>
+        <li><span class="sw" style="background:#ffd60a"></span><b>Sarı:</b> sadece "Will blow up", story halkası, ilerleme çubuğu, logo ve sitedeki tek ana düğme (Join)</li>
+      </ul>
+    </div>
+    <div>
+      <h3>Açık tema (uygulama, telefon ayarına göre)</h3>
+      <div class="ratio"><div style="flex:75;background:#ffffff;color:#6e6e73">Beyaz ve açık gri 75%</div><div style="flex:20;background:#0a0a0a;color:#f5f5f7">Siyah 20%</div><div style="flex:5;background:#ffd60a;color:#0a0a0a;justify-content:center;padding:8px 0">5%</div></div>
+      <ul class="list">
+        <li><span class="sw" style="background:#ffffff"></span><b>Beyaz:</b> zemin ve kartlar</li>
+        <li><span class="sw" style="background:#0a0a0a"></span><b>Siyah:</b> yazılar, ikonlar, genel düğmeler</li>
+        <li><span class="sw" style="background:#ffd60a"></span><b>Sarı:</b> aynı yerler. Video akışı ve Düello açık temada da koyu kalır.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+</div>
