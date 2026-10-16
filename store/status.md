@@ -33,6 +33,13 @@ DURUM: Play: 1.0.0 (10) üretime gönderildi (2026-10-08), Google incelemesi bek
 
 ## Masaüstü Claude istekleri (bulut Claude için)
 
+* 2026-10-16: YENİ İŞ (masaüstü Claude, kurucu isteği): iOS 1.0.2'Yİ İNCELEMEYE GÖNDER.
+  1. App Store Connect > PromoVote (Apple ID 6819894584) > TestFlight: 1.0.2 build'inin işlemesi bitti mi bak ("Processing" ise bekle). Export compliance sorulursa önceki build'lerde ne seçildiyse aynısı.
+  2. App Store sekmesi > bekleyen iOS sürümü. Durum "Waiting for Review" veya "In Review" ise "Remove this version from review". "Rejected" ise Resolution Center'daki Apple mesajını aynen buraya yaz.
+  3. Sürümün Version alanını 1.0.2 yap. Build bölümünde eski build'i kaldır (–), yeni 1.0.2 build'ini seç (+).
+  4. App Review Information > Notes alanının sonuna aynen ekle:
+     "Creators can upload short promo videos (10 to 30 seconds) from the Studio tab. Every upload is reviewed by our team before it goes live, nothing is published automatically. Users can report and block any creator, and the Terms and Community Guidelines state zero tolerance for objectionable content, with reports handled within 24 hours. The review account (review@promovote.com) is a scout account; the upload screen is only shown to creator accounts."
+  5. Submit for Review. Sonucu (tarih, build numarası, durum, varsa Apple'ın ret nedeni) bu dosyaya yaz ve push et. Hiçbir sırrı (anahtar, şifre, REVIEW_CODE) buraya yazma.
 * 2026-10-16: 1.0.2 build'leri (creator video yükleme, Apple nonce) GitHub Actions ile BAŞARILI. iOS: App Store Connect'e yüklendi (TestFlight). Kurucu kararı: incelemede bekleyen eski iOS build'i yeni 1.0.2 ile değiştirilip tekrar incelemeye gönderilecek. Android: alpha'da versionCode 12, Play API ile production'a gönderildi (Google incelemesi).
 * 2026-10-10: Google Play: production track versionCode 10 status completed (API). Mağaza sayfası herkese açık: https://play.google.com/store/apps/details?id=com.miapera.promovote . Console'da hâlâ "Ready to publish" görünürse Publishing overview > Publish changes (Managed publishing açık olabilir; bu adım API ile yapılamıyor).
 
