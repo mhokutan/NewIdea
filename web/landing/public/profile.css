@@ -15,12 +15,12 @@
   width: 112px; height: 112px; border-radius: 28px; object-fit: cover;
   border: 4px solid #0a0a0f; background: #14141f;
 }
-.pavatar-mono { display: grid; place-items: center; background: #c6ff3d; color: #101014; font: 800 52px var(--display); }
+.pavatar-mono { display: grid; place-items: center; background: #ffd60a; color: #101014; font: 800 52px var(--display); }
 .pid h1 { font-size: clamp(28px, 4vw, 40px); }
 .phandle { color: #c9c6d8; margin-top: 4px; font-size: 15px; }
 .pchips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
 .pchip { font-size: 12px; font-weight: 600; padding: 5px 10px; border-radius: 99px; border: 1px solid rgba(255, 255, 255, 0.18); color: #dcd9e8; }
-.pchip-new { color: #c6ff3d; border-color: rgba(198, 255, 61, 0.4); }
+.pchip-new { color: #ffd60a; border-color: rgba(255, 214, 10, 0.4); }
 .pactions { display: flex; gap: 10px; padding-bottom: 4px; }
 .picon { width: 48px; padding: 0; }
 .picon svg { width: 20px; height: 20px; fill: currentColor; }
@@ -33,15 +33,15 @@
 }
 .plink svg { width: 14px; height: 14px; fill: currentColor; }
 a.plink:hover { border-color: rgba(255, 255, 255, 0.3); }
-.plink-soon { color: #c6ff3d; border-color: rgba(198, 255, 61, 0.35); }
+.plink-soon { color: #ffd60a; border-color: rgba(255, 214, 10, 0.35); }
 
 .pperk {
   display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap;
   margin-top: 22px; padding: 16px 18px; border-radius: 16px;
-  border: 1px solid rgba(198, 255, 61, 0.45); background: rgba(198, 255, 61, 0.06);
+  border: 1px solid rgba(255, 214, 10, 0.45); background: rgba(255, 214, 10, 0.06);
 }
 .pperk-title { display: flex; align-items: center; gap: 8px; font: 800 18px var(--display); color: #fff; }
-.pperk-title svg { width: 20px; height: 20px; fill: #c6ff3d; }
+.pperk-title svg { width: 20px; height: 20px; fill: #ffd60a; }
 .pperk-sub { color: #c9c6d8; font-size: 14px; margin-top: 4px; }
 .pdisclosure { margin-top: 14px; font-size: 13px; color: #a8a5b8; }
 

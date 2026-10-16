@@ -17,7 +17,7 @@ creators = data["creators"]
 promos = data["promos"]
 e = html.escape
 
-LOGO = """<span class="logo-mark" aria-hidden="true"><svg viewBox="0 0 64 64"><defs><linearGradient id="{gid}" x1="0" y1="0" x2="64" y2="64" gradientUnits="userSpaceOnUse"><stop stop-color="#ff5470"/><stop offset="1" stop-color="#8b5cff"/></linearGradient></defs><circle cx="32" cy="32" r="29" fill="#14141f" stroke="url(#{gid})" stroke-width="5"/><path d="M20 35 32 23 44 35M20 46 32 34 44 46" fill="none" stroke="#c6ff3d" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/></svg></span>"""
+LOGO = """<span class="logo-mark" aria-hidden="true"><svg viewBox="0 0 64 64"><rect width="64" height="64" rx="14" fill="#0a0a0a"/><path d="M19 32 32 19 45 32M19 45 32 32 45 45" fill="none" stroke="#ffd60a" stroke-width="6.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span>"""
 
 LANG_SELECT = """<label class="lang-pick"><span class="visually-hidden" data-i18n="lang_label">Language</span>
         <select class="lang-select" aria-label="Language">
@@ -38,7 +38,7 @@ def head(title, desc, canonical, og_image, extra_css="", og_type="website"):
   <title>{e(title)}</title>
   <meta name="description" content="{e(desc)}">
   <link rel="canonical" href="{canonical}">
-  <meta name="theme-color" content="#0a0a0f">
+  <meta name="theme-color" content="#0a0a0a">
   <meta property="og:type" content="{og_type}">
   <meta property="og:url" content="{canonical}">
   <meta property="og:title" content="{e(title)}">
@@ -47,7 +47,7 @@ def head(title, desc, canonical, og_image, extra_css="", og_type="website"):
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:image" content="{og_image}">
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
-  <link rel="preload" href="/fonts/bricolage-latin.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="/fonts/geist-latin.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="/styles.css">
   <link rel="stylesheet" href="/feed.css">{extra_css}
   <script src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit" async defer></script>

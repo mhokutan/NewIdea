@@ -11,7 +11,7 @@
   border: 1px solid rgba(255, 255, 255, 0.14); background: #14141f;
 }
 .xsearch input::placeholder { color: #8f8ca3; }
-.xsearch input:focus-visible { outline: 2px solid #c6ff3d; outline-offset: 2px; border-color: transparent; }
+.xsearch input:focus-visible { outline: 2px solid #ffd60a; outline-offset: 2px; border-color: transparent; }
 
 .xchips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
 .xchip {
@@ -21,13 +21,13 @@
 }
 .xchip:hover { border-color: rgba(255, 255, 255, 0.35); }
 .xchip[aria-pressed="true"] { background: #fff; color: #101014; border-color: #fff; }
-.xchip:focus-visible, .xtag:focus-visible, .xclear:focus-visible, .xcreator:focus-visible { outline: 2px solid #c6ff3d; outline-offset: 2px; }
+.xchip:focus-visible, .xtag:focus-visible, .xclear:focus-visible, .xcreator:focus-visible { outline: 2px solid #ffd60a; outline-offset: 2px; }
 
 .xsection { margin-top: 36px; }
 .xh2 { font: 800 20px var(--display); margin-bottom: 14px; }
 .xcount { color: #a8a5b8; font: 500 15px var(--body); }
 .xhead { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
-.xclear { font: 600 14px var(--body); color: #c6ff3d; background: none; border: 0; cursor: pointer; padding: 6px 0; text-decoration: underline; text-underline-offset: 3px; }
+.xclear { font: 600 14px var(--body); color: #ffd60a; background: none; border: 0; cursor: pointer; padding: 6px 0; text-decoration: underline; text-underline-offset: 3px; }
 
 .xtags { display: flex; flex-wrap: wrap; gap: 8px; }
 .xtag {
@@ -35,7 +35,7 @@
   padding: 7px 12px; border-radius: 10px; background: #14141f; border: 1px solid rgba(255, 255, 255, 0.08);
 }
 .xtag:hover { border-color: rgba(255, 255, 255, 0.3); color: #fff; }
-.xtag.is-on { background: #c6ff3d; color: #101014; border-color: #c6ff3d; }
+.xtag.is-on { background: #ffd60a; color: #101014; border-color: #ffd60a; }
 
 .xcreators { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
 .xcreator {
@@ -45,7 +45,7 @@
 .xcreator:hover { border-color: rgba(255, 255, 255, 0.3); }
 .xcreator[hidden] { display: none; }
 .xcreator-avatar { width: 56px; height: 56px; border-radius: 16px; object-fit: cover; margin-bottom: 6px; }
-.xcreator-avatar-mono { display: grid; place-items: center; background: #c6ff3d; color: #101014; font: 800 26px var(--display); }
+.xcreator-avatar-mono { display: grid; place-items: center; background: #ffd60a; color: #101014; font: 800 26px var(--display); }
 .xcreator-name { font: 700 15px var(--body); }
 .xcreator-kind { font-size: 13px; color: #c9c6d8; }
 

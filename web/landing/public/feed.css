@@ -1,5 +1,5 @@
 /* PromoVote feed: vertical, full screen, one promo per screen. */
-.feed-page { height: 100dvh; overflow: hidden; background: #08080c; }
+.feed-page { height: 100dvh; overflow: hidden; background: #0a0a0a; }
 .feed-page .btn { box-shadow: none; }
 .feed-page .btn:hover { box-shadow: none; }
 
@@ -59,7 +59,7 @@
 }
 .who { display: flex; align-items: center; gap: 10px; }
 .who-avatar { width: 40px; height: 40px; border-radius: 12px; object-fit: cover; flex: none; }
-.who-mono { display: grid; place-items: center; background: #c6ff3d; color: #101014; font: 800 20px var(--display); }
+.who-mono { display: grid; place-items: center; background: #ffd60a; color: #101014; font: 800 20px var(--display); }
 .who-name { font: 700 16px var(--body); color: #fff; }
 .who-kind { font-size: 13px; color: #c9c6d8; }
 .reel-title { font: 800 clamp(20px, 2.4vh, 24px)/1.15 var(--display); margin: 12px 0 6px; color: #fff; }
@@ -67,12 +67,12 @@
 .reel-tags { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
 .tag-soon {
   font-size: 12px; font-weight: 600; padding: 6px 10px; border-radius: 99px;
-  color: #c6ff3d; border: 1px solid rgba(198, 255, 61, 0.45); background: rgba(198, 255, 61, 0.1);
+  color: #ffd60a; border: 1px solid rgba(255, 214, 10, 0.45); background: rgba(255, 214, 10, 0.1);
 }
 .tag-perk {
   display: inline-flex; align-items: center; gap: 6px; cursor: pointer;
   font: 700 13px var(--body); padding: 8px 12px; border-radius: 99px; border: 0;
-  color: #101014; background: #c6ff3d; transition: transform .15s;
+  color: #101014; background: #ffd60a; transition: transform .15s;
 }
 .tag-perk svg { width: 16px; height: 16px; fill: currentColor; }
 .tag-perk:active { transform: scale(0.97); }
@@ -103,9 +103,9 @@
 }
 .rail-btn:hover svg { background: rgba(40, 40, 58, 0.9); }
 .rail-btn:active svg { transform: scale(0.92); }
-.rail-up svg { color: #c6ff3d; }
+.rail-up svg { color: #ffd60a; }
 .rail-btn span { text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8); }
-.rail-btn.is-shared svg { background: #c6ff3d; color: #101014; }
+.rail-btn.is-shared svg { background: #ffd60a; color: #101014; }
 
 /* Sound toggle lives at top right of the stage */
 .sound-btn {
@@ -117,7 +117,7 @@
 .sound-btn:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
 
 /* End card */
-.reel-end { background: radial-gradient(ellipse at 50% 40%, rgba(139, 92, 255, 0.18), transparent 60%), #08080c; }
+.reel-end { background: radial-gradient(ellipse at 50% 40%, rgba(255, 214, 10, 0.09), transparent 60%), #0a0a0a; }
 .end-card { max-width: 440px; padding: 24px; text-align: center; }
 .end-card h2 { font-size: clamp(32px, 5vw, 44px); }
 .end-card p { color: #c9c6d8; margin-top: 14px; }
@@ -149,10 +149,10 @@
 .sheet-form .fine a { color: #e9e7f2; }
 .sheet-turnstile { min-height: 65px; }
 .done-title { display: flex; align-items: center; gap: 10px; font: 800 22px var(--display); margin-top: 18px; }
-.done-title svg { width: 28px; height: 28px; fill: #c6ff3d; flex: none; }
+.done-title svg { width: 28px; height: 28px; fill: #ffd60a; flex: none; }
 .perk-reveal { display: grid; gap: 14px; margin-top: 4px; }
-.code-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 12px 12px 18px; border-radius: 14px; border: 1px dashed rgba(198, 255, 61, 0.6); background: rgba(198, 255, 61, 0.06); }
-.perk-code { font: 800 22px var(--display); letter-spacing: 0.06em; color: #c6ff3d; }
+.code-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 12px 12px 18px; border-radius: 14px; border: 1px dashed rgba(255, 214, 10, 0.6); background: rgba(255, 214, 10, 0.06); }
+.perk-code { font: 800 22px var(--display); letter-spacing: 0.06em; color: #ffd60a; }
 .perk-reveal .fine { color: #a8a5b8; font-size: 12px; }
 
 /* Desktop: video as a centered phone, rail beside it */
@@ -203,7 +203,7 @@ a.who:focus-visible { outline: 2px solid #fff; outline-offset: 4px; }
   width: min(calc(100vw - 32px), 460px);
   display: flex; align-items: center; gap: 10px;
   padding: 10px 8px 10px 16px; border-radius: 999px;
-  background: rgba(21, 21, 31, 0.92); border: 1px solid rgba(198, 255, 61, 0.35);
+  background: rgba(28, 28, 30, 0.92); border: 1px solid rgba(255, 214, 10, 0.35);
   backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
   color: #f5f4f8; font-size: 14px; font-weight: 600; line-height: 1.25;
   animation: nudge-in 0.4s cubic-bezier(0.2, 0.8, 0.2, 1) both;
