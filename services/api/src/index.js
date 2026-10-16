@@ -710,11 +710,21 @@ app.get("/media/*", async (c) => {
   const isProfile = /^profiles\/[a-f0-9-]{36}\/(avatar|banner)-[a-f0-9-]{36}\.(jpg|png|webp)$/.test(key);
   const isPromo = /^promos\/[a-f0-9-]{36}\/[a-f0-9-]{36}\/[a-f0-9-]{36}\.(mp4|jpg)$/.test(key);
   if (!isProfile && !isPromo) return c.notFound();
+  let cache = "public, max-age=31536000, immutable";
+  if (isPromo) {
+    const promoId = key.split("/")[2];
+    const live = await c.env.DB.prepare("select 1 from promos where id = ? and status = 'live'").bind(promoId).first();
+    if (!live) {
+      const exp = +(c.req.query("exp") || 0), sig = c.req.query("sig") || "";
+      if (!exp || exp < Date.now() / 1000 || sig !== (await mediaSig(c.env, key, exp))) return c.notFound();
+      cache = "private, no-store";
+    }
+  }
   // Videos need byte ranges (Safari and the app player seek with them).
   const range = c.req.header("Range");
   const obj = await c.env.MEDIA.get(key, range ? { range: c.req.raw.headers } : undefined);
   if (!obj) return c.notFound();
-  const headers = { "Content-Type": obj.httpMetadata?.contentType || "application/octet-stream", "Cache-Control": "public, max-age=31536000, immutable", "X-Content-Type-Options": "nosniff", "Accept-Ranges": "bytes" };
+  const headers = { "Content-Type": obj.httpMetadata?.contentType || "application/octet-stream", "Cache-Control": cache, "X-Content-Type-Options": "nosniff", "Accept-Ranges": "bytes" };
   if (range && obj.range) {
     const start = obj.range.offset ?? 0;
     const len = obj.range.length ?? (obj.size - start);
@@ -910,7 +920,7 @@ const slugify = (t) => String(t).toLowerCase().normalize("NFKD").replace(/[^\w\s
 
 async function uploadQuota(db, profile) {
   const since = new Date(Date.now() - 30 * 864e5).toISOString();
-  const used = (await db.prepare("select count(*) n from promos where creator_profile_id = ? and created_at >= ? and status != 'removed' and submitted_at is not null").bind(profile.id, since).first()).n;
+  const used = (await db.prepare("select count(*) n from promos where creator_profile_id = ? and created_at >= ? and submitted_at is not null").bind(profile.id, since).first()).n;
   const young = Date.parse(profile.created_at || "") > Date.now() - 30 * 864e5;
   const limit = young ? 5 : 10;
   return { used, limit, left: Math.max(0, limit - used) };
@@ -1009,6 +1019,8 @@ app.put("/v1/me/promos/:id/poster", async (c) => {
   const [pr, perr] = await ownEditablePromo(c, v);
   if (perr) return perr;
   if ((c.req.header("Content-Type") || "").split(";")[0].trim() !== "image/jpeg") return fail(c, 400, "bad_type", "Use a JPEG image.");
+  const declaredPoster = +(c.req.header("Content-Length") || 0);
+  if (!declaredPoster || declaredPoster > POSTER_MAX_BYTES) return fail(c, 413, "too_large", "Use a JPEG image under 1 MB.");
   const body = await c.req.arrayBuffer();
   const h = new Uint8Array(body.slice(0, 3));
   if (!body.byteLength || body.byteLength > POSTER_MAX_BYTES || !(h[0] === 0xff && h[1] === 0xd8 && h[2] === 0xff)) return fail(c, 400, "bad_type", "Use a JPEG image under 1 MB.");
@@ -1048,6 +1060,18 @@ app.delete("/v1/me/promos/:id", async (c) => {
   return c.json({ ok: true });
 });
 
+// Unreviewed upload files are private: /media serves them only with a short lived signature (admin review queue).
+async function mediaSig(env, key, exp) {
+  const k = await crypto.subtle.importKey("raw", new TextEncoder().encode(env.ADMIN_API_TOKEN || env.BETTER_AUTH_SECRET || ""), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
+  const mac = await crypto.subtle.sign("HMAC", k, new TextEncoder().encode(`${key}|${exp}`));
+  return [...new Uint8Array(mac)].map((b) => b.toString(16).padStart(2, "0")).join("").slice(0, 40);
+}
+async function signedMedia(c, url) {
+  if (!url || !url.startsWith(mediaBase(c))) return url;
+  const exp = Math.floor(Date.now() / 1000) + 3600;
+  return `${url}?exp=${exp}&sig=${await mediaSig(c.env, url.slice(mediaBase(c).length), exp)}`;
+}
+
 // Review queue for the founder (promovote.com/admin, which calls these with the shared secret ADMIN_API_TOKEN).
 function adminOk(c) {
   const t = c.req.header("X-Admin-Token") || "";
@@ -1063,6 +1087,7 @@ app.get("/v1/admin/review", async (c) => {
       v.mp4_url, v.poster_url, v.duration_ms, p.handle, p.display_name, p.created_at as profile_created
     from promos pr join profiles p on p.id = pr.creator_profile_id left join promo_videos v on v.promo_id = pr.id and v.label = 'A'
     where pr.status = 'in_review' order by pr.submitted_at limit 50`).all();
+  for (const r of results) { r.mp4_url = await signedMedia(c, r.mp4_url); r.poster_url = await signedMedia(c, r.poster_url); }
   return c.json({ items: results });
 });
 app.post("/v1/admin/review/:id", async (c) => {
@@ -1596,6 +1621,14 @@ async function weeklyStreaks(db) {
 
 async function daily(env) {
   const db = env.DB;
+  // Drafts that were never sent within 7 days are deleted with their files (uploads, founder decision 2026-10-16).
+  const oldDrafts = await db.prepare("select pr.id, v.mp4_url, v.poster_url from promos pr left join promo_videos v on v.promo_id = pr.id where pr.status = 'draft' and pr.created_at < ? limit 200")
+    .bind(new Date(Date.now() - 7 * 864e5).toISOString()).all();
+  const base = `${env.API_URL || "https://api.promovote.com"}/media/`;
+  for (const r of oldDrafts.results) {
+    for (const u of [r.mp4_url, r.poster_url]) if (u && u.startsWith(base)) await env.MEDIA?.delete(u.slice(base.length)).catch(() => {});
+    await db.prepare("delete from promos where id = ? and status = 'draft'").bind(r.id).run();
+  }
   const cutoff = new Date(Date.now() - 30 * 864e5).toISOString();
   // Hard delete accounts whose 30 day grace has ended (cascades to profile, follows, saves, calls).
   const { results } = await db.prepare(

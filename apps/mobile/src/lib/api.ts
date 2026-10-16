@@ -1,5 +1,6 @@
 // Small typed client for https://api.promovote.com (services/api).
 import * as Crypto from 'expo-crypto';
+import * as FileSystem from 'expo-file-system/legacy';
 import * as SecureStore from 'expo-secure-store';
 import { Platform } from 'react-native';
 import { API_URL, authClient } from './auth';
@@ -145,16 +146,29 @@ async function uploadMedia(kind: 'avatar' | 'banner', uri: string) {
 }
 
 // Uploads a local file (video or poster) with PUT. The body is the raw file, not a form.
+// On phones the file is streamed from disk (a 50 MB video never sits in JS memory); the web build uses a Blob.
 async function uploadFile(path: string, uri: string, type: string) {
   const cookie = Platform.OS === 'web' ? '' : await authClient.getCookie().catch(() => '');
-  const blob = await (await fetch(uri)).blob();
-  const res = await fetch(API_URL + path, {
-    method: 'PUT', body: blob, credentials: Platform.OS === 'web' ? 'include' : 'omit',
-    headers: { 'Content-Type': type, ...(cookie ? { Cookie: cookie } : {}) },
-  });
-  const body = await res.json().catch(() => ({}));
-  if (!res.ok) throw new ApiError(res.status, body?.error?.code || 'error', body?.error?.message || 'Upload failed', body);
+  const headers: Record<string, string> = { 'Content-Type': type, ...(cookie ? { Cookie: cookie } : {}) };
+  let status: number, text: string;
+  if (Platform.OS === 'web') {
+    const res = await fetch(API_URL + path, { method: 'PUT', body: await (await fetch(uri)).blob(), credentials: 'include', headers });
+    status = res.status; text = await res.text();
+  } else {
+    const res = await FileSystem.uploadAsync(API_URL + path, uri, { httpMethod: 'PUT', uploadType: FileSystem.FileSystemUploadType.BINARY_CONTENT, headers });
+    status = res.status; text = res.body;
+  }
+  let body: any = {};
+  try { body = JSON.parse(text); } catch {}
+  if (status < 200 || status >= 300) throw new ApiError(status, body?.error?.code || 'error', body?.error?.message || 'Upload failed', body);
   return body as { ok: true; url: string };
+}
+
+/** Size of a local file in bytes (null when unknown, for example on the web). */
+export async function fileSize(uri: string): Promise<number | null> {
+  if (Platform.OS === 'web') return null;
+  const info = await FileSystem.getInfoAsync(uri).catch(() => null);
+  return info && info.exists && typeof info.size === 'number' ? info.size : null;
 }
 
 // Random id for guest view counting. Not linked to the person, reset by reinstalling.

@@ -1,6 +1,7 @@
 // Upload a promo (modal, creators only; founder decision 2026-10-16). Pick a 10 to 30 s video, add a title, the
 // main button, the AI question and the rights confirmation, then it goes to our review queue (never straight live).
-// iOS exports the pick as 720p H.264 (smaller upload); Android sends the file as it is, so the 50 MB cap applies.
+// iOS exports the pick as H.264 (High, not the all-keyframe IFrame preset); Android sends the file as it is, so the
+// 50 MB cap is checked on disk before upload.
 import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
 import * as ImagePicker from 'expo-image-picker';
 import { router, useLocalSearchParams } from 'expo-router';
@@ -9,7 +10,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { api, ApiError, type Link, type UploadQuota } from '@/lib/api';
+import { api, ApiError, fileSize, type Link, type UploadQuota } from '@/lib/api';
+import { openExternal } from '@/lib/links';
 import { ctaLabel, ctaVisible } from '@/lib/categories';
 import { lang as appLang, t } from '@/lib/i18n';
 import { C, F, themed } from '@/lib/theme';
@@ -42,6 +44,8 @@ export default function UploadScreen() {
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
   const [done, setDone] = useState(false);
+  // Draft made by an earlier try that failed during the video upload; reused so retries do not pile up drafts.
+  const [draftId, setDraftId] = useState<string | null>(null);
 
   useEffect(() => {
     api.studio().then((s) => { setLinks(s.links); if (s.profile.primaryCta) setCta(s.profile.primaryCta); }).catch(() => {});
@@ -63,28 +67,28 @@ export default function UploadScreen() {
     const r = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ['videos'], allowsEditing: true, videoMaxDuration: 30, quality: 1,
       videoExportPreset: ImagePicker.VideoExportPreset.H264_1280x720,
-      videoQuality: ImagePicker.UIImagePickerControllerQualityType.IFrame1280x720,
+      videoQuality: ImagePicker.UIImagePickerControllerQualityType.High,
     });
     if (r.canceled || !r.assets[0]) return;
     const a = r.assets[0];
     const ms = a.duration ?? 0;
-    if (ms && ms < MIN_MS) return setErr(t('up_short'));
+    if (!ms || ms < MIN_MS) return setErr(t('up_short'));
     if (ms > MAX_MS) return setErr(t('up_long'));
-    if (a.fileSize && a.fileSize > MAX_BYTES) return setErr(t('up_big'));
-    setVideo({ uri: a.uri, durationMs: ms || 15000, width: a.width, height: a.height });
+    const bytes = a.fileSize ?? (await fileSize(a.uri));
+    if (bytes && bytes > MAX_BYTES) return setErr(t('up_big'));
+    setVideo({ uri: a.uri, durationMs: ms, width: a.width, height: a.height });
   };
 
   // A poster from the first second keeps the feed from showing a black frame while the video loads. Optional.
   const makePoster = async (uri: string) => {
+    const p = createVideoPlayer(uri);
     try {
-      const p = createVideoPlayer(uri);
       const [thumb] = await p.generateThumbnailsAsync([1]);
-      p.release();
       if (!thumb) return null;
       const img = await ImageManipulator.manipulate(thumb).resize({ width: 720 }).renderAsync();
       const out = await img.saveAsync({ format: SaveFormat.JPEG, compress: 0.75 });
       return out.uri;
-    } catch { return null; }
+    } catch { return null; } finally { p.release(); }
   };
 
   const noQuota = !fixId && quota !== null && quota.left <= 0;
@@ -94,9 +98,9 @@ export default function UploadScreen() {
     if (!video || ai === null) return;
     setBusy(true); setErr('');
     try {
-      let id = fixId;
+      let id = fixId || draftId;
       if (id) await api.updatePromo(id, { title: title.trim(), description: desc.trim() || null, aiGenerated: ai });
-      if (!id) id = (await api.createPromo({ title: title.trim(), description: desc.trim() || undefined, lang: vlang, ctaKind: ctaPick, aiGenerated: ai, rightsConfirmed: true })).id;
+      if (!id) { id = (await api.createPromo({ title: title.trim(), description: desc.trim() || undefined, lang: vlang, ctaKind: ctaPick, aiGenerated: ai, rightsConfirmed: true })).id; setDraftId(id); }
       await api.uploadPromoVideo(id, video.uri, video.durationMs, video.width, video.height);
       const poster = await makePoster(video.uri);
       if (poster) await api.uploadPromoPoster(id, poster).catch(() => {});
@@ -162,6 +166,9 @@ export default function UploadScreen() {
         <Pressable onPress={() => setRights(!rights)} style={styles.check} accessibilityRole="checkbox" accessibilityState={{ checked: rights }}>
           <View style={[styles.box, rights && { backgroundColor: C.lime, borderColor: C.lime }]}>{rights ? <Text style={{ color: C.ink, fontWeight: '800' }}>✓</Text> : null}</View>
           <Text style={[styles.text, { flex: 1 }]}>{t('up_rights')}</Text>
+        </Pressable>
+        <Pressable onPress={() => openExternal('https://promovote.com/guidelines')} accessibilityRole="link" style={{ minHeight: 44, justifyContent: 'center' }}>
+          <Text style={[styles.text, { color: C.accent, textDecorationLine: 'underline' }]}>{t('up_guidelines')}</Text>
         </Pressable>
 
         {err ? <Text style={{ color: C.danger }}>{err}</Text> : null}

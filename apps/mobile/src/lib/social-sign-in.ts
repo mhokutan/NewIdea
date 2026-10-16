@@ -1,5 +1,6 @@
 // Native Apple and Google sign in. The app gets an ID token and Better Auth verifies it on the server.
 import * as AppleAuthentication from 'expo-apple-authentication';
+import * as Crypto from 'expo-crypto';
 import { Platform } from 'react-native';
 
 import { authClient } from './auth';
@@ -16,14 +17,19 @@ export async function appleAvailable() {
 
 export async function signInWithApple(): Promise<Result> {
   try {
+    // One time nonce: Apple puts its SHA-256 in the identity token and the server compares it with the raw value,
+    // so a token copied from another sign in cannot be replayed here.
+    const rawNonce = Crypto.randomUUID() + Crypto.randomUUID();
+    const hashedNonce = await Crypto.digestStringAsync(Crypto.CryptoDigestAlgorithm.SHA256, rawNonce);
     const cred = await AppleAuthentication.signInAsync({
       requestedScopes: [AppleAuthentication.AppleAuthenticationScope.FULL_NAME, AppleAuthentication.AppleAuthenticationScope.EMAIL],
+      nonce: hashedNonce,
     });
     if (!cred.identityToken) return { ok: false, message: 'No token from Apple' };
     // Apple shares the name only on the very first sign in, so it is passed along to prefill the profile.
     const name = cred.fullName?.givenName || cred.fullName?.familyName
       ? { firstName: cred.fullName?.givenName || undefined, lastName: cred.fullName?.familyName || undefined } : undefined;
-    const r = await authClient.signIn.social({ provider: 'apple', idToken: { token: cred.identityToken, user: name ? { name } : undefined } });
+    const r = await authClient.signIn.social({ provider: 'apple', idToken: { token: cred.identityToken, nonce: rawNonce, user: name ? { name } : undefined } });
     return r.error ? { ok: false, message: r.error.message } : { ok: true };
   } catch (e: any) {
     return { ok: false, cancelled: e?.code === 'ERR_REQUEST_CANCELED', message: e?.message };
