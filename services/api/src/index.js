@@ -881,6 +881,17 @@ app.patch("/v1/me/promos/:id", async (c) => {
   if (err) return err;
   const b = await c.req.json().catch(() => ({}));
   if (typeof b.aiGenerated !== "boolean") return fail(c, 400, "bad_request", "Send aiGenerated true or false.");
+  // Drafts and fixable rejected uploads can also change their title and description before they are sent again.
+  if (b.title !== undefined || b.description !== undefined) {
+    const title = String(b.title ?? "").trim().replace(/\s+/g, " ");
+    if (title.length < 3 || title.length > 60) return fail(c, 400, "bad_title", "Title must be 3 to 60 characters.");
+    if (STAFF_NAME.test(title)) return fail(c, 400, "bad_title", "Titles cannot pose as PromoVote.");
+    const description = b.description == null ? null : String(b.description).trim().slice(0, 280) || null;
+    const u = await c.env.DB.prepare("update promos set title = ?, description = ?, ai_generated = ?, updated_at = ? where id = ? and creator_profile_id = ? and (status = 'draft' or (status = 'rejected' and fix_allowed = 1))")
+      .bind(title, description, b.aiGenerated ? 1 : 0, now(), c.req.param("id"), v.profile.id).run();
+    if (!u.meta.changes) return fail(c, 409, "not_editable", "This promo can no longer be changed.");
+    return c.json({ ok: true, aiGenerated: b.aiGenerated });
+  }
   const r = await c.env.DB.prepare("update promos set ai_generated = ? where id = ? and creator_profile_id = ?").bind(b.aiGenerated ? 1 : 0, c.req.param("id"), v.profile.id).run();
   if (!r.meta.changes) return fail(c, 404, "not_found", "Promo not found.");
   return c.json({ ok: true, aiGenerated: b.aiGenerated });

@@ -56,7 +56,7 @@
       [
         "expo-image-picker",
         {
-          "photosPermission": "PromoVote uses your photos only when you choose a profile picture or banner.",
+          "photosPermission": "PromoVote uses your photos and videos only when you choose a profile picture, a banner or a promo video to upload.",
           "cameraPermission": false,
           "microphonePermission": false
         }

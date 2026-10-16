@@ -9,12 +9,11 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import * as Clipboard from 'expo-clipboard';
 import { openExternal } from '@/lib/links';
-import { api, type Perk, type ScoutSummary, type Studio, type WalletItem } from '@/lib/api';
+import { api, type MyPromo, type Perk, type ScoutSummary, type Studio, type UploadQuota, type WalletItem } from '@/lib/api';
 import { CATEGORIES } from '@/lib/categories';
 import { compact } from '@/lib/format';
 import { lang, outcomeText, t } from '@/lib/i18n';
 import { C, F, themed, setThemePref, theme, type SchemePref } from '@/lib/theme';
-import { openMail } from '@/lib/mail';
 import { ACTIVITY_SEEN, getLocal } from '@/lib/store';
 import { reminderOn, turnOffReminder, turnOnReminder } from '@/lib/reminder';
 import { signOut, useMe } from '@/lib/use-me';
@@ -257,10 +256,12 @@ function CreatorHome({ onSettings }: { onSettings: () => void }) {
   const [data, setData] = useState<Studio | null>(null);
   const [range, setRange] = useState<'d7' | 'd28'>('d7');
   const [gift, setGift] = useState<(Perk & { claims: number }) | null | undefined>(undefined);
+  const [uploads, setUploads] = useState<{ quota: UploadQuota; promos: MyPromo[] } | null>(null);
+  const loadUploads = useCallback(() => { api.myPromos().then(setUploads).catch(() => {}); }, []);
   const loadGift = useCallback(() => {
     api.myPerks().then((r) => setGift(r.own.find((k) => k.status === 'active' && new Date(k.endsAt) > new Date()) || null)).catch(() => setGift(null));
   }, []);
-  useFocusEffect(useCallback(() => { api.studio().then(setData).catch(() => {}); loadGift(); }, [loadGift]));
+  useFocusEffect(useCallback(() => { api.studio().then(setData).catch(() => {}); loadGift(); loadUploads(); }, [loadGift, loadUploads]));
   const endGift = () => {
     if (!gift) return;
     Alert.alert(t('perk_end'), gift.title, [
@@ -274,7 +275,7 @@ function CreatorHome({ onSettings }: { onSettings: () => void }) {
     [data.checklist.banner, 'setup_banner', () => router.push('/edit-profile')],
     [data.checklist.bio, 'setup_bio', () => router.push('/edit-profile')],
     [data.checklist.links, 'setup_links', () => router.push('/edit-profile')],
-    [data.checklist.promo, 'setup_promo', () => openMail('hello@promovote.com', 'My first promo @' + p.handle)],
+    [data.checklist.promo || !!uploads?.promos.length, 'setup_promo', () => router.push('/upload')],
   ] : [];
   const doneCount = steps.filter(([d]) => d).length;
   const s = data?.stats[range];
@@ -312,7 +313,6 @@ function CreatorHome({ onSettings }: { onSettings: () => void }) {
               <Text style={[styles.text, done && { color: C.muted, textDecorationLine: 'line-through' }]}>{t(label)}</Text>
             </Pressable>
           ))}
-          {!data.checklist.promo ? <Text style={styles.small}>{t('uploads_soon')}</Text> : null}
         </View>
       ) : null}
 
@@ -364,6 +364,28 @@ function CreatorHome({ onSettings }: { onSettings: () => void }) {
         )}
       </View>
 
+      <View style={styles.card}>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+          <Text style={styles.h2}>{t('my_uploads')}</Text>
+          {uploads ? <Text style={styles.small}>{fmt(t('up_left'), { n: uploads.quota.left, limit: uploads.quota.limit })}</Text> : null}
+        </View>
+        <Button label={t('up_new')} onPress={() => router.push('/upload')} disabled={!!uploads && uploads.quota.left <= 0} />
+        {uploads?.promos.filter((u) => u.status !== 'live').map((u) => (
+          <View key={u.id} style={styles.upRow}>
+            <View style={{ flex: 1, gap: 2 }}>
+              <Text style={styles.rowTitle} numberOfLines={1}>{u.title}</Text>
+              <Text style={[styles.small, { color: u.status === 'rejected' ? C.danger : u.status === 'in_review' ? C.accent : C.muted }]}>{t(`st_${u.status}` as Parameters<typeof t>[0])}</Text>
+              {u.status === 'rejected' && u.rejectionNote ? <Text style={styles.small}>{u.rejectionNote}</Text> : null}
+            </View>
+            {u.canFix ? <Pill label={t('up_fix')} onPress={() => router.push({ pathname: '/upload', params: { fix: u.id } })} /> : null}
+            {u.status !== 'in_review' ? <Pill label={t('up_delete')} onPress={() => Alert.alert(t('up_delete_q'), u.title, [
+              { text: t('cancel'), style: 'cancel' },
+              { text: t('up_delete'), style: 'destructive', onPress: () => { api.deletePromo(u.id).then(loadUploads).catch(() => Alert.alert(t('error'))); } },
+            ])} /> : null}
+          </View>
+        ))}
+      </View>
+
       {data?.promos.length ? (
         <>
           <Text style={styles.h2}>{t('your_promos')}</Text>
@@ -375,11 +397,6 @@ function CreatorHome({ onSettings }: { onSettings: () => void }) {
             ))}
           </View>
         </>
-      ) : data ? (
-        <View style={styles.card}>
-          <Text style={styles.text}>{t('uploads_soon')}</Text>
-          <Button label={t('email_trailer')} ghost onPress={() => openMail('hello@promovote.com', 'My first promo @' + p.handle)} />
-        </View>
       ) : null}
     </View>
   );
@@ -401,6 +418,7 @@ function Empty({ text }: { text: string }) {
 
 
 const styles = themed(() => ({
+  upRow: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 10, borderTopWidth: 1, borderTopColor: C.line },
   card: { backgroundColor: C.surface, borderRadius: 18, padding: 18, gap: 10, borderWidth: 1, borderColor: C.line },
   h1: { color: C.text, fontSize: 26, ...F.display },
   h2: { color: C.text, fontSize: 18, ...F.display },

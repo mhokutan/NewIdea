@@ -56,6 +56,13 @@ export type Studio = {
   stats: { d7: Stat; d28: Stat; saves: number; followers: number }; calls: { total: number; blowUpPct: number | null }; promos: Promo[];
 };
 
+export type MyPromo = {
+  id: string; title: string; description: string | null; lang: string; status: 'draft' | 'in_review' | 'live' | 'rejected' | 'paused';
+  ctaKind: string | null; aiGenerated: boolean; rejectionNote: string | null; canFix: boolean;
+  video: { mp4: string; poster: string | null; durationMs: number } | null; createdAt: string; submittedAt: string | null; liveAt: string | null;
+};
+export type UploadQuota = { used: number; limit: number; left: number };
+
 export class ApiError extends Error {
   constructor(public status: number, public code: string, message: string, public body?: any) { super(message); }
 }
@@ -113,6 +120,15 @@ export const api = {
   click: async (promoId: string) => call('/v1/events/click', { method: 'POST', body: JSON.stringify({ promoId, deviceId: await deviceId() }) }),
   report: (targetType: string, targetId: string, reason: string) => call('/v1/reports', { method: 'POST', body: JSON.stringify({ targetType, targetId, reason }) }),
   deleteAccount: () => call('/v1/me', { method: 'DELETE' }),
+  myPromos: () => call<{ quota: UploadQuota; promos: MyPromo[] }>('/v1/me/promos'),
+  createPromo: (b: { title: string; description?: string; lang: string; ctaKind?: string | null; aiGenerated: boolean; rightsConfirmed: true }) =>
+    call<{ ok: true; id: string }>('/v1/me/promos', { method: 'POST', body: JSON.stringify(b) }),
+  uploadPromoVideo: (id: string, uri: string, durationMs: number, width?: number, height?: number) =>
+    uploadFile(`/v1/me/promos/${id}/video?duration_ms=${Math.round(durationMs)}${width ? `&width=${Math.round(width)}` : ''}${height ? `&height=${Math.round(height)}` : ''}`, uri, 'video/mp4'),
+  uploadPromoPoster: (id: string, uri: string) => uploadFile(`/v1/me/promos/${id}/poster`, uri, 'image/jpeg'),
+  updatePromo: (id: string, b: { title: string; description?: string | null; aiGenerated: boolean }) => call<{ ok: true }>(`/v1/me/promos/${id}`, { method: 'PATCH', body: JSON.stringify(b) }),
+  submitPromo: (id: string) => call<{ ok: true; status: string }>(`/v1/me/promos/${id}/submit`, { method: 'POST' }),
+  deletePromo: (id: string) => call<{ ok: true }>(`/v1/me/promos/${id}`, { method: 'DELETE' }),
 };
 
 // Uploads a resized JPEG from the photo picker.
@@ -122,6 +138,19 @@ async function uploadMedia(kind: 'avatar' | 'banner', uri: string) {
   const res = await fetch(`${API_URL}/v1/me/media?kind=${kind}`, {
     method: 'POST', body: blob, credentials: Platform.OS === 'web' ? 'include' : 'omit',
     headers: { 'Content-Type': 'image/jpeg', ...(cookie ? { Cookie: cookie } : {}) },
+  });
+  const body = await res.json().catch(() => ({}));
+  if (!res.ok) throw new ApiError(res.status, body?.error?.code || 'error', body?.error?.message || 'Upload failed', body);
+  return body as { ok: true; url: string };
+}
+
+// Uploads a local file (video or poster) with PUT. The body is the raw file, not a form.
+async function uploadFile(path: string, uri: string, type: string) {
+  const cookie = Platform.OS === 'web' ? '' : await authClient.getCookie().catch(() => '');
+  const blob = await (await fetch(uri)).blob();
+  const res = await fetch(API_URL + path, {
+    method: 'PUT', body: blob, credentials: Platform.OS === 'web' ? 'include' : 'omit',
+    headers: { 'Content-Type': type, ...(cookie ? { Cookie: cookie } : {}) },
   });
   const body = await res.json().catch(() => ({}));
   if (!res.ok) throw new ApiError(res.status, body?.error?.code || 'error', body?.error?.message || 'Upload failed', body);

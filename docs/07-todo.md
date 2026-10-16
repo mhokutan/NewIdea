@@ -28,6 +28,8 @@ Fikir: reklam parasını doğrudan uygulama indirme reklamına değil promovote.
 - [ ] App Privacy: v1'de olmayan "Photos or Videos" ve "Purchase History" beyanlarını gözden geçir (yükleme ve satın alma gelince geri eklenir).
 - [ ] Mağaza ASO (kurucu isteği 2026-10-14, ücretli ASO servisi yok, kendimiz yapıyoruz). Google Play aramada en çok başlık (30), kısa açıklama (80) ve uzun açıklama (4000) okunur; puan, indirme ve silinmeme de sıralamayı etkiler. Öneri PromoVote (sadece oyun değil, kurucu 2026-10-14): başlık `PromoVote: New Games & Apps` (27), kısa açıklama `Short promos from new games, apps and small shops. Call the next big hit early.` (79); uzun açıklama oyun, uygulama, küçük mağaza ve creator kelimelerini dengeli kullanır (new games, new apps, indie games, app discovery, small shops, promo videos). Sonra Hauling Empire (truck, tycoon, trucking simulator) ve Poleris için aynısı. Apple'da başlık, alt başlık ve 100 karakterlik keyword alanı. Build gerekmez; kurucu veya masaüstü Claude Play Console'a yapıştırır.
 
+- [ ] Creator video yükleme (2026-10-16): sunucu ve admin onay kuyruğu canlı; uygulama ekranı kodda hazır. Kurucu "build al" deyince Android 1.0.2 + iOS build, mağaza incelemesi. Sonra: Android'de cihazda sıkıştırma (native modül), yükleme ilerleme çubuğu, otomatik içerik taraması.
+
 ## Beklemede
 - [ ] Sanal karakterler Maya ve Kai (`characters/`): kurucu 2026-10-08 iptal etti, ChatGPT video üretemedi. Dosyalar repoda duruyor; video aracı bulunursa (Sora, Veo, Kling, HeyGen) aynı komutla devam edilir. Uygulamadaki "Made with AI" etiketi kalıyor.
 
