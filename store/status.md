@@ -33,6 +33,16 @@ DURUM: Play: 1.0.0 (10) üretime gönderildi (2026-10-08), Google incelemesi bek
 
 ## Masaüstü Claude istekleri (bulut Claude için)
 
+* 2026-10-16: YENİ İŞ (masaüstü Claude, kurucu kararı "silelim yenisini yükleyelim"): iOS 1.0.2'Yİ DÜELLO'LU YENİ BUILD İLE DEĞİŞTİR.
+  Yeni build'ler GitHub Actions'ta başladı (Düello ekranı eklendi). Sürüm adı yine 1.0.2, iOS build numarası 14'ten büyük olacak (büyük ihtimalle 15).
+  1. App Store Connect > PromoVote > TestFlight: yeni 1.0.2 build'inin (14'ten büyük) işlemesi bitsin. Export compliance önceki gibi muaf.
+  2. App Store sekmesi > 1.0.2 sürümü: incelemeden çek (Remove from Review / submission iptal). Build 14'ü kaldır, yeni build'i bağla.
+  3. İnceleme notu, Content Rights ve diğer her şey aynı kalsın. Notun sonuna şu cümleyi ekle: "This build also adds Duel (Explore > Play Duel): two promos at once, the user picks one. Picks are just for fun and do not affect anything else."
+  4. Gönder (Submit for Review).
+  5. Aynı oturumda App Privacy: 'Photos or Videos' ekle (App Functionality, kimliğe bağlı, tracking yok). Hata verirse sonra tekrar dene.
+  6. Google Play Console > Uygulama içeriği > Veri güvenliği: 'Videolar' satırını geri ekle (isteğe bağlı, uygulama işlevselliği, paylaşılmıyor). Kaydet. Android build'ini Play'e bulut Claude API ile gönderecek; Yayınlama özetinde "Değişiklikleri yayınla" butonu çıkarsa bas.
+  Sonucu buraya yaz.
+
 * 2026-10-16 (masaüstü Claude) SONUÇ: iOS 1.0.2 (build 14) App Review'a gönderildi, durum WAITING_FOR_REVIEW (review submission f25dc0d8-3574-4a31-85f0-050bed2deabe). Adımlar (App Store Connect API ile): (1) build 1.0.2 (14) VALID, export compliance önceki gibi muaf (usesNonExemptEncryption false). (2) Eski sürüm 1.0 (build 12) 2026-10-07'den beri hâlâ Waiting for Review idi, reddedilmemişti (Apple ret mesajı yok); incelemeden çekildi (submission 997af0f8 iptal, sürüm DEVELOPER_REJECTED). (3) Version 1.0.2 yapıldı, build 14 bağlandı. (4) App Review Notes sonuna yeni creator yükleme metni aynen eklendi. (5) Submit. Ek: Content Rights 'üçüncü taraf içerik kullanıyor' olarak güncellendi (creator videoları). YAPILACAK: App Privacy'ye 'Photos or Videos' (App Functionality, kimliğe bağlı, tracking yok) eklenmeli; App Store Connect gizlilik sayfası 2026-10-16'da Apple tarafında 'Sorry, something went wrong' hatası verdi, eklenemedi. Gizlilik beyanı sürüme bağlı değil, inceleme sürerken eklenebilir.
 
 * 2026-10-16: (YAPILDI, üstteki SONUÇ maddesine bak) YENİ İŞ (masaüstü Claude, kurucu isteği): iOS 1.0.2'Yİ İNCELEMEYE GÖNDER.
