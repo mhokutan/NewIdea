@@ -18,7 +18,8 @@ const SECURITY_HEADERS = {
     "frame-src https://challenges.cloudflare.com",
     "connect-src 'self' https://cloudflareinsights.com",
     "style-src 'self' 'unsafe-inline'",
-    "img-src 'self' data:",
+    "img-src 'self' data: https://api.promovote.com",
+    "media-src 'self' https://api.promovote.com",
     "font-src 'self'",
     "object-src 'none'",
     "base-uri 'self'",
@@ -198,7 +199,7 @@ const ROLE_LABELS = { creator: "Creator / Streamer", developer: "Game developer"
 // Admin navigation: one row of product groups, then the pages of the chosen group (founder: flat tabs were confusing).
 const ADMIN_GROUPS = [
   ["Durum", "Hepsi tek bakışta", [["/admin", "Genel durum"]]],
-  ["PromoVote", "Site, X, mağazalar", [["/admin/bekleme", "Bekleme listesi"], ["/admin/visitors", "Ziyaretçiler"], ["/admin/x", "X"], ["/admin/app-store?p=promovote", "App Store"], ["/admin/google-play?p=promovote", "Google Play"]]],
+  ["PromoVote", "Site, X, mağazalar", [["/admin/onay", "Onay kuyruğu"], ["/admin/bekleme", "Bekleme listesi"], ["/admin/visitors", "Ziyaretçiler"], ["/admin/x", "X"], ["/admin/app-store?p=promovote", "App Store"], ["/admin/google-play?p=promovote", "Google Play"]]],
   ["Hauling Empire", "Oyun ve mağazalar", [["/admin/hauling-empire/oyun", "Oyun"], ["/admin/app-store?p=haulingempire", "App Store"], ["/admin/google-play?p=haulingempire", "Google Play"]]],
   ["Poleris", "Uygulama ve mağazalar", [["/admin/poleris/uygulama", "Uygulama"], ["/admin/app-store?p=poleris", "App Store"], ["/admin/google-play?p=poleris", "Google Play"]]],
 ];
@@ -242,6 +243,10 @@ td a{color:#b394ff}.dim{color:var(--dim)}.center{text-align:center}.role{padding
 .chip-g{color:#4ade80;background:rgba(74,222,128,.12)}.chip-y{color:#facc15;background:rgba(250,204,21,.12)}.chip-r{color:#f87171;background:rgba(248,113,113,.12)}
 .st-note{margin:10px 0 0;padding:10px 12px;border-radius:10px;font-size:13px;line-height:1.5;background:rgba(250,204,21,.08);color:#fde68a}
 .morebtn{display:block;margin:10px auto 0;padding:10px 18px;border-radius:99px;border:1px solid var(--line);background:var(--surface);color:#fff;font:600 14px var(--body,inherit);cursor:pointer}.morebtn:hover{border-color:var(--lime);color:var(--lime)}
+.rv-grid{display:grid;grid-template-columns:minmax(200px,300px) 1fr;gap:18px;align-items:start}.rv-video{width:100%;aspect-ratio:9/16;border-radius:14px;background:#000;object-fit:contain}
+.rv-actions{margin:16px 0 8px}.rv-actions .btn{width:100%}.rv-reject summary{cursor:pointer;color:var(--muted);font-weight:600;padding:8px 0}.rv-reject form{display:grid;gap:10px;margin-top:6px}
+.rv-reject label{display:grid;gap:6px;font-size:14px;color:var(--muted)}.rv-reject select,.rv-reject textarea{padding:10px 12px;border-radius:10px;border:1px solid var(--line);background:var(--surface-2);color:#fff;font:inherit}
+.rv-reject .rv-check{display:flex;align-items:center;gap:8px}@media (max-width:700px){.rv-grid{grid-template-columns:1fr}.rv-video{max-height:70dvh}}
 .empty{padding:28px;border:1px dashed var(--line);border-radius:16px;color:var(--muted);line-height:1.6}
 </style></head><body><main class="wrap admin">
 ${nav}
@@ -595,12 +600,13 @@ async function statusPage(env) {
   const card = (title, href, lv, label, rows, note = "") => `<section class="st-card"><div class="st-head"><h2>${esc(title)}</h2>${chip(lv, label)}</div>${rows.join("")}${note ? `<p class="st-note">${note}</p>` : ""}<div class="st-head" style="margin:12px 0 0;justify-content:flex-end"><a href="${href}">Ayrıntılar ›</a></div></section>`;
   const safe = (pr) => pr.catch(() => null);
   const app = env.APPDB;
-  const [site, wl, xs, store, he, heS, pol] = await Promise.all([
+  const [site, wl, xs, store, he, heS, pol, rq] = await Promise.all([
     safe(env.DB.prepare("SELECT COUNT(DISTINCT visitor) v FROM visits WHERE day = ?").bind(today).first()),
     safe(env.DB.prepare("SELECT COUNT(*) n, SUM(substr(created_at, 1, 10) = ?) t, (SELECT COUNT(*) FROM duel_picks WHERE day >= date('now', '-6 days')) dp, (SELECT COUNT(DISTINCT visitor) FROM duel_picks WHERE day >= date('now', '-6 days')) dv FROM waitlist").bind(today).first()),
     app ? safe(app.prepare("SELECT (SELECT max(posted_at) FROM social_posts WHERE status = 'posted') last, (SELECT min(scheduled_at) FROM social_posts WHERE status = 'queued') next, (SELECT max(scheduled_at) FROM social_posts WHERE status = 'queued') until, (SELECT count(*) FROM social_posts WHERE status = 'queued') queued, (SELECT count(*) FROM social_posts WHERE status = 'failed' AND scheduled_at > datetime('now', '-3 days')) failed").first()) : null,
     app ? safe(app.prepare("SELECT (SELECT ran_at FROM job_runs WHERE name = 'store_stats') ran, (SELECT ran_at FROM job_runs WHERE name = 'store_stats_note') note, (SELECT sum(value) FROM metrics_daily WHERE product_id = 'promovote' AND metric IN ('downloads', 'installs') AND date >= date('now', '-7 days')) dl").first()) : null,
     safe(heOps(env, 7)), safe(heStats(env)), safe(productFeed(env, "poleris", "feed=ops&days=7", 300)),
+    safe(reviewApi(env, "GET", "/v1/admin/review")),
   ]);
   const when = (iso) => (iso ? `${esc(String(iso).slice(0, 16).replace("T", " "))} UTC` : '<span class="dim">yok</span>');
   const cards = [];
@@ -613,9 +619,12 @@ async function statusPage(env) {
     else if (!xs.queued) problems.push("X sırası boş, yeni post çıkmıyor.");
     else if (daysLeft !== null && daysLeft < 3) problems.push(`X sırası ${daysLeft} gün içinde bitiyor.`);
     if (xs?.failed) problems.push(`Son 3 günde ${xs.failed} X postu gönderilemedi.`);
+    const waiting = rq?.ok ? (rq.data.items || []).length : null;
+    if (waiting) problems.push(`${waiting} creator videosu onay bekliyor. Onay kuyruğuna bak.`);
     const note = store?.note && store.note !== "ok" ? `Mağaza raporu notu: ${esc(store.note)}` : "";
-    const lv = problems.length ? (xs?.queued ? "y" : "r") : "g";
+    const lv = problems.length ? (xs && !xs.queued ? "r" : "y") : "g";
     cards.push(card("PromoVote", "/admin/bekleme", lv, lv === "g" ? "Çalışıyor" : "Dikkat", [
+      row("Onay bekleyen video", waiting === null ? '<span class="dim">okunamadı</span>' : waiting ? `<a href="/admin/onay" style="color:#facc15">${waiting} video</a>` : "0"),
       row("Bugün siteye gelen", site ? fnum(site.v) ?? 0 : '<span class="dim">okunamadı</span>'),
       row("Bekleme listesi", wl ? `${fnum(wl.n) ?? 0} kişi${wl.t ? ` (bugün +${wl.t})` : ""}` : '<span class="dim">okunamadı</span>'),
       row("Düello seçimi (7 gün)", wl ? `${fnum(wl.dp) ?? 0} seçim, ${fnum(wl.dv) ?? 0} kişi` : '<span class="dim">okunamadı</span>'),
@@ -666,6 +675,64 @@ async function statusPage(env) {
 <div class="st-grid">${cards.join("")}</div>`;
 }
 
+// Review queue (founder decision 2026-10-16): creator uploads wait here until the founder approves or rejects them.
+// Reads and writes go to the API Worker with the shared secret ADMIN_API_TOKEN; this Worker never writes promovote-db.
+const API_BASE = "https://api.promovote.com";
+async function reviewApi(env, method, path, body) {
+  if (!env.ADMIN_API_TOKEN) return { ok: false, reason: "no_key" };
+  try {
+    const res = await fetch(API_BASE + path, { method, headers: { "X-Admin-Token": env.ADMIN_API_TOKEN, "Content-Type": "application/json" }, body: body ? JSON.stringify(body) : undefined, signal: AbortSignal.timeout(8000) });
+    const data = await res.json().catch(() => ({}));
+    return res.ok ? { ok: true, data } : { ok: false, reason: data?.error?.code || "http_" + res.status };
+  } catch { return { ok: false, reason: "fetch_failed" }; }
+}
+const REJECT_REASONS = [
+  ["guidelines", "Kurallara uymuyor"], ["quality", "Görüntü veya ses kalitesi düşük"], ["rights", "Video ona ait görünmüyor"],
+  ["misleading", "Yanıltıcı içerik"], ["adult", "Yetişkin veya yasak içerik"], ["link", "Link sorunlu"],
+];
+async function reviewPage(env, url) {
+  const r = await reviewApi(env, "GET", "/v1/admin/review");
+  const done = url.searchParams.get("ok");
+  const flash = done === "approve" ? '<div class="st-note" style="background:rgba(74,222,128,.12);color:#86efac;margin-bottom:16px">Onaylandı, promo yayında.</div>'
+    : done === "reject" ? '<div class="st-note" style="margin-bottom:16px">Reddedildi. Creator nedenini uygulamada görecek.</div>'
+    : url.searchParams.get("err") ? `<div class="warnbar">İşlem yapılamadı (${esc(url.searchParams.get("err"))}). Tekrar dene.</div>` : "";
+  const head = `<div class="top"><h1>Onay kuyruğu</h1></div><p class="countries" style="margin-top:-12px">Creator'ların yüklediği videolar burada bekler. İzle, sonra onayla ya da reddet. Onaylanan promo hemen yayına girer.</p>${flash}`;
+  if (!r.ok) return head + `<p class="empty">${r.reason === "no_key" ? "Bağlantı anahtarı (ADMIN_API_TOKEN) yok." : "Kuyruk şu an okunamadı. Biraz sonra tekrar dene."}</p>`;
+  const items = r.data.items || [];
+  if (!items.length) return head + '<p class="empty">Bekleyen video yok. Yeni yükleme gelince burada görünür.</p>';
+  const cta = { app_store: "App Store", google_play: "Google Play", steam: "Steam", itch: "itch.io", shop: "Mağaza", etsy: "Etsy", watch: "İzle", watch_live: "Canlı yayın", website: "Web sitesi", notify: "Haber ver" };
+  const cards = items.map((it) => `<section class="st-card rv">
+  <div class="rv-grid">
+    <video class="rv-video" src="${esc(it.mp4_url || "")}"${it.poster_url ? ` poster="${esc(it.poster_url)}"` : ""} controls playsinline preload="metadata"></video>
+    <div>
+      <div class="st-head"><h2>${esc(it.title)}</h2><span class="chip chip-y">İncelemede</span></div>
+      <p style="margin:0 0 10px;color:var(--muted)">${it.description ? esc(it.description) : '<span class="dim">Açıklama yok</span>'}</p>
+      <div class="st-row"><span>Creator</span><b class="st-v">${esc(it.display_name)} <span class="dim">@${esc(it.handle)}</span></b></div>
+      <div class="st-row"><span>Süre</span><b class="st-v">${Math.round((it.duration_ms || 0) / 1000)} sn</b></div>
+      <div class="st-row"><span>Dil</span><b class="st-v">${esc(String(it.lang || "").toUpperCase())}</b></div>
+      <div class="st-row"><span>Ana düğme</span><b class="st-v">${it.cta_kind ? `${esc(cta[it.cta_kind] || it.cta_kind)}${it.cta_url ? ` <a href="${esc(it.cta_url)}" target="_blank" rel="noopener noreferrer">link</a>` : ""}` : '<span class="dim">yok</span>'}</b></div>
+      <div class="st-row"><span>Yapay zeka</span><b class="st-v">${it.ai_generated ? "Evet, etiketlenecek" : "Hayır"}</b></div>
+      <div class="st-row"><span>Hak onayı</span><b class="st-v">${it.rights_confirmed_at ? "Verdi" : '<span style="color:#f87171">Yok</span>'}</b></div>
+      <div class="st-row"><span>Gönderildi</span><b class="st-v">${esc(String(it.submitted_at || "").slice(0, 16).replace("T", " "))} UTC</b></div>
+      <form method="post" action="/admin/onay/${esc(it.id)}" class="rv-actions">
+        <input type="hidden" name="action" value="approve">
+        <button type="submit" class="btn">Onayla ve yayınla</button>
+      </form>
+      <details class="rv-reject"><summary>Reddet</summary>
+        <form method="post" action="/admin/onay/${esc(it.id)}">
+          <input type="hidden" name="action" value="reject">
+          <label>Neden <select name="code">${REJECT_REASONS.map(([k, l]) => `<option value="${k}">${esc(l)}</option>`).join("")}</select></label>
+          <label>Creator'a not (İngilizce, en çok 280 harf)<textarea name="note" maxlength="280" rows="3" placeholder="Example: Please upload a clip with your own gameplay."></textarea></label>
+          <label class="rv-check"><input type="checkbox" name="fix" value="1" checked> Düzeltip tekrar gönderebilsin</label>
+          <button type="submit" class="btn btn-ghost">Reddet</button>
+        </form>
+      </details>
+    </div>
+  </div>
+</section>`).join("");
+  return head + `<p class="countries">Bekleyen: <b>${items.length}</b></p><div style="display:grid;gap:14px">${cards}</div>`;
+}
+
 async function handleAdmin(request, env, url) {
   if (!env.ADMIN_PASSWORD) return new Response("Not found", { status: 404 });
   if (!isAdmin(request, env)) {
@@ -675,6 +742,19 @@ async function handleAdmin(request, env, url) {
     });
   }
   const path = url.pathname.replace(/\/+$/, "") || "/admin";
+
+  if (path === "/admin/onay") return adminPage(path, "Onay kuyruğu", await reviewPage(env, url));
+  if (path.startsWith("/admin/onay/") && request.method === "POST") {
+    // Same origin forms only (the panel sits behind Cloudflare Access and Basic auth as well).
+    if (request.headers.get("Origin") !== "https://promovote.com") return new Response("Forbidden", { status: 403 });
+    const id = path.slice("/admin/onay/".length);
+    if (!/^[a-f0-9-]{36}$/.test(id)) return new Response("Not found", { status: 404 });
+    const f = await request.formData();
+    const action = f.get("action") === "approve" ? "approve" : f.get("action") === "reject" ? "reject" : null;
+    if (!action) return new Response("Bad request", { status: 400 });
+    const r = await reviewApi(env, "POST", `/v1/admin/review/${id}`, action === "approve" ? { action } : { action, code: String(f.get("code") || "guidelines"), note: String(f.get("note") || ""), fixAllowed: f.get("fix") === "1" });
+    return Response.redirect(`https://promovote.com/admin/onay?${r.ok ? `ok=${action}` : `err=${encodeURIComponent(r.reason)}`}`, 303);
+  }
 
   if (path === "/admin") return adminPage(path, "Genel durum", await statusPage(env));
 

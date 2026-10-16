@@ -47,8 +47,8 @@ app.post("/v1/webhooks/apple", (c) => c.body(null, 200));
 // Writes: small JSON bodies only, and a per IP rate limit (Workers Rate Limiting binding WRITE_LIMIT).
 app.use("/v1/*", async (c, next) => {
   if (c.req.method === "GET" || c.req.method === "OPTIONS") return next();
-  // Photo uploads check their own (larger) limit in the route.
-  if (c.req.path !== "/v1/me/media") {
+  // Photo, video and poster uploads check their own (larger) limits in the route.
+  if (c.req.path !== "/v1/me/media" && !/^\/v1\/me\/promos\/[^/]+\/(video|poster)$/.test(c.req.path)) {
     // A chunked body has no Content-Length and could skip the size check, so it is refused.
     // Requests without a body (taps like save or claim) still pass.
     if (/chunked/i.test(c.req.header("Transfer-Encoding") || "")) return c.json({ error: { code: "length_required", message: "Content-Length required." } }, 411);
@@ -707,10 +707,20 @@ app.post("/v1/me/media", async (c) => {
 app.get("/media/*", async (c) => {
   if (!c.env.MEDIA) return c.notFound();
   const key = c.req.path.slice("/media/".length);
-  if (!/^profiles\/[a-f0-9-]{36}\/(avatar|banner)-[a-f0-9-]{36}\.(jpg|png|webp)$/.test(key)) return c.notFound();
-  const obj = await c.env.MEDIA.get(key);
+  const isProfile = /^profiles\/[a-f0-9-]{36}\/(avatar|banner)-[a-f0-9-]{36}\.(jpg|png|webp)$/.test(key);
+  const isPromo = /^promos\/[a-f0-9-]{36}\/[a-f0-9-]{36}\/[a-f0-9-]{36}\.(mp4|jpg)$/.test(key);
+  if (!isProfile && !isPromo) return c.notFound();
+  // Videos need byte ranges (Safari and the app player seek with them).
+  const range = c.req.header("Range");
+  const obj = await c.env.MEDIA.get(key, range ? { range: c.req.raw.headers } : undefined);
   if (!obj) return c.notFound();
-  return new Response(obj.body, { headers: { "Content-Type": obj.httpMetadata?.contentType || "image/jpeg", "Cache-Control": "public, max-age=31536000, immutable", "X-Content-Type-Options": "nosniff" } });
+  const headers = { "Content-Type": obj.httpMetadata?.contentType || "application/octet-stream", "Cache-Control": "public, max-age=31536000, immutable", "X-Content-Type-Options": "nosniff", "Accept-Ranges": "bytes" };
+  if (range && obj.range) {
+    const start = obj.range.offset ?? 0;
+    const len = obj.range.length ?? (obj.size - start);
+    return new Response(obj.body, { status: 206, headers: { ...headers, "Content-Range": `bytes ${start}-${start + len - 1}/${obj.size}`, "Content-Length": String(len) } });
+  }
+  return new Response(obj.body, { headers: { ...headers, "Content-Length": String(obj.size) } });
 });
 
 // ------------------------------------------------------------------ perks (gifts)
@@ -874,6 +884,194 @@ app.patch("/v1/me/promos/:id", async (c) => {
   const r = await c.env.DB.prepare("update promos set ai_generated = ? where id = ? and creator_profile_id = ?").bind(b.aiGenerated ? 1 : 0, c.req.param("id"), v.profile.id).run();
   if (!r.meta.changes) return fail(c, 404, "not_found", "Promo not found.");
   return c.json({ ok: true, aiGenerated: b.aiGenerated });
+});
+
+// ------------------------------------------------------------------ creator uploads (founder decision 2026-10-16)
+// Flow: create a draft -> upload the video (and an optional poster) -> submit -> our review queue -> live.
+// Limits (docs/04 section 4.1): 10 to 30 s, 10 uploads in 30 days (5 in the first 30 days of the account).
+// The phone compresses to 720p H.264 before upload; the Worker only checks size, type bytes and the declared length.
+const UPLOAD_MAX_BYTES = 50 * 1024 * 1024;
+const UPLOAD_MIN_MS = 10000, UPLOAD_MAX_MS = 30500;
+const POSTER_MAX_BYTES = 1024 * 1024;
+const VIDEO_TYPES = { "video/mp4": "mp4", "video/quicktime": "mp4" };
+const mediaBase = (c) => `${c.env.API_URL || "https://api.promovote.com"}/media/`;
+const slugify = (t) => String(t).toLowerCase().normalize("NFKD").replace(/[^\w\s-]/g, "").trim().replace(/[\s_]+/g, "-").replace(/-+/g, "-").slice(0, 40) || "promo";
+
+async function uploadQuota(db, profile) {
+  const since = new Date(Date.now() - 30 * 864e5).toISOString();
+  const used = (await db.prepare("select count(*) n from promos where creator_profile_id = ? and created_at >= ? and status != 'removed' and submitted_at is not null").bind(profile.id, since).first()).n;
+  const young = Date.parse(profile.created_at || "") > Date.now() - 30 * 864e5;
+  const limit = young ? 5 : 10;
+  return { used, limit, left: Math.max(0, limit - used) };
+}
+
+app.get("/v1/me/promos", async (c) => {
+  const [v, err] = await requireProfile(c, "creator");
+  if (err) return err;
+  const db = c.env.DB;
+  const { results } = await db.prepare(`select pr.id, pr.title, pr.description, pr.lang, pr.status, pr.cta_kind, pr.ai_generated, pr.rejection_note, pr.fix_allowed,
+      pr.created_at, pr.submitted_at, pr.live_at, v.mp4_url, v.poster_url, v.duration_ms
+    from promos pr left join promo_videos v on v.promo_id = pr.id and v.label = 'A'
+    where pr.creator_profile_id = ? and pr.status != 'removed' order by pr.created_at desc limit 50`).bind(v.profile.id).all();
+  return c.json({
+    quota: await uploadQuota(db, v.profile),
+    promos: results.map((r) => ({ id: r.id, title: r.title, description: r.description, lang: r.lang, status: r.status, ctaKind: r.cta_kind, aiGenerated: !!r.ai_generated,
+      rejectionNote: r.rejection_note, canFix: r.status === "draft" || (r.status === "rejected" && !!r.fix_allowed), video: r.mp4_url ? { mp4: r.mp4_url, poster: r.poster_url, durationMs: r.duration_ms } : null,
+      createdAt: r.created_at, submittedAt: r.submitted_at, liveAt: r.live_at })),
+  });
+});
+
+app.post("/v1/me/promos", async (c) => {
+  const [v, err] = await requireProfile(c, "creator");
+  if (err) return err;
+  const b = await c.req.json().catch(() => ({}));
+  const title = String(b.title || "").trim().replace(/\s+/g, " ");
+  const description = b.description == null ? null : String(b.description).trim().slice(0, 280) || null;
+  if (title.length < 3 || title.length > 60) return fail(c, 400, "bad_title", "Title must be 3 to 60 characters.");
+  if (typeof b.aiGenerated !== "boolean") return fail(c, 400, "ai_question", "Tell us if the video was made or changed with AI.");
+  if (b.rightsConfirmed !== true) return fail(c, 400, "rights_required", "Confirm that you own this video or have the right to post it.");
+  if (STAFF_NAME && (STAFF_NAME.test(title) || (description && STAFF_NAME.test(description)))) return fail(c, 400, "bad_title", "Titles cannot pose as PromoVote.");
+  const lang = LANGS.includes(b.lang) ? b.lang : "en";
+  const db = c.env.DB;
+  const q = await uploadQuota(db, v.profile);
+  if (!q.left) return fail(c, 429, "upload_limit", `You can upload ${q.limit} promos in 30 days. Try again later.`);
+  const drafts = (await db.prepare("select count(*) n from promos where creator_profile_id = ? and status = 'draft'").bind(v.profile.id).first()).n;
+  if (drafts >= 5) return fail(c, 429, "too_many_drafts", "Finish or delete your drafts first.");
+  // Main button: the kind the creator chose, backed by their first safe matching profile link.
+  let ctaKind = null, ctaUrl = null;
+  if (b.ctaKind && CTA_PLATFORMS[b.ctaKind]) {
+    const plats = CTA_PLATFORMS[b.ctaKind];
+    if (plats.length) {
+      const link = await db.prepare(`select canonical_url from profile_links where profile_id = ? and safety_status = 'safe' and platform in (${plats.map(() => "?").join(",")}) order by position limit 1`).bind(v.profile.id, ...plats).first();
+      if (!link) return fail(c, 400, "cta_link_missing", "Add that link to your profile first.");
+      ctaKind = b.ctaKind; ctaUrl = link.canonical_url;
+    } else ctaKind = b.ctaKind;
+  }
+  const id = uuid();
+  await db.prepare("insert into promos (id, creator_profile_id, slug, lang, title, description, status, cta_kind, cta_url, cta_safety_status, rights_confirmed_at, ai_generated) values (?, ?, ?, ?, ?, ?, 'draft', ?, ?, ?, ?, ?)")
+    .bind(id, v.profile.id, `${slugify(title)}-${id.slice(0, 6)}`, lang, title, description, ctaKind, ctaUrl, ctaUrl ? "safe" : "pending", now(), b.aiGenerated ? 1 : 0).run();
+  return c.json({ ok: true, id, quota: { ...q } }, 201);
+});
+
+async function ownEditablePromo(c, v) {
+  const pr = await c.env.DB.prepare("select * from promos where id = ? and creator_profile_id = ?").bind(c.req.param("id"), v.profile.id).first();
+  if (!pr) return [null, fail(c, 404, "not_found", "Promo not found.")];
+  if (!(pr.status === "draft" || (pr.status === "rejected" && pr.fix_allowed))) return [null, fail(c, 409, "not_editable", "This promo can no longer be changed.")];
+  return [pr, null];
+}
+
+app.put("/v1/me/promos/:id/video", async (c) => {
+  const [v, err] = await requireProfile(c, "creator");
+  if (err) return err;
+  if (!c.env.MEDIA) return fail(c, 503, "media_unavailable", "Video upload is not available yet.");
+  const [pr, perr] = await ownEditablePromo(c, v);
+  if (perr) return perr;
+  const type = (c.req.header("Content-Type") || "").split(";")[0].trim();
+  if (!VIDEO_TYPES[type]) return fail(c, 400, "bad_type", "Use an MP4 or MOV video.");
+  const durationMs = Math.round(+c.req.query("duration_ms") || 0);
+  if (durationMs < UPLOAD_MIN_MS || durationMs > UPLOAD_MAX_MS) return fail(c, 400, "bad_duration", "Videos must be 10 to 30 seconds.");
+  const width = Math.round(+c.req.query("width") || 0) || null, height = Math.round(+c.req.query("height") || 0) || null;
+  const declared = +(c.req.header("Content-Length") || 0);
+  if (!declared || declared > UPLOAD_MAX_BYTES) return fail(c, 413, "too_large", "That video is too large (50 MB max).");
+  const body = await c.req.arrayBuffer();
+  if (!body.byteLength || body.byteLength > UPLOAD_MAX_BYTES) return fail(c, 413, "too_large", "That video is too large (50 MB max).");
+  // MP4 and MOV both start with a box whose type at bytes 4 to 8 is "ftyp".
+  if (String.fromCharCode(...new Uint8Array(body.slice(4, 8))) !== "ftyp") return fail(c, 400, "bad_type", "Use an MP4 or MOV video.");
+  const key = `promos/${v.profile.id}/${pr.id}/${uuid()}.mp4`;
+  await c.env.MEDIA.put(key, body, { httpMetadata: { contentType: "video/mp4", cacheControl: "public, max-age=31536000, immutable" } });
+  const url = mediaBase(c) + key;
+  const db = c.env.DB;
+  const old = await db.prepare("select mp4_url from promo_videos where promo_id = ? and label = 'A'").bind(pr.id).first();
+  await db.batch([
+    db.prepare("delete from promo_videos where promo_id = ? and label = 'A'").bind(pr.id),
+    db.prepare("insert into promo_videos (id, promo_id, label, mp4_url, duration_ms, width, height) values (?, ?, 'A', ?, ?, ?, ?)").bind(uuid(), pr.id, url, durationMs, width, height),
+    db.prepare("update promos set updated_at = ? where id = ?").bind(now(), pr.id),
+  ]);
+  if (old?.mp4_url && old.mp4_url.startsWith(mediaBase(c))) await c.env.MEDIA.delete(old.mp4_url.slice(mediaBase(c).length)).catch(() => {});
+  return c.json({ ok: true, url }, 201);
+});
+
+app.put("/v1/me/promos/:id/poster", async (c) => {
+  const [v, err] = await requireProfile(c, "creator");
+  if (err) return err;
+  if (!c.env.MEDIA) return fail(c, 503, "media_unavailable", "Upload is not available yet.");
+  const [pr, perr] = await ownEditablePromo(c, v);
+  if (perr) return perr;
+  if ((c.req.header("Content-Type") || "").split(";")[0].trim() !== "image/jpeg") return fail(c, 400, "bad_type", "Use a JPEG image.");
+  const body = await c.req.arrayBuffer();
+  const h = new Uint8Array(body.slice(0, 3));
+  if (!body.byteLength || body.byteLength > POSTER_MAX_BYTES || !(h[0] === 0xff && h[1] === 0xd8 && h[2] === 0xff)) return fail(c, 400, "bad_type", "Use a JPEG image under 1 MB.");
+  const row = await c.env.DB.prepare("select poster_url from promo_videos where promo_id = ? and label = 'A'").bind(pr.id).first();
+  if (!row) return fail(c, 409, "video_first", "Upload the video first.");
+  const key = `promos/${v.profile.id}/${pr.id}/${uuid()}.jpg`;
+  await c.env.MEDIA.put(key, body, { httpMetadata: { contentType: "image/jpeg", cacheControl: "public, max-age=31536000, immutable" } });
+  await c.env.DB.prepare("update promo_videos set poster_url = ? where promo_id = ? and label = 'A'").bind(mediaBase(c) + key, pr.id).run();
+  if (row.poster_url && row.poster_url.startsWith(mediaBase(c))) await c.env.MEDIA.delete(row.poster_url.slice(mediaBase(c).length)).catch(() => {});
+  return c.json({ ok: true, url: mediaBase(c) + key }, 201);
+});
+
+app.post("/v1/me/promos/:id/submit", async (c) => {
+  const [v, err] = await requireProfile(c, "creator");
+  if (err) return err;
+  const [pr, perr] = await ownEditablePromo(c, v);
+  if (perr) return perr;
+  const db = c.env.DB;
+  if (!(await db.prepare("select 1 from promo_videos where promo_id = ? and label = 'A' and mp4_url is not null").bind(pr.id).first())) return fail(c, 409, "video_first", "Upload the video first.");
+  if (pr.status === "draft") {
+    const q = await uploadQuota(db, v.profile);
+    if (!q.left) return fail(c, 429, "upload_limit", `You can upload ${q.limit} promos in 30 days. Try again later.`);
+  }
+  await db.prepare("update promos set status = 'in_review', submitted_at = ?, rejection_code = null, rejection_note = null, updated_at = ? where id = ?").bind(now(), now(), pr.id).run();
+  return c.json({ ok: true, status: "in_review" });
+});
+
+app.delete("/v1/me/promos/:id", async (c) => {
+  const [v, err] = await requireProfile(c, "creator");
+  if (err) return err;
+  const db = c.env.DB;
+  const pr = await db.prepare("select id from promos where id = ? and creator_profile_id = ? and status != 'removed'").bind(c.req.param("id"), v.profile.id).first();
+  if (!pr) return fail(c, 404, "not_found", "Promo not found.");
+  const vids = await db.prepare("select mp4_url, poster_url from promo_videos where promo_id = ?").bind(pr.id).all();
+  await db.prepare("update promos set status = 'removed', updated_at = ? where id = ?").bind(now(), pr.id).run();
+  for (const r of vids.results) for (const u of [r.mp4_url, r.poster_url]) if (u && u.startsWith(mediaBase(c))) await c.env.MEDIA?.delete(u.slice(mediaBase(c).length)).catch(() => {});
+  return c.json({ ok: true });
+});
+
+// Review queue for the founder (promovote.com/admin, which calls these with the shared secret ADMIN_API_TOKEN).
+function adminOk(c) {
+  const t = c.req.header("X-Admin-Token") || "";
+  const want = c.env.ADMIN_API_TOKEN || "";
+  if (!want || t.length !== want.length) return false;
+  let d = 0;
+  for (let i = 0; i < t.length; i++) d |= t.charCodeAt(i) ^ want.charCodeAt(i);
+  return d === 0;
+}
+app.get("/v1/admin/review", async (c) => {
+  if (!adminOk(c)) return fail(c, 401, "admin_only", "Not allowed.");
+  const { results } = await c.env.DB.prepare(`select pr.id, pr.title, pr.description, pr.lang, pr.cta_kind, pr.cta_url, pr.ai_generated, pr.submitted_at, pr.rights_confirmed_at,
+      v.mp4_url, v.poster_url, v.duration_ms, p.handle, p.display_name, p.created_at as profile_created
+    from promos pr join profiles p on p.id = pr.creator_profile_id left join promo_videos v on v.promo_id = pr.id and v.label = 'A'
+    where pr.status = 'in_review' order by pr.submitted_at limit 50`).all();
+  return c.json({ items: results });
+});
+app.post("/v1/admin/review/:id", async (c) => {
+  if (!adminOk(c)) return fail(c, 401, "admin_only", "Not allowed.");
+  const b = await c.req.json().catch(() => ({}));
+  const db = c.env.DB;
+  const pr = await db.prepare("select id from promos where id = ? and status = 'in_review'").bind(c.req.param("id")).first();
+  if (!pr) return fail(c, 404, "not_found", "Not in the review queue.");
+  if (b.action === "approve") {
+    await db.prepare("update promos set status = 'live', approved_at = ?, live_at = ?, resolves_at = ?, updated_at = ? where id = ?")
+      .bind(now(), now(), new Date(Date.now() + 7 * 864e5).toISOString(), now(), pr.id).run();
+    return c.json({ ok: true, status: "live" });
+  }
+  if (b.action === "reject") {
+    const note = String(b.note || "").trim().slice(0, 280) || "This promo does not follow the PromoVote guidelines.";
+    await db.prepare("update promos set status = 'rejected', rejection_code = ?, rejection_note = ?, fix_allowed = ?, updated_at = ? where id = ?")
+      .bind(String(b.code || "guidelines").slice(0, 40), note, b.fixAllowed === false ? 0 : 1, now(), pr.id).run();
+    return c.json({ ok: true, status: "rejected" });
+  }
+  return fail(c, 400, "bad_action", "Use approve or reject.");
 });
 
 app.get("/v1/me/activity", async (c) => {
