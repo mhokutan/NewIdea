@@ -15,8 +15,8 @@ SplashScreen.preventAutoHideAsync();
 export default function RootLayout() {
   // Brand font; if it fails to load the app still opens with the system font.
   const [fontsLoaded, fontError] = useFonts({
-    'Bricolage-Bold': require('../../assets/fonts/BricolageGrotesque-Bold.ttf'),
-    'Bricolage-ExtraBold': require('../../assets/fonts/BricolageGrotesque-ExtraBold.ttf'),
+    'Geist-Bold': require('../../assets/fonts/Geist-Bold.ttf'),
+    'Geist-SemiBold': require('../../assets/fonts/Geist-SemiBold.ttf'),
   });
   const ready = fontsLoaded || !!fontError;
   useEffect(() => { if (ready) SplashScreen.hideAsync(); }, [ready]);
@@ -26,7 +26,7 @@ export default function RootLayout() {
   useEffect(() => onThemeChange(() => setScheme(theme.scheme)), []);
   if (!ready) return null;
   const base = scheme === 'light' ? DefaultTheme : DarkTheme;
-  const navTheme = { ...base, colors: { ...base.colors, background: C.bg, card: C.bg, primary: C.lime, text: C.text, border: C.line } };
+  const navTheme = { ...base, colors: { ...base.colors, background: C.bg, card: C.bg, primary: C.text, text: C.text, border: C.line } };
   return (
     <GestureHandlerRootView key={scheme} style={{ flex: 1, backgroundColor: C.bg }}>
     <ThemeProvider value={navTheme}>

@@ -161,7 +161,7 @@ export default function Feed() {
     return (
       <View style={styles.center}>
         <Text style={styles.msg}>{t('error')}</Text>
-        <View style={{ width: 200, marginTop: 16 }}><Button label={t('retry')} onPress={() => { setError(false); setAttempt((n) => n + 1); }} /></View>
+        <View style={{ width: 200, marginTop: 16 }}><Button onDark label={t('retry')} onPress={() => { setError(false); setAttempt((n) => n + 1); }} /></View>
       </View>
     );
   }
@@ -267,7 +267,7 @@ function EndCard({ height, calls, size, guest, onMore, onExplore }: {
       {!guest && calls ? <Text style={styles.endText}>{t('drop_done_p')}</Text> : null}
       <View style={{ width: '100%', maxWidth: 320, gap: 10, marginTop: 18 }}>
         {guest ? <Button onDark label={t('sign_in')} onPress={() => router.push('/sign-in')} /> : null}
-        {remind === 'offer' ? <Button label={t('remind_me')} onPress={() => turnOnReminder().then((ok) => { setRemind(ok ? 'on' : 'denied'); if (ok) api.event('reminder_on'); })} /> : null}
+        {remind === 'offer' ? <Button onDark label={t('remind_me')} onPress={() => turnOnReminder().then((ok) => { setRemind(ok ? 'on' : 'denied'); if (ok) api.event('reminder_on'); })} /> : null}
         {remind === 'on' ? <Text style={styles.endText}>{t('remind_on')}</Text> : null}
         {remind === 'denied' ? <Text style={styles.endText}>{t('remind_denied')}</Text> : null}
         <Button onDark label={t('keep_watching')} ghost={guest || remind === 'offer'} onPress={onMore} />
@@ -295,6 +295,6 @@ const styles = StyleSheet.create({
   end: { alignItems: 'center', justifyContent: 'center', backgroundColor: D.bg, padding: 32, gap: 8 },
   endTitle: { color: D.text, fontSize: 28, ...F.display, textAlign: 'center', marginTop: 8 },
   endText: { color: D.text2, fontSize: 16, lineHeight: 23, textAlign: 'center', maxWidth: 320 },
-  note: { alignSelf: 'flex-start', marginTop: 8, marginLeft: 4, maxWidth: 320, color: '#fff', fontSize: 12, fontWeight: '600', backgroundColor: 'rgba(10,10,15,0.78)', borderRadius: 10, paddingHorizontal: 10, paddingVertical: 6, overflow: 'hidden' },
+  note: { alignSelf: 'flex-start', marginTop: 8, marginLeft: 4, maxWidth: 320, color: '#fff', fontSize: 12, fontWeight: '600', backgroundColor: 'rgba(10,10,10,0.78)', borderRadius: 10, paddingHorizontal: 10, paddingVertical: 6, overflow: 'hidden' },
   scrim: { position: 'absolute', top: 0, left: 0, right: 0 },
 });

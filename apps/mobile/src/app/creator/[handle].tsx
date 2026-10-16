@@ -64,8 +64,8 @@ export default function CreatorScreen() {
   return (
     <ScrollView style={{ flex: 1, backgroundColor: C.bg }} contentContainerStyle={{ paddingBottom: 48 }}>
       <View style={{ height: 180 + insets.top }}>
-        {p.banner ? <Image source={{ uri: p.banner }} style={StyleSheet.absoluteFill} contentFit="cover" /> : <Fade colors={['#1d1830', '#0a0a0f']} horizontal style={StyleSheet.absoluteFill} />}
-        <Fade colors={['rgba(10,10,15,0.35)', 'rgba(10,10,15,0)', 'rgba(10,10,15,0.6)']} locations={[0, 0.4, 1]} style={StyleSheet.absoluteFill} />
+        {p.banner ? <Image source={{ uri: p.banner }} style={StyleSheet.absoluteFill} contentFit="cover" /> : <Fade colors={['#1c1c1e', '#0a0a0f']} horizontal style={StyleSheet.absoluteFill} />}
+        <Fade colors={['rgba(10,10,10,0.35)', 'rgba(10,10,10,0)', 'rgba(10,10,10,0.6)']} locations={[0, 0.4, 1]} style={StyleSheet.absoluteFill} />
         <Pressable onPress={() => router.back()} style={[styles.back, { top: insets.top + 8 }]} accessibilityRole="button" accessibilityLabel={t('back')}>
           <Icon name="back" size={20} />
         </Pressable>
@@ -184,7 +184,7 @@ const styles = themed(() => ({
   linkText: { color: C.text, fontWeight: '600', fontSize: 14 },
   soonCaption: { color: C.accent, fontSize: 13, fontWeight: '700', alignSelf: 'center' },
   soon: { color: C.accent, borderColor: C.accent, fontWeight: '600', fontSize: 14 },
-  gift: { flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 16, padding: 14, minHeight: 56, borderRadius: 14, borderWidth: 1.5, borderStyle: 'dashed', borderColor: C.accent, backgroundColor: 'rgba(198,255,61,0.06)' },
+  gift: { flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 16, padding: 14, minHeight: 56, borderRadius: 14, borderWidth: 1.5, borderStyle: 'dashed', borderColor: C.accent, backgroundColor: 'rgba(255,214,10,0.06)' },
   giftKicker: { color: C.accent, fontSize: 12, fontWeight: '700' },
   disc: { color: C.muted, fontSize: 13, marginTop: 14 },
   h2: { color: C.text, fontSize: 18, ...F.display, marginTop: 28, marginBottom: 12 },

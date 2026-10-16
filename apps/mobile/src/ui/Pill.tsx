@@ -1,5 +1,5 @@
 import { Pressable, Text } from 'react-native';
-import { C, themed } from '@/lib/theme';
+import { C, D, themed } from '@/lib/theme';
 
 export function Pill({ label, active, onPress }: { label: string; active?: boolean; onPress?: () => void }) {
   return (
@@ -10,12 +10,13 @@ export function Pill({ label, active, onPress }: { label: string; active?: boole
   );
 }
 
-// onDark: the button sits on the always dark video feed, so the ghost style stays white in the light theme too.
+// Buttons are black or white (brand 2026-10-16); only the call button uses the brand yellow.
+// onDark: the button sits on the always dark video feed, so it stays white (ghost: white outline) in the light theme too.
 export function Button({ label, onPress, ghost, disabled, onDark }: { label: string; onPress?: () => void; ghost?: boolean; disabled?: boolean; onDark?: boolean }) {
   return (
     <Pressable onPress={onPress} disabled={disabled} accessibilityRole="button" accessibilityState={{ disabled: !!disabled }} android_ripple={{ color: 'rgba(0,0,0,0.12)' }}
-      style={({ pressed }) => [styles.btn, ghost && styles.ghost, ghost && onDark && { borderColor: 'rgba(255,255,255,0.22)' }, (pressed || disabled) && { opacity: 0.6 }]}>
-      <Text style={[styles.btnText, ghost && { color: onDark ? '#fff' : C.text }]} maxFontSizeMultiplier={1.4}>{label}</Text>
+      style={({ pressed }) => [styles.btn, onDark && !ghost && { backgroundColor: D.text }, ghost && styles.ghost, ghost && onDark && { borderColor: 'rgba(255,255,255,0.22)' }, (pressed || disabled) && { opacity: 0.6 }]}>
+      <Text style={[styles.btnText, onDark && !ghost && { color: D.bg }, ghost && { color: onDark ? '#fff' : C.text }]} maxFontSizeMultiplier={1.4}>{label}</Text>
     </Pressable>
   );
 }
@@ -25,7 +26,7 @@ const styles = themed(() => ({
   on: { backgroundColor: C.text, borderColor: C.text },
   text: { color: C.text2, fontWeight: '600', fontSize: 14 },
   textOn: { color: C.bg },
-  btn: { overflow: 'hidden', minHeight: 48, justifyContent: 'center', backgroundColor: C.lime, borderRadius: 14, paddingVertical: 14, paddingHorizontal: 18, alignItems: 'center' },
+  btn: { overflow: 'hidden', minHeight: 48, justifyContent: 'center', backgroundColor: C.text, borderRadius: 14, paddingVertical: 14, paddingHorizontal: 18, alignItems: 'center' },
   ghost: { backgroundColor: 'transparent', borderWidth: 1, borderColor: C.line },
-  btnText: { color: C.ink, fontWeight: '700', fontSize: 16 },
+  btnText: { color: C.bg, fontWeight: '700', fontSize: 16 },
 }));

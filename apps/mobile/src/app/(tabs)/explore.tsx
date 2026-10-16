@@ -112,7 +112,7 @@ export default function Explore() {
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={[styles.row, { paddingTop: 0 }]}>
         {tags.map((k) => (
           <Pressable key={k} onPress={() => setTag(tag === k ? '' : k)} style={[styles.tag, tag === k && styles.tagOn]} accessibilityRole="button" accessibilityState={{ selected: tag === k }}>
-            <Text style={[styles.tagText, tag === k && { color: C.ink }]}>#{k}</Text>
+            <Text style={[styles.tagText, tag === k && { color: C.bg }]}>#{k}</Text>
           </Pressable>
         ))}
       </ScrollView>
@@ -146,7 +146,7 @@ const styles = themed(() => ({
   story: { width: 76, alignItems: 'center', gap: 6 },
   storyName: { color: C.text2, fontSize: 12, fontWeight: '600' },
   tag: { paddingVertical: 7, paddingHorizontal: 12, borderRadius: 10, backgroundColor: C.surface, borderWidth: 1, borderColor: C.line },
-  tagOn: { backgroundColor: C.lime, borderColor: C.lime },
+  tagOn: { backgroundColor: C.text, borderColor: C.text },
   tagText: { color: C.text2, fontWeight: '600', fontSize: 14 },
   grid: { flexDirection: 'row', gap: 8, marginTop: 14 },
   empty: { color: C.text2, paddingVertical: 28 },

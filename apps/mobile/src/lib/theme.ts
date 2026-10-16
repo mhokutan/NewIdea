@@ -1,5 +1,8 @@
 // PromoVote colors, shared with the website (web/landing/public/styles.css). Light and dark themes
 // (founder request 2026-10-07): the app follows the phone setting, or the choice in Settings.
+// Brand (founder pick 2026-10-16, design/brand/renk-yonleri.html): black, white and one yellow. The app itself is
+// monochrome, color comes from the videos. Yellow (`lime`, kept as the key name) only on the call button, story ring,
+// picks, progress and the logo. Generic buttons and selected states are black or white. No purple, no neon.
 // The video feed and the creator player always use the dark palette (D), because text sits on video.
 import * as SecureStore from 'expo-secure-store';
 import { Appearance, Platform, StyleSheet } from 'react-native';
@@ -8,35 +11,35 @@ export type Scheme = 'light' | 'dark';
 export type SchemePref = 'system' | Scheme;
 
 const DARK = {
-  bg: '#0a0a0f',
-  surface: '#14141f',
-  surface2: '#1d1d2b',
+  bg: '#0a0a0a',
+  surface: '#1c1c1e',
+  surface2: '#2c2c2e',
   line: 'rgba(255,255,255,0.12)',
-  text: '#ffffff',
-  text2: '#dcd9e8',
-  muted: '#a8a5b8',
-  lime: '#c6ff3d', // fills (buttons, progress); text on it is always ink
-  accent: '#c6ff3d', // lime used as text or icon color on the background
-  ink: '#101014',
-  pink: '#ff5470',
-  violet: '#8b5cff',
-  danger: '#ff6b6b',
+  text: '#f5f5f7',
+  text2: '#d1d1d6',
+  muted: '#98989d',
+  lime: '#ffd60a', // brand yellow fill (call button, story ring, progress); text on it is always ink
+  accent: '#ffd60a', // brand yellow used as text or icon color on the background
+  ink: '#1d1d1f',
+  pink: '#ff453a',
+  violet: '#ffd60a',
+  danger: '#ff6961',
 };
 type Palette = typeof DARK;
 const LIGHT: Palette = {
   bg: '#ffffff',
-  surface: '#f3f3f7',
-  surface2: '#e7e7ee',
-  line: 'rgba(16,16,20,0.12)',
-  text: '#101014',
-  text2: '#3b3a48',
-  muted: '#6b6a7b',
-  lime: '#c6ff3d',
-  accent: '#3f7d00', // readable green on white (lime text would fail contrast)
-  ink: '#101014',
-  pink: '#e0244a',
-  violet: '#6d3cf0',
-  danger: '#d92d20',
+  surface: '#f2f2f7',
+  surface2: '#e5e5ea',
+  line: 'rgba(0,0,0,0.1)',
+  text: '#0a0a0a',
+  text2: '#3a3a3c',
+  muted: '#6e6e73',
+  lime: '#ffd60a',
+  accent: '#7a5c00', // readable dark yellow on white (yellow text would fail contrast)
+  ink: '#1d1d1f',
+  pink: '#d70015',
+  violet: '#7a5c00',
+  danger: '#d70015',
 };
 
 /** Fixed dark palette for screens drawn over video. */
@@ -93,9 +96,9 @@ export function themed<T extends StyleSheet.NamedStyles<T>>(make: () => T): T {
 
 export const R = { sm: 10, md: 14, lg: 22 };
 
-// Brand display font (Bricolage Grotesque, SIL OFL, assets/fonts). Loaded in app/_layout.tsx.
+// Brand display font (Geist by Vercel, SIL OFL, assets/fonts). Loaded in app/_layout.tsx. Body text stays the system font.
 // fontWeight stays normal: the weight is in the file, and Android falls back to the system font otherwise.
 export const F = {
-  display: { fontFamily: 'Bricolage-ExtraBold', fontWeight: 'normal' as const },
-  displayBold: { fontFamily: 'Bricolage-Bold', fontWeight: 'normal' as const },
+  display: { fontFamily: 'Geist-Bold', fontWeight: 'normal' as const, letterSpacing: -0.6 },
+  displayBold: { fontFamily: 'Geist-SemiBold', fontWeight: 'normal' as const, letterSpacing: -0.3 },
 };

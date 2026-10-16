@@ -34,7 +34,7 @@ export function Sheet({ visible, title, text, actions, onClose, onDismissed }: {
           {actions.map((a) => (
             <Pressable key={a.label} onPress={a.onPress} accessibilityRole="button" android_ripple={{ color: C.line }}
               style={({ pressed }) => [styles.btn, a.tone === 'primary' && styles.primary, pressed && { opacity: 0.7 }]}>
-              <Text maxFontSizeMultiplier={1.4} style={[styles.btnText, a.tone === 'primary' && { color: C.ink }, a.tone === 'danger' && { color: C.danger }]}>{a.label}</Text>
+              <Text maxFontSizeMultiplier={1.4} style={[styles.btnText, a.tone === 'primary' && { color: C.bg }, a.tone === 'danger' && { color: C.danger }]}>{a.label}</Text>
             </Pressable>
           ))}
         </ScrollView>
@@ -50,6 +50,6 @@ const styles = themed(() => ({
   title: { color: C.text, fontSize: 20, ...F.display },
   text: { color: C.text2, fontSize: 15, lineHeight: 21 },
   btn: { minHeight: 50, borderRadius: 14, borderWidth: 1, borderColor: C.line, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 16 },
-  primary: { backgroundColor: C.lime, borderColor: C.lime },
+  primary: { backgroundColor: C.text, borderColor: C.text },
   btnText: { color: C.text, fontSize: 16, fontWeight: '700' },
 }));

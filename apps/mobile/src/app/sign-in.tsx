@@ -127,7 +127,7 @@ const styles = themed(() => ({
   logo: { width: 64, height: 64, borderRadius: 16, marginBottom: 4 },
   values: { gap: 12, marginVertical: 8 },
   value: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  valueIcon: { width: 32, height: 32, borderRadius: 10, backgroundColor: 'rgba(198,255,61,0.12)', alignItems: 'center', justifyContent: 'center' },
+  valueIcon: { width: 32, height: 32, borderRadius: 10, backgroundColor: 'rgba(255,214,10,0.12)', alignItems: 'center', justifyContent: 'center' },
   valueText: { color: C.text2, fontSize: 16, lineHeight: 22, flex: 1 },
   title: { color: C.text, fontSize: 30, ...F.display },
   text: { color: C.text2, fontSize: 16, lineHeight: 22, marginBottom: 6 },

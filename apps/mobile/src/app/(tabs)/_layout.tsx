@@ -5,7 +5,7 @@ import { C } from '@/lib/theme';
 
 export default function TabsLayout() {
   return (
-    <NativeTabs backgroundColor={C.bg} indicatorColor={C.surface2} tintColor={C.lime} labelStyle={{ color: C.muted, selected: { color: C.text } }}>
+    <NativeTabs backgroundColor={C.bg} indicatorColor={C.surface2} tintColor={C.text} labelStyle={{ color: C.muted, selected: { color: C.text } }}>
       <NativeTabs.Trigger name="index">
         <NativeTabs.Trigger.Label>{t('tab_feed')}</NativeTabs.Trigger.Label>
         <NativeTabs.Trigger.Icon sf={{ default: 'play.rectangle', selected: 'play.rectangle.fill' }} md="smart_display" />

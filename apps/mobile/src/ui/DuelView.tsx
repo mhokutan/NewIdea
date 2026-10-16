@@ -71,7 +71,7 @@ export function DuelView({ active, topInset, bottomInset, blocked }: { active: b
         <Icon name="chevrons" size={44} color={D.lime} />
         <Text style={styles.endT} accessibilityRole="header">{pair ? t('d_done_t') : t('nothing')}</Text>
         {pair ? <Text style={styles.endB}>{t('d_done_b')}</Text> : null}
-        {pair ? <View style={{ alignSelf: 'stretch', maxWidth: 320, width: '100%', marginTop: 8 }}><Button label={t('d_again')} onPress={again} /></View> : null}
+        {pair ? <View style={{ alignSelf: 'stretch', maxWidth: 320, width: '100%', marginTop: 8 }}><Button onDark label={t('d_again')} onPress={again} /></View> : null}
       </View>
     );
   }
@@ -133,13 +133,13 @@ const styles = StyleSheet.create({
   title: { flex: 1, color: D.text, fontSize: 17, ...F.display },
   progress: { color: D.accent, fontSize: 13, fontWeight: '700', fontVariant: ['tabular-nums'] },
   card: { flex: 1, borderRadius: 18, overflow: 'hidden', backgroundColor: D.surface, borderWidth: 2, borderColor: D.line, justifyContent: 'flex-end' },
-  mute: { position: 'absolute', top: 10, right: 10, width: 34, height: 34, borderRadius: 17, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(10,10,15,0.55)' },
+  mute: { position: 'absolute', top: 10, right: 10, width: 34, height: 34, borderRadius: 17, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(10,10,10,0.55)' },
   badge: { position: 'absolute', top: 10, left: 10, paddingVertical: 5, paddingHorizontal: 10, borderRadius: 8, backgroundColor: D.lime },
   badgeT: { color: D.ink, fontWeight: '800', fontSize: 13 },
-  info: { flexDirection: 'row', alignItems: 'center', gap: 10, padding: 10, backgroundColor: 'rgba(10,10,15,0.6)' },
+  info: { flexDirection: 'row', alignItems: 'center', gap: 10, padding: 10, backgroundColor: 'rgba(10,10,10,0.6)' },
   who: { color: '#fff', fontWeight: '700', fontSize: 14 },
   name: { color: D.text2, fontSize: 13, marginTop: 1 },
-  pick: { flexDirection: 'row', alignItems: 'center', gap: 6, minHeight: 44, paddingHorizontal: 14, borderRadius: 14, borderWidth: 1.5, borderColor: D.lime, backgroundColor: 'rgba(10,10,15,0.5)' },
+  pick: { flexDirection: 'row', alignItems: 'center', gap: 6, minHeight: 44, paddingHorizontal: 14, borderRadius: 14, borderWidth: 1.5, borderColor: D.lime, backgroundColor: 'rgba(10,10,10,0.5)' },
   pickOn: { backgroundColor: D.lime },
   pickT: { color: '#fff', fontWeight: '800', fontSize: 14 },
   vsWrap: { position: 'absolute', left: 0, right: 0, bottom: -17, alignItems: 'center', zIndex: 2 },
