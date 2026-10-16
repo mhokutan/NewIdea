@@ -169,13 +169,14 @@ def reel(p, first):
 NAV = {
     "feed": '<a href="/" class="topnav-link" data-i18n="nav_feed">{}</a>',
     "explore": '<a href="/explore" class="topnav-link" data-i18n="nav_explore">{}</a>',
+    "duel": '<a href="/duel" class="topnav-link" data-i18n="nav_duel">{}</a>',
     "how": '<a href="/about" class="topnav-link topnav-how" data-i18n="nav_how">{}</a>',
 }
 
 
 def topbar(gid, nav_feed=False, links=None):
     if links is None:
-        links = ["feed", "explore"] if nav_feed else ["explore", "how"]
+        links = ["feed", "explore"] if nav_feed else ["explore", "duel", "how"]
     left = "\n      ".join(NAV[k].format(t("nav_" + k)) for k in links)
     cls = "topbar topbar-solid" if nav_feed else "topbar"
     return f"""  <header class="{cls}">
@@ -354,7 +355,7 @@ def build_explore():
     page = f"""{head(EN['x_meta_title'], EN['x_meta_desc'], 'https://promovote.com/explore', 'https://promovote.com/og.png', extra).replace('</head>', '  <script src="/explore.js" defer></script>' + chr(10) + '</head>')}
 <body class="profile-page explore-page">
   <a class="skip-link" href="#main" data-i18n="skip">{t('skip')}</a>
-{topbar('lgx', nav_feed=True, links=['feed', 'how'])}
+{topbar('lgx', nav_feed=True, links=['feed', 'duel', 'how'])}
 
   <main id="main" class="xwrap">
     <h1 class="xtitle" data-i18n="x_title">{t('x_title')}</h1>
@@ -412,6 +413,50 @@ def build_explore():
     (PUB / "explore.html").write_text(page)
 
 
+def build_duel():
+    """Duel page (founder decision 2026-10-16): two promos at once, pick the one that blows up first.
+    Web test before the app. Pairs are chosen in public/duel.js; picks go to /api/duel (no personal data)."""
+    items = [
+        {"id": p["id"], "v": p["video"], "c": p["creator"], "n": creators[p["creator"]]["name"],
+         "k": creators[p["creator"]]["kind"]["en"], "t": p["title"]["en"], "lang": p["lang"]}
+        for p in promos
+    ]
+    data = json.dumps(items, ensure_ascii=False, separators=(",", ":")).replace("</", "<\\/")
+    extra = chr(10) + '  <link rel="stylesheet" href="/duel.css">'
+    page = f"""{head(EN['d_meta_title'], EN['d_meta_desc'], 'https://promovote.com/duel', 'https://promovote.com/og.png', extra).replace('</head>', '  <script src="/duel.js" defer></script>' + chr(10) + '</head>')}
+<body class="duel-page">
+  <a class="skip-link" href="#duel" data-i18n="skip">{t('skip')}</a>
+{topbar('lgd', nav_feed=True, links=['feed', 'explore'])}
+
+  <main id="duel" class="dwrap" tabindex="-1">
+    <div class="dhead">
+      <h1 class="dtitle"><span data-i18n="d_sub">{t('d_sub')}</span></h1>
+      <p class="dmeta"><span class="dprogress" aria-live="polite"></span> <span class="dsound" data-i18n="d_sound">{t('d_sound')}</span></p>
+    </div>
+    <div class="dpair" aria-live="polite"></div>
+    <div class="dfoot">
+      <button type="button" class="btn dnext" hidden data-i18n="d_next">{t('d_next')}</button>
+    </div>
+    <section class="dend" hidden aria-labelledby="dend-t">
+      <h2 id="dend-t" class="dend-t" data-i18n="d_done_t">{t('d_done_t')}</h2>
+      <p class="dend-b" data-i18n="d_done_b">{t('d_done_b')}</p>
+      <div class="dend-cta">
+        <a class="btn dget-android" href="https://play.google.com/store/apps/details?id=com.miapera.promovote" target="_blank" rel="noopener" hidden><span data-i18n="cta_googleplay">{t('cta_googleplay')}</span></a>
+        <button type="button" class="btn btn-ghost dget-ios" data-sheet="join" hidden data-i18n="d_ios">{t('d_ios')}</button>
+        <button type="button" class="btn btn-ghost dshare" data-i18n="d_share">{t('d_share')}</button>
+        <button type="button" class="btn btn-ghost dagain" data-i18n="d_again">{t('d_again')}</button>
+      </div>
+    </section>
+    <script type="application/json" id="duel-data">{data}</script>
+  </main>
+
+{SHEET}
+</body>
+</html>
+"""
+    (PUB / "duel.html").write_text(page)
+
+
 def build_i18n():
     out = {
         "ui": ui,
@@ -426,7 +471,8 @@ if __name__ == "__main__":
     for cid, c in creators.items():
         build_profile(cid, c)
     build_explore()
+    build_duel()
     build_i18n()
-    text = "".join(p.read_text() for p in [PUB / "index.html", PUB / "explore.html", PUB / "i18n.js", *(PUB / "creators").glob("*.html")])
+    text = "".join(p.read_text() for p in [PUB / "index.html", PUB / "explore.html", PUB / "duel.html", PUB / "i18n.js", *(PUB / "creators").glob("*.html")])
     assert "—" not in text and "–" not in text, "em or en dash found"
     print(f"built feed ({len(promos)} promos), {len(creators)} profiles, i18n for {', '.join(ui)}")

@@ -170,6 +170,26 @@ async function handleVisit(request, env) {
   return ok;
 }
 
+// Duel picks (web test, founder decision 2026-10-16). One pick per visitor, pair and day; no IP or account stored.
+const PROMO_ID = /^[a-z0-9-]{1,64}$/;
+async function handleDuel(request, env) {
+  const ok = new Response(null, { status: 204 });
+  if (request.method !== "POST") return new Response(null, { status: 405 });
+  const ua = request.headers.get("User-Agent") || "";
+  if (request.headers.get("Origin") !== "https://promovote.com" || !ua || BOT_UA.test(ua)) return ok;
+  const raw = await request.text();
+  if (raw.length > 512) return ok;
+  let d;
+  try { d = JSON.parse(raw); } catch { return ok; }
+  const a = String(d.a || ""), b = String(d.b || ""), pick = String(d.pick || "");
+  if (!PROMO_ID.test(a) || !PROMO_ID.test(b) || a === b || (pick !== a && pick !== b)) return ok;
+  const [x, y] = a < b ? [a, b] : [b, a];
+  const day = new Date().toISOString().slice(0, 10);
+  const visitor = (await sha256(`${await dailySalt(env, day)}|${request.headers.get("CF-Connecting-IP") || ""}|${ua}`)).slice(0, 32);
+  await env.DB.prepare("INSERT OR IGNORE INTO duel_picks (day, a, b, pick, visitor) VALUES (?, ?, ?, ?, ?)").bind(day, x, y, pick, visitor).run();
+  return ok;
+}
+
 const ADMIN_HEADERS = { "Cache-Control": "no-store", "X-Robots-Tag": "noindex, nofollow", ...SECURITY_HEADERS };
 const ROLE_LABELS = { creator: "Creator / Streamer", developer: "Game developer", brand: "Brand / Business", viewer: "Viewer", api: "API early access" };
 
@@ -577,7 +597,7 @@ async function statusPage(env) {
   const app = env.APPDB;
   const [site, wl, xs, store, he, heS, pol] = await Promise.all([
     safe(env.DB.prepare("SELECT COUNT(DISTINCT visitor) v FROM visits WHERE day = ?").bind(today).first()),
-    safe(env.DB.prepare("SELECT COUNT(*) n, SUM(substr(created_at, 1, 10) = ?) t FROM waitlist").bind(today).first()),
+    safe(env.DB.prepare("SELECT COUNT(*) n, SUM(substr(created_at, 1, 10) = ?) t, (SELECT COUNT(*) FROM duel_picks WHERE day >= date('now', '-6 days')) dp, (SELECT COUNT(DISTINCT visitor) FROM duel_picks WHERE day >= date('now', '-6 days')) dv FROM waitlist").bind(today).first()),
     app ? safe(app.prepare("SELECT (SELECT max(posted_at) FROM social_posts WHERE status = 'posted') last, (SELECT min(scheduled_at) FROM social_posts WHERE status = 'queued') next, (SELECT max(scheduled_at) FROM social_posts WHERE status = 'queued') until, (SELECT count(*) FROM social_posts WHERE status = 'queued') queued, (SELECT count(*) FROM social_posts WHERE status = 'failed' AND scheduled_at > datetime('now', '-3 days')) failed").first()) : null,
     app ? safe(app.prepare("SELECT (SELECT ran_at FROM job_runs WHERE name = 'store_stats') ran, (SELECT ran_at FROM job_runs WHERE name = 'store_stats_note') note, (SELECT sum(value) FROM metrics_daily WHERE product_id = 'promovote' AND metric IN ('downloads', 'installs') AND date >= date('now', '-7 days')) dl").first()) : null,
     safe(heOps(env, 7)), safe(heStats(env)), safe(productFeed(env, "poleris", "feed=ops&days=7", 300)),
@@ -598,6 +618,7 @@ async function statusPage(env) {
     cards.push(card("PromoVote", "/admin/bekleme", lv, lv === "g" ? "Çalışıyor" : "Dikkat", [
       row("Bugün siteye gelen", site ? fnum(site.v) ?? 0 : '<span class="dim">okunamadı</span>'),
       row("Bekleme listesi", wl ? `${fnum(wl.n) ?? 0} kişi${wl.t ? ` (bugün +${wl.t})` : ""}` : '<span class="dim">okunamadı</span>'),
+      row("Düello seçimi (7 gün)", wl ? `${fnum(wl.dp) ?? 0} seçim, ${fnum(wl.dv) ?? 0} kişi` : '<span class="dim">okunamadı</span>'),
       row("Son X postu", when(xs?.last)),
       row("Sıradaki X postu", when(xs?.next)),
       row("X sırası", xs ? `${xs.queued} post${daysLeft !== null ? `, ${daysLeft} gün yeter` : ""}` : '<span class="dim">okunamadı</span>'),
@@ -896,9 +917,9 @@ export default {
     }
 
     // Per IP limits (security review 2026-10-09): admin login guesses and visit counter padding.
-    if (env.LIMIT && (url.pathname === "/admin" || url.pathname.startsWith("/admin/") || url.pathname === "/api/v")) {
+    if (env.LIMIT && (url.pathname === "/admin" || url.pathname.startsWith("/admin/") || url.pathname === "/api/v" || url.pathname === "/api/duel")) {
       const ip = request.headers.get("CF-Connecting-IP") || "unknown";
-      const { success } = await env.LIMIT.limit({ key: (url.pathname === "/api/v" ? "v:" : "a:") + ip });
+      const { success } = await env.LIMIT.limit({ key: (url.pathname.startsWith("/api/") ? url.pathname.slice(5, 6) + ":" : "a:") + ip });
       if (!success) return new Response("Too many requests", { status: 429, headers: { "Retry-After": "60" } });
     }
     if (url.pathname === "/admin" || url.pathname.startsWith("/admin/")) {
@@ -910,6 +931,15 @@ export default {
         return await handleVisit(request, env);
       } catch (err) {
         console.error("visit_error", err?.message);
+        return new Response(null, { status: 204 });
+      }
+    }
+
+    if (url.pathname === "/api/duel") {
+      try {
+        return await handleDuel(request, env);
+      } catch (err) {
+        console.error("duel_error", err?.message);
         return new Response(null, { status: 204 });
       }
     }

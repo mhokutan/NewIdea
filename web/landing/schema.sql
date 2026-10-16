@@ -21,3 +21,15 @@ CREATE TABLE IF NOT EXISTS visits (
 );
 CREATE INDEX IF NOT EXISTS idx_visits_day ON visits(day);
 CREATE TABLE IF NOT EXISTS visit_salt (day TEXT PRIMARY KEY, salt TEXT NOT NULL);
+
+-- Duel picks (web test 2026-10-16): which of two promos a visitor picked. visitor = same daily salted hash as visits, no IP.
+CREATE TABLE IF NOT EXISTS duel_picks (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  day TEXT NOT NULL,
+  a TEXT NOT NULL,
+  b TEXT NOT NULL,
+  pick TEXT NOT NULL,
+  visitor TEXT NOT NULL,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_duel_once ON duel_picks(day, visitor, a, b);

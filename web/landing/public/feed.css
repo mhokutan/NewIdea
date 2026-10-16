@@ -225,3 +225,4 @@ a.who:focus-visible { outline: 2px solid #fff; outline-offset: 4px; }
   @keyframes nudge-in-m { from { opacity: 0; transform: translateY(-12px); } to { opacity: 1; transform: none; } }
   .join-nudge { animation-name: nudge-in-m; }
 }
+@media (max-width: 400px) { .topbar .logo > span:last-child { display: none; } }
