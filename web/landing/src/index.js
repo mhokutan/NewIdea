@@ -289,25 +289,39 @@ const FEEDS = {
   haulingempire: { name: "Hauling Empire", url: "https://bcwahdyqpbzyqllszeng.supabase.co/functions/v1/store-stats", key: (env) => env.HE_STATS_KEY },
   poleris: { name: "Poleris", url: "https://gcbcaunmxznaixwnnfux.supabase.co/functions/v1/store-stats", key: (env) => env.POLERIS_STATS_KEY },
 };
+// A product feed with a short fresh cache and a 1 day backup copy. Supabase functions can be slow on a cold start,
+// so the wait is 10 s, and when the live call still fails the page shows the last good copy with its age.
 async function productFeed(env, prod, query, ttl) {
   const f = FEEDS[prod];
   if (!f || !f.key(env)) return { ok: false, reason: "no_key" };
   const cache = caches.default;
   const cacheKey = new Request(`https://promovote.com/__cache/feed-v1-${prod}-${encodeURIComponent(query)}`);
+  const backupKey = new Request(`https://promovote.com/__cache/feed-backup-v1-${prod}-${encodeURIComponent(query)}`);
   const hit = await cache.match(cacheKey);
   if (hit) return { ok: true, data: await hit.json() };
+  let reason;
   try {
-    const res = await fetch(`${f.url}?${query}`, { headers: { Authorization: `Bearer ${f.key(env)}` }, signal: AbortSignal.timeout(5000) });
-    if (!res.ok) { console.error("feed_status", prod, res.status); return { ok: false, reason: "http_" + res.status }; }
-    const text = await res.text();
-    if (text.length > 1000000) return { ok: false, reason: "too_big" };
-    const data = JSON.parse(text);
-    await cache.put(cacheKey, new Response(JSON.stringify(data), { headers: { "Content-Type": "application/json", "Cache-Control": `max-age=${ttl}` } }));
-    return { ok: true, data };
+    const res = await fetch(`${f.url}?${query}`, { headers: { Authorization: `Bearer ${f.key(env)}` }, signal: AbortSignal.timeout(10000) });
+    if (!res.ok) { console.error("feed_status", prod, res.status); reason = "http_" + res.status; }
+    else {
+      const text = await res.text();
+      if (text.length > 1000000) reason = "too_big";
+      else {
+        const data = JSON.parse(text);
+        await Promise.all([
+          cache.put(cacheKey, new Response(JSON.stringify(data), { headers: { "Content-Type": "application/json", "Cache-Control": `max-age=${ttl}` } })),
+          cache.put(backupKey, new Response(JSON.stringify({ at: Date.now(), data }), { headers: { "Content-Type": "application/json", "Cache-Control": "max-age=86400" } })),
+        ]);
+        return { ok: true, data };
+      }
+    }
   } catch (err) {
     console.error("feed_error", prod, err?.message);
-    return { ok: false, reason: "fetch_failed" };
+    reason = "fetch_failed";
   }
+  const old = await cache.match(backupKey);
+  if (old) { const b = await old.json(); return { ok: true, data: b.data, staleMin: Math.round((Date.now() - b.at) / 60000), reason }; }
+  return { ok: false, reason };
 }
 // Why a product feed failed, in plain Turkish for the status page.
 const feedWhy = (r, name, keyName) => {
@@ -665,7 +679,7 @@ async function statusPage(env) {
       row("Şu an oyunda", online ?? '<span class="dim">veri yok</span>'),
       row("Oyuncu listesi", ops ? (Array.isArray(ops.players?.recent_7d) ? `${ops.players.recent_7d.length} oyuncu (7 gün)` : '<span class="dim">gelmiyor</span>') : '<span class="dim">-</span>'),
       row("Mağaza verisi", heS?.ok ? chip("g", "geliyor") : chip("r", "gelmiyor")),
-    ], notes.join("<br>")));
+    ], (he?.staleMin != null ? [`Canlı veri şu an gelmedi, ${he.staleMin} dk önceki veri gösteriliyor.`, ...notes] : notes).join("<br>")));
   }
 
   // Poleris: app feed
@@ -679,7 +693,7 @@ async function statusPage(env) {
       row("Son güncelleme", when(ops?.generated_at)),
       row("Son gün aktif (iOS + Android)", last ? (fnum(last.dau_ios) || 0) + (fnum(last.dau_android) || 0) : '<span class="dim">veri yok</span>'),
       row("Son gün yükleme", last && fnum(last.installs) !== null ? fnum(last.installs) : '<span class="dim">veri yok</span>'),
-    ], !ops ? feedWhy(pol, "Poleris", "POLERIS_STATS_KEY") : missing.length ? `Poleris tarafı henüz göndermiyor: <b>${missing.map(esc).join(", ")}</b>.` : ""));
+    ], !ops ? feedWhy(pol, "Poleris", "POLERIS_STATS_KEY") : [pol.staleMin != null ? `Canlı veri şu an gelmedi, ${pol.staleMin} dk önceki veri gösteriliyor.` : "", missing.length ? `Poleris tarafı henüz göndermiyor: <b>${missing.map(esc).join(", ")}</b>.` : ""].filter(Boolean).join("<br>")));
   }
 
   return `<div class="top"><h1>Genel durum</h1></div>
