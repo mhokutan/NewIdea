@@ -309,6 +309,16 @@ async function productFeed(env, prod, query, ttl) {
     return { ok: false, reason: "fetch_failed" };
   }
 }
+// Why a product feed failed, in plain Turkish for the status page.
+const feedWhy = (r, name, keyName) => {
+  const why = r?.reason || "";
+  if (why === "no_key") return `Bağlantı anahtarı (${keyName}) bu Worker'da yok.`;
+  if (why === "http_401" || why === "http_403") return `${name} sunucusu anahtarı kabul etmedi (${why.slice(5)}). ${keyName} iki tarafta aynı değil.`;
+  if (why.startsWith("http_")) return `${name} sunucusu hata verdi (kod ${why.slice(5)}).`;
+  if (why === "fetch_failed") return `${name} sunucusuna 5 saniyede ulaşılamadı ya da cevap bozuk geldi.`;
+  if (why === "too_big") return `${name} cevabı çok büyük geldi.`;
+  return `${name} verisi şu an alınamıyor.`;
+};
 const heOps = (env, days) => productFeed(env, "haulingempire", `feed=ops&days=${days}`, 300);
 
 const fnum = (v) => (typeof v === "number" && isFinite(v) ? v : null);
@@ -669,7 +679,7 @@ async function statusPage(env) {
       row("Son güncelleme", when(ops?.generated_at)),
       row("Son gün aktif (iOS + Android)", last ? (fnum(last.dau_ios) || 0) + (fnum(last.dau_android) || 0) : '<span class="dim">veri yok</span>'),
       row("Son gün yükleme", last && fnum(last.installs) !== null ? fnum(last.installs) : '<span class="dim">veri yok</span>'),
-    ], !ops ? (pol?.reason === "no_key" ? "Bağlantı anahtarı (POLERIS_STATS_KEY) yok." : "Poleris verisi şu an alınamıyor.") : missing.length ? `Poleris tarafı henüz göndermiyor: <b>${missing.map(esc).join(", ")}</b>.` : ""));
+    ], !ops ? feedWhy(pol, "Poleris", "POLERIS_STATS_KEY") : missing.length ? `Poleris tarafı henüz göndermiyor: <b>${missing.map(esc).join(", ")}</b>.` : ""));
   }
 
   return `<div class="top"><h1>Genel durum</h1></div>
