@@ -202,7 +202,7 @@ export function Onboarding({ onDone }: { onDone: () => void }) {
                   if (i === 0 && !ctaPicked) setCta(ctaFor(fixUrl(v)));
                 }} style={[styles.input, { flex: 1, minWidth: 0, width: 0 }]} autoCapitalize="none" autoCorrect={false} keyboardType="url"
                   placeholder={i === 0 ? t('onb_main_link_ph') : 'https://'} placeholderTextColor={C.muted} accessibilityLabel={`${t('links')} ${i + 1}`} />
-                {i > 0 ? <Pressable onPress={() => setLinks((x) => x.filter((_, k) => k !== i))} hitSlop={8} accessibilityRole="button" accessibilityLabel={t('remove')} style={styles.remove}><Text style={{ color: C.muted, fontSize: 20 }}>×</Text></Pressable> : null}
+                {i > 0 ? <Pressable onPress={() => setLinks((x) => x.filter((_, k) => k !== i))} hitSlop={8} accessibilityRole="button" accessibilityLabel={t('remove')} style={styles.remove}><Text style={{ color: C.muted, fontSize: 18 }}>×</Text></Pressable> : null}
               </View>
               {l && !linkOk(fixUrl(l)) ? <Text style={{ color: C.danger }}>{t('onb_link_bad')}</Text> : null}
             </Field>
@@ -254,7 +254,7 @@ function TypeCard({ title, text, icon, onPress }: { title: string; text: string;
         <Text style={styles.h2}>{title}</Text>
         <Text style={styles.text}>{text}</Text>
       </View>
-      <Text style={{ color: C.muted, fontSize: 22 }}>›</Text>
+      <Text style={{ color: C.muted, fontSize: 20 }}>›</Text>
     </Pressable>
   );
 }
@@ -264,12 +264,12 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 }
 
 const styles = themed(() => ({
-  h1: { color: C.text, fontSize: 26, ...F.display },
-  h2: { color: C.text, fontSize: 18, ...F.display },
-  text: { color: C.text2, fontSize: 15, lineHeight: 21 },
+  h1: { color: C.text, fontSize: 24, ...F.display },
+  h2: { color: C.text, fontSize: 16, ...F.display },
+  text: { color: C.text2, fontSize: 14, lineHeight: 21 },
   small: { color: C.muted, fontSize: 13 },
-  label: { color: C.text2, fontSize: 14, fontWeight: '600' },
-  input: { backgroundColor: C.surface, color: C.text, fontSize: 16, borderRadius: 12, borderWidth: 1, borderColor: C.line, paddingHorizontal: 14, paddingVertical: 12 },
+  label: { color: C.text2, fontSize: 13, fontWeight: '600' },
+  input: { backgroundColor: C.surface, color: C.text, fontSize: 15, borderRadius: 12, borderWidth: 1, borderColor: C.line, paddingHorizontal: 14, paddingVertical: 12 },
   dateField: { flex: 1, minWidth: 0, width: 0, textAlign: 'center' },
   dateBox: { alignSelf: 'flex-start' },
   wrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },

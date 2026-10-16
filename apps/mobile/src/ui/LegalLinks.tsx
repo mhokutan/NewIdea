@@ -28,7 +28,7 @@ export function LegalLinks() {
 const styles = themed(() => ({
   box: { marginTop: 28, gap: 2 },
   h: { color: C.muted, fontSize: 13, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 6 },
-  row: { minHeight: 48, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: C.line },
-  text: { color: C.text, fontSize: 16 },
-  arrow: { color: C.muted, fontSize: 22 },
+  row: { minHeight: 44, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: C.line },
+  text: { color: C.text, fontSize: 15 },
+  arrow: { color: C.muted, fontSize: 20 },
 }));

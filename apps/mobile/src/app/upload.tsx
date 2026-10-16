@@ -115,7 +115,7 @@ export default function UploadScreen() {
   if (done) {
     return (
       <View style={[styles.root, { padding: 24, paddingTop: top + 40, gap: 16, alignItems: 'center' }]}>
-        <Text style={[styles.title, { fontSize: 26, textAlign: 'center' }]} accessibilityRole="header">{t('up_done_t')}</Text>
+        <Text style={[styles.title, { fontSize: 24, textAlign: 'center' }]} accessibilityRole="header">{t('up_done_t')}</Text>
         <Text style={[styles.text, { textAlign: 'center' }]}>{t('up_done_p')}</Text>
         <View style={{ alignSelf: 'stretch' }}><Button label={t('up_back')} onPress={() => router.back()} /></View>
       </View>
@@ -186,11 +186,11 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 const styles = themed(() => ({
   root: { flex: 1, backgroundColor: C.bg },
   top: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  cancel: { color: C.text2, fontSize: 16, width: 60 },
-  title: { color: C.text, fontSize: 18, ...F.display },
-  label: { color: C.text2, fontSize: 14, fontWeight: '600' },
-  input: { backgroundColor: C.surface, color: C.text, fontSize: 16, borderRadius: 12, borderWidth: 1, borderColor: C.line, paddingHorizontal: 14, paddingVertical: 12 },
-  text: { color: C.text2, fontSize: 15, lineHeight: 21 },
+  cancel: { color: C.text2, fontSize: 15, width: 60 },
+  title: { color: C.text, fontSize: 16, ...F.display },
+  label: { color: C.text2, fontSize: 13, fontWeight: '600' },
+  input: { backgroundColor: C.surface, color: C.text, fontSize: 15, borderRadius: 12, borderWidth: 1, borderColor: C.line, paddingHorizontal: 14, paddingVertical: 12 },
+  text: { color: C.text2, fontSize: 14, lineHeight: 21 },
   small: { color: C.muted, fontSize: 12 },
   wrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   preview: { alignSelf: 'center', width: 200, height: 356, borderRadius: 18, overflow: 'hidden', backgroundColor: C.surface },

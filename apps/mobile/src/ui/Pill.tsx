@@ -22,11 +22,11 @@ export function Button({ label, onPress, ghost, disabled, onDark }: { label: str
 }
 
 const styles = themed(() => ({
-  pill: { minHeight: 40, justifyContent: 'center', overflow: 'hidden', paddingVertical: 9, paddingHorizontal: 16, borderRadius: 99, borderWidth: 1, borderColor: C.line },
+  pill: { minHeight: 34, justifyContent: 'center', overflow: 'hidden', paddingVertical: 6, paddingHorizontal: 14, borderRadius: 99, borderWidth: 1, borderColor: C.line },
   on: { backgroundColor: C.text, borderColor: C.text },
-  text: { color: C.text2, fontWeight: '600', fontSize: 14 },
+  text: { color: C.text2, fontWeight: '600', fontSize: 13 },
   textOn: { color: C.bg },
-  btn: { overflow: 'hidden', minHeight: 48, justifyContent: 'center', backgroundColor: C.text, borderRadius: 14, paddingVertical: 14, paddingHorizontal: 18, alignItems: 'center' },
+  btn: { overflow: 'hidden', minHeight: 44, justifyContent: 'center', backgroundColor: C.text, borderRadius: 12, paddingVertical: 11, paddingHorizontal: 16, alignItems: 'center' },
   ghost: { backgroundColor: 'transparent', borderWidth: 1, borderColor: C.line },
-  btnText: { color: C.bg, fontWeight: '700', fontSize: 16 },
+  btnText: { color: C.bg, fontWeight: '700', fontSize: 15 },
 }));

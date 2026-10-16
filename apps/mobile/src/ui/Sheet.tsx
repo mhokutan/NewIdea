@@ -47,9 +47,9 @@ const styles = themed(() => ({
   backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.55)' },
   sheet: { backgroundColor: C.surface, borderTopLeftRadius: R.lg, borderTopRightRadius: R.lg, paddingHorizontal: 20, paddingTop: 10, gap: 6 },
   grab: { alignSelf: 'center', width: 40, height: 5, borderRadius: 3, backgroundColor: C.line, marginBottom: 10 },
-  title: { color: C.text, fontSize: 20, ...F.display },
-  text: { color: C.text2, fontSize: 15, lineHeight: 21 },
-  btn: { minHeight: 50, borderRadius: 14, borderWidth: 1, borderColor: C.line, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 16 },
+  title: { color: C.text, fontSize: 18, ...F.display },
+  text: { color: C.text2, fontSize: 14, lineHeight: 21 },
+  btn: { minHeight: 44, borderRadius: 14, borderWidth: 1, borderColor: C.line, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 16 },
   primary: { backgroundColor: C.text, borderColor: C.text },
-  btnText: { color: C.text, fontSize: 16, fontWeight: '700' },
+  btnText: { color: C.text, fontSize: 15, fontWeight: '700' },
 }));

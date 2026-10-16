@@ -75,9 +75,9 @@ export default function CreatorPlayer() {
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: '#000' },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: D.bg },
-  msg: { color: D.text2, fontSize: 16 },
+  msg: { color: D.text2, fontSize: 15 },
   scrim: { position: 'absolute', top: 0, left: 0, right: 0 },
   top: { position: 'absolute', left: 12, right: 12, flexDirection: 'row', alignItems: 'center', gap: 10 },
-  round: { width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(20,20,31,0.72)', alignItems: 'center', justifyContent: 'center' },
-  title: { flex: 1, color: '#fff', fontSize: 16, fontWeight: '800', textShadowColor: 'rgba(0,0,0,0.6)', textShadowRadius: 4 },
+  round: { width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(28,28,30,0.72)', alignItems: 'center', justifyContent: 'center' },
+  title: { flex: 1, color: '#fff', fontSize: 15, fontWeight: '800', textShadowColor: 'rgba(0,0,0,0.6)', textShadowRadius: 4 },
 });
