@@ -40,7 +40,6 @@ export default function RootLayout() {
         <Stack.Screen name="perk" options={{ presentation: 'modal' }} />
         <Stack.Screen name="upload" options={{ presentation: 'modal' }} />
         <Stack.Screen name="activity" />
-        <Stack.Screen name="duel" />
       </Stack>
       <GateHost />
     </ThemeProvider>

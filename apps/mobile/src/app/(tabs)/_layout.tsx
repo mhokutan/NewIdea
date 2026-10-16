@@ -10,6 +10,10 @@ export default function TabsLayout() {
         <NativeTabs.Trigger.Label>{t('tab_feed')}</NativeTabs.Trigger.Label>
         <NativeTabs.Trigger.Icon sf={{ default: 'play.rectangle', selected: 'play.rectangle.fill' }} md="smart_display" />
       </NativeTabs.Trigger>
+      <NativeTabs.Trigger name="duel">
+        <NativeTabs.Trigger.Label>{t('d_title')}</NativeTabs.Trigger.Label>
+        <NativeTabs.Trigger.Icon sf={{ default: 'rectangle.split.1x2', selected: 'rectangle.split.1x2.fill' }} md="splitscreen" />
+      </NativeTabs.Trigger>
       <NativeTabs.Trigger name="explore">
         <NativeTabs.Trigger.Label>{t('tab_explore')}</NativeTabs.Trigger.Label>
         <NativeTabs.Trigger.Icon sf="magnifyingglass" md="search" />

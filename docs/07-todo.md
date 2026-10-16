@@ -35,7 +35,7 @@ Fikir: reklam parasını doğrudan uygulama indirme reklamına değil promovote.
 
 ## Sonraki sürümler
 
-* 1.0.3 (kod hazır, build kurucunun onayını bekliyor): uygulamada Düello ekranı (Keşfet kartından açılır). Sunucu tarafı canlıda.
+* Düello alt menüde ayrı sekme (Feed ile Keşfet arası), kart ve başlat düğmesi yok. Kod hazır, build kurucunun onayını bekliyor (build 15'te Keşfet kartı olarak vardı).
 - [ ] Yükleme formunda zorunlu soru: "Bu video yapay zeka ile mi yapıldı veya değiştirildi?" Evet ise "Made with AI" etiketi (API hazır: `PATCH /v1/me/promos/:id {aiGenerated}`, migration 0014). Yapay zeka karakteri hesaplarında (`ai_persona`) bütün promolar otomatik etiketli.
 - [ ] developer.promovote.com (kurucu fikri 2026-10-09, API anahtarı fikrinin genişlemesi): creator'lar ve araçlar (video editörleri, yapay zeka ajanları, zamanlayıcılar) API ile otomatik promo yükler, istatistik çeker, ileride X gibi diğer ağlara da paylaşır (bizim social_posts motoru temel olabilir). Ödeme (kurucu kararı 2026-10-09): önce Pro aboneliğinin içinde (App Store / Google Play), talep büyürse Stripe ile web'den kullandıkça öde. Pro'nun öne çıkan özelliği: otomatik yükleme. Plan: docs/08-developer-api.md. Geliştirici sayfası, dokümantasyon, anahtar yönetimi.
 - [ ] Creator API anahtarı (kurucu fikri 2026-10-08): creator Studio'dan API anahtarı üretir; kendi sitesi, video aracı veya yapay zeka ajanı promoyu doğrudan PromoVote'a yükler, istatistik çeker. Şartlar: yüklemeler açıldıktan sonra; her yükleme normal inceleme kuyruğundan geçer; anahtar başına limit (günde birkaç promo), kapsam (sadece yükleme ve okuma), iptal düğmesi; AI sorusu API'de de zorunlu; ücretli plan (Pro) içinde olabilir. Önce talep ölçülür: Studio'da "API erişimi istiyorum" butonu ve bekleme listesi.
