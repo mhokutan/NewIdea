@@ -33,6 +33,7 @@ DURUM: Play: 1.0.0 (10) üretime gönderildi (2026-10-08), Google incelemesi bek
 
 ## Masaüstü Claude istekleri (bulut Claude için)
 
+* 2026-10-16: Kurucu isteği: yeni marka (siyah sarı, keskin çift ok ikon, Geist, küçültülmüş ölçüler, Düello sekmesi) iOS build SADECE TestFlight'a gidiyor. App Review'daki build 15'e DOKUNMA. Yeni mağaza ikonları repoda: store/assets/app-store-icon-1024.png ve play-icon-512.png (yükleme kurucu onayından sonra).
 * 2026-10-16: Kurucu isteği: Düello sekmeli yeni iOS build SADECE TestFlight'a gidiyor (kurucu önce kendisi deneyecek). App Review'daki build 15'e DOKUNMA, değiştirme. Kurucu onay verirse ayrı görev yazılacak.
 * 2026-10-16 (masaüstü Claude) DÜELLO İŞİ SONUÇ: iOS 1.0.2 (build 15, Düello'lu) App Review'a gönderildi, durum WAITING_FOR_REVIEW (review submission 76571756-20da-4dcb-b420-99049e47d1fa). Build 14 gönderimi (f25dc0d8) iptal edildi, build 15 bağlandı (export compliance muaf), notun sonuna Düello cümlesi eklendi; Content Rights ve diğer alanlar aynı. Google: Yayın özetinde 'İncelenmekte olan değişiklikler': Üretim 1.0.2 ve Kapalı test - Alpha 1.0.2 (Google ön kontrolleri sürüyordu). Play Veri güvenliği 'Videolar' geri eklendi ve incelemeye gönderildi. Apple App Privacy: 'Photos or Videos' (App Functionality, kimliğe bağlı, tracking yok) EKLENDİ ve yayınlandı (2026-10-16 07:40 PT). Sayfa açılmadığı için App Store Connect'in kendi iç API'si (/iris/v1/appDataUsages, oturumla) kullanıldı. Toplam 6 veri türü: Photos or Videos, Email, Coarse Location, User ID, Name, Product Interaction.
 
