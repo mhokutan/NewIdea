@@ -422,6 +422,13 @@ const ctile = (label, value, level = "", note = "") => `<div class="tile${level 
 const ctiles = (items) => `<div class="tiles">${items.join("")}</div>`;
 const lvl3 = (v, yAt, rAt) => (fnum(v) === null ? "" : v >= rAt ? "r" : v >= yAt ? "y" : "g");
 
+// Sum of local amounts over days (apple_local / google_local: [{currency, amount}]), shown as "£4.99, $9.98".
+const sumLocal = (days, key) => {
+  const acc = {};
+  for (const r of days) for (const x of Array.isArray(r[key]) ? r[key] : []) { const c = String(x.currency || "").toUpperCase(); if (c && fnum(x.amount) !== null) acc[c] = (acc[c] || 0) + fnum(x.amount); }
+  const list = Object.entries(acc).sort((a, b) => b[1] - a[1]).map(([currency, amount]) => ({ currency, amount }));
+  return list.length ? localPaid(list) : "";
+};
 function heSalesCard(ops) {
   const d = ops && ops.sales;
   if (!d) return '<h2 style="font-size:20px;margin:28px 0 10px">Satışlar (30 gün)</h2><p class="empty">Veri yok</p>';
@@ -431,8 +438,8 @@ function heSalesCard(ops) {
   const ref = sum("refunds_usd");
   const refPct = total > 0 ? ref / total : 0;
   return `<h2 style="font-size:20px;margin:28px 0 10px">Satışlar (son 30 gün)</h2>${ctiles([
-    ctile("Apple (USD)", usd(sum("apple_usd"))),
-    ctile("Google (USD)", usd(sum("google_usd"))),
+    ctile("Apple (USD)", usd(sum("apple_usd")), "", sumLocal(days, "apple_local") ? `Ödenen: ${sumLocal(days, "apple_local")}` : ""),
+    ctile("Google (USD)", usd(sum("google_usd")), "", sumLocal(days, "google_local") ? `Ödenen: ${sumLocal(days, "google_local")}` : ""),
     ctile("İade (USD)", usd(ref), ref > 0 ? (refPct >= 0.1 ? "r" : refPct >= 0.05 ? "y" : "g") : "g"),
     ctile("Şimdi etkin abonelik", fnum(d.subscriptions_30d?.active_now)),
   ])}`;
@@ -589,7 +596,7 @@ function heOpsPage(path, ops, range, name = "Hauling Empire", kind = "oyun") {
     const refLv = sum("refunds_usd") > 0 ? (refPct >= 0.1 ? "r" : refPct >= 0.05 ? "y" : "g") : "g";
     const noUsd = sd.length && sd.every((r) => fnum(r.apple_usd) === null && fnum(r.google_usd) === null);
     out.push(ctiles([
-      noUsd ? ctile(`Apple satış adedi (${range} gün)`, sum("apple_count"), "", "Fiyat tutulmuyor") : ctile(`Apple (${range} gün)`, usd(sum("apple_usd")), "", `${sum("apple_count")} satış`),
+      noUsd ? ctile(`Apple satış adedi (${range} gün)`, sum("apple_count"), "", "Fiyat tutulmuyor") : ctile(`Apple (${range} gün)`, usd(sum("apple_usd")), "", `${sum("apple_count")} satış${sumLocal(sd, "apple_local") ? `, ödenen: ${sumLocal(sd, "apple_local")}` : ""}`),
       noUsd ? ctile(`Google satış adedi (${range} gün)`, sum("google_count"), "", "Fiyat tutulmuyor") : ctile(`Google (${range} gün)`, usd(sum("google_usd")), "", `${sum("google_count")} satış`),
       noUsd ? ctile("İade", sd.some((r) => fnum(r.refunds_count) !== null) ? sum("refunds_count") : null) : ctile("İade", usd(sum("refunds_usd")), refLv, `${sum("refunds_count")} adet`),
     ]));
@@ -601,7 +608,7 @@ function heOpsPage(path, ops, range, name = "Hauling Empire", kind = "oyun") {
     const testN = fnum(sales.test_purchases_30d);
     if (testN !== null) out.push(`<p class="countries" style="margin:-4px 0 10px"><span class="badge-solo">Test alımları: ${testN}</span> <span class="dim">(toplamlara sayılmaz)</span></p>`);
     const prods = Array.isArray(sales.by_product_30d) ? sales.by_product_30d.slice().sort((a, b) => (fnum(b.usd) || 0) - (fnum(a.usd) || 0) || (fnum(b.count) || 0) - (fnum(a.count) || 0)) : null;
-    out.push(!prods || !prods.length ? '<p class="empty">Henüz satış yok</p>' : `<div class="tablewrap"><table data-sortable><thead><tr><th>Ürün</th><th>Mağaza</th><th>Adet</th><th>Ödenen (yerel)</th><th>Dolar</th></tr></thead><tbody>${prods.map((r) => `<tr><td>${esc(r.product_id ?? "")}</td><td>${esc({ apple: "Apple", google: "Google" }[r.store] ?? r.store ?? "")}</td><td>${fnum(r.count) ?? "-"}</td><td>${localPaid(r.local)}</td><td data-v="${fnum(r.usd) ?? 0}">${fnum(r.usd) === null ? "-" : usd(r.usd)}</td></tr>`).join("")}</tbody></table></div>`);
+    out.push(!prods || !prods.length ? '<p class="empty">Henüz satış yok</p>' : `<div class="tablewrap"><table data-sortable><thead><tr><th>Ürün</th><th>Mağaza</th><th>Adet</th><th>Ödenen (yerel)</th><th>Dolar</th></tr></thead><tbody>${prods.map((r) => `<tr><td>${esc(r.product_id ?? "")}</td><td>${esc({ apple: "Apple", google: "Google" }[r.store] ?? r.store ?? "")}</td><td>${fnum(r.count) ?? "-"}</td><td>${Array.isArray(r.local) && r.local.length ? localPaid(r.local) : ""}${fnum(r.local_unknown_count) ? `${Array.isArray(r.local) && r.local.length ? ", " : ""}<span class="dim">${fnum(r.local_unknown_count)} satış fiyatı bilinmiyor</span>` : ""}${!(Array.isArray(r.local) && r.local.length) && !fnum(r.local_unknown_count) ? localPaid(null) : ""}</td><td data-v="${fnum(r.usd) ?? 0}">${fnum(r.usd) === null ? "-" : usd(r.usd)}</td></tr>`).join("")}</tbody></table></div>`);
     // 5. Subscriptions
     out.push(sec("Abonelikler (30 gün)"));
     const sub = sales.subscriptions_30d;
