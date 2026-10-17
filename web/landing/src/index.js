@@ -202,7 +202,7 @@ const ADMIN_GROUPS = [
   ["PromoVote", "Site, X, mağazalar", [["/admin/onay", "Onay kuyruğu"], ["/admin/bekleme", "Bekleme listesi"], ["/admin/visitors", "Ziyaretçiler"], ["/admin/x", "X"], ["/admin/app-store?p=promovote", "App Store"], ["/admin/google-play?p=promovote", "Google Play"]]],
   ["Hauling Empire", "Oyun ve mağazalar", [["/admin/hauling-empire/oyun", "Oyun"], ["/admin/app-store?p=haulingempire", "App Store"], ["/admin/google-play?p=haulingempire", "Google Play"], ["/admin/unity-ads", "Unity Ads"]]],
   ["Poleris", "Uygulama ve mağazalar", [["/admin/poleris/uygulama", "Uygulama"], ["/admin/app-store?p=poleris", "App Store"], ["/admin/google-play?p=poleris", "Google Play"]]],
-  ["Lovelet", "Mağazalar", [["/admin/app-store?p=lovelet", "App Store"], ["/admin/google-play?p=lovelet", "Google Play"]]],
+  ["Lovelet", "Uygulama ve mağazalar", [["/admin/lovelet/uygulama", "Uygulama"], ["/admin/app-store?p=lovelet", "App Store"], ["/admin/google-play?p=lovelet", "Google Play"]]],
 ];
 
 function adminPage(path, title, body) {
@@ -289,6 +289,8 @@ async function heStats(env) {
 const FEEDS = {
   haulingempire: { name: "Hauling Empire", url: "https://bcwahdyqpbzyqllszeng.supabase.co/functions/v1/store-stats", key: (env) => env.HE_STATS_KEY },
   poleris: { name: "Poleris", url: "https://gcbcaunmxznaixwnnfux.supabase.co/functions/v1/store-stats", key: (env) => env.POLERIS_STATS_KEY },
+  // Lovelet (founder app, 2026-10-17): its own function in the same project, same contract, key made on the founder's computer.
+  lovelet: { name: "Lovelet", url: "https://gcbcaunmxznaixwnnfux.supabase.co/functions/v1/lovelet-store-stats", key: (env) => env.LOVELET_STATS_KEY },
 };
 // A product feed with a short fresh cache and a 1 day backup copy. Supabase functions can be slow on a cold start,
 // so the wait is 10 s, and when the live call still fails the page shows the last good copy with its age.
@@ -979,6 +981,13 @@ ${tilesHtml([["Paylaşılan", sum.posted?.n || 0], ["Sırada", sum.queued?.n || 
   if (path === "/admin/unity-ads") {
     const range = rangeOf(url);
     return adminPage(path, "Unity Ads", await unityPage(env, path, range));
+  }
+
+  if (path === "/admin/lovelet/uygulama") {
+    const range = rangeOf(url);
+    const r = await productFeed(env, "lovelet", `feed=ops&days=${range}`, 300);
+    if (!r.ok) return adminPage(path, "Lovelet: uygulama", `<div class="top"><h1>Lovelet: uygulama</h1></div><p class="empty">${r.reason === "no_key" ? "Bağlantı anahtarı (LOVELET_STATS_KEY) henüz bu Worker'da yok. Lovelet ucu kurulup anahtar girilince veriler burada görünür." : esc(feedWhy(r, "Lovelet", "LOVELET_STATS_KEY"))}</p>`);
+    return adminPage(path, "Lovelet: uygulama", heOpsPage(path, r.data, range, "Lovelet", "uygulama"));
   }
 
   if (path === "/admin/poleris/uygulama") {
