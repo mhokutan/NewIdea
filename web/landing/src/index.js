@@ -200,7 +200,7 @@ const ROLE_LABELS = { creator: "Creator / Streamer", developer: "Game developer"
 const ADMIN_GROUPS = [
   ["Durum", "Hepsi tek bakışta", [["/admin", "Genel durum"]]],
   ["PromoVote", "Site, X, mağazalar", [["/admin/onay", "Onay kuyruğu"], ["/admin/bekleme", "Bekleme listesi"], ["/admin/visitors", "Ziyaretçiler"], ["/admin/x", "X"], ["/admin/app-store?p=promovote", "App Store"], ["/admin/google-play?p=promovote", "Google Play"]]],
-  ["Hauling Empire", "Oyun ve mağazalar", [["/admin/hauling-empire/oyun", "Oyun"], ["/admin/app-store?p=haulingempire", "App Store"], ["/admin/google-play?p=haulingempire", "Google Play"]]],
+  ["Hauling Empire", "Oyun ve mağazalar", [["/admin/hauling-empire/oyun", "Oyun"], ["/admin/app-store?p=haulingempire", "App Store"], ["/admin/google-play?p=haulingempire", "Google Play"], ["/admin/unity-ads", "Unity Ads"]]],
   ["Poleris", "Uygulama ve mağazalar", [["/admin/poleris/uygulama", "Uygulama"], ["/admin/app-store?p=poleris", "App Store"], ["/admin/google-play?p=poleris", "Google Play"]]],
 ];
 
@@ -333,6 +333,78 @@ const feedWhy = (r, name, keyName) => {
   if (why === "too_big") return `${name} cevabı çok büyük geldi.`;
   return `${name} verisi şu an alınamıyor.`;
 };
+// Unity Ads (founder request 2026-10-17): Monetization Stats API, CSV, key in Worker secret UNITY_ADS_KEY and the
+// organization core id in UNITY_ORG_ID. Org level, split by game. Cached 1 h (the API has a rate limit).
+async function unityStats(env, query) {
+  if (!env.UNITY_ADS_KEY || !env.UNITY_ORG_ID) return { ok: false, reason: "no_key" };
+  const cache = caches.default;
+  const cacheKey = new Request(`https://promovote.com/__cache/unity-v1-${encodeURIComponent(query)}`);
+  const hit = await cache.match(cacheKey);
+  if (hit) return { ok: true, rows: await hit.json() };
+  try {
+    const res = await fetch(`https://monetization.api.unity.com/stats/v1/operate/organizations/${encodeURIComponent(env.UNITY_ORG_ID)}?${query}`, {
+      headers: { Authorization: `Token ${env.UNITY_ADS_KEY}`, Accept: "text/csv" }, signal: AbortSignal.timeout(20000),
+    });
+    if (!res.ok) { console.error("unity_status", res.status); return { ok: false, reason: "http_" + res.status }; }
+    const text = await res.text();
+    if (text.length > 2000000) return { ok: false, reason: "too_big" };
+    const lines = text.trim().split(/\r?\n/);
+    const head = (lines.shift() || "").split(",").map((h) => h.trim().replace(/^"|"$/g, ""));
+    const rows = lines.map((l) => { const c = l.split(","); return Object.fromEntries(head.map((h, i) => [h, (c[i] || "").trim().replace(/^"|"$/g, "")])); });
+    await cache.put(cacheKey, new Response(JSON.stringify(rows), { headers: { "Content-Type": "application/json", "Cache-Control": "max-age=3600" } }));
+    return { ok: true, rows };
+  } catch (err) {
+    console.error("unity_error", err?.message);
+    return { ok: false, reason: "fetch_failed" };
+  }
+}
+
+async function unityPage(env, path, range) {
+  const end = new Date(); end.setUTCHours(0, 0, 0, 0);
+  const start = new Date(end.getTime() - range * 864e5);
+  const iso = (d) => d.toISOString().slice(0, 19) + "Z";
+  const base = `fields=adrequest_count,available_sum,start_count,view_count,revenue_sum&start=${iso(start)}&end=${iso(new Date(end.getTime() - 1000))}`;
+  const [daily, byCountry, byPlatform, byGame] = await Promise.all([
+    unityStats(env, `${base}&scale=day`),
+    unityStats(env, `${base}&scale=all&groupBy=country`),
+    unityStats(env, `${base}&scale=all&groupBy=platform`),
+    unityStats(env, `${base}&scale=all&groupBy=game`),
+  ]);
+  const head = `<div class="top"><h1>Unity Ads</h1></div>${rangePills(path, range)}`;
+  if (!daily.ok) {
+    const why = daily.reason === "no_key"
+      ? "Bağlantı henüz kurulmadı. Unity Monetization paneli > Settings > API management bölümünden Monetization Stats API anahtarı alınıp bu Worker'a UNITY_ADS_KEY, organizasyon numarası da UNITY_ORG_ID olarak girilince veriler burada görünür."
+      : daily.reason === "http_401" || daily.reason === "http_400" ? "Unity anahtarı kabul etmedi. UNITY_ADS_KEY yanlış ya da süresi dolmuş olabilir."
+      : daily.reason === "http_404" ? "Unity bu organizasyonu bulamadı. UNITY_ORG_ID yanlış olabilir."
+      : daily.reason === "http_429" ? "Unity çok sık istek yapıldığını söyledi. Birkaç dakika sonra tekrar dene."
+      : "Unity verileri şu an alınamadı. Biraz sonra tekrar dene.";
+    return head + `<p class="empty">${esc(why)}</p>`;
+  }
+  const n = (v) => { const x = Number(v); return isFinite(x) ? x : 0; };
+  const tot = (rows, k) => rows.reduce((a, r) => a + n(r[k]), 0);
+  const rev = tot(daily.rows, "revenue_sum"), views = tot(daily.rows, "view_count"), starts = tot(daily.rows, "start_count");
+  const reqs = tot(daily.rows, "adrequest_count"), avail = tot(daily.rows, "available_sum");
+  const money = (v) => "$" + v.toFixed(2);
+  const tiles = tilesHtml([
+    [`${range} günde gelir`, money(rev)],
+    ["Gösterim (izlenen)", Math.round(views)],
+    ["eCPM", views ? money((rev / views) * 1000) : '<span class="dim" style="font-size:16px">veri yok</span>'],
+    ["Doluluk (fill rate)", reqs ? `%${Math.round((avail / reqs) * 100)}` : '<span class="dim" style="font-size:16px">veri yok</span>'],
+    ["Başlayan reklam", Math.round(starts)],
+  ]);
+  const dayKey = (r) => String(r.timestamp || r.date || r.time || Object.values(r)[0] || "").slice(0, 10);
+  const series = daily.rows.map((r) => ({ d: dayKey(r), v: n(r.revenue_sum) })).filter((x) => /^\d{4}-\d{2}-\d{2}$/.test(x.d)).sort((a, b) => (a.d < b.d ? -1 : 1));
+  const maxV = Math.max(0.01, ...series.map((x) => x.v));
+  const bw = range > 30 ? 6 : 18, gap = range > 30 ? 2 : 6, h = 120;
+  const bars = series.map((x, i) => { const bh = Math.round((x.v / maxV) * (h - 20)); return `<rect x="${i * (bw + gap)}" y="${h - bh}" width="${bw}" height="${bh}" rx="3" fill="#ffd60a"><title>${esc(x.d)}: ${money(x.v)}</title></rect>`; }).join("");
+  const chart = series.length ? `<h2 style="font-size:20px;margin:28px 0 10px">Günlük gelir</h2><div class="tablewrap" style="padding:16px"><svg viewBox="0 0 ${Math.max(1, series.length * (bw + gap))} ${h}" width="100%" height="${h}" preserveAspectRatio="none" role="img" aria-label="Günlük Unity Ads geliri">${bars}</svg></div>` : "";
+  const split = (r, key, label) => {
+    if (!r.ok || !r.rows.length) return "";
+    const rows = r.rows.map((x) => ({ k: x[key] || "?", rev: n(x.revenue_sum), views: n(x.view_count) })).sort((a, b) => b.rev - a.rev);
+    return `<h2 style="font-size:20px;margin:28px 0 10px">${label}</h2><div class="tablewrap"><table data-sortable data-collapse="10"><thead><tr><th>${label}</th><th>Gelir</th><th>Gösterim</th><th>eCPM</th></tr></thead><tbody>${rows.map((x) => `<tr><td>${esc(x.k)}</td><td data-v="${x.rev}">${money(x.rev)}</td><td data-v="${x.views}">${Math.round(x.views)}</td><td data-v="${x.views ? (x.rev / x.views) * 1000 : 0}">${x.views ? money((x.rev / x.views) * 1000) : "-"}</td></tr>`).join("")}</tbody></table></div>`;
+  };
+  return head + `<p class="countries">Unity Ads organizasyonunun tüm oyunları. Sadece biten günler (UTC). Veriler 1 saatte bir yenilenir.</p>${tiles}${chart}${split(byGame, "game", "Oyun")}${split(byPlatform, "platform", "Platform")}${split(byCountry, "country", "Ülke")}`;
+}
 const heOps = (env, days) => productFeed(env, "haulingempire", `feed=ops&days=${days}`, 300);
 
 const fnum = (v) => (typeof v === "number" && isFinite(v) ? v : null);
@@ -875,6 +947,11 @@ ${tilesHtml([["Paylaşılan", sum.posted?.n || 0], ["Sırada", sum.queued?.n || 
       console.error("admin_x_error", err?.message);
       return adminPage(path, "X", '<div class="top"><h1>X paylaşımları</h1></div><p class="empty">Veri alınamadı. Biraz sonra tekrar dene.</p>');
     }
+  }
+
+  if (path === "/admin/unity-ads") {
+    const range = rangeOf(url);
+    return adminPage(path, "Unity Ads", await unityPage(env, path, range));
   }
 
   if (path === "/admin/poleris/uygulama") {
