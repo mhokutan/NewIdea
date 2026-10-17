@@ -368,9 +368,9 @@ async function unityPage(env, path, range) {
     unityStats(env, `${base}&scale=day`),
     unityStats(env, `${base}&scale=all&groupBy=country`),
     unityStats(env, `${base}&scale=all&groupBy=platform`),
-    unityStats(env, `${base}&scale=all&groupBy=game`),
+    unityStats(env, `${base}&scale=all&groupBy=game,platform`),
   ]);
-  const head = `<div class="top"><h1>Unity Ads</h1></div>${rangePills(path, range)}`;
+  const head = `<div class="top"><h1>Unity Ads: Hauling Empire</h1></div>${rangePills(path, range)}`;
   if (!daily.ok) {
     const why = daily.reason === "no_key"
       ? "Bağlantı henüz kurulmadı. Unity Monetization paneli > Settings > API management bölümünden Monetization Stats API anahtarı alınıp bu Worker'a UNITY_ADS_KEY, organizasyon numarası da UNITY_ORG_ID olarak girilince veriler burada görünür."
@@ -394,16 +394,27 @@ async function unityPage(env, path, range) {
   ]);
   const dayKey = (r) => String(r.timestamp || r.date || r.time || Object.values(r)[0] || "").slice(0, 10);
   const series = daily.rows.map((r) => ({ d: dayKey(r), v: n(r.revenue_sum) })).filter((x) => /^\d{4}-\d{2}-\d{2}$/.test(x.d)).sort((a, b) => (a.d < b.d ? -1 : 1));
+  // Bars with the day name and date written vertically under each bar and the amount on top (founder request).
+  const DAYS = ["Paz", "Pzt", "Sal", "Çar", "Per", "Cum", "Cmt"];
   const maxV = Math.max(0.01, ...series.map((x) => x.v));
-  const bw = range > 30 ? 6 : 18, gap = range > 30 ? 2 : 6, h = 120;
-  const bars = series.map((x, i) => { const bh = Math.round((x.v / maxV) * (h - 20)); return `<rect x="${i * (bw + gap)}" y="${h - bh}" width="${bw}" height="${bh}" rx="3" fill="#ffd60a"><title>${esc(x.d)}: ${money(x.v)}</title></rect>`; }).join("");
-  const chart = series.length ? `<h2 style="font-size:20px;margin:28px 0 10px">Günlük gelir</h2><div class="tablewrap" style="padding:16px"><svg viewBox="0 0 ${Math.max(1, series.length * (bw + gap))} ${h}" width="100%" height="${h}" preserveAspectRatio="none" role="img" aria-label="Günlük Unity Ads geliri">${bars}</svg></div>` : "";
+  const slot = range > 30 ? 16 : 30, bw = slot - 6, top = 22, h = 130, lab = 64;
+  const bars = series.map((x, i) => {
+    const bh = Math.max(x.v > 0 ? 2 : 0, Math.round((x.v / maxV) * (h - top)));
+    const cx = i * slot + slot / 2, d = new Date(x.d + "T00:00:00Z");
+    const label = `${DAYS[d.getUTCDay()]} ${x.d.slice(8, 10)}.${x.d.slice(5, 7)}`;
+    const amount = range > 30 ? "" : `<text x="${cx}" y="${h - bh - 5}" text-anchor="middle" font-size="9" fill="#a1a1a6">${x.v >= 10 ? Math.round(x.v) : x.v.toFixed(2)}</text>`;
+    return `<rect x="${i * slot + 3}" y="${h - bh}" width="${bw}" height="${bh}" rx="3" fill="#ffd60a"><title>${esc(label)}: ${money(x.v)}</title></rect>${amount}<text transform="translate(${cx + 3} ${h + 6}) rotate(90)" font-size="10" fill="#a1a1a6">${esc(label)}</text>`;
+  }).join("");
+  const w = Math.max(1, series.length * slot);
+  const chart = series.length ? `<h2 style="font-size:20px;margin:28px 0 10px">Günlük gelir ($)</h2><div class="tablewrap" style="padding:16px;overflow-x:auto"><svg viewBox="0 0 ${w} ${h + lab}" width="${w}" height="${h + lab}" role="img" aria-label="Günlük Unity Ads geliri">${bars}</svg></div>` : "";
+  // The Unity organization holds Hauling Empire only (founder 2026-10-17): one game id per platform.
+  const PLAT = { ios: "iOS", android: "Android" };
   const split = (r, key, label) => {
     if (!r.ok || !r.rows.length) return "";
-    const rows = r.rows.map((x) => ({ k: x[key] || "?", rev: n(x.revenue_sum), views: n(x.view_count) })).sort((a, b) => b.rev - a.rev);
+    const rows = r.rows.map((x) => ({ k: key === "game" ? `Hauling Empire ${PLAT[String(x.platform).toLowerCase()] || x.platform || ""} (oyun no ${x.game || "?"})` : x[key] || "?", rev: n(x.revenue_sum), views: n(x.view_count) })).sort((a, b) => b.rev - a.rev);
     return `<h2 style="font-size:20px;margin:28px 0 10px">${label}</h2><div class="tablewrap"><table data-sortable data-collapse="10"><thead><tr><th>${label}</th><th>Gelir</th><th>Gösterim</th><th>eCPM</th></tr></thead><tbody>${rows.map((x) => `<tr><td>${esc(x.k)}</td><td data-v="${x.rev}">${money(x.rev)}</td><td data-v="${x.views}">${Math.round(x.views)}</td><td data-v="${x.views ? (x.rev / x.views) * 1000 : 0}">${x.views ? money((x.rev / x.views) * 1000) : "-"}</td></tr>`).join("")}</tbody></table></div>`;
   };
-  return head + `<p class="countries">Unity Ads organizasyonunun tüm oyunları. Sadece biten günler (UTC). Veriler 1 saatte bir yenilenir.</p>${tiles}${chart}${split(byGame, "game", "Oyun")}${split(byPlatform, "platform", "Platform")}${split(byCountry, "country", "Ülke")}`;
+  return head + `<p class="countries">Hauling Empire reklam geliri (Unity Ads, iOS ve Android). Sadece biten günler (UTC). Veriler 1 saatte bir yenilenir.</p>${tiles}${chart}${split(byGame, "game", "Uygulama")}${split(byPlatform, "platform", "Platform")}${split(byCountry, "country", "Ülke")}`;
 }
 const heOps = (env, days) => productFeed(env, "haulingempire", `feed=ops&days=${days}`, 300);
 
@@ -696,7 +707,9 @@ async function statusPage(env) {
   const card = (title, href, lv, label, rows, note = "") => `<section class="st-card"><div class="st-head"><h2>${esc(title)}</h2>${chip(lv, label)}</div>${rows.join("")}${note ? `<p class="st-note">${note}</p>` : ""}<div class="st-head" style="margin:12px 0 0;justify-content:flex-end"><a href="${href}">Ayrıntılar ›</a></div></section>`;
   const safe = (pr) => pr.catch(() => null);
   const app = env.APPDB;
-  const [site, wl, xs, store, he, heS, pol, rq, ad] = await Promise.all([
+  const uaEnd = new Date(); uaEnd.setUTCHours(0, 0, 0, 0);
+  const uaIso = (d) => d.toISOString().slice(0, 19) + "Z";
+  const [site, wl, xs, store, he, heS, pol, rq, ad, ua] = await Promise.all([
     safe(env.DB.prepare("SELECT COUNT(DISTINCT visitor) v FROM visits WHERE day = ?").bind(today).first()),
     safe(env.DB.prepare("SELECT COUNT(*) n, SUM(substr(created_at, 1, 10) = ?) t, (SELECT COUNT(*) FROM duel_picks WHERE day >= date('now', '-6 days')) dp, (SELECT COUNT(DISTINCT visitor) FROM duel_picks WHERE day >= date('now', '-6 days')) dv FROM waitlist").bind(today).first()),
     app ? safe(app.prepare("SELECT (SELECT max(posted_at) FROM social_posts WHERE status = 'posted') last, (SELECT min(scheduled_at) FROM social_posts WHERE status = 'queued') next, (SELECT max(scheduled_at) FROM social_posts WHERE status = 'queued') until, (SELECT count(*) FROM social_posts WHERE status = 'queued') queued, (SELECT count(*) FROM social_posts WHERE status = 'failed' AND scheduled_at > datetime('now', '-3 days')) failed").first()) : null,
@@ -704,6 +717,7 @@ async function statusPage(env) {
     safe(heOps(env, 7)), safe(heStats(env)), safe(productFeed(env, "poleris", "feed=ops&days=7", 300)),
     safe(reviewApi(env, "GET", "/v1/admin/review")),
     app ? safe(app.prepare("SELECT count(*) n, count(DISTINCT viewer_key) v FROM duel_picks WHERE day >= date('now', '-6 days')").first()) : null,
+    safe(unityStats(env, `fields=revenue_sum,view_count&scale=all&start=${uaIso(new Date(uaEnd.getTime() - 7 * 864e5))}&end=${uaIso(new Date(uaEnd.getTime() - 1000))}`)),
   ]);
   const when = (iso) => (iso ? `${esc(String(iso).slice(0, 16).replace("T", " "))} UTC` : '<span class="dim">yok</span>');
   const cards = [];
@@ -751,6 +765,7 @@ async function statusPage(env) {
       row("Şu an oyunda", online ?? '<span class="dim">veri yok</span>'),
       row("Oyuncu listesi", ops ? (Array.isArray(ops.players?.recent_7d) ? `${ops.players.recent_7d.length} oyuncu (7 gün)` : '<span class="dim">gelmiyor</span>') : '<span class="dim">-</span>'),
       row("Mağaza verisi", heS?.ok ? chip("g", "geliyor") : chip("r", "gelmiyor")),
+      row("Unity Ads (7 gün)", ua?.ok ? `$${ua.rows.reduce((a, r) => a + (Number(r.revenue_sum) || 0), 0).toFixed(2)}, ${Math.round(ua.rows.reduce((a, r) => a + (Number(r.view_count) || 0), 0))} gösterim` : ua?.reason === "no_key" ? '<span class="dim">bağlı değil</span>' : chip("r", "gelmiyor")),
     ], (he?.staleMin != null ? [`Canlı veri şu an gelmedi, ${he.staleMin} dk önceki veri gösteriliyor.`, ...notes] : notes).join("<br>")));
   }
 
