@@ -215,7 +215,7 @@ function adminPage(path, title, body) {
   const crumb = group ? `${esc(group[0])}${page && group[2].length > 1 ? ` <span class="dim">›</span> ${esc(page[1])}` : ""}` : "PromoVote yönetim paneli";
   const nav = `<div class="adminbar"><p class="kicker" style="margin:0">${crumb}</p><a href="/cdn-cgi/access/logout" class="logout">Çıkış</a></div><nav class="grps" aria-label="Ürünler">${groupsHtml}</nav>${subHtml}`;
   const html = `<!doctype html><html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="robots" content="noindex, nofollow"><title>${esc(title)} | PromoVote admin</title><link rel="icon" href="/favicon.svg"><link rel="stylesheet" href="/styles.css">
+<meta name="robots" content="noindex, nofollow"><title>${esc(title)} | PromoVote admin</title><link rel="icon" href="/favicon.svg"><link rel="manifest" href="/admin.webmanifest"><link rel="apple-touch-icon" href="/admin-icon-180.png"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="Admin"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><meta name="theme-color" content="#0a0a0a"><link rel="stylesheet" href="/styles.css">
 <style>
 .admin{padding:32px 16px 80px}.admin h1{font-size:34px;margin:0}.top{display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;margin:22px 0 24px}
 .tabs{display:flex;gap:8px;flex-wrap:wrap;border-bottom:1px solid var(--line);padding-bottom:12px}.tab{padding:8px 14px;border-radius:99px;color:var(--muted);text-decoration:none;font-weight:600;font-size:14px;background:var(--surface)}
@@ -407,6 +407,12 @@ async function unityPage(env, path, range) {
   };
   return head + `<p class="countries">Hauling Empire reklam geliri (Unity Ads, iOS ve Android). Sadece biten günler (UTC). Veriler 1 saatte bir yenilenir.</p>${tiles}${chart}${split(byGame, "game", "Uygulama")}${split(byPlatform, "platform", "Platform")}${split(byCountry, "country", "Ülke")}`;
 }
+// Sales paid in another currency (founder 2026-10-17: a £ purchase showed only as $6.63). The game feed may send
+// local: [{currency: "GBP", amount: 4.99}] per product; dollars stay the converted total.
+const CUR = { USD: "$", GBP: "£", EUR: "€", TRY: "₺", JPY: "¥", CAD: "CA$", AUD: "A$" };
+const localPaid = (list) => (Array.isArray(list) && list.length
+  ? list.map((x) => `${esc(CUR[String(x.currency).toUpperCase()] || String(x.currency || "").toUpperCase() + " ")}${fnum(x.amount) === null ? "?" : fnum(x.amount).toFixed(2)}`).join(", ")
+  : '<span class="dim">gelmiyor</span>');
 const heOps = (env, days) => productFeed(env, "haulingempire", `feed=ops&days=${days}`, 300);
 
 const fnum = (v) => (typeof v === "number" && isFinite(v) ? v : null);
@@ -595,7 +601,7 @@ function heOpsPage(path, ops, range, name = "Hauling Empire", kind = "oyun") {
     const testN = fnum(sales.test_purchases_30d);
     if (testN !== null) out.push(`<p class="countries" style="margin:-4px 0 10px"><span class="badge-solo">Test alımları: ${testN}</span> <span class="dim">(toplamlara sayılmaz)</span></p>`);
     const prods = Array.isArray(sales.by_product_30d) ? sales.by_product_30d.slice().sort((a, b) => (fnum(b.usd) || 0) - (fnum(a.usd) || 0) || (fnum(b.count) || 0) - (fnum(a.count) || 0)) : null;
-    out.push(!prods || !prods.length ? '<p class="empty">Henüz satış yok</p>' : `<div class="tablewrap"><table data-sortable><thead><tr><th>Ürün</th><th>Mağaza</th><th>Adet</th><th>Dolar</th></tr></thead><tbody>${prods.map((r) => `<tr><td>${esc(r.product_id ?? "")}</td><td>${esc({ apple: "Apple", google: "Google" }[r.store] ?? r.store ?? "")}</td><td>${fnum(r.count) ?? "-"}</td><td data-v="${fnum(r.usd) ?? 0}">${fnum(r.usd) === null ? "-" : usd(r.usd)}</td></tr>`).join("")}</tbody></table></div>`);
+    out.push(!prods || !prods.length ? '<p class="empty">Henüz satış yok</p>' : `<div class="tablewrap"><table data-sortable><thead><tr><th>Ürün</th><th>Mağaza</th><th>Adet</th><th>Ödenen (yerel)</th><th>Dolar</th></tr></thead><tbody>${prods.map((r) => `<tr><td>${esc(r.product_id ?? "")}</td><td>${esc({ apple: "Apple", google: "Google" }[r.store] ?? r.store ?? "")}</td><td>${fnum(r.count) ?? "-"}</td><td>${localPaid(r.local)}</td><td data-v="${fnum(r.usd) ?? 0}">${fnum(r.usd) === null ? "-" : usd(r.usd)}</td></tr>`).join("")}</tbody></table></div>`);
     // 5. Subscriptions
     out.push(sec("Abonelikler (30 gün)"));
     const sub = sales.subscriptions_30d;
