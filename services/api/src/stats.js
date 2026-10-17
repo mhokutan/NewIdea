@@ -7,6 +7,7 @@ const APPS = [
   { product: "promovote", apple: "6819894584", play: "com.miapera.promovote" },
   { product: "poleris", apple: "6792844860", play: "com.miapera.poleris" },
   { product: "haulingempire", apple: "6815224121", play: "com.mhokutan.haulingempire" },
+  { product: "lovelet", apple: "6824002542", play: "com.mhokutan.coupleapp" },
 ];
 const ASC_VENDOR = "94642380"; // Sales report vendor number (not a secret)
 

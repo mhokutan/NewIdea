@@ -202,6 +202,7 @@ const ADMIN_GROUPS = [
   ["PromoVote", "Site, X, mağazalar", [["/admin/onay", "Onay kuyruğu"], ["/admin/bekleme", "Bekleme listesi"], ["/admin/visitors", "Ziyaretçiler"], ["/admin/x", "X"], ["/admin/app-store?p=promovote", "App Store"], ["/admin/google-play?p=promovote", "Google Play"]]],
   ["Hauling Empire", "Oyun ve mağazalar", [["/admin/hauling-empire/oyun", "Oyun"], ["/admin/app-store?p=haulingempire", "App Store"], ["/admin/google-play?p=haulingempire", "Google Play"], ["/admin/unity-ads", "Unity Ads"]]],
   ["Poleris", "Uygulama ve mağazalar", [["/admin/poleris/uygulama", "Uygulama"], ["/admin/app-store?p=poleris", "App Store"], ["/admin/google-play?p=poleris", "Google Play"]]],
+  ["Lovelet", "Mağazalar", [["/admin/app-store?p=lovelet", "App Store"], ["/admin/google-play?p=lovelet", "Google Play"]]],
 ];
 
 function adminPage(path, title, body) {
@@ -998,7 +999,7 @@ ${tilesHtml([["Paylaşılan", sum.posted?.n || 0], ["Sırada", sum.queued?.n || 
     const apple = path === "/admin/app-store";
     const platform = apple ? "ios" : "android";
     const store = apple ? "App Store" : "Google Play";
-    const PRODUCTS = [["haulingempire", "Hauling Empire"], ["poleris", "Poleris"], ["promovote", "PromoVote"]];
+    const PRODUCTS = [["haulingempire", "Hauling Empire"], ["poleris", "Poleris"], ["promovote", "PromoVote"], ["lovelet", "Lovelet"]];
     const prod = PRODUCTS.some(([k]) => k === url.searchParams.get("p")) ? url.searchParams.get("p") : "haulingempire";
     const range0 = rangeOf(url);
     const products = ""; // the product switch lives in the top navigation now
