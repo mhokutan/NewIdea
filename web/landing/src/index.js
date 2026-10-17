@@ -391,6 +391,9 @@ async function unityPage(env, path, range) {
     ["eCPM", views ? money((rev / views) * 1000) : '<span class="dim" style="font-size:16px">veri yok</span>'],
     ["Doluluk (fill rate)", reqs ? `%${Math.round((avail / reqs) * 100)}` : '<span class="dim" style="font-size:16px">veri yok</span>'],
     ["Başlayan reklam", Math.round(starts)],
+    // Rewarded video pays per completed view, not per click: views for $100 at this period's eCPM, and days at this pace.
+    ["100 dolar için gereken gösterim", views && rev ? Math.round(100 / (rev / views)) : '<span class="dim" style="font-size:16px">veri yok</span>'],
+    ["Bu hızla 100 dolar", rev ? `${Math.ceil(100 / (rev / range))} gün` : '<span class="dim" style="font-size:16px">veri yok</span>'],
   ]);
   const dayKey = (r) => String(r.timestamp || r.date || r.time || Object.values(r)[0] || "").slice(0, 10);
   const series = daily.rows.map((r) => ({ d: dayKey(r), v: n(r.revenue_sum) })).filter((x) => /^\d{4}-\d{2}-\d{2}$/.test(x.d)).sort((a, b) => (a.d < b.d ? -1 : 1));
