@@ -394,19 +394,7 @@ async function unityPage(env, path, range) {
   ]);
   const dayKey = (r) => String(r.timestamp || r.date || r.time || Object.values(r)[0] || "").slice(0, 10);
   const series = daily.rows.map((r) => ({ d: dayKey(r), v: n(r.revenue_sum) })).filter((x) => /^\d{4}-\d{2}-\d{2}$/.test(x.d)).sort((a, b) => (a.d < b.d ? -1 : 1));
-  // Bars with the day name and date written vertically under each bar and the amount on top (founder request).
-  const DAYS = ["Paz", "Pzt", "Sal", "Çar", "Per", "Cum", "Cmt"];
-  const maxV = Math.max(0.01, ...series.map((x) => x.v));
-  const slot = range > 30 ? 16 : 30, bw = slot - 6, top = 22, h = 130, lab = 64;
-  const bars = series.map((x, i) => {
-    const bh = Math.max(x.v > 0 ? 2 : 0, Math.round((x.v / maxV) * (h - top)));
-    const cx = i * slot + slot / 2, d = new Date(x.d + "T00:00:00Z");
-    const label = `${DAYS[d.getUTCDay()]} ${x.d.slice(8, 10)}.${x.d.slice(5, 7)}`;
-    const amount = range > 30 ? "" : `<text x="${cx}" y="${h - bh - 5}" text-anchor="middle" font-size="9" fill="#a1a1a6">${x.v >= 10 ? Math.round(x.v) : x.v.toFixed(2)}</text>`;
-    return `<rect x="${i * slot + 3}" y="${h - bh}" width="${bw}" height="${bh}" rx="3" fill="#ffd60a"><title>${esc(label)}: ${money(x.v)}</title></rect>${amount}<text transform="translate(${cx + 3} ${h + 6}) rotate(90)" font-size="10" fill="#a1a1a6">${esc(label)}</text>`;
-  }).join("");
-  const w = Math.max(1, series.length * slot);
-  const chart = series.length ? `<h2 style="font-size:20px;margin:28px 0 10px">Günlük gelir ($)</h2><div class="tablewrap" style="padding:16px;overflow-x:auto"><svg viewBox="0 0 ${w} ${h + lab}" width="${w}" height="${h + lab}" role="img" aria-label="Günlük Unity Ads geliri">${bars}</svg></div>` : "";
+  const chart = series.length ? `<h2 style="font-size:20px;margin:28px 0 10px">Günlük gelir ($)</h2>${dayChart(series.map((x) => ({ d: x.d, parts: [{ v: x.v, c: BRAND_A }] })), { fmt: (v) => (v >= 10 ? String(Math.round(v)) : v.toFixed(2)), aria: "Günlük Unity Ads geliri" })}` : "";
   // The Unity organization holds Hauling Empire only (founder 2026-10-17): one game id per platform.
   const PLAT = { ios: "iOS", android: "Android" };
   const split = (r, key, label) => {
@@ -475,7 +463,39 @@ ${sec(`Son 7 gün oyuncular (${rec.length})`)}<input class="tsearch" type="searc
 }
 
 // Download sources (store feed) and top search terms, for the Hauling Empire store pages.
-const SRC_KEYS = [["downloads_search", "Arama", "#c6ff3d"], ["downloads_browse", "Gözatma", "#8b5cff"], ["downloads_referral_app", "Başka uygulama", "#ff5470"], ["downloads_referral_web", "Web", "#38bdf8"], ["downloads_other", "Diğer", "#6f6d82"]];
+// Daily bar chart for every admin page (founder request 2026-10-17): day name and date written vertically under
+// each bar, the day's total on top (hidden when there are too many days), stacked or side by side parts.
+const TR_DAYS = ["Paz", "Pzt", "Sal", "Çar", "Per", "Cum", "Cmt"];
+const BRAND_A = "#ffd60a", BRAND_B = "#f5f5f7";
+function dayChart(days, { mode = "stack", fmt = (v) => String(Math.round(v)), aria = "Günlük grafik", legend = null, title = "" } = {}) {
+  days = days.filter((x) => /^\d{4}-\d{2}-\d{2}$/.test(String(x.d)));
+  if (!days.length) return "";
+  const many = days.length > 31;
+  const total = (x) => x.parts.reduce((a, p) => a + (p.v || 0), 0);
+  const maxV = Math.max(1e-9, ...days.map((x) => (mode === "group" ? Math.max(...x.parts.map((p) => p.v || 0)) : total(x))));
+  const slot = many ? 16 : 30, top = 22, h = 130, lab = 64;
+  const bars = days.map((x, i) => {
+    const d = new Date(x.d + "T00:00:00Z"), label = `${TR_DAYS[d.getUTCDay()]} ${x.d.slice(8, 10)}.${x.d.slice(5, 7)}`;
+    const x0 = i * slot + 3, inner = slot - 6, cx = i * slot + slot / 2;
+    let rects = "", topY = h;
+    if (mode === "group") {
+      const w = inner / x.parts.length;
+      x.parts.forEach((p, j) => { const bh = Math.max(p.v > 0 ? 2 : 0, Math.round(((p.v || 0) / maxV) * (h - top))); topY = Math.min(topY, h - bh); rects += `<rect x="${x0 + j * w}" y="${h - bh}" width="${Math.max(1, w - 1)}" height="${bh}" rx="2" fill="${p.c}"><title>${esc(label)} ${esc(p.n || "")}: ${esc(fmt(p.v || 0))}</title></rect>`; });
+    } else {
+      let y = h;
+      x.parts.forEach((p) => { const bh = Math.round(((p.v || 0) / maxV) * (h - top)); if (!bh) return; y -= bh; rects += `<rect x="${x0}" y="${y}" width="${inner}" height="${bh}" fill="${p.c}"><title>${esc(label)} ${esc(p.n || "")}: ${esc(fmt(p.v || 0))}</title></rect>`; });
+      topY = y;
+    }
+    const t = total(x);
+    const amount = many || !t ? "" : `<text x="${cx}" y="${topY - 5}" text-anchor="middle" font-size="9" fill="#a1a1a6">${esc(fmt(t))}</text>`;
+    return `<g${x.dim ? ' opacity="0.45"' : ""}>${rects}${amount}<text transform="translate(${cx + 3} ${h + 6}) rotate(90)" font-size="10" fill="#a1a1a6">${esc(label)}</text></g>`;
+  }).join("");
+  const w = days.length * slot;
+  const leg = legend ? `<p class="countries" style="margin:0 0 8px">${title ? esc(title) + ": " : ""}${legend.map(([n, c]) => `<span style="color:${c}">■</span> ${esc(n)}`).join(" ")}</p>` : title ? `<p class="countries" style="margin:0 0 8px">${esc(title)}</p>` : "";
+  return `<div class="tablewrap" style="padding:16px;overflow-x:auto">${leg}<svg viewBox="0 0 ${w} ${h + lab}" width="${w}" height="${h + lab}" role="img" aria-label="${esc(aria)}">${bars}</svg></div>`;
+}
+
+const SRC_KEYS = [["downloads_search", "Arama", "#ffd60a"], ["downloads_browse", "Gözatma", "#f5f5f7"], ["downloads_referral_app", "Başka uygulama", "#a1a1a6"], ["downloads_referral_web", "Web", "#ff9f0a"], ["downloads_other", "Diğer", "#5a5a5e"]];
 function sourcesSection(rows, range, terms, apple) {
   const sec = (t) => `<h2 style="font-size:20px;margin:28px 0 10px">${esc(t)}</h2>`;
   const series = rows.slice(0, range).reverse();
@@ -483,15 +503,7 @@ function sourcesSection(rows, range, terms, apple) {
   let out = sec("Nereden geldiler");
   if (!known.length) out += '<p class="empty">Henüz veri yok. Kaynaklar, günde 5 ve üstü indirme olunca ve mağaza anahtarları girilince görünür.</p>';
   else {
-    const total = (r) => SRC_KEYS.reduce((a, [k]) => a + (fnum(r[k]) || 0), 0);
-    const maxV = Math.max(1, ...series.map(total));
-    const bw = range > 30 ? 6 : 16, gap = range > 30 ? 2 : 5, h = 130;
-    const bars = series.map((r, i) => {
-      let y = h;
-      return SRC_KEYS.map(([k, l, c]) => { const v = fnum(r[k]) || 0; const bh = Math.round((v / maxV) * (h - 16)); y -= bh; return bh ? `<rect x="${i * (bw + gap)}" y="${y}" width="${bw}" height="${bh}" fill="${c}"><title>${esc(r.date)} ${l}: ${v}</title></rect>` : ""; }).join("");
-    }).join("");
-    const legend = SRC_KEYS.map(([, l, c]) => `<span style="color:${c}">■</span> ${l}`).join(" ");
-    out += `<div class="tablewrap" style="padding:16px"><p class="countries" style="margin:0 0 8px">${legend}</p><svg viewBox="0 0 ${series.length * (bw + gap)} ${h}" width="100%" height="${h}" preserveAspectRatio="none" role="img" aria-label="İndirme kaynakları">${bars}</svg></div>`;
+    out += dayChart(series.map((r) => ({ d: r.date, parts: SRC_KEYS.map(([k, l, c]) => ({ v: fnum(r[k]) || 0, c, n: l })) })), { aria: "İndirme kaynakları", legend: SRC_KEYS.map(([, l, c]) => [l, c]) });
   }
   const last7 = rows.slice(0, 7);
   const sums = SRC_KEYS.map(([k, l]) => [l, last7.reduce((a, r) => a + (fnum(r[k]) || 0), 0), last7.some((r) => fnum(r[k]) !== null)]);
@@ -535,15 +547,7 @@ function heOpsPage(path, ops, range, name = "Hauling Empire", kind = "oyun") {
   const days = Array.isArray(ops.days) ? ops.days.slice().sort((a, b) => (a.date < b.date ? -1 : 1)) : [];
   if (!days.length) out.push(none);
   else {
-    const maxD = Math.max(1, ...days.map((r) => (fnum(r.dau_ios) || 0) + (fnum(r.dau_android) || 0)));
-    const bw = days.length > 31 ? 6 : 16, gap = days.length > 31 ? 2 : 5, h = 130;
-    const bars = days.map((r, i) => {
-      const a = fnum(r.dau_ios) || 0, g = fnum(r.dau_android) || 0;
-      const ha = Math.round((a / maxD) * (h - 16)), hg = Math.round((g / maxD) * (h - 16));
-      const op = r.partial ? ' opacity="0.4"' : "";
-      return `<g${op}><rect x="${i * (bw + gap)}" y="${h - ha - hg}" width="${bw}" height="${ha}" fill="#8b5cff"><title>${esc(r.date)} iOS: ${a}</title></rect><rect x="${i * (bw + gap)}" y="${h - hg}" width="${bw}" height="${hg}" fill="#c6ff3d"><title>${esc(r.date)} Android: ${g}</title></rect></g>`;
-    }).join("");
-    out.push(`<div class="tablewrap" style="padding:16px"><p class="countries" style="margin:0 0 8px">Günlük aktif oyuncu: <span style="color:#8b5cff">■</span> iOS <span style="color:#c6ff3d">■</span> Android</p><svg viewBox="0 0 ${days.length * (bw + gap)} ${h}" width="100%" height="${h}" preserveAspectRatio="none" role="img" aria-label="Günlük aktif oyuncu">${bars}</svg></div>`);
+    out.push(dayChart(days.map((r) => ({ d: r.date, dim: !!r.partial, parts: [{ v: fnum(r.dau_ios) || 0, c: BRAND_B, n: "iOS" }, { v: fnum(r.dau_android) || 0, c: BRAND_A, n: "Android" }] })), { aria: "Günlük aktif oyuncu", title: "Günlük aktif oyuncu", legend: [["iOS", BRAND_B], ["Android", BRAND_A]] }));
     const v = (x) => (fnum(x) === null ? '<span class="dim">veri yok</span>' : x);
     const has = (k) => days.some((r) => fnum(r[k]) !== null);
     const C = [
@@ -581,14 +585,7 @@ function heOpsPage(path, ops, range, name = "Hauling Empire", kind = "oyun") {
       noUsd ? ctile("İade", sd.some((r) => fnum(r.refunds_count) !== null) ? sum("refunds_count") : null) : ctile("İade", usd(sum("refunds_usd")), refLv, `${sum("refunds_count")} adet`),
     ]));
     if (sd.length && !noUsd) {
-      const maxS = Math.max(1, ...sd.map((r) => Math.max(fnum(r.apple_usd) || 0, fnum(r.google_usd) || 0)));
-      const bw = sd.length > 31 ? 3 : 7, gap = sd.length > 31 ? 2 : 4, h = 110, step = bw * 2 + gap;
-      const bars = sd.map((r, i) => {
-        const a = fnum(r.apple_usd) || 0, g = fnum(r.google_usd) || 0;
-        const ha = Math.round((a / maxS) * (h - 10)), hg = Math.round((g / maxS) * (h - 10));
-        return `<rect x="${i * step}" y="${h - ha}" width="${bw}" height="${ha}" fill="#8b5cff"><title>${esc(r.date)} Apple $${a}</title></rect><rect x="${i * step + bw}" y="${h - hg}" width="${bw}" height="${hg}" fill="#c6ff3d"><title>${esc(r.date)} Google $${g}</title></rect>`;
-      }).join("");
-      out.push(`<div class="tablewrap" style="padding:16px"><p class="countries" style="margin:0 0 8px">Günlük satış (USD): <span style="color:#8b5cff">■</span> Apple <span style="color:#c6ff3d">■</span> Google</p><svg viewBox="0 0 ${sd.length * step} ${h}" width="100%" height="${h}" preserveAspectRatio="none" role="img" aria-label="Günlük satış">${bars}</svg></div>`);
+      out.push(dayChart(sd.map((r) => ({ d: r.date, parts: [{ v: fnum(r.apple_usd) || 0, c: BRAND_B, n: "Apple" }, { v: fnum(r.google_usd) || 0, c: BRAND_A, n: "Google" }] })), { mode: "group", fmt: (v) => "$" + (v >= 10 ? Math.round(v) : v.toFixed(2)), aria: "Günlük satış", title: "Günlük satış (USD)", legend: [["Apple", BRAND_B], ["Google", BRAND_A]] }));
     }
     // 4. Products (most dollars first) and the small test purchases label
     out.push(sec("Ürüne göre (30 gün)"));
@@ -679,9 +676,7 @@ async function storeMetricsPage(env, path, prod, name, apple, range, feed = null
     tiles.push(ctile(`${range} günde ilk açılış (uygulamadan)`, fs("new_players")), ctile("Ertesi gün geri gelen (ortalama)", fa("d1") === null ? null : `%${Math.round(fa("d1") * 100)}`));
   }
   const series = dates.slice().reverse();
-  const maxV = Math.max(1, ...series.map((d) => byDate[d][main] || 0));
-  const bw = range > 30 ? 6 : 18, gap = range > 30 ? 2 : 6, h = 120;
-  const bars = series.map((d, i) => { const v = byDate[d][main] || 0; const bh = Math.round((v / maxV) * (h - 20)); return `<rect x="${i * (bw + gap)}" y="${h - bh}" width="${bw}" height="${bh}" rx="4" fill="#c6ff3d"><title>${esc(d)}: ${v}</title></rect>`; }).join("");
+  const mainChart = dayChart(series.map((d) => ({ d, parts: [{ v: byDate[d][main] || 0, c: BRAND_A }] })), { aria: `Günlük ${apple ? "indirme" : "yükleme"}` });
   const v = (x) => (typeof x === "number" ? Math.round(x * 100) / 100 : '<span class="dim">veri yok</span>');
   const cols = apple ? [["downloads", "İndirme"], ["redownloads", "Yeniden indirme"], ["updates", "Güncelleme"], ["iap_units", "Satın alma"]] : [["installs", "Yükleme"], ["uninstalls", "Kaldırma"], ["active_devices", "Aktif cihaz"], ["rating_avg", "Puan"], ["crashes", "Çökme"], ["anrs", "ANR"]];
   const table = dates.length
@@ -693,7 +688,7 @@ async function storeMetricsPage(env, path, prod, name, apple, range, feed = null
 <p class="countries">${note} Son toplama: ${esc(String(runs.store_stats || "henüz yok").slice(0, 16).replace("T", " "))} UTC.${status}</p>
 ${rangePills(path, range, `&p=${prod}`)}
 ${ctiles(tiles)}
-${series.length ? `<h2 style="font-size:20px;margin:28px 0 10px">Günlük ${apple ? "indirme" : "yükleme"} (son ${range} gün)</h2><div class="tablewrap" style="padding:16px"><svg viewBox="0 0 ${Math.max(1, series.length * (bw + gap))} ${h}" width="100%" height="${h}" preserveAspectRatio="none" role="img" aria-label="Günlük ${apple ? "indirme" : "yükleme"}">${bars}</svg></div>` : ""}
+${series.length ? `<h2 style="font-size:20px;margin:28px 0 10px">Günlük ${apple ? "indirme" : "yükleme"} (son ${range} gün)</h2>${mainChart}` : ""}
 <h2 style="font-size:20px;margin:28px 0 10px">Günlük tablo</h2>
 <div class="tablewrap"><table><thead><tr><th>Gün</th>${cols.map(([, l]) => `<th>${l}</th>`).join("")}</tr></thead><tbody>${table}</tbody></table></div>`;
 }
@@ -1021,10 +1016,7 @@ ${tilesHtml([["Paylaşılan", sum.posted?.n || 0], ["Sırada", sum.queued?.n || 
     ]);
     // Simple bar chart of new players, last 30 days (server-drawn SVG, no scripts).
     const series = rows.slice(0, range).reverse();
-    const maxV = Math.max(1, ...series.map((r) => num(r.new_players) || 0));
-    const bw = range > 30 ? 6 : 18, gap = range > 30 ? 2 : 6, h = 120;
-    const bars = series.map((r, i) => { const v = num(r.new_players) || 0; const bh = Math.round((v / maxV) * (h - 20)); return `<rect x="${i * (bw + gap)}" y="${h - bh}" width="${bw}" height="${bh}" rx="4" fill="#c6ff3d"><title>${esc(r.date)}: ${v}</title></rect>`; }).join("");
-    const chart = series.length ? `<h2 style="font-size:20px;margin:28px 0 10px">Günlük yeni oyuncu (son ${range} gün)</h2><div class="tablewrap" style="padding:16px"><svg viewBox="0 0 ${Math.max(1, series.length * (bw + gap))} ${h}" width="100%" height="${h}" preserveAspectRatio="none" role="img" aria-label="Günlük yeni oyuncu">${bars}</svg></div>` : "";
+    const chart = series.length ? `<h2 style="font-size:20px;margin:28px 0 10px">Günlük yeni oyuncu (son ${range} gün)</h2>${dayChart(series.map((r) => ({ d: r.date, parts: [{ v: num(r.new_players) || 0, c: BRAND_A }] })), { aria: "Günlük yeni oyuncu" })}` : "";
     const table = rows.length
       ? rows.slice(0, range).map((r) => `<tr><td>${esc(r.date)}</td><td>${show(r.new_players)}</td><td>${show(r.downloads)}</td><td>${show(r.store_page_views)}</td><td>${show(r.d1, 1)}</td><td>${show(r.d7, 1)}</td><td>${show(r.crash_rate, 2)}</td>${apple ? "" : `<td>${show(r.anr_rate, 2)}</td>`}<td>${show(r.rating_avg)}</td></tr>`).join("")
       : `<tr><td colspan="${apple ? 8 : 9}" class="dim center">Henüz veri yok.</td></tr>`;
