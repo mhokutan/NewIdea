@@ -458,12 +458,13 @@ function playersSection(players) {
     ? on.map((p) => `<tr><td>${dash(p.company)}</td><td>${dash(p.username)}</td><td>${dash(PLAT[p.platform] || p.platform)}</td><td>${reg(p.region)}</td><td>${p.mode === "online" ? '<span class="badge-on">online</span>' : p.mode ? '<span class="badge-solo">solo</span>' : "-"}</td><td data-v="${Date.parse(p.last_seen || "") || 0}">${esc(ago(p.last_seen))}</td></tr>`).join("")
     : '<tr data-empty="1"><td colspan="6" class="dim center">Şu an kimse oyunda değil.</td></tr>';
   const day = (iso) => (iso ? esc(String(iso).slice(0, 16).replace("T", " ")) : "-");
+  const hasPlay = rec.some((p) => fnum(p.playtime_min) !== null); // total minutes played in the 7 days (founder request 2026-10-18)
   const recRows = rec.length
-    ? rec.map((p) => `<tr data-search="${esc(`${p.company || ""} ${p.username || ""}`.toLowerCase())}"><td>${dash(p.company)}</td><td>${dash(p.username)}</td><td>${dash(PLAT[p.platform] || p.platform)}</td><td>${reg(p.region)}</td><td data-v="${Date.parse(p.first_seen || "") || 0}">${day(p.first_seen)}</td><td data-v="${Date.parse(p.last_seen || "") || 0}">${day(p.last_seen)} <span class="dim">(${esc(ago(p.last_seen))})</span></td><td>${fnum(p.days_active) ?? "-"}</td><td>${fnum(p.sessions) ?? "-"}</td></tr>`).join("")
-    : '<tr data-empty="1"><td colspan="8" class="dim center">Son 7 günde oyuncu yok.</td></tr>';
+    ? rec.map((p) => `<tr data-search="${esc(`${p.company || ""} ${p.username || ""}`.toLowerCase())}"><td>${dash(p.company)}</td><td>${dash(p.username)}</td><td>${dash(PLAT[p.platform] || p.platform)}</td><td>${reg(p.region)}</td><td data-v="${Date.parse(p.first_seen || "") || 0}">${day(p.first_seen)}</td><td data-v="${Date.parse(p.last_seen || "") || 0}">${day(p.last_seen)} <span class="dim">(${esc(ago(p.last_seen))})</span></td><td>${fnum(p.days_active) ?? "-"}</td><td>${fnum(p.sessions) ?? "-"}</td>${hasPlay ? `<td data-v="${fnum(p.playtime_min) ?? 0}">${fnum(p.playtime_min) === null ? "-" : fnum(p.playtime_min) >= 60 ? `${Math.floor(fnum(p.playtime_min) / 60)} sa ${Math.round(fnum(p.playtime_min) % 60)} dk` : `${Math.round(fnum(p.playtime_min))} dk`}</td>` : ""}</tr>`).join("")
+    : `<tr data-empty="1"><td colspan="${hasPlay ? 9 : 8}" class="dim center">Son 7 günde oyuncu yok.</td></tr>`;
   return `${sec("Şu an oyunda")}<div class="tablewrap"><table id="tbl-online" data-sortable data-collapse="10"><thead><tr><th>Şirket</th><th>Kullanıcı</th><th>Platform</th><th>Bölge</th><th>Mod</th><th>Son görülme</th></tr></thead><tbody>${onRows}</tbody></table></div>
 ${sec(`Son 7 gün oyuncular (${rec.length})`)}<input class="tsearch" type="search" placeholder="Şirket veya kullanıcı adı ara" aria-label="Şirket veya kullanıcı adı ara" data-filter="tbl-recent">
-<div class="tablewrap"><table id="tbl-recent" data-sortable data-collapse="10"><thead><tr><th>Şirket</th><th>Kullanıcı</th><th>Platform</th><th>Bölge</th><th>İlk görülme</th><th>Son görülme</th><th>Aktif gün</th><th>Oturum</th></tr></thead><tbody>${recRows}</tbody></table></div>`;
+<div class="tablewrap"><table id="tbl-recent" data-sortable data-collapse="10"><thead><tr><th>Şirket</th><th>Kullanıcı</th><th>Platform</th><th>Bölge</th><th>İlk görülme</th><th>Son görülme</th><th>Aktif gün</th><th>Oturum</th>${hasPlay ? "<th>Oyun süresi</th>" : ""}</tr></thead><tbody>${recRows}</tbody></table></div>`;
 }
 
 // Download sources (store feed) and top search terms, for the Hauling Empire store pages.
@@ -569,6 +570,38 @@ function heOpsPage(path, ops, range, name = "Hauling Empire", kind = "oyun") {
       const rowsX = days.slice().reverse().map((r) => `<tr${r.partial ? ' class="dim"' : ""}><td>${esc(r.date)}</td>${extraKeys.map((k) => `<td>${fnum(r[k]) ?? '<span class="dim">veri yok</span>'}</td>`).join("")}</tr>`).join("");
       out.push(`<h3 style="margin:22px 0 8px;font-size:16px">Uygulamaya özel (o gün olayı yaşayan cihaz sayısı)</h3><div class="tablewrap"><table><thead><tr><th>Gün</th>${extraKeys.map((k) => `<th>${esc(LABEL[k] || k)}</th>`).join("")}</tr></thead><tbody>${rowsX}</tbody></table></div>`);
     }
+  }
+
+  // Time in game (founder request 2026-10-18): session length, minutes per player per day, sessions per player,
+  // a daily chart and the session length spread. Full days only (today is still running).
+  {
+    const full = days.filter((r) => !r.partial);
+    const sumK = (k) => full.reduce((a, r) => a + (fnum(r[k]) || 0), 0);
+    const dau = full.reduce((a, r) => a + (fnum(r.dau_ios) || 0) + (fnum(r.dau_android) || 0), 0);
+    const withAvg = full.filter((r) => fnum(r.avg_session_min) !== null);
+    const sessW = withAvg.reduce((a, r) => a + (fnum(r.sessions) || 0), 0);
+    const avgSess = !withAvg.length ? null : sessW > 0 ? withAvg.reduce((a, r) => a + fnum(r.avg_session_min) * (fnum(r.sessions) || 0), 0) / sessW : withAvg.reduce((a, r) => a + fnum(r.avg_session_min), 0) / withAvg.length;
+    const withMed = full.filter((r) => fnum(r.median_session_min) !== null);
+    const medSess = withMed.length ? withMed.reduce((a, r) => a + fnum(r.median_session_min), 0) / withMed.length : null;
+    const playMin = full.some((r) => fnum(r.playtime_min) !== null) ? sumK("playtime_min") : avgSess !== null && sessW > 0 ? withAvg.reduce((a, r) => a + fnum(r.avg_session_min) * (fnum(r.sessions) || 0), 0) : null;
+    const perPlayer = playMin !== null && dau > 0 ? playMin / dau : null;
+    const sessPer = full.some((r) => fnum(r.sessions) !== null) && dau > 0 ? sumK("sessions") / dau : null;
+    const mins = (m) => (m === null ? null : m >= 60 ? `${Math.floor(m / 60)} sa ${Math.round(m % 60)} dk` : `${m.toFixed(1)} dk`);
+    const spread = ops.session_length && typeof ops.session_length === "object" ? ops.session_length : null;
+    out.push(sec(kind === "oyun" ? "Oyunda kalma" : "Uygulamada kalma"));
+    out.push(ctiles([
+      ctile(`Ortalama oturum (${range} gün)`, mins(avgSess), avgSess === null ? "" : avgSess < 2 ? "r" : avgSess < 5 ? "y" : "g", "Bir açılışta kaç dakika kalıyor"),
+      ctile("Ortanca oturum", mins(medSess), "", "Oyuncuların yarısı bundan kısa kalıyor"),
+      ctile("Oyuncu başı günlük süre", mins(perPlayer), "", "Bir oyuncu bir günde toplam kaç dakika oynuyor"),
+      ctile("Oyuncu başı günlük oturum", sessPer === null ? null : sessPer.toFixed(1), "", "Günde kaç kez açıyor"),
+    ]));
+    if (withAvg.length) out.push(dayChart(days.map((r) => ({ d: r.date, dim: !!r.partial, parts: [{ v: fnum(r.avg_session_min) || 0, c: BRAND_A, n: "Ortalama oturum" }] })), { fmt: (v) => (v >= 10 ? String(Math.round(v)) : v.toFixed(1)), aria: "Günlük ortalama oturum süresi", title: "Günlük ortalama oturum (dakika)" }));
+    if (spread) {
+      const B = [["lt1", "1 dk altı"], ["m1_5", "1 ile 5 dk"], ["m5_15", "5 ile 15 dk"], ["m15_30", "15 ile 30 dk"], ["m30_60", "30 ile 60 dk"], ["gt60", "60 dk üstü"]];
+      const tot = B.reduce((a, [k]) => a + (fnum(spread[k]) || 0), 0);
+      if (tot > 0) out.push(`<h3 style="margin:22px 0 8px;font-size:16px">Oturum süresi dağılımı (${esc(String(spread.days || 7))} gün, ${tot} oturum)</h3><div class="tablewrap"><table><thead><tr><th>Süre</th><th>Oturum</th><th>Pay</th></tr></thead><tbody>${B.map(([k, l]) => { const n = fnum(spread[k]) || 0, pc = Math.round((n / tot) * 100); return `<tr><td>${l}</td><td>${n}</td><td><span style="display:inline-block;height:8px;width:${pc}px;max-width:100%;background:${BRAND_A};border-radius:4px;vertical-align:middle"></span> %${pc}</td></tr>`; }).join("")}</tbody></table></div><p class="countries">1 dakikanın altındaki oturumlar çoksa oyuncu açılışta takılıyor ya da oyun erken kapanıyor olabilir.</p>`);
+    }
+    if (avgSess === null && perPlayer === null && !spread) out.push(`<p class="countries">${esc(name)} tarafı oturum süresini henüz göndermiyor (avg_session_min, median_session_min, playtime_min, session_length).</p>`);
   }
 
   // 3. Sales (founder 2026-10-16: money first, so this block is moved to the top below)
