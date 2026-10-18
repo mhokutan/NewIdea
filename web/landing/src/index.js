@@ -573,8 +573,11 @@ function opsMissing(ops, skip = []) {
 
 function heOpsPage(path, ops, range, name = "Hauling Empire", kind = "oyun") {
   const st = ops.status || {};
-  const failed = Array.isArray(st.failed) && st.failed.length ? `<p class="countries">Alınamayan bölümler: ${st.failed.map((f) => esc(typeof f === "string" ? f : JSON.stringify(f))).join(", ")}</p>` : "";
-  const banner = st.ok === false ? '<div class="warnbar">Bazı veriler eksik ya da gecikmeli. Aşağıda "Veri yok" yazan bölümler güncel değil.</div>' : "";
+  // "stale" (HE 2026-10-18): the feed is prebuilt every 5 min; when a build is late it sends the last one and says so.
+  const stale = Array.isArray(st.failed) && st.failed.includes("stale");
+  const failList = Array.isArray(st.failed) ? st.failed.filter((f) => f !== "stale") : [];
+  const failed = (stale ? `<p class="countries">${esc(name)} tarafında veri hazırlama bu tur gecikti, son hazır veri gösteriliyor.</p>` : "") + (failList.length ? `<p class="countries">Alınamayan bölümler: ${failList.map((f) => esc(typeof f === "string" ? f : JSON.stringify(f))).join(", ")}</p>` : "");
+  const banner = st.ok === false && failList.length ? '<div class="warnbar">Bazı veriler eksik ya da gecikmeli. Aşağıda "Veri yok" yazan bölümler güncel değil.</div>' : "";
   const sec = (t) => `<h2 style="font-size:22px;margin:34px 0 12px">${esc(t)}</h2>`;
   const none = '<p class="empty">Veri yok</p>';
   const missing = opsMissing(ops, kind === "oyun" ? [] : ["players"]);
@@ -840,7 +843,7 @@ async function statusPage(env) {
   {
     const ops = he?.ok ? he.data : null;
     const missing = ops ? opsMissing(ops) : [];
-    const lv = !ops ? "r" : missing.length || ops.status?.ok === false ? "y" : "g";
+    const lv = !ops ? "r" : missing.length || (ops.status?.ok === false && !(Array.isArray(ops.status.failed) && ops.status.failed.every((f) => f === "stale"))) ? "y" : "g";
     const label = !ops ? "Bağlantı yok" : lv === "y" ? "Eksik veri" : "Çalışıyor";
     const online = ops?.now ? fnum(ops.now.players_online_5min ?? ops.now.users_online_5min) : null;
     const notes = [];
@@ -861,7 +864,7 @@ async function statusPage(env) {
   {
     const ops = pol?.ok ? pol.data : null;
     const missing = ops ? opsMissing(ops, ["players", "sales.by_product_30d", "sales.test_purchases_30d"]) : [];
-    const lv = !ops ? "r" : missing.length || ops.status?.ok === false ? "y" : "g";
+    const lv = !ops ? "r" : missing.length || (ops.status?.ok === false && !(Array.isArray(ops.status.failed) && ops.status.failed.every((f) => f === "stale"))) ? "y" : "g";
     const last = Array.isArray(ops?.days) ? ops.days.slice().sort((a, b) => (a.date < b.date ? 1 : -1))[0] : null;
     cards.push(card("Poleris", "/admin/poleris/uygulama", lv, !ops ? "Bağlantı yok" : lv === "y" ? "Eksik veri" : "Çalışıyor", [
       row("Uygulama verisi", ops ? chip("g", "geliyor") : chip("r", "gelmiyor")),
