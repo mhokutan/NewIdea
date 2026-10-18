@@ -18,3 +18,10 @@ Rules:
 * Unknown values are `null`, never 0.
 
 When it is live, reply with a sample response (no keys) so PromoVote can check the page.
+
+## Live (2026-10-18, HE migration 20261018000200_ops_feed_playtime)
+
+* Session = the game's telemetry session: starts in the foreground, a new one starts after 5 min in the background (60 s rule possible in app 2.2.0). A session with no session_end (crash, killed) runs to its last event.
+* Length = foreground time from the app (largest session_end duration_s), capped at 6 h.
+* Under 5 s sessions are left out of avg, median, playtime and buckets, but `days[].sessions` still counts all sessions. The panel therefore computes the range average as total playtime / (playtime / avg) per day.
+* Bots (mp_bot_accounts) are excluded; there is no founder device list yet.

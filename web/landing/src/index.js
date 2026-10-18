@@ -579,8 +579,13 @@ function heOpsPage(path, ops, range, name = "Hauling Empire", kind = "oyun") {
     const sumK = (k) => full.reduce((a, r) => a + (fnum(r[k]) || 0), 0);
     const dau = full.reduce((a, r) => a + (fnum(r.dau_ios) || 0) + (fnum(r.dau_android) || 0), 0);
     const withAvg = full.filter((r) => fnum(r.avg_session_min) !== null);
+    // Measured sessions per day = playtime / average (days[].sessions also counts the under 5 s opens, HE 2026-10-18),
+    // so the range average is total playtime / measured sessions. Falls back to weighting by sessions.
+    const exact = withAvg.filter((r) => fnum(r.playtime_min) !== null && fnum(r.avg_session_min) > 0);
     const sessW = withAvg.reduce((a, r) => a + (fnum(r.sessions) || 0), 0);
-    const avgSess = !withAvg.length ? null : sessW > 0 ? withAvg.reduce((a, r) => a + fnum(r.avg_session_min) * (fnum(r.sessions) || 0), 0) / sessW : withAvg.reduce((a, r) => a + fnum(r.avg_session_min), 0) / withAvg.length;
+    const avgSess = !withAvg.length ? null
+      : exact.length === withAvg.length ? exact.reduce((a, r) => a + fnum(r.playtime_min), 0) / exact.reduce((a, r) => a + fnum(r.playtime_min) / fnum(r.avg_session_min), 0)
+      : sessW > 0 ? withAvg.reduce((a, r) => a + fnum(r.avg_session_min) * (fnum(r.sessions) || 0), 0) / sessW : withAvg.reduce((a, r) => a + fnum(r.avg_session_min), 0) / withAvg.length;
     const withMed = full.filter((r) => fnum(r.median_session_min) !== null);
     const medSess = withMed.length ? withMed.reduce((a, r) => a + fnum(r.median_session_min), 0) / withMed.length : null;
     const playMin = full.some((r) => fnum(r.playtime_min) !== null) ? sumK("playtime_min") : avgSess !== null && sessW > 0 ? withAvg.reduce((a, r) => a + fnum(r.avg_session_min) * (fnum(r.sessions) || 0), 0) : null;
