@@ -264,25 +264,10 @@ const tilesHtml = (items) => `<div class="tiles">${items.map(([l, n]) => `<div c
 
 // Hauling Empire store and player stats (its own Supabase function, daily totals only). The key stays on this
 // Worker; the answer is cached for an hour so admin page views never hammer the endpoint.
-const HE_STATS_URL = "https://bcwahdyqpbzyqllszeng.supabase.co/functions/v1/store-stats?days=90";
+// Hauling Empire store feed (90 days), through productFeed so it gets the 10 s timeout and the 1 day backup.
 async function heStats(env) {
-  if (!env.HE_STATS_KEY) return { ok: false, reason: "no_key" };
-  const cache = caches.default;
-  const cacheKey = new Request("https://promovote.com/__cache/he-stats-v1");
-  const hit = await cache.match(cacheKey);
-  if (hit) return { ok: true, ...(await hit.json()) };
-  try {
-    const res = await fetch(HE_STATS_URL, { headers: { Authorization: `Bearer ${env.HE_STATS_KEY}` }, signal: AbortSignal.timeout(5000) });
-    if (!res.ok) { console.error("he_stats_status", res.status); return { ok: false, reason: "http_" + res.status }; }
-    const text = await res.text();
-    if (text.length > 500000) return { ok: false, reason: "too_big" };
-    const data = JSON.parse(text);
-    await cache.put(cacheKey, new Response(JSON.stringify(data), { headers: { "Content-Type": "application/json", "Cache-Control": "max-age=3600" } }));
-    return { ok: true, ...data };
-  } catch (err) {
-    console.error("he_stats_error", err?.message);
-    return { ok: false, reason: "fetch_failed" };
-  }
+  const r = await productFeed(env, "haulingempire", "days=90", 3600);
+  return r.ok ? { ok: true, staleMin: r.staleMin, reason: r.reason, ...r.data } : r;
 }
 
 // Product feeds (each product's own read-only endpoint, daily totals only). Keys stay on this Worker.
@@ -332,7 +317,7 @@ const feedWhy = (r, name, keyName) => {
   if (why === "no_key") return `Bağlantı anahtarı (${keyName}) bu Worker'da yok.`;
   if (why === "http_401" || why === "http_403") return `${name} sunucusu anahtarı kabul etmedi (${why.slice(5)}). ${keyName} iki tarafta aynı değil.`;
   if (why.startsWith("http_")) return `${name} sunucusu hata verdi (kod ${why.slice(5)}).`;
-  if (why === "fetch_failed") return `${name} sunucusuna 5 saniyede ulaşılamadı ya da cevap bozuk geldi.`;
+  if (why === "fetch_failed") return `${name} sunucusuna 10 saniyede ulaşılamadı ya da cevap bozuk geldi.`;
   if (why === "too_big") return `${name} cevabı çok büyük geldi.`;
   return `${name} verisi şu an alınamıyor.`;
 };
@@ -770,7 +755,7 @@ async function statusPage(env) {
     const label = !ops ? "Bağlantı yok" : lv === "y" ? "Eksik veri" : "Çalışıyor";
     const online = ops?.now ? fnum(ops.now.players_online_5min ?? ops.now.users_online_5min) : null;
     const notes = [];
-    if (!ops) notes.push(he?.reason === "no_key" ? "Bağlantı anahtarı (HE_STATS_KEY) yok." : "Oyun verisi şu an alınamıyor.");
+    if (!ops) notes.push(feedWhy(he, "Hauling Empire", "HE_STATS_KEY"));
     if (missing.length) notes.push(`Oyun tarafı henüz göndermiyor: <b>${missing.map(esc).join(", ")}</b>. Hauling Empire masaüstüne "yeni alanları canlıya al" de.`);
     if (heS && !heS.ok) notes.push("Mağaza verisi şu an alınamıyor.");
     cards.push(card("Hauling Empire", "/admin/hauling-empire/oyun", lv, label, [
@@ -780,7 +765,7 @@ async function statusPage(env) {
       row("Oyuncu listesi", ops ? (Array.isArray(ops.players?.recent_7d) ? `${ops.players.recent_7d.length} oyuncu (7 gün)` : '<span class="dim">gelmiyor</span>') : '<span class="dim">-</span>'),
       row("Mağaza verisi", heS?.ok ? chip("g", "geliyor") : chip("r", "gelmiyor")),
       row("Unity Ads (7 gün)", ua?.ok ? `$${ua.rows.reduce((a, r) => a + (Number(r.revenue_sum) || 0), 0).toFixed(2)}, ${Math.round(ua.rows.reduce((a, r) => a + (Number(r.view_count) || 0), 0))} gösterim` : ua?.reason === "no_key" ? '<span class="dim">bağlı değil</span>' : chip("r", "gelmiyor")),
-    ], (he?.staleMin != null ? [`Canlı veri şu an gelmedi, ${he.staleMin} dk önceki veri gösteriliyor.`, ...notes] : notes).join("<br>")));
+    ], (he?.staleMin != null ? [`Canlı veri şu an gelmedi, ${he.staleMin} dk önceki veri gösteriliyor. Neden: ${feedWhy(he, "Hauling Empire", "HE_STATS_KEY")}`, ...notes] : notes).join("<br>")));
   }
 
   // Poleris: app feed
@@ -794,7 +779,7 @@ async function statusPage(env) {
       row("Son güncelleme", when(ops?.generated_at)),
       row("Son gün aktif (iOS + Android)", last ? (fnum(last.dau_ios) || 0) + (fnum(last.dau_android) || 0) : '<span class="dim">veri yok</span>'),
       row("Son gün yükleme", last && fnum(last.installs) !== null ? fnum(last.installs) : '<span class="dim">veri yok</span>'),
-    ], !ops ? feedWhy(pol, "Poleris", "POLERIS_STATS_KEY") : [pol.staleMin != null ? `Canlı veri şu an gelmedi, ${pol.staleMin} dk önceki veri gösteriliyor.` : "", missing.length ? `Poleris tarafı henüz göndermiyor: <b>${missing.map(esc).join(", ")}</b>.` : ""].filter(Boolean).join("<br>")));
+    ], !ops ? feedWhy(pol, "Poleris", "POLERIS_STATS_KEY") : [pol.staleMin != null ? `Canlı veri şu an gelmedi, ${pol.staleMin} dk önceki veri gösteriliyor. Neden: ${feedWhy(pol, "Poleris", "POLERIS_STATS_KEY")}` : "", missing.length ? `Poleris tarafı henüz göndermiyor: <b>${missing.map(esc).join(", ")}</b>.` : ""].filter(Boolean).join("<br>")));
   }
 
   return `<div class="top"><h1>Genel durum</h1></div>
@@ -1000,7 +985,7 @@ ${tilesHtml([["Paylaşılan", sum.posted?.n || 0], ["Sırada", sum.queued?.n || 
   if (path === "/admin/hauling-empire/oyun") {
     const range = rangeOf(url);
     const r = await heOps(env, range);
-    if (!r.ok) return adminPage(path, "Hauling Empire: oyun", `<div class="top"><h1>Hauling Empire: oyun</h1></div><p class="empty">${r.reason === "no_key" ? "Bağlantı anahtarı (HE_STATS_KEY) yok." : "Oyun verileri şu an alınamadı. Biraz sonra tekrar dene."}</p>`);
+    if (!r.ok) return adminPage(path, "Hauling Empire: oyun", `<div class="top"><h1>Hauling Empire: oyun</h1></div><p class="empty">${esc(feedWhy(r, "Hauling Empire", "HE_STATS_KEY"))}</p>`);
     return adminPage(path, "Hauling Empire: oyun", heOpsPage(path, r.data, range));
   }
 
@@ -1017,7 +1002,7 @@ ${tilesHtml([["Paylaşılan", sum.posted?.n || 0], ["Sırada", sum.queued?.n || 
     if (!data.ok) {
       const msg = data.reason === "no_key"
         ? "Hauling Empire bağlantı anahtarı (HE_STATS_KEY) henüz bu Worker'a girilmedi. Girilince veriler burada görünür."
-        : "Hauling Empire verileri şu an alınamadı. Biraz sonra tekrar dene.";
+        : feedWhy(data, "Hauling Empire", "HE_STATS_KEY");
       return adminPage(`${path}?p=${prod}`, store, `${products}<div class="top"><h1>${store}: Hauling Empire</h1></div><p class="empty">${esc(msg)}</p>`);
     }
     const SRC = { ok: "güncel", late: "gecikmeli", missing_key: "anahtar yok", error: "hata", unknown: "henüz bağlanmadı" };
