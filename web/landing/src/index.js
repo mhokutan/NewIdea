@@ -348,10 +348,14 @@ async function unityStats(env, query) {
 }
 
 async function unityPage(env, path, range) {
-  const end = new Date(); end.setUTCHours(0, 0, 0, 0);
-  const start = new Date(end.getTime() - range * 864e5);
+  // Today counts too (founder 2026-10-21: LevelPlay showed $3.05, the panel $2.60 because it stopped at yesterday).
+  // The range is the last `range` days including today; end is the current full hour so the 1 h cache key holds.
+  const today = new Date(); today.setUTCHours(0, 0, 0, 0);
+  const start = new Date(today.getTime() - (range - 1) * 864e5);
+  const end = new Date(); end.setUTCMinutes(0, 0, 0);
   const iso = (d) => d.toISOString().slice(0, 19) + "Z";
-  const base = `fields=adrequest_count,available_sum,start_count,view_count,revenue_sum&start=${iso(start)}&end=${iso(new Date(end.getTime() - 1000))}`;
+  const todayKey = today.toISOString().slice(0, 10);
+  const base = `fields=adrequest_count,available_sum,start_count,view_count,revenue_sum&start=${iso(start)}&end=${iso(end)}`;
   const [daily, byCountry, byPlatform, byGame] = await Promise.all([
     unityStats(env, `${base}&scale=day`),
     unityStats(env, `${base}&scale=all&groupBy=country`),
@@ -373,19 +377,22 @@ async function unityPage(env, path, range) {
   const rev = tot(daily.rows, "revenue_sum"), views = tot(daily.rows, "view_count"), starts = tot(daily.rows, "start_count");
   const reqs = tot(daily.rows, "adrequest_count"), avail = tot(daily.rows, "available_sum");
   const money = (v) => "$" + v.toFixed(2);
+  const dayKey = (r) => String(r.timestamp || r.date || r.time || Object.values(r)[0] || "").slice(0, 10);
+  const revToday = daily.rows.filter((r) => dayKey(r) === todayKey).reduce((a, r) => a + n(r.revenue_sum), 0);
+  const revFull = rev - revToday; // pace from finished days only
   const tiles = tilesHtml([
-    [`${range} günde gelir`, money(rev)],
+    [`${range} günde gelir (bugün dahil)`, money(rev)],
+    ["Bugün (devam ediyor)", money(revToday)],
     ["Gösterim (izlenen)", Math.round(views)],
     ["eCPM", views ? money((rev / views) * 1000) : '<span class="dim" style="font-size:16px">veri yok</span>'],
     ["Doluluk (fill rate)", reqs ? `%${Math.round((avail / reqs) * 100)}` : '<span class="dim" style="font-size:16px">veri yok</span>'],
     ["Başlayan reklam", Math.round(starts)],
     // Rewarded video pays per completed view, not per click: views for $100 at this period's eCPM, and days at this pace.
     ["100 dolar için gereken gösterim", views && rev ? Math.round(100 / (rev / views)) : '<span class="dim" style="font-size:16px">veri yok</span>'],
-    ["Bu hızla 100 dolar", rev ? `${Math.ceil(100 / (rev / range))} gün` : '<span class="dim" style="font-size:16px">veri yok</span>'],
+    ["Bu hızla 100 dolar", revFull && range > 1 ? `${Math.ceil(100 / (revFull / (range - 1)))} gün` : '<span class="dim" style="font-size:16px">veri yok</span>'],
   ]);
-  const dayKey = (r) => String(r.timestamp || r.date || r.time || Object.values(r)[0] || "").slice(0, 10);
   const series = daily.rows.map((r) => ({ d: dayKey(r), v: n(r.revenue_sum) })).filter((x) => /^\d{4}-\d{2}-\d{2}$/.test(x.d)).sort((a, b) => (a.d < b.d ? -1 : 1));
-  const chart = series.length ? `<h2 style="font-size:20px;margin:28px 0 10px">Günlük gelir ($)</h2>${dayChart(series.map((x) => ({ d: x.d, parts: [{ v: x.v, c: BRAND_A }] })), { fmt: (v) => (v >= 10 ? String(Math.round(v)) : v.toFixed(2)), aria: "Günlük Unity Ads geliri" })}` : "";
+  const chart = series.length ? `<h2 style="font-size:20px;margin:28px 0 10px">Günlük gelir ($)</h2>${dayChart(series.map((x) => ({ d: x.d, dim: x.d === todayKey, parts: [{ v: x.v, c: BRAND_A }] })), { fmt: (v) => (v >= 10 ? String(Math.round(v)) : v.toFixed(2)), aria: "Günlük Unity Ads geliri" })}` : "";
   // The Unity organization holds Hauling Empire only (founder 2026-10-17): one game id per platform.
   const PLAT = { ios: "iOS", android: "Android" };
   const split = (r, key, label) => {
@@ -393,7 +400,7 @@ async function unityPage(env, path, range) {
     const rows = r.rows.map((x) => ({ k: key === "game" ? `Hauling Empire ${PLAT[String(x.platform).toLowerCase()] || x.platform || ""} (oyun no ${x.game || "?"})` : x[key] || "?", rev: n(x.revenue_sum), views: n(x.view_count) })).sort((a, b) => b.rev - a.rev);
     return `<h2 style="font-size:20px;margin:28px 0 10px">${label}</h2><div class="tablewrap"><table data-sortable data-collapse="10"><thead><tr><th>${label}</th><th>Gelir</th><th>Gösterim</th><th>eCPM</th></tr></thead><tbody>${rows.map((x) => `<tr><td>${esc(x.k)}</td><td data-v="${x.rev}">${money(x.rev)}</td><td data-v="${x.views}">${Math.round(x.views)}</td><td data-v="${x.views ? (x.rev / x.views) * 1000 : 0}">${x.views ? money((x.rev / x.views) * 1000) : "-"}</td></tr>`).join("")}</tbody></table></div>`;
   };
-  return head + `<p class="countries">Hauling Empire reklam geliri (Unity Ads, iOS ve Android). Sadece biten günler (UTC). Veriler 1 saatte bir yenilenir.</p>${tiles}${chart}${split(byGame, "game", "Uygulama")}${split(byPlatform, "platform", "Platform")}${split(byCountry, "country", "Ülke")}`;
+  return head + `<p class="countries">Hauling Empire reklam geliri (Unity Ads, iOS ve Android). Günler UTC, bugün de dahil (soluk çubuk, gün devam ediyor). Veriler 1 saatte bir yenilenir; Unity rakamları birkaç saat geriden gelebilir. LevelPlay paneli diğer reklam ağlarını da sayıyorsa toplam biraz farklı olur.</p>${tiles}${chart}${split(byGame, "game", "Uygulama")}${split(byPlatform, "platform", "Platform")}${split(byCountry, "country", "Ülke")}`;
 }
 // Sales paid in another currency (founder 2026-10-17: a £ purchase showed only as $6.63). The game feed may send
 // local: [{currency: "GBP", amount: 4.99}] per product; dollars stay the converted total.
@@ -800,6 +807,7 @@ async function statusPage(env) {
   const app = env.APPDB;
   const uaEnd = new Date(); uaEnd.setUTCHours(0, 0, 0, 0);
   const uaIso = (d) => d.toISOString().slice(0, 19) + "Z";
+  const uaNow = new Date(); uaNow.setUTCMinutes(0, 0, 0); // last 7 days including today, like the Unity Ads page
   const [site, wl, xs, store, he, heS, pol, rq, ad, ua] = await Promise.all([
     safe(env.DB.prepare("SELECT COUNT(DISTINCT visitor) v FROM visits WHERE day = ?").bind(today).first()),
     safe(env.DB.prepare("SELECT COUNT(*) n, SUM(substr(created_at, 1, 10) = ?) t, (SELECT COUNT(*) FROM duel_picks WHERE day >= date('now', '-6 days')) dp, (SELECT COUNT(DISTINCT visitor) FROM duel_picks WHERE day >= date('now', '-6 days')) dv FROM waitlist").bind(today).first()),
@@ -808,7 +816,7 @@ async function statusPage(env) {
     safe(heOps(env, 7)), safe(heStats(env)), safe(productFeed(env, "poleris", "feed=ops&days=7", 300)),
     safe(reviewApi(env, "GET", "/v1/admin/review")),
     app ? safe(app.prepare("SELECT count(*) n, count(DISTINCT viewer_key) v FROM duel_picks WHERE day >= date('now', '-6 days')").first()) : null,
-    safe(unityStats(env, `fields=revenue_sum,view_count&scale=all&start=${uaIso(new Date(uaEnd.getTime() - 7 * 864e5))}&end=${uaIso(new Date(uaEnd.getTime() - 1000))}`)),
+    safe(unityStats(env, `fields=revenue_sum,view_count&scale=all&start=${uaIso(new Date(uaEnd.getTime() - 6 * 864e5))}&end=${uaIso(uaNow)}`)),
   ]);
   const when = (iso) => (iso ? `${esc(String(iso).slice(0, 16).replace("T", " "))} UTC` : '<span class="dim">yok</span>');
   const cards = [];
