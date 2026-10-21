@@ -511,7 +511,21 @@ function playersSection(players) {
   const recRows = rec.length
     ? rec.map((p) => `<tr data-search="${esc(`${p.company || ""} ${p.username || ""}`.toLowerCase())}"><td>${dash(p.company)}</td><td>${dash(p.username)}</td><td>${dash(PLAT[p.platform] || p.platform)}</td><td>${reg(p.region)}</td><td data-v="${Date.parse(p.first_seen || "") || 0}">${day(p.first_seen)}</td><td data-v="${Date.parse(p.last_seen || "") || 0}">${day(p.last_seen)} <span class="dim">(${esc(ago(p.last_seen))})</span></td><td>${fnum(p.days_active) ?? "-"}</td><td>${fnum(p.sessions) ?? "-"}</td>${hasPlay ? `<td data-v="${fnum(p.playtime_min) ?? 0}">${fnum(p.playtime_min) === null ? "-" : fnum(p.playtime_min) >= 60 ? `${Math.floor(fnum(p.playtime_min) / 60)} sa ${Math.round(fnum(p.playtime_min) % 60)} dk` : `${Math.round(fnum(p.playtime_min))} dk`}</td>` : ""}</tr>`).join("")
     : `<tr data-empty="1"><td colspan="${hasPlay ? 9 : 8}" class="dim center">Son 7 günde oyuncu yok.</td></tr>`;
-  return `${sec("Şu an oyunda")}<div class="tablewrap"><table id="tbl-online" data-sortable data-collapse="10"><thead><tr><th>Şirket</th><th>Kullanıcı</th><th>Platform</th><th>Bölge</th><th>Mod</th><th>Son görülme</th></tr></thead><tbody>${onRows}</tbody></table></div>
+  // Active players per region (founder request 2026-10-21: the game has 4 regions). From the same player lists:
+  // online now, last seen in 24 h, and the whole 7 day list (not cut to 200 like the table below).
+  const all7 = Array.isArray(players.recent_7d) ? players.recent_7d : [];
+  const RN = { eu: "Avrupa", us: "Amerika", na: "Kuzey Amerika", sa: "Güney Amerika", asia: "Asya", as: "Asya", me: "Orta Doğu", tr: "Türkiye", oc: "Okyanusya", af: "Afrika" };
+  const rk = (r) => (r ? String(r).toLowerCase() : "?");
+  const day1 = Date.now() - 864e5;
+  const regs = {};
+  const bump = (r, k) => { const x = (regs[rk(r)] ||= { now: 0, d1: 0, d7: 0 }); x[k]++; };
+  on.forEach((p) => bump(p.region, "now"));
+  all7.forEach((p) => { bump(p.region, "d7"); if (Date.parse(p.last_seen || "") >= day1) bump(p.region, "d1"); });
+  const regRows = Object.entries(regs).sort((a, b) => b[1].d7 - a[1].d7 || b[1].now - a[1].now);
+  const regHtml = regRows.length
+    ? `${sec("Bölgelere göre aktif oyuncu")}<div class="tablewrap"><table data-sortable><thead><tr><th>Bölge</th><th>Şu an oyunda</th><th>Son 24 saat</th><th>Son 7 gün</th></tr></thead><tbody>${regRows.map(([r, x]) => `<tr><td>${r === "?" ? '<span class="dim">bilinmiyor</span>' : `${esc(r.toUpperCase())}${RN[r] ? ` <span class="dim">${RN[r]}</span>` : ""}`}</td><td data-v="${x.now}">${x.now ? `<b>${x.now}</b>` : "0"}</td><td data-v="${x.d1}">${x.d1}</td><td data-v="${x.d7}">${x.d7}</td></tr>`).join("")}</tbody><tfoot><tr><td><b>Toplam</b></td><td><b>${on.length}</b></td><td><b>${regRows.reduce((a, [, x]) => a + x.d1, 0)}</b></td><td><b>${all7.length}</b></td></tr></tfoot></table></div>`
+    : "";
+  return `${regHtml}${sec("Şu an oyunda")}<div class="tablewrap"><table id="tbl-online" data-sortable data-collapse="10"><thead><tr><th>Şirket</th><th>Kullanıcı</th><th>Platform</th><th>Bölge</th><th>Mod</th><th>Son görülme</th></tr></thead><tbody>${onRows}</tbody></table></div>
 ${sec(`Son 7 gün oyuncular (${rec.length})`)}<input class="tsearch" type="search" placeholder="Şirket veya kullanıcı adı ara" aria-label="Şirket veya kullanıcı adı ara" data-filter="tbl-recent">
 <div class="tablewrap"><table id="tbl-recent" data-sortable data-collapse="10"><thead><tr><th>Şirket</th><th>Kullanıcı</th><th>Platform</th><th>Bölge</th><th>İlk görülme</th><th>Son görülme</th><th>Aktif gün</th><th>Oturum</th>${hasPlay ? "<th>Oyun süresi</th>" : ""}</tr></thead><tbody>${recRows}</tbody></table></div>`;
 }
