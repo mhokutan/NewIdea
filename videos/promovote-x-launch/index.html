@@ -1,0 +1,219 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1920, height=1080" />
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <style>
+      @font-face {
+        font-family: "Geist";
+        src: url("assets/geist-latin.woff2") format("woff2");
+        font-weight: 100 900;
+        font-display: block;
+      }
+      :root {
+        --ground: #0a0a0a;
+        --ink: #f5f5f7;
+        --muted: #98989d;
+        --yellow: #ffd60a;
+        --font-display: "Geist", sans-serif;
+      }
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      html, body { width: 1920px; height: 1080px; overflow: hidden; background: var(--ground); }
+      #root { position: relative; width: 1920px; height: 1080px; font-family: var(--font-display); color: var(--ink); background: var(--ground); }
+      .clip { position: absolute; inset: 0; }
+      .bg { background: radial-gradient(1200px 520px at 50% 118%, rgba(255, 214, 10, 0.16), rgba(255, 214, 10, 0) 70%), var(--ground); }
+      .arc { position: absolute; left: 50%; top: 820px; width: 2600px; height: 900px; margin-left: -1300px; border-radius: 50%; border-top: 2px solid rgba(255, 214, 10, 0.35); box-shadow: 0 -30px 120px rgba(255, 214, 10, 0.10); }
+      .center { display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
+      .big { font-size: 150px; font-weight: 750; letter-spacing: -0.045em; line-height: 0.98; }
+      .mid { font-size: 108px; font-weight: 720; letter-spacing: -0.04em; line-height: 1.02; }
+      .small { font-size: 40px; font-weight: 500; color: var(--muted); letter-spacing: -0.01em; }
+      .y { color: var(--yellow); }
+      .line { display: block; overflow: hidden; padding-bottom: 0.08em; }
+      .line > span { display: inline-block; }
+
+      /* Scene 1: wall of work */
+      .wall { position: absolute; inset: -40px; display: grid; grid-template-columns: repeat(8, 1fr); gap: 22px; padding: 30px; opacity: 0.55; }
+      .tile { height: 150px; border-radius: 34px; background: #161617; border: 1px solid #262628; display: flex; align-items: center; justify-content: center; font-size: 26px; font-weight: 600; color: #6e6e73; letter-spacing: 0.08em; }
+      .tile.on { background: #1f1c0d; border-color: rgba(255, 214, 10, 0.35); color: var(--yellow); }
+      .veil { position: absolute; inset: 0; background: radial-gradient(900px 420px at 50% 50%, rgba(10, 10, 10, 0.94), rgba(10, 10, 10, 0.55) 70%, rgba(10, 10, 10, 0.2)); }
+
+      /* Logo */
+      .logo { width: 210px; height: 210px; }
+      .logo path { fill: none; stroke: var(--yellow); stroke-width: 9.5; stroke-miterlimit: 10; }
+      .word { font-size: 140px; font-weight: 760; letter-spacing: -0.05em; margin-top: 18px; }
+
+      /* Feature beats */
+      .feat-text { position: absolute; left: 150px; top: 300px; width: 900px; }
+      .eyebrow { font-size: 30px; font-weight: 600; color: var(--muted); letter-spacing: 0.04em; margin-bottom: 34px; display: flex; gap: 22px; }
+      .eyebrow b { color: var(--yellow); font-weight: 700; }
+      .feat-text .mid { margin-bottom: 34px; }
+      .phone { position: absolute; left: 1180px; top: 96px; width: 420px; height: 909px; border-radius: 62px; background: #000; border: 10px solid #1c1c1e; box-shadow: 0 0 0 1px #2c2c2e, 0 40px 120px rgba(0, 0, 0, 0.6); overflow: hidden; }
+      .phone img { width: 100%; height: 100%; object-fit: cover; object-position: top; display: block; }
+      .glow { position: absolute; left: 1090px; top: 260px; width: 600px; height: 600px; border-radius: 50%; background: radial-gradient(closest-side, rgba(255, 214, 10, 0.22), rgba(255, 214, 10, 0)); }
+
+      /* Stats */
+      .stats { display: flex; gap: 120px; align-items: flex-start; }
+      .stat { text-align: left; }
+      .stat .n { font-size: 190px; font-weight: 780; letter-spacing: -0.05em; line-height: 0.9; color: var(--ink); }
+      .stat .n .y { color: var(--yellow); }
+      .stat .l { font-size: 30px; color: var(--muted); font-weight: 500; margin-top: 16px; max-width: 300px; line-height: 1.25; }
+
+      /* End card */
+      .cta { margin-top: 56px; padding: 26px 58px; border-radius: 999px; background: var(--yellow); color: #0a0a0a; font-size: 44px; font-weight: 700; letter-spacing: -0.02em; }
+      .cats { margin-top: 34px; font-size: 30px; color: var(--muted); font-weight: 500; letter-spacing: 0.02em; }
+      .underline { width: 0; height: 6px; background: var(--yellow); border-radius: 3px; margin-top: 26px; }
+    </style>
+  </head>
+  <body>
+    <div id="root" data-composition-id="main" data-start="0" data-duration="33" data-width="1920" data-height="1080">
+      <!-- ground -->
+      <div class="clip bg" data-start="0" data-duration="33" data-track-index="0"><div class="arc" data-layout-ignore></div></div>
+
+      <!-- S1: everyone is making something -->
+      <div id="s1" class="clip" data-start="0" data-duration="3.2" data-track-index="1">
+        <div class="wall" id="wall" data-layout-ignore></div>
+        <div class="veil"></div>
+        <div class="clip center big">
+          <span class="line"><span>Everyone is</span></span>
+          <span class="line"><span>making <span class="y">something.</span></span></span>
+        </div>
+      </div>
+
+      <!-- S2 -->
+      <div id="s2" class="clip center big" data-start="3.2" data-duration="2.4" data-track-index="1">
+        <span class="line"><span>Most of it is</span></span>
+        <span class="line"><span class="y">never seen.</span></span>
+      </div>
+
+      <!-- S3 -->
+      <div id="s3" class="clip center" data-start="5.6" data-duration="2.4" data-track-index="1">
+        <div class="big"><span class="line"><span>Feeds reward</span></span><span class="line"><span>the <span class="y">big accounts.</span></span></span></div>
+        <div class="small" style="margin-top: 40px">Small creators get buried.</div>
+      </div>
+
+      <!-- S4 -->
+      <div id="s4" class="clip center" data-start="8" data-duration="1.8" data-track-index="1">
+        <div class="mid">So we built <span class="y">this.</span></div>
+        <div class="underline"></div>
+      </div>
+
+      <!-- S5: logo -->
+      <div id="s5" class="clip center" data-start="9.8" data-duration="2.8" data-track-index="1">
+        <svg class="logo" viewBox="0 0 64 64"><path id="c1" d="M14 33 32 15 50 33" /><path id="c2" d="M14 51 32 33 50 51" /></svg>
+        <div class="word">PromoVote</div>
+        <div class="small" style="margin-top: 6px">The social media of ads.</div>
+      </div>
+
+      <!-- S6-S9: what you get -->
+      <div id="s6" class="clip" data-start="12.6" data-duration="3.4" data-track-index="1">
+        <div class="glow"></div>
+        <div class="feat-text">
+          <div class="eyebrow"><span>What you get</span><b>01 / 04</b></div>
+          <div class="mid"><span class="line"><span>Your own</span></span><span class="line"><span class="y">page.</span></span></div>
+          <div class="small">Logo, links, promos and followers. Free.</div>
+        </div>
+        <div class="phone"><img src="assets/creator.png" alt="" /></div>
+      </div>
+      <div id="s7" class="clip" data-start="16" data-duration="3.4" data-track-index="1">
+        <div class="glow"></div>
+        <div class="feat-text">
+          <div class="eyebrow"><span>What you get</span><b>02 / 04</b></div>
+          <div class="mid"><span class="line"><span>A spot in the</span></span><span class="line"><span class="y">daily drop.</span></span></div>
+          <div class="small">7 promos a day. Every creator gets a turn.</div>
+        </div>
+        <div class="phone"><img src="assets/feed.png" alt="" /></div>
+      </div>
+      <div id="s8" class="clip" data-start="19.4" data-duration="3.4" data-track-index="1">
+        <div class="glow"></div>
+        <div class="feat-text">
+          <div class="eyebrow"><span>What you get</span><b>03 / 04</b></div>
+          <div class="mid"><span class="line"><span>Real people</span></span><span class="line"><span class="y">call it.</span></span></div>
+          <div class="small">Scouts pick what blows up next.</div>
+        </div>
+        <div class="phone"><img src="assets/duel.png" alt="" /></div>
+      </div>
+      <div id="s9" class="clip" data-start="22.8" data-duration="3.2" data-track-index="1">
+        <div class="glow"></div>
+        <div class="feat-text">
+          <div class="eyebrow"><span>What you get</span><b>04 / 04</b></div>
+          <div class="mid"><span class="line"><span>Found by</span></span><span class="line"><span class="y">the right people.</span></span></div>
+          <div class="small">Games, apps, streams and shops.</div>
+        </div>
+        <div class="phone"><img src="assets/explore.png" alt="" /></div>
+      </div>
+
+      <!-- S10: honest numbers -->
+      <div id="s10" class="clip center" data-start="26" data-duration="3" data-track-index="1">
+        <div class="stats">
+          <div class="stat"><div class="n"><span class="y">0</span></div><div class="l">followers needed to get seen</div></div>
+          <div class="stat"><div class="n">7</div><div class="l">promos in the drop, every day</div></div>
+          <div class="stat"><div class="n">7</div><div class="l">days to see who called it</div></div>
+          <div class="stat"><div class="n"><span class="y">$0</span></div><div class="l">to start</div></div>
+        </div>
+      </div>
+
+      <!-- S11: end card -->
+      <div id="s11" class="clip center" data-start="29" data-duration="4" data-track-index="1">
+        <svg class="logo" style="width: 120px; height: 120px" viewBox="0 0 64 64"><path d="M14 33 32 15 50 33" /><path d="M14 51 32 33 50 51" /></svg>
+        <div class="big" style="margin-top: 30px"><span class="line"><span>Show your work.</span></span><span class="line"><span class="y">Get found.</span></span></div>
+        <div class="cta">promovote.com</div>
+        <div class="cats">Games &nbsp;·&nbsp; Apps &nbsp;·&nbsp; Streams &nbsp;·&nbsp; Shops</div>
+      </div>
+    </div>
+
+    <script>
+      // Tile wall: fixed words, no randomness (renders must be deterministic).
+      const WORDS = ["GAME", "APP", "STREAM", "SHOP", "CLIP", "BRAND", "PODCAST", "PLANNER", "TRAILER", "CHANNEL", "DEMO", "STORE"];
+      const wall = document.getElementById("wall");
+      for (let i = 0; i < 48; i++) {
+        const t = document.createElement("div");
+        t.className = "tile" + ([3, 12, 21, 30, 37, 44].includes(i) ? " on" : "");
+        t.textContent = WORDS[(i * 5) % WORDS.length];
+        wall.appendChild(t);
+      }
+
+      const tl = gsap.timeline({ paused: true });
+      const E = "power4.out";
+      const lines = (sel, at, stag = 0.12) => tl.from(`${sel} .line > span`, { yPercent: 110, duration: 0.7, ease: E, stagger: stag }, at);
+
+      // S1
+      tl.from("#wall .tile", { opacity: 0, scale: 0.85, duration: 0.5, ease: E, stagger: { each: 0.012, from: "center" } }, 0);
+      tl.to("#wall", { scale: 1.06, duration: 3.2, ease: "none" }, 0);
+      lines("#s1", 0.35);
+      // S2
+      lines("#s2", 3.25);
+      // S3
+      lines("#s3", 5.65);
+      tl.from("#s3 .small", { opacity: 0, y: 20, duration: 0.5, ease: E }, 6.1);
+      // S4
+      tl.from("#s4 .mid", { opacity: 0, y: 30, duration: 0.4, ease: E }, 8.0);
+      tl.to("#s4 .underline", { width: 420, duration: 0.8, ease: "power2.inOut" }, 8.3);
+      // S5: chevrons draw in, then the word
+      tl.fromTo(["#c1", "#c2"], { strokeDasharray: 60, strokeDashoffset: 60 }, { strokeDashoffset: 0, duration: 0.6, ease: "power2.out", stagger: 0.15 }, 9.85);
+      tl.from("#s5 .word", { opacity: 0, y: 40, duration: 0.6, ease: E }, 10.35);
+      tl.from("#s5 .small", { opacity: 0, duration: 0.5 }, 10.8);
+      tl.to("#s5", { scale: 1.04, duration: 2.8, ease: "none" }, 9.8);
+      // S6-S9
+      [["#s6", 12.6], ["#s7", 16], ["#s8", 19.4], ["#s9", 22.8]].forEach(([s, t0]) => {
+        tl.from(`${s} .eyebrow`, { opacity: 0, x: -20, duration: 0.4, ease: E }, t0 + 0.05);
+        lines(s, t0 + 0.1);
+        tl.from(`${s} .small`, { opacity: 0, y: 16, duration: 0.5, ease: E }, t0 + 0.6);
+        tl.from(`${s} .phone`, { y: 220, opacity: 0, rotation: 4, duration: 0.9, ease: E }, t0);
+        tl.to(`${s} .phone`, { y: -18, duration: 3, ease: "none" }, t0 + 0.9);
+        tl.from(`${s} .glow`, { opacity: 0, scale: 0.6, duration: 1, ease: E }, t0);
+      });
+      // S10
+      tl.from("#s10 .stat", { opacity: 0, y: 60, duration: 0.6, ease: E, stagger: 0.28 }, 26.05);
+      // S11
+      tl.from("#s11 .logo", { opacity: 0, scale: 0.6, duration: 0.6, ease: E }, 29.05);
+      lines("#s11", 29.3);
+      tl.from("#s11 .cta", { opacity: 0, y: 30, scale: 0.92, duration: 0.6, ease: "back.out(1.6)" }, 30.0);
+      tl.from("#s11 .cats", { opacity: 0, duration: 0.6 }, 30.4);
+
+      window.__timelines = window.__timelines || {};
+      window.__timelines["main"] = tl;
+      tl.seek(0);
+    </script>
+  </body>
+</html>
