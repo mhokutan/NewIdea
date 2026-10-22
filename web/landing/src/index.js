@@ -200,7 +200,7 @@ const ROLE_LABELS = { creator: "Creator / Streamer", developer: "Game developer"
 const ADMIN_GROUPS = [
   ["Durum", "Hepsi tek bakışta", [["/admin", "Genel durum"]]],
   ["PromoVote", "Site, X, mağazalar", [["/admin/onay", "Onay kuyruğu"], ["/admin/bekleme", "Bekleme listesi"], ["/admin/visitors", "Ziyaretçiler"], ["/admin/x", "X"], ["/admin/app-store?p=promovote", "App Store"], ["/admin/google-play?p=promovote", "Google Play"]]],
-  ["Hauling Empire", "Oyun ve mağazalar", [["/admin/hauling-empire/oyun", "Oyun"], ["/admin/app-store?p=haulingempire", "App Store"], ["/admin/google-play?p=haulingempire", "Google Play"], ["/admin/unity-ads", "Unity Ads"]]],
+  ["Hauling Empire", "Oyun ve mağazalar", [["/admin/hauling-empire/oyun", "Oyun"], ["/admin/app-store?p=haulingempire", "App Store"], ["/admin/google-play?p=haulingempire", "Google Play"], ["/admin/unity-ads", "Reklam geliri"]]],
   ["Poleris", "Uygulama ve mağazalar", [["/admin/poleris/uygulama", "Uygulama"], ["/admin/app-store?p=poleris", "App Store"], ["/admin/google-play?p=poleris", "Google Play"]]],
   ["Lovelet", "Uygulama ve mağazalar", [["/admin/lovelet/uygulama", "Uygulama"], ["/admin/app-store?p=lovelet", "App Store"], ["/admin/google-play?p=lovelet", "Google Play"]]],
 ];
@@ -345,6 +345,90 @@ async function unityStats(env, query) {
     console.error("unity_error", err?.message);
     return { ok: false, reason: "fetch_failed" };
   }
+}
+
+// LevelPlay (founder 2026-10-22: LevelPlay showed $4.28, the Unity stats $3.88). The mediation's own Reporting API
+// gives the same numbers as the LevelPlay site, every network included. Keys in Worker secrets LEVELPLAY_SECRET_KEY
+// and LEVELPLAY_REFRESH_TOKEN (LevelPlay > My Account > API). The bearer token lives 24 h; we keep it 20 h.
+async function levelPlayToken(env) {
+  const cache = caches.default;
+  const key = new Request("https://promovote.com/__cache/levelplay-token-v1");
+  const hit = await cache.match(key);
+  if (hit) return hit.text();
+  const res = await fetch("https://platform.ironsrc.com/partners/publisher/auth", {
+    headers: { secretkey: env.LEVELPLAY_SECRET_KEY, refreshToken: env.LEVELPLAY_REFRESH_TOKEN }, signal: AbortSignal.timeout(10000),
+  });
+  if (!res.ok) throw Object.assign(new Error("auth"), { reason: "auth_" + res.status });
+  const token = (await res.text()).trim().replace(/^"|"$/g, "");
+  if (!token) throw Object.assign(new Error("auth"), { reason: "auth_empty" });
+  await cache.put(key, new Response(token, { headers: { "Cache-Control": "max-age=72000" } }));
+  return token;
+}
+async function levelPlayStats(env, query) {
+  if (!env.LEVELPLAY_SECRET_KEY || !env.LEVELPLAY_REFRESH_TOKEN) return { ok: false, reason: "no_key" };
+  const cache = caches.default;
+  const cacheKey = new Request(`https://promovote.com/__cache/levelplay-v1-${encodeURIComponent(query)}`);
+  const hit = await cache.match(cacheKey);
+  if (hit) return { ok: true, rows: await hit.json() };
+  try {
+    const token = await levelPlayToken(env);
+    const rows = [];
+    for (let page = 1; page <= 5; page++) {
+      const res = await fetch(`https://platform.ironsrc.com/levelPlay/reporting/v1?${query}&page=${page}&resultsPerPage=5000`, { headers: { Authorization: `Bearer ${token}` }, signal: AbortSignal.timeout(15000) });
+      if (!res.ok) { console.error("levelplay_status", res.status); return { ok: false, reason: "http_" + res.status }; }
+      const j = await res.json();
+      rows.push(...(Array.isArray(j.data) ? j.data : []));
+      if (!j.totalResults || rows.length >= j.totalResults || !(j.data || []).length) break;
+    }
+    // 15 min: LevelPlay updates during the day, and the limit is 8,000 calls an hour.
+    await cache.put(cacheKey, new Response(JSON.stringify(rows), { headers: { "Content-Type": "application/json", "Cache-Control": "max-age=900" } }));
+    return { ok: true, rows };
+  } catch (err) {
+    console.error("levelplay_error", err?.message);
+    return { ok: false, reason: err?.reason || "fetch_failed" };
+  }
+}
+const lpWhy = (reason) => reason === "no_key" ? "LevelPlay bağlı değil."
+  : /^auth_/.test(reason || "") ? "LevelPlay anahtarları kabul etmedi. LEVELPLAY_SECRET_KEY ve LEVELPLAY_REFRESH_TOKEN değerlerini kontrol et."
+  : "LevelPlay verisi şu an alınamadı.";
+
+async function levelPlayPage(env, path, range) {
+  const today = new Date(); today.setUTCHours(0, 0, 0, 0);
+  const d = (t) => t.toISOString().slice(0, 10);
+  const todayKey = d(today);
+  const base = `startDate=${d(new Date(today.getTime() - (range - 1) * 864e5))}&endDate=${todayKey}&metrics=revenue,impressions,eCPM,activeUsers`;
+  const [daily, byPlat, byNet, byCountry] = await Promise.all([
+    levelPlayStats(env, `${base}&breakdowns=date`),
+    levelPlayStats(env, `${base}&breakdowns=platform`),
+    levelPlayStats(env, `${base}&breakdowns=adNetwork`),
+    levelPlayStats(env, `${base}&breakdowns=country`),
+  ]);
+  const head = `<div class="top"><h1>Reklam geliri: Hauling Empire</h1></div>${rangePills(path, range)}`;
+  // Not connected or failing: the caller falls back to the Unity stats, with a note when keys exist but fail.
+  if (!daily.ok) return { html: null, note: daily.reason === "no_key" ? "" : `<div class="warnbar">${esc(lpWhy(daily.reason))} Unity Ads verisi gösteriliyor.</div>` };
+  const n = (v) => { const x = Number(v); return isFinite(x) ? x : 0; };
+  const money = (v) => "$" + v.toFixed(2);
+  const tot = (rows, k) => rows.reduce((a, r) => a + n(r[k]), 0);
+  const rev = tot(daily.rows, "revenue"), imp = tot(daily.rows, "impressions");
+  const revToday = daily.rows.filter((r) => String(r.date).slice(0, 10) === todayKey).reduce((a, r) => a + n(r.revenue), 0);
+  const revFull = rev - revToday;
+  const tiles = tilesHtml([
+    [`${range} günde gelir (bugün dahil)`, money(rev)],
+    ["Bugün (devam ediyor)", money(revToday)],
+    ["Gösterim", Math.round(imp)],
+    ["eCPM", imp ? money((rev / imp) * 1000) : '<span class="dim" style="font-size:16px">veri yok</span>'],
+    ["100 dolar için gereken gösterim", imp && rev ? Math.round(100 / (rev / imp)) : '<span class="dim" style="font-size:16px">veri yok</span>'],
+    ["Bu hızla 100 dolar", revFull && range > 1 ? `${Math.ceil(100 / (revFull / (range - 1)))} gün` : '<span class="dim" style="font-size:16px">veri yok</span>'],
+  ]);
+  const series = daily.rows.map((r) => ({ d: String(r.date).slice(0, 10), v: n(r.revenue) })).filter((x) => /^\d{4}-\d{2}-\d{2}$/.test(x.d)).sort((a, b) => (a.d < b.d ? -1 : 1));
+  const chart = series.length ? `<h2 style="font-size:20px;margin:28px 0 10px">Günlük gelir ($)</h2>${dayChart(series.map((x) => ({ d: x.d, dim: x.d === todayKey, parts: [{ v: x.v, c: BRAND_A }] })), { fmt: (v) => (v >= 10 ? String(Math.round(v)) : v.toFixed(2)), aria: "Günlük reklam geliri" })}` : "";
+  const PLAT = { ios: "iOS", android: "Android" };
+  const split = (r, key, label, name = (x) => x) => {
+    if (!r.ok || !r.rows.length) return "";
+    const rows = r.rows.map((x) => ({ k: name(x[key] ?? "?"), rev: n(x.revenue), imp: n(x.impressions) })).sort((a, b) => b.rev - a.rev);
+    return `<h2 style="font-size:20px;margin:28px 0 10px">${label}</h2><div class="tablewrap"><table data-sortable data-collapse="10"><thead><tr><th>${label}</th><th>Gelir</th><th>Gösterim</th><th>eCPM</th></tr></thead><tbody>${rows.map((x) => `<tr><td>${esc(String(x.k))}</td><td data-v="${x.rev}">${money(x.rev)}</td><td data-v="${x.imp}">${Math.round(x.imp)}</td><td data-v="${x.imp ? (x.rev / x.imp) * 1000 : 0}">${x.imp ? money((x.rev / x.imp) * 1000) : "-"}</td></tr>`).join("")}</tbody></table></div>`;
+  };
+  return { html: head + `<p class="countries">Kaynak: LevelPlay (LevelPlay sitesindeki rakamların aynısı, bütün reklam ağları dahil). Günler UTC, bugün dahil (soluk çubuk). Veriler 15 dakikada bir yenilenir.</p>${tiles}${chart}${split(byNet, "networkName", "Reklam ağı")}${split(byPlat, "platform", "Platform", (x) => PLAT[String(x).toLowerCase()] || x)}${split(byCountry, "country", "Ülke")}` };
 }
 
 async function unityPage(env, path, range) {
@@ -842,7 +926,7 @@ async function statusPage(env) {
   const uaEnd = new Date(); uaEnd.setUTCHours(0, 0, 0, 0);
   const uaIso = (d) => d.toISOString().slice(0, 19) + "Z";
   const uaNow = new Date(); uaNow.setUTCMinutes(0, 0, 0); // last 7 days including today, like the Unity Ads page
-  const [site, wl, xs, store, he, heS, pol, rq, ad, ua] = await Promise.all([
+  const [site, wl, xs, store, he, heS, pol, rq, ad, ua, lp] = await Promise.all([
     safe(env.DB.prepare("SELECT COUNT(DISTINCT visitor) v FROM visits WHERE day = ?").bind(today).first()),
     safe(env.DB.prepare("SELECT COUNT(*) n, SUM(substr(created_at, 1, 10) = ?) t, (SELECT COUNT(*) FROM duel_picks WHERE day >= date('now', '-6 days')) dp, (SELECT COUNT(DISTINCT visitor) FROM duel_picks WHERE day >= date('now', '-6 days')) dv FROM waitlist").bind(today).first()),
     app ? safe(app.prepare("SELECT (SELECT max(posted_at) FROM social_posts WHERE status = 'posted') last, (SELECT min(scheduled_at) FROM social_posts WHERE status = 'queued') next, (SELECT max(scheduled_at) FROM social_posts WHERE status = 'queued') until, (SELECT count(*) FROM social_posts WHERE status = 'queued') queued, (SELECT count(*) FROM social_posts WHERE status = 'failed' AND scheduled_at > datetime('now', '-3 days')) failed").first()) : null,
@@ -851,6 +935,7 @@ async function statusPage(env) {
     safe(reviewApi(env, "GET", "/v1/admin/review")),
     app ? safe(app.prepare("SELECT count(*) n, count(DISTINCT viewer_key) v FROM duel_picks WHERE day >= date('now', '-6 days')").first()) : null,
     safe(unityStats(env, `fields=revenue_sum,view_count&scale=all&start=${uaIso(new Date(uaEnd.getTime() - 6 * 864e5))}&end=${uaIso(uaNow)}`)),
+    safe(levelPlayStats(env, `startDate=${uaIso(new Date(uaEnd.getTime() - 6 * 864e5)).slice(0, 10)}&endDate=${uaIso(uaEnd).slice(0, 10)}&metrics=revenue,impressions&breakdowns=date`)),
   ]);
   const when = (iso) => (iso ? `${esc(String(iso).slice(0, 16).replace("T", " "))} UTC` : '<span class="dim">yok</span>');
   const cards = [];
@@ -898,7 +983,7 @@ async function statusPage(env) {
       row("Şu an oyunda", online === null || online === undefined ? '<span class="dim">veri yok</span>' : `${online}${Array.isArray(ops?.players?.online_now) ? ` <span class="dim">(${(() => { const c = Object.fromEntries(REGION_ORDER.map((k) => [k, 0])); ops.players.online_now.forEach((p) => { const k = regionKey(p.region); c[k] = (c[k] || 0) + 1; }); return Object.entries(c).map(([k, v]) => `${regionLabel(k)} ${v}`).join(", "); })()})</span>` : ""}`),
       row("Oyuncu listesi", ops ? (Array.isArray(ops.players?.recent_7d) ? `${ops.players.recent_7d.length} oyuncu (7 gün)` : '<span class="dim">gelmiyor</span>') : '<span class="dim">-</span>'),
       row("Mağaza verisi", heS?.ok ? chip("g", "geliyor") : chip("r", "gelmiyor")),
-      row("Unity Ads (7 gün)", ua?.ok ? `$${ua.rows.reduce((a, r) => a + (Number(r.revenue_sum) || 0), 0).toFixed(2)}, ${Math.round(ua.rows.reduce((a, r) => a + (Number(r.view_count) || 0), 0))} gösterim` : ua?.reason === "no_key" ? '<span class="dim">bağlı değil</span>' : chip("r", "gelmiyor")),
+      row("Reklam geliri (7 gün)", lp?.ok ? `$${lp.rows.reduce((a, r) => a + (Number(r.revenue) || 0), 0).toFixed(2)}, ${Math.round(lp.rows.reduce((a, r) => a + (Number(r.impressions) || 0), 0))} gösterim <span class="dim">(LevelPlay)</span>` : ua?.ok ? `$${ua.rows.reduce((a, r) => a + (Number(r.revenue_sum) || 0), 0).toFixed(2)}, ${Math.round(ua.rows.reduce((a, r) => a + (Number(r.view_count) || 0), 0))} gösterim` : ua?.reason === "no_key" ? '<span class="dim">bağlı değil</span>' : chip("r", "gelmiyor")),
     ], (he?.staleMin != null ? [`Canlı veri şu an gelmedi, ${he.staleMin} dk önceki veri gösteriliyor. Neden: ${feedWhy(he, "Hauling Empire", "HE_STATS_KEY")}`, ...notes] : notes).join("<br>")));
   }
 
@@ -1099,7 +1184,8 @@ ${tilesHtml([["Paylaşılan", sum.posted?.n || 0], ["Sırada", sum.queued?.n || 
 
   if (path === "/admin/unity-ads") {
     const range = rangeOf(url);
-    return adminPage(path, "Unity Ads", await unityPage(env, path, range));
+    const lp = await levelPlayPage(env, path, range);
+    return adminPage(path, "Unity Ads", lp.html ?? lp.note + (await unityPage(env, path, range)));
   }
 
   if (path === "/admin/lovelet/uygulama") {
