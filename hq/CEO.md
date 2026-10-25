@@ -29,6 +29,35 @@ or en dashes. Write to agents in English.
 Shared tools: the PromoVote admin panel (promovote.com/admin) already collects store, game, ads and X numbers for
 all products. Use it as the company dashboard instead of building a new one.
 
+## Access map: where to find each product
+
+Code (on this Mac, all cloned with the founder's GitHub login; `gh` is logged in):
+
+| Product | Folder | GitHub repo | Live |
+|---|---|---|---|
+| PromoVote | `~/hq/promovote` | mhokutan/NewIdea (branch `claude/gracious-pasteur-nu8ssc`) | promovote.com, api.promovote.com, Google Play `com.miapera.promovote`, X account |
+| Hauling Empire | `~/hq/hauling-empire` | nakliye-patronu | App Store id6815224121, Google Play `com.mhokutan.haulingempire` |
+| Lovelet | `~/hq/lovelet` | CoupleApp | App Store id6824002542 and Google Play `com.mhokutan.coupleapp` (launch pending) |
+| New Robot Game | `~/hq/robot-game` | NewRoboticGame | not released |
+| Poleris | `~/hq/poleris` (clone it first: find the repo with `gh repo list`) | find with `gh repo list` | App Store id6792844860, Google Play `com.miapera.poleris` |
+| Salesforce | `~/hq/salesforce` (clone it first if a repo exists: `gh repo list`) | find with `gh repo list` | portfolio mevlutokutan-dev-ed.develop.my.site.com, Trailhead salesforce.com/trailblazer/mevluthazimokutan |
+| Nicheable | no code | none | Etsy shop "Nicheable" (digital planners and spreadsheets) |
+
+Numbers (read only, no login needed by agents):
+* PromoVote admin panel promovote.com/admin collects everything: waitlist, site visits, X posts and stats, App Store
+  and Google Play numbers for all apps, Hauling Empire in-game data (players, regions, sessions, sales, crashes),
+  Poleris app data, ad revenue (LevelPlay). The founder logs in; ask him for screenshots or numbers when you need them.
+* Each product repo's `CLAUDE.md` and its `docs/` describe its own backend and stats.
+
+Backends (never touch one from another product; keys live only in each service, never in git):
+* PromoVote: Cloudflare (Workers `promovote-landing`, `promovote-api`, D1, R2). Rules in its `CLAUDE.md`.
+* Hauling Empire: Supabase project `bcwahdyqpbzyqllszeng`.
+* Poleris and Lovelet: Supabase project `gcbcaunmxznaixwnnfux`.
+
+Founder only (agents never log in here; prepare the change and ask the founder): App Store Connect, Google Play
+Console, Unity / LevelPlay, Etsy, Cloudflare dashboard, Supabase dashboards, Salesforce org, X account settings,
+domain registrar, any payment page.
+
 ## Divisions (founder decision 2026-10-25)
 
 | Division | Products | Lead |
