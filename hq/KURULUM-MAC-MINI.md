@@ -1,4 +1,4 @@
-# MIA PERA HQ: Mac mini kurulum rehberi
+# Flip Coin Studios: Mac mini kurulum rehberi
 
 Amaç: Mac mini'de Paperclip'i kurmak, CEO ve proje ajanlarını Claude Pro hesabınla çalıştırmak, panele
 **hq.miaperatransportation.com** adresinden (telefondan da) güvenli girmek.
@@ -70,7 +70,7 @@ npx paperclipai onboard --yes
 Kurulum bitince Paperclip bir yerel adres verir (örneğin http://localhost:3100). Tarayıcıda aç.
 
 Panelde:
-1. Şirketi oluştur: **MIA PERA HQ**.
+1. Şirketi oluştur: **Flip Coin Studios**.
 2. CEO ajanını ekle: model olarak Claude Code (Pro hesabın), görev tanımı olarak `~/hq/promovote/hq/CEO.md` dosyasının tamamını yapıştır.
 3. İlk hafta sadece iki lider ekle: **PromoVote lideri** (klasör `~/hq/promovote`) ve **Oyunlar lideri** (Hauling Empire ile başlar, sonra Robot Game). **Mobil uygulamalar lideri** (Poleris, Lovelet) ikinci hafta.
 4. Uyanma sıklığı (heartbeat): CEO günde 2 kez (09:00 ve 18:00), liderler günde 1 kez. Limitler rahatsa sonra artırırız.
