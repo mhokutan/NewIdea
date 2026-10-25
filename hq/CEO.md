@@ -20,7 +20,7 @@ or en dashes. Write to agents in English.
 |---|---|---|---|
 | **PromoVote** | "The social media of ads": app makers, game devs, streamers and small sellers show their work; scouts discover and call what blows up | Google Play live; iPhone 1.0.2 waiting for Apple review since 2026-10-16; website promovote.com live; X account active | `~/hq/promovote` (mhokutan/NewIdea), its `CLAUDE.md` is the rulebook |
 | **Hauling Empire** | Truck tycoon game (iOS + Android, Unity, Supabase backend) | Live on both stores since 2026-10-07/10; about 10 iOS installs a day; crash-free sessions ~94% (target 99%); rewarded ads via LevelPlay | `~/hq/hauling-empire` (nakliye-patronu) |
-| **Lovelet** | Couple app | Store launch pending; stats feed planned for the PromoVote admin | `~/hq/lovelet` (CoupleApp) |
+| **Dovelet** (formerly Lovelet) | Couple app | Store launch pending; stats feed planned for the PromoVote admin | `~/hq/lovelet` (CoupleApp) |
 | **New Robot Game** | New game in development | Early | `~/hq/robot-game` (NewRoboticGame) |
 | **Poleris** | Mindfulness app (breathing, rituals) | Live on both stores | its own repo |
 | **Nicheable** | Etsy shop (digital planners) | Live | Etsy |
@@ -37,7 +37,7 @@ Code (on this Mac, all cloned with the founder's GitHub login; `gh` is logged in
 |---|---|---|---|
 | PromoVote | `~/hq/promovote` | mhokutan/NewIdea (branch `claude/gracious-pasteur-nu8ssc`) | promovote.com, api.promovote.com, Google Play `com.miapera.promovote`, X account |
 | Hauling Empire | `~/hq/hauling-empire` | nakliye-patronu | App Store id6815224121, Google Play `com.mhokutan.haulingempire` |
-| Lovelet | `~/hq/lovelet` | CoupleApp | App Store id6824002542 and Google Play `com.mhokutan.coupleapp` (launch pending) |
+| Dovelet | `~/hq/lovelet` | CoupleApp | App Store id6824002542 and Google Play `com.mhokutan.coupleapp` (launch pending) |
 | New Robot Game | `~/hq/robot-game` | NewRoboticGame | not released |
 | Poleris | `~/hq/poleris` (clone it first: find the repo with `gh repo list`) | find with `gh repo list` | App Store id6792844860, Google Play `com.miapera.poleris` |
 | Salesforce | `~/hq/salesforce` (clone it first if a repo exists: `gh repo list`) | find with `gh repo list` | portfolio mevlutokutan-dev-ed.develop.my.site.com, Trailhead salesforce.com/trailblazer/mevluthazimokutan |
@@ -52,7 +52,7 @@ Numbers (read only, no login needed by agents):
 Backends (never touch one from another product; keys live only in each service, never in git):
 * PromoVote: Cloudflare (Workers `promovote-landing`, `promovote-api`, D1, R2). Rules in its `CLAUDE.md`.
 * Hauling Empire: Supabase project `bcwahdyqpbzyqllszeng`.
-* Poleris and Lovelet: Supabase project `gcbcaunmxznaixwnnfux`.
+* Poleris and Dovelet: Supabase project `gcbcaunmxznaixwnnfux`.
 
 Founder only (agents never log in here; prepare the change and ask the founder): App Store Connect, Google Play
 Console, Unity / LevelPlay, Etsy, Cloudflare dashboard, Supabase dashboards, Salesforce org, X account settings,
@@ -63,7 +63,7 @@ domain registrar, any payment page.
 | Division | Products | Lead |
 |---|---|---|
 | **Games** | Hauling Empire, New Robot Game | Games lead (shares lessons: crashes, sessions, ad revenue, game economy) |
-| **Mobile apps** | Poleris, Lovelet | Apps lead (shares lessons: subscriptions, onboarding, store pages, notifications) |
+| **Mobile apps** | Poleris, Dovelet | Apps lead (shares lessons: subscriptions, onboarding, store pages, notifications) |
 | **PromoVote** | PromoVote | PromoVote lead |
 | **Other** | Salesforce, Nicheable | the CEO directly |
 
