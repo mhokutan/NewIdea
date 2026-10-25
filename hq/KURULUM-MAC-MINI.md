@@ -72,7 +72,7 @@ Kurulum bitince Paperclip bir yerel adres verir (örneğin http://localhost:3100
 Panelde:
 1. Şirketi oluştur: **MIA PERA HQ**.
 2. CEO ajanını ekle: model olarak Claude Code (Pro hesabın), görev tanımı olarak `~/hq/promovote/hq/CEO.md` dosyasının tamamını yapıştır.
-3. İlk hafta sadece iki lider ekle: **PromoVote** (klasör `~/hq/promovote`) ve **Hauling Empire**. Diğerlerini 2 hafta sonra.
+3. İlk hafta sadece iki lider ekle: **PromoVote lideri** (klasör `~/hq/promovote`) ve **Oyunlar lideri** (Hauling Empire ile başlar, sonra Robot Game). **Mobil uygulamalar lideri** (Poleris, Lovelet) ikinci hafta.
 4. Uyanma sıklığı (heartbeat): CEO günde 2 kez (09:00 ve 18:00), liderler günde 1 kez. Limitler rahatsa sonra artırırız.
 5. Onay gerektiren işler (CEO.md bölüm 4) için panelde **kurucu onayı** ayarını aç.
 
