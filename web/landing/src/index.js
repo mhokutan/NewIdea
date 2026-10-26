@@ -392,6 +392,20 @@ const lpWhy = (reason) => reason === "no_key" ? "LevelPlay bağlı değil."
   : /^auth_/.test(reason || "") ? "LevelPlay anahtarları kabul etmedi. LEVELPLAY_SECRET_KEY ve LEVELPLAY_REFRESH_TOKEN değerlerini kontrol et."
   : "LevelPlay verisi şu an alınamadı.";
 
+// Days to $100 at the recent pace: average of the last 7 finished days, counted from the first day with revenue
+// (dividing by the whole range made it look 4x slower while ads were only live for part of it).
+function daysTo100(series, todayKey) {
+  const done = series.filter((x) => x.d < todayKey);
+  const first = done.find((x) => x.v > 0);
+  if (!first) return null;
+  const yest = new Date(todayKey + "T00:00:00Z").getTime() - 864e5;
+  const from = Math.max(new Date(first.d + "T00:00:00Z").getTime(), yest - 6 * 864e5);
+  const days = Math.round((yest - from) / 864e5) + 1;
+  const sum = done.filter((x) => new Date(x.d + "T00:00:00Z").getTime() >= from).reduce((a, x) => a + x.v, 0);
+  return sum > 0 ? { days: Math.ceil(100 / (sum / days)), perDay: sum / days, n: days } : null;
+}
+const paceTile = (p) => p ? `${p.days} gün<span class="dim" style="display:block;font-size:13px;font-weight:500">günde ortalama $${p.perDay.toFixed(2)}, son ${p.n} gün</span>` : '<span class="dim" style="font-size:16px">veri yok</span>';
+
 async function levelPlayPage(env, path, range) {
   const today = new Date(); today.setUTCHours(0, 0, 0, 0);
   const d = (t) => t.toISOString().slice(0, 10);
@@ -411,16 +425,15 @@ async function levelPlayPage(env, path, range) {
   const tot = (rows, k) => rows.reduce((a, r) => a + n(r[k]), 0);
   const rev = tot(daily.rows, "revenue"), imp = tot(daily.rows, "impressions");
   const revToday = daily.rows.filter((r) => String(r.date).slice(0, 10) === todayKey).reduce((a, r) => a + n(r.revenue), 0);
-  const revFull = rev - revToday;
+  const series = daily.rows.map((r) => ({ d: String(r.date).slice(0, 10), v: n(r.revenue) })).filter((x) => /^\d{4}-\d{2}-\d{2}$/.test(x.d)).sort((a, b) => (a.d < b.d ? -1 : 1));
   const tiles = tilesHtml([
     [`${range} günde gelir (bugün dahil)`, money(rev)],
     ["Bugün (devam ediyor)", money(revToday)],
     ["Gösterim", Math.round(imp)],
     ["eCPM", imp ? money((rev / imp) * 1000) : '<span class="dim" style="font-size:16px">veri yok</span>'],
     ["100 dolar için gereken gösterim", imp && rev ? Math.round(100 / (rev / imp)) : '<span class="dim" style="font-size:16px">veri yok</span>'],
-    ["Bu hızla 100 dolar", revFull && range > 1 ? `${Math.ceil(100 / (revFull / (range - 1)))} gün` : '<span class="dim" style="font-size:16px">veri yok</span>'],
+    ["Bu hızla 100 dolar", paceTile(daysTo100(series, todayKey))],
   ]);
-  const series = daily.rows.map((r) => ({ d: String(r.date).slice(0, 10), v: n(r.revenue) })).filter((x) => /^\d{4}-\d{2}-\d{2}$/.test(x.d)).sort((a, b) => (a.d < b.d ? -1 : 1));
   const chart = series.length ? `<h2 style="font-size:20px;margin:28px 0 10px">Günlük gelir ($)</h2>${dayChart(series.map((x) => ({ d: x.d, dim: x.d === todayKey, parts: [{ v: x.v, c: BRAND_A }] })), { fmt: (v) => (v >= 10 ? String(Math.round(v)) : v.toFixed(2)), aria: "Günlük reklam geliri" })}` : "";
   const PLAT = { ios: "iOS", android: "Android" };
   const split = (r, key, label, name = (x) => x) => {
@@ -463,7 +476,7 @@ async function unityPage(env, path, range) {
   const money = (v) => "$" + v.toFixed(2);
   const dayKey = (r) => String(r.timestamp || r.date || r.time || Object.values(r)[0] || "").slice(0, 10);
   const revToday = daily.rows.filter((r) => dayKey(r) === todayKey).reduce((a, r) => a + n(r.revenue_sum), 0);
-  const revFull = rev - revToday; // pace from finished days only
+  const series = daily.rows.map((r) => ({ d: dayKey(r), v: n(r.revenue_sum) })).filter((x) => /^\d{4}-\d{2}-\d{2}$/.test(x.d)).sort((a, b) => (a.d < b.d ? -1 : 1));
   const tiles = tilesHtml([
     [`${range} günde gelir (bugün dahil)`, money(rev)],
     ["Bugün (devam ediyor)", money(revToday)],
@@ -473,9 +486,8 @@ async function unityPage(env, path, range) {
     ["Başlayan reklam", Math.round(starts)],
     // Rewarded video pays per completed view, not per click: views for $100 at this period's eCPM, and days at this pace.
     ["100 dolar için gereken gösterim", views && rev ? Math.round(100 / (rev / views)) : '<span class="dim" style="font-size:16px">veri yok</span>'],
-    ["Bu hızla 100 dolar", revFull && range > 1 ? `${Math.ceil(100 / (revFull / (range - 1)))} gün` : '<span class="dim" style="font-size:16px">veri yok</span>'],
+    ["Bu hızla 100 dolar", paceTile(daysTo100(series, todayKey))],
   ]);
-  const series = daily.rows.map((r) => ({ d: dayKey(r), v: n(r.revenue_sum) })).filter((x) => /^\d{4}-\d{2}-\d{2}$/.test(x.d)).sort((a, b) => (a.d < b.d ? -1 : 1));
   const chart = series.length ? `<h2 style="font-size:20px;margin:28px 0 10px">Günlük gelir ($)</h2>${dayChart(series.map((x) => ({ d: x.d, dim: x.d === todayKey, parts: [{ v: x.v, c: BRAND_A }] })), { fmt: (v) => (v >= 10 ? String(Math.round(v)) : v.toFixed(2)), aria: "Günlük Unity Ads geliri" })}` : "";
   // The Unity organization holds Hauling Empire only (founder 2026-10-17): one game id per platform.
   const PLAT = { ios: "iOS", android: "Android" };
