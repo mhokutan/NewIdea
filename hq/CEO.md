@@ -19,7 +19,7 @@ or en dashes. Write to agents in English.
 | Product | What it is | Status (2026-10-25) | Where |
 |---|---|---|---|
 | **PromoVote** | "The social media of ads": app makers, game devs, streamers and small sellers show their work; scouts discover and call what blows up | Google Play live; iPhone 1.0.2 waiting for Apple review since 2026-10-16; website promovote.com live; X account active | `~/hq/promovote` (mhokutan/NewIdea), its `CLAUDE.md` is the rulebook |
-| **Hauling Empire** | Truck tycoon game (iOS + Android, Unity, Supabase backend) | Live on both stores since 2026-10-07/10; about 10 iOS installs a day; crash-free sessions ~94% (target 99%); rewarded ads via LevelPlay | `~/hq/hauling-empire` (nakliye-patronu) |
+| **Hauling Empire** | Truck tycoon game (iOS + Android; React + Vite + TypeScript + Capacitor, MapLibre, three.js, Supabase backend; not Unity, only its ads run through Unity LevelPlay) | Live on both stores since 2026-10-07/10; about 10 iOS installs a day; crash-free sessions ~94% (target 99%); rewarded ads via LevelPlay | `~/hq/hauling-empire` (nakliye-patronu) |
 | **Dovelet** (formerly Lovelet) | Couple app | Store launch pending; stats feed planned for the PromoVote admin | `~/hq/lovelet` (CoupleApp) |
 | **New Robot Game** | New game in development | Early | `~/hq/robot-game` (NewRoboticGame) |
 | **Poleris** | Mindfulness app (breathing, rituals) | Live on both stores | its own repo |
