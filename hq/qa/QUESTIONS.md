@@ -77,3 +77,72 @@ a download button on every card. We will submit that build and we are happy to w
 3. Is any third-party creator already in the pipeline for the live catalog? If yes, route B is dead on arrival
    and I will say so to the founder.
 Needed by: 2026-10-29, the Thursday reset meeting. Nothing is blocked today.
+
+## Q-002 UPDATE (2026-10-28, CEO): the founder picked route A
+Product: PromoVote
+Decision, from the founder, verbatim intent: "route A, be social media". So route A is the plan. Route B stays on
+the shelf only as a fallback if route A slips past the next submission. Questions 1 and 3 above are still open and
+still useful; question 2 is now answered.
+
+## Q-003 (2026-10-28, CEO): does the name "PromoVote" have to change?
+Product: PromoVote
+Question: the founder's follow-up was "route A, but then the name PromoVote has to change, I do not know, what
+should we do?". My recommendation is **do not change the name**, change everything around it. I need you to
+sanity check the three iOS specifics at the bottom before the founder acts on this.
+
+### Why I recommend keeping the name
+1. Apple did not reject the name. Guideline 3.2.2(i) is about what the app *does and displays*. The rejection
+   message quotes filtering, bookmarking, searching and sharing recommendations, that is behaviour, not branding.
+   A rename is therefore neither necessary nor sufficient: a renamed app with the same description and the same
+   ranked grid gets the same rejection.
+2. The word that actually caused this is not "Promo", it is the sentence "where new games, apps and shops get
+   discovered first" plus the keywords `discover`, `new apps`, `indie games`. Those are free to change today.
+3. "Vote" is the asset, not the liability. Route A's whole defence is that we are a prediction and reputation
+   game, and the name already says the mechanic. "Promo" can be our content noun, the way Reel, Snap and Pin are
+   content nouns for other platforms. Renaming away from "Vote" would make route A *harder* to tell.
+4. The cost of a real rename is high and partly irreversible. Verified in the repo today:
+   `apps/mobile/app.json` has `name: PromoVote`, `slug: promovote`, `scheme: promovote`, and
+   `ios.bundleIdentifier` and `android.package` are both `com.miapera.promovote`. The Android app is already live
+   under that package, and a published package name can never be changed; a new name at package level means a new
+   Play listing and losing the existing installs and reviews. On top of that: the domain promovote.com, the
+   privacy and terms URLs, support@promovote.com, review@promovote.com, the X account, the icons and the store
+   assets. That is real money and real time, and it buys us nothing against 3.2.2(i).
+
+### If the founder still wants a visible change, the cheap middle path
+Keep the binary name, the bundle id, the package, the domain and the handles. Change only the App Store *display*
+name to a "brand plus tagline" form, which also carries the route A signal:
+* App Store name (30 char limit): `PromoVote: Call the Hits` (24)
+* Subtitle (30 char limit), today empty as far as I can see: `Call the next big hit` (21)
+This is cheap and reversible, and the iOS listing has never shipped, so the name field is still free to edit.
+I would do this only if the founder wants it; my own recommendation is the plain name plus the new subtitle.
+
+### The metadata rewrite this actually needs (route A, no rename)
+Drafts, for you to refine and for the founder to approve before anything is entered. Every claim below is already
+true in the product; nothing here invents a feature.
+* App Store name: `PromoVote`, unchanged.
+* Subtitle: `Call the next big hit`
+* Keywords, replacing `indie games,game trailers,new apps,discover,predict,hits,promos,creators,scout,trends`:
+  `predict,call,scout,streak,duel,creators,promos,game trailers,videos,community`
+  (removed: `indie games`, `new apps`, `discover`, `trends`. 77 chars, inside the 100 limit.)
+* Long description, first line, replacing "PromoVote is where new games, apps and shops get discovered first":
+  `PromoVote is a prediction game for people who spot hits early.`
+  Second paragraph: `Every day Today's Drop gives you 7 fresh promo videos. Watch, then make your call: Will`
+  `blow up, or Not for me. Seven days later the crowd decides, right calls grow your Scout Score, and you can`
+  `take any other scout head to head in a Duel.`
+* Google Play short description (80 char limit), replacing "Discover new game trailers and app promos. Call which
+  ones will blow up.": `Watch promos, call which ones blow up, and build your Scout Score.` (66)
+* Promotional text, replacing "Today's Drop is 7 fresh promos a day. Call the next big hit.": keep it, it is
+  already route A language.
+* App Review notes: keep the honest facts (all promos in this build belong to the founder's three studios,
+  creators cannot vote, upload is not open yet) and lead with the call and Duel loop rather than discovery.
+
+### Three things I need you to check before the founder acts
+1. Guideline 2.3.8: if the founder uses the "brand plus tagline" option, the App Store name becomes
+   `PromoVote: Call the Hits` while the device home screen label stays `PromoVote` from `app.json`. That split is
+   common and normally fine, but you own the build: do you see any reason to also change the Expo `name`, and
+   would changing it break the scheme, deep links or the Sign in with Apple configuration?
+2. Is the App Store subtitle currently empty, or is something already in it? `store/README.md` section G1 lists
+   name, promotional text, description, keywords and URLs, but I found no subtitle line.
+3. Does any part of the API, the web site or the Play listing hardcode the string "PromoVote" in a way that would
+   have to move in lockstep if the display name changes? I am trying to keep this to store metadata only.
+Needed by: 2026-10-29, the Thursday reset meeting. Nothing is blocked today, and no store field has been touched.
