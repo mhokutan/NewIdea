@@ -146,3 +146,70 @@ true in the product; nothing here invents a feature.
 3. Does any part of the API, the web site or the Play listing hardcode the string "PromoVote" in a way that would
    have to move in lockstep if the display name changes? I am trying to keep this to store metadata only.
 Needed by: 2026-10-29, the Thursday reset meeting. Nothing is blocked today, and no store field has been touched.
+
+## Q-003 ANSWERED (2026-10-28, CEO): the name stays, nothing is renamed
+Product: PromoVote
+Decision, from the founder, verbatim intent: "fine, keep the name, we will just turn it into social media."
+
+So, binding for this work:
+* **No rename of any kind.** App Store display name stays the plain `PromoVote`. The "brand plus tagline" middle
+  path (`PromoVote: Call the Hits`) is **declined** and should not be entered anywhere. Bundle id, Android
+  package, `slug`, `scheme`, domain, support and review e-mail addresses, X handle, icons: all unchanged.
+* My three check questions above are **withdrawn**, items 1 and 3 included, because they only existed to protect
+  a rename that is not happening. Do not spend a wake on them.
+* The one field that is still open is the **subtitle**. It is a new, currently empty App Store field, not a name
+  change, so "keep the name" does not settle it. Treat `Call the next big hit` as a draft for the founder to
+  approve or drop at the same moment he approves the description. If he says nothing, ship with the subtitle
+  empty rather than guessing; an empty subtitle costs us a little ASO, a wrong one costs us another round.
+* Everything else in the Q-003 metadata rewrite stands and is now the plan: new first line, new keywords, new
+  Play short description, route A review notes.
+
+## Q-004 (2026-10-28, CEO): route A build spec, so you do not have to re-derive it
+Product: PromoVote
+This is not a question, it is the assignment as I understand it, written down so your first wake on it is cheap.
+Correct anything that is wrong, you own this code. Priority order is mine; the reasoning for each item is the
+rejection text, not taste.
+
+### The acceptance test to design against
+One sentence, and every item below serves it: **a reviewer who opens the app cold and scrolls for thirty seconds
+should be looking at people making predictions, not at a browsable list of apps with download buttons.** If a
+change does not move that sentence, it is not part of this job.
+
+### P0, the four that answer the rejection directly
+1. **First screen is the call loop, not a grid.** On iOS the landing surface leads with Today's Drop as a
+   one-at-a-time watch-and-call flow (watch, then `Will blow up` / `Not for me`), with the user's streak,
+   accuracy and Scout Score visible. The ranked chart strip and the `games` / `apps` category pills move below
+   the fold or behind a secondary tab. Do **not** rename or delete the categories to disguise them, that is a
+   worse problem than the one we are fixing; demote them.
+2. **Store links move one level deeper.** A promo card's primary action becomes the creator page or follow, not
+   a store button. The `app_store` CTA lives on the creator's profile, link-in-bio style. Keep the existing
+   `ctaVisible` rule that hides `google_play` on iOS (2.3.10) exactly as it is.
+3. **Make the outcome visible, because it is our real differentiator.** The seven-day resolution, right and wrong
+   calls, Scout Score movement and the Duel are the things the App Store does not have. Today they exist but are
+   not what the app shows first. A reviewer needs to be able to find a resolved call and see that it cost or
+   earned something.
+4. **Store metadata.** The Q-003 drafts above, founder-approved before entry. This one is free and does not need
+   a build, but it must land in the **same** submission as the build, otherwise the words and the app disagree
+   again.
+
+### P1, strengthens the same argument if it is cheap
+5. Creator identity: profile, follower or follow count, the creator's own promos together. Social shape, and it
+   is where the store link now lives anyway.
+6. Anything that makes a promo feel authored rather than listed: creator handle on the card, a caption, a
+   comment or reaction surface if one already exists. Do not build a new comment system for this submission.
+
+### Out of scope, explicitly
+* Any rename, any new paid service, any change to the Android build or the Play listing in this round.
+* Opening creator upload to third parties before this submission is approved. The honest line in the review notes
+  ("all promos in this build belong to the founder's three studios") is one of our strongest facts; do not break
+  it in the same week we rely on it.
+
+### What I still need back from you
+1. Your estimate: which of P0 1 to 3 are realistic for the next submission, and what breaks if we ship only
+   some of them. If only one is possible, I would take item 1.
+2. The two facts from Q-002 that are still unverified: my reading of `ctaVisible` (fact 3), and whether any
+   third-party creator is already queued for the live catalog (Q-002 item 3). The second one decides whether
+   route B still exists as a fallback at all.
+3. Nothing goes to App Review and no store field is entered without the founder. I have not touched either, and
+   I will not.
+Needed by: 2026-10-29, the Thursday reset meeting.
