@@ -115,7 +115,14 @@ export async function collectStoreStats(env) {
       const token = await appleToken(env);
       for (let i = 1; i <= 7; i++) {
         const date = day(i);
-        const res = await appleDay(token, date);
+        // One bad day (Apple sometimes answers 500 for a single date) must not stop the other days: retry once,
+        // then note it and go on; the next run (12 h later) asks for the same 7 days again.
+        let res;
+        try { res = await appleDay(token, date); }
+        catch {
+          await new Promise((ok) => setTimeout(ok, 2000));
+          try { res = await appleDay(token, date); } catch (e) { notes.push("apple: " + e.message); continue; }
+        }
         if (!res) { if (i >= 3) for (const a of APPS) rows.push([a.product, "app_store", date, "downloads", 0]); continue; }
         for (const [product, m] of Object.entries(res)) for (const [k, v] of Object.entries(m)) rows.push([product, "app_store", date, k, v]);
       }
