@@ -247,10 +247,12 @@
 
   async function viewer() {
     const list = await api({ feed: "reports" });
-    const reports = Array.isArray(list) ? list : [];
+    // The feed may send the list bare or inside an object ({ reports: [...] }, { data: [...] }...).
+    const reports = Array.isArray(list) ? list : (list && (list.reports || list.items || list.data || list.rows || Object.values(list).find(Array.isArray))) || [];
     const bar = h("div", { class: "top no-print", style: "margin:4px 0 16px" },
       h("span", { class: "countries", style: "margin:0" }, "Bütün oyuncuları kapsar."));
-    if (!reports.length) return show(bar, box("Henüz rapor yok. Haftalık rapor her Pazartesi sabahı eklenir."));
+    if (!reports.length) return show(bar, box("Henüz rapor yok. Haftalık rapor her Pazartesi sabahı eklenir."),
+      list && !Array.isArray(list) && typeof list === "object" ? h("p", { class: "dim", style: "font-size:12px" }, `Sunucu cevabındaki alanlar: ${Object.keys(list).join(", ") || "boş"}`) : null);
     const pane = h("section", { class: "rp-pane", "aria-live": "polite" });
     const items = reports.map((r) => h("button", { class: "rp-item", "data-id": r.id, onclick: () => open(r.id) },
       h("span", { class: "rp-tags" }, h("span", { class: "role" }, KIND[r.kind] || r.kind || "Rapor"), isNew(r) ? h("span", { class: "badge-on" }, "Yeni") : null),
@@ -262,7 +264,12 @@
       items.forEach((b) => b.classList.toggle("on", b.dataset.id === String(id)));
       pane.replaceChildren(box("Yükleniyor...", "countries"));
       let r;
-      try { r = await api({ feed: "report", id }); if (Array.isArray(r)) r = r[0]; }
+      try {
+        r = await api({ feed: "report", id });
+        if (Array.isArray(r)) r = r[0];
+        if (r && r.body_md == null) r = r.report || r.data || r.item || r;
+        if (Array.isArray(r)) r = r[0];
+      }
       catch (e) { return pane.replaceChildren(box(why(e))); }
       if (!r) return pane.replaceChildren(box("Rapor bulunamadı."));
       const { nodes, toc } = md(r.body_md);

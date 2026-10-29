@@ -1246,7 +1246,7 @@ ${tilesHtml([["Paylaşılan", sum.posted?.n || 0], ["Sırada", sum.queued?.n || 
 .md,.md .md-p,.md .md-quote{color:#000}.md .md-quote,.tile,.tablewrap,th{background:#fff!important;border-color:#bbb!important;color:#000}.tile b,.tile span{color:#000}.md a{color:#000}.md .md-h{break-after:avoid}tr,.tile{break-inside:avoid}}
 </style><div class="top"><h1>Hauling Empire Raporları</h1></div>
 <div id="he-report"><p class="countries">Yükleniyor...</p></div>
-<noscript><p class="empty">Bu sayfa için JavaScript gerekir.</p></noscript><script src="/admin-he-report.js?v=2" defer></script>`);
+<noscript><p class="empty">Bu sayfa için JavaScript gerekir.</p></noscript><script src="/admin-he-report.js?v=3" defer></script>`);
   }
   if (path === "/admin/hauling-empire/oyun") {
     const range = rangeOf(url);
