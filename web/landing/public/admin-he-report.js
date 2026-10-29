@@ -1,19 +1,13 @@
 // Hauling Empire reports (admin page /admin/hauling-empire/rapor, founder request 2026-10-30, second version):
-// Claude's written player analyses (kind analysis) and the weekly reports (kind weekly), all players, never filtered
-// by the signed in account. Reads only: admin_reports_list, admin_report_get, admin_weekly_report (raw numbers tab),
-// on the Hauling Empire Supabase project with the public anon key and the signed in HE admin's own session.
-// The PromoVote admin password gives no access here. Markdown is turned into DOM nodes by a small renderer that never
-// parses HTML (player quotes in the reports can hold anything).
+// Claude's written player analyses (kind analysis) and the weekly reports (kind weekly), all players. Reads only,
+// through this Worker (/admin/hauling-empire/rapor.json, behind the admin login), which calls Hauling Empire's
+// store-stats function with the server key HE_STATS_KEY. No second sign in (founder 2026-10-30). Markdown is turned
+// into DOM nodes by a small renderer that never parses HTML (player quotes in the reports can hold anything).
 // No Supabase library: Auth and RPC are plain REST calls. The session lives under its own storage key.
 // Player text (feedback) is always set as text, never as HTML.
 (() => {
   const root = document.getElementById("he-report");
   if (!root) return;
-  const URL_ = root.dataset.url;
-  const KEY = root.dataset.key;
-  const STORE = "he-admin-auth";
-  const back = location.origin + location.pathname;
-
   // ---------- tiny DOM helper: strings become text nodes, never HTML ----------
   const h = (tag, attrs, ...kids) => {
     const el = document.createElement(tag);
@@ -30,81 +24,14 @@
   const show = (...nodes) => root.replaceChildren(...nodes);
   const box = (text, cls = "empty") => h("p", { class: cls }, text);
 
-  // ---------- session ----------
-  const load = () => { try { return JSON.parse(localStorage.getItem(STORE) || "null"); } catch { return null; } };
-  const save = (s) => { try { localStorage.setItem(STORE, JSON.stringify(s)); } catch { /* private mode */ } };
-  const clear = () => { try { localStorage.removeItem(STORE); } catch { /* ignore */ } };
-  const fromAuth = (j) => ({ access_token: j.access_token, refresh_token: j.refresh_token, expires_at: j.expires_at || Math.floor(Date.now() / 1000) + Number(j.expires_in || 3600), email: j.user?.email || "" });
-
-  async function auth(path, body) {
-    const r = await fetch(`${URL_}/auth/v1/${path}`, { method: "POST", headers: { apikey: KEY, "Content-Type": "application/json" }, body: JSON.stringify(body || {}) });
-    const j = await r.json().catch(() => ({}));
-    if (!r.ok) throw Object.assign(new Error(j.msg || j.error_description || j.message || `HTTP ${r.status}`), { status: r.status });
-    return j;
-  }
-  async function session() {
-    let s = load();
-    if (!s?.access_token) return null;
-    if (s.expires_at - Date.now() / 1000 < 60) {
-      try { s = fromAuth(await auth("token?grant_type=refresh_token", { refresh_token: s.refresh_token })); save(s); }
-      catch { clear(); return null; }
-    }
-    return s;
-  }
-  async function rpc(name, args) {
-    const s = await session();
-    if (!s) throw Object.assign(new Error("no session"), { kind: "login" });
+  // ---------- data: same origin, the Worker adds the server key ----------
+  async function api(q) {
     let r;
-    try {
-      r = await fetch(`${URL_}/rest/v1/rpc/${name}`, { method: "POST", headers: { apikey: KEY, Authorization: `Bearer ${s.access_token}`, "Content-Type": "application/json" }, body: JSON.stringify(args || {}) });
-    } catch { throw Object.assign(new Error("network"), { kind: "network" }); }
+    try { r = await fetch(`/admin/hauling-empire/rapor.json?${new URLSearchParams(q)}`, { credentials: "same-origin" }); }
+    catch { throw Object.assign(new Error("network"), { kind: "network" }); }
     const j = await r.json().catch(() => null);
-    if (r.status === 401) { clear(); throw Object.assign(new Error("expired"), { kind: "login" }); }
-    if (!r.ok) throw Object.assign(new Error(j?.message || `HTTP ${r.status}`), { kind: j?.code === "42501" ? "admin" : "server" });
-    return j;
-  }
-
-  // Magic link or Google/Apple return: tokens arrive in the URL hash.
-  const hash = new URLSearchParams(location.hash.slice(1));
-  const hashError = hash.get("error_description");
-  if (hash.get("access_token")) save(fromAuth({ access_token: hash.get("access_token"), refresh_token: hash.get("refresh_token"), expires_at: Number(hash.get("expires_at")) || 0, expires_in: hash.get("expires_in") }));
-  if (location.hash) history.replaceState(null, "", location.pathname + location.search);
-
-  // ---------- login ----------
-  function loginView(msg) {
-    let email = "";
-    const note = h("p", { class: "countries", "aria-live": "polite" }, msg || "");
-    const codeRow = h("div", { style: "display:none;gap:10px;margin-top:12px;max-width:360px" },
-      h("input", { class: "tsearch", inputmode: "numeric", autocomplete: "one-time-code", placeholder: "E postadaki kod", "aria-label": "E postadaki kod", id: "he-code" }),
-      h("button", { class: "morebtn", style: "margin:0", onclick: async () => {
-        const token = document.getElementById("he-code").value.trim();
-        if (!token) return;
-        note.textContent = "Kontrol ediliyor...";
-        try { save(fromAuth(await auth("verify", { type: "email", email, token }))); start(); }
-        catch { note.textContent = "Kod kabul edilmedi. Yeniden dene ya da e postadaki linke dokun."; }
-      } }, "Giriş yap"));
-    const emailIn = h("input", { class: "tsearch", type: "email", autocomplete: "email", placeholder: "Hauling Empire hesabının e postası", "aria-label": "E posta" });
-    const oauth = (p) => () => { location.href = `${URL_}/auth/v1/authorize?provider=${p}&redirect_to=${encodeURIComponent(back)}`; };
-    show(
-      h("div", { class: "st-card", style: "max-width:520px" },
-        h("div", { class: "st-head" }, h("h2", {}, "Hauling Empire hesabıyla giriş yap")),
-        h("p", { class: "countries", style: "margin-bottom:12px" }, "Bu rapor Hauling Empire'ın kendi admin hesabıyla açılır. PromoVote admin şifresi burada yetki vermez."),
-        h("div", { style: "display:grid;gap:10px;max-width:360px" },
-          emailIn,
-          h("button", { class: "morebtn", style: "margin:0", onclick: async () => {
-            email = emailIn.value.trim();
-            if (!/^\S+@\S+\.\S+$/.test(email)) { note.textContent = "Geçerli bir e posta yaz."; return; }
-            note.textContent = "Gönderiliyor...";
-            try {
-              await auth(`otp?redirect_to=${encodeURIComponent(back)}`, { email, create_user: false });
-              note.textContent = "E posta gönderildi. İçindeki kodu aşağıya yaz ya da linke dokun.";
-              codeRow.style.display = "grid";
-            } catch (e) { note.textContent = e.status === 429 ? "Çok sık denendi. Bir dakika bekle." : "E posta gönderilemedi. Bu e posta Hauling Empire'da kayıtlı olmayabilir."; }
-          } }, "Kod gönder"),
-          h("div", { style: "display:flex;gap:10px;flex-wrap:wrap" },
-            h("button", { class: "morebtn", style: "margin:0", onclick: oauth("google") }, "Google ile"),
-            h("button", { class: "morebtn", style: "margin:0", onclick: oauth("apple") }, "Apple ile"))),
-        codeRow, note));
+    if (!r.ok || !j?.ok) throw Object.assign(new Error(j?.why || `HTTP ${r.status}`), { kind: "server" });
+    return j.data;
   }
 
   // ---------- formatting ----------
@@ -215,15 +142,7 @@
       table(["Tarih", "Kategori", "Yorum"], (fb.latest || []).slice(0, 10).map((x) => [x.at ? new Date(x.at).toLocaleString("tr-TR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) : "", x.category || "", x.text || ""]))];
   }
 
-  async function logout() {
-    const s = load();
-    clear();
-    if (s?.access_token) fetch(`${URL_}/auth/v1/logout`, { method: "POST", headers: { apikey: KEY, Authorization: `Bearer ${s.access_token}` } }).catch(() => {});
-    loginView("Çıkış yapıldı.");
-  }
-
-  const why = (e) => e.kind === "admin" ? "Bu hesap admin değil."
-    : e.kind === "network" ? "Hauling Empire sunucusuna ulaşılamadı. İnternet bağlantını kontrol et, sonra sayfayı yenile."
+  const why = (e) => e.kind === "network" ? "Hauling Empire sunucusuna ulaşılamadı. İnternet bağlantını kontrol et, sonra sayfayı yenile."
     : `Rapor alınamadı: ${e.message}`;
 
   // ---------- safe Markdown: text only, no HTML ever parsed ----------
@@ -327,11 +246,10 @@
   }
 
   async function viewer() {
-    const list = await rpc("admin_reports_list");
+    const list = await api({ feed: "reports" });
     const reports = Array.isArray(list) ? list : [];
     const bar = h("div", { class: "top no-print", style: "margin:4px 0 16px" },
-      h("span", { class: "countries", style: "margin:0" }, "Bütün oyuncuları kapsar. Giriş sadece yetki için."),
-      h("button", { class: "logout", style: "cursor:pointer;background:none", onclick: logout }, "HE hesabından çık"));
+      h("span", { class: "countries", style: "margin:0" }, "Bütün oyuncuları kapsar."));
     if (!reports.length) return show(bar, box("Henüz rapor yok. Haftalık rapor her Pazartesi sabahı eklenir."));
     const pane = h("section", { class: "rp-pane", "aria-live": "polite" });
     const items = reports.map((r) => h("button", { class: "rp-item", "data-id": r.id, onclick: () => open(r.id) },
@@ -344,8 +262,8 @@
       items.forEach((b) => b.classList.toggle("on", b.dataset.id === String(id)));
       pane.replaceChildren(box("Yükleniyor...", "countries"));
       let r;
-      try { r = await rpc("admin_report_get", { p_id: id }); if (Array.isArray(r)) r = r[0]; }
-      catch (e) { if (e.kind === "login") return loginView("Oturumun süresi doldu, tekrar giriş yap."); return pane.replaceChildren(box(why(e))); }
+      try { r = await api({ feed: "report", id }); if (Array.isArray(r)) r = r[0]; }
+      catch (e) { return pane.replaceChildren(box(why(e))); }
       if (!r) return pane.replaceChildren(box("Rapor bulunamadı."));
       const { nodes, toc } = md(r.body_md);
       const body = h("article", { class: "md" }, ...nodes);
@@ -362,7 +280,7 @@
         content.replaceChildren(box("Yükleniyor...", "countries"));
         try {
           const w = String(r.period_start).slice(0, 10);
-          const [raw, prev] = await Promise.all([rpc("admin_weekly_report", { p_week_start: w }), rpc("admin_weekly_report", { p_week_start: addDays(w, -7) }).catch(() => null)]);
+          const [raw, prev] = await Promise.all([api({ feed: "weekly", week: w }), api({ feed: "weekly", week: addDays(w, -7) }).catch(() => null)]);
           content.replaceChildren(...(raw && raw.week_start ? renderRaw(raw, prev) : [box("Bu hafta için ham sayı yok.")]).filter(Boolean));
         } catch (e) { content.replaceChildren(box(why(e))); }
       };
@@ -379,17 +297,17 @@
     open(reports[0].id);
   }
 
+  // Until store-stats serves the written reports (feed=reports), last week's raw numbers are shown instead.
   async function start() {
-    if (!KEY) return show(box("Hauling Empire anahtarı girilmedi. Worker'a HE_SUPABASE_ANON_KEY (public anon anahtar) eklenince bu sayfa çalışır."));
-    if (!(await session())) return loginView(hashError ? `Giriş tamamlanamadı: ${hashError}` : "");
     show(box("Yükleniyor...", "countries"));
-    try {
-      const ok = await rpc("am_i_admin");
-      if (ok !== true) return show(box("Bu hesap admin değil."), h("button", { class: "morebtn", onclick: logout }, "Başka hesapla giriş yap"));
-      await viewer();
-    } catch (e) {
-      if (e.kind === "login") return loginView("Oturumun süresi doldu, tekrar giriş yap.");
-      show(box(why(e)), e.kind === "admin" ? h("button", { class: "morebtn", onclick: logout }, "Başka hesapla giriş yap") : null);
+    try { await viewer(); }
+    catch (e) {
+      try {
+        const raw = await api({ feed: "weekly" });
+        const before = raw?.week_start ? await api({ feed: "weekly", week: addDays(raw.week_start, -7) }).catch(() => null) : null;
+        show(h("p", { class: "warnbar", style: "margin:0 0 16px" }, "Yazılı raporlar henüz bağlı değil. Şimdilik geçen haftanın sayıları gösteriliyor."),
+          ...(raw?.week_start ? renderRaw(raw, before) : [box(why(e))]).filter(Boolean));
+      } catch { show(box(why(e))); }
     }
   }
   start();

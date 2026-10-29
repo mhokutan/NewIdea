@@ -205,7 +205,7 @@ const ADMIN_GROUPS = [
   ["Dovelet", "Uygulama ve mağazalar", [["/admin/lovelet/uygulama", "Uygulama"], ["/admin/app-store?p=lovelet", "App Store"], ["/admin/google-play?p=lovelet", "Google Play"]]],
 ];
 
-function adminPage(path, title, body, { connect = "" } = {}) {
+function adminPage(path, title, body) {
   const group = ADMIN_GROUPS.find(([, , items]) => items.some(([h]) => h === path));
   const page = group?.[2].find(([h]) => h === path);
   const groupsHtml = ADMIN_GROUPS.map(([name, sub, items]) => {
@@ -253,10 +253,7 @@ td a{color:#b394ff}.dim{color:var(--dim)}.center{text-align:center}.role{padding
 ${nav}
 ${body}
 </main><script src="/v-ignore.js"></script><script src="/admin-table.js?v=2" defer></script></body></html>`;
-  const headers = { "Content-Type": "text/html; charset=utf-8", ...ADMIN_HEADERS };
-  // A page that calls another service from the browser names it here; every other page keeps connect-src 'self'.
-  if (connect) headers["Content-Security-Policy"] = headers["Content-Security-Policy"].replace("connect-src 'self'", `connect-src 'self' ${connect}`);
-  return new Response(html, { headers });
+  return new Response(html, { headers: { "Content-Type": "text/html; charset=utf-8", ...ADMIN_HEADERS } });
 }
 
 const RANGES = [7, 30, 90];
@@ -1218,10 +1215,19 @@ ${tilesHtml([["Paylaşılan", sum.posted?.n || 0], ["Sırada", sum.queued?.n || 
   }
 
   // Hauling Empire reports (founder request 2026-10-30, v2): Claude's written analyses and weekly reports for all
-  // players. The browser signs in to Hauling Empire's own Supabase Auth and calls read only RPCs. Only the public anon
-  // key is used here; it is public by design.
+  // players. The page reads them through rapor.json below, which calls Hauling Empire's store-stats function with the
+  // server key HE_STATS_KEY (same as the Oyun page). No second sign in; the admin login is enough.
+  if (path === "/admin/hauling-empire/rapor.json") {
+    const feed = url.searchParams.get("feed"), id = url.searchParams.get("id") || "", week = url.searchParams.get("week") || "";
+    const q = feed === "reports" ? "feed=reports"
+      : feed === "report" && /^[0-9a-f-]{36}$/i.test(id) ? `feed=report&id=${id}`
+      : feed === "weekly" && (!week || /^\d{4}-\d{2}-\d{2}$/.test(week)) ? `feed=weekly${week ? `&week=${week}` : ""}`
+      : null;
+    if (!q) return Response.json({ ok: false, why: "Geçersiz istek." }, { status: 400, headers: ADMIN_HEADERS });
+    const r = await productFeed(env, "haulingempire", q, feed === "weekly" ? 3600 : 300);
+    return Response.json(r.ok ? { ok: true, data: r.data } : { ok: false, why: feedWhy(r, "Hauling Empire", "HE_STATS_KEY") }, { status: r.ok ? 200 : 502, headers: ADMIN_HEADERS });
+  }
   if (path === "/admin/hauling-empire/rapor") {
-    const he = "https://bcwahdyqpbzyqllszeng.supabase.co";
     return adminPage(path, "Hauling Empire: raporlar", `<style>
 .rp-grid{display:grid;grid-template-columns:minmax(220px,300px) 1fr;gap:20px;align-items:start}
 .rp-list{display:grid;gap:8px;position:sticky;top:16px;max-height:calc(100dvh - 32px);overflow:auto}
@@ -1239,8 +1245,8 @@ ${tilesHtml([["Paylaşılan", sum.posted?.n || 0], ["Sırada", sum.queued?.n || 
 @media print{body{background:#fff;color:#000}.no-print,.adminbar,.grps,.subnav,.admin>.top{display:none!important}.rp-grid{display:block}
 .md,.md .md-p,.md .md-quote{color:#000}.md .md-quote,.tile,.tablewrap,th{background:#fff!important;border-color:#bbb!important;color:#000}.tile b,.tile span{color:#000}.md a{color:#000}.md .md-h{break-after:avoid}tr,.tile{break-inside:avoid}}
 </style><div class="top"><h1>Hauling Empire Raporları</h1></div>
-<div id="he-report" data-url="${he}" data-key="${esc(env.HE_SUPABASE_ANON_KEY || "")}"><p class="countries">Yükleniyor...</p></div>
-<noscript><p class="empty">Bu sayfa için JavaScript gerekir.</p></noscript><script src="/admin-he-report.js?v=1" defer></script>`, { connect: he });
+<div id="he-report"><p class="countries">Yükleniyor...</p></div>
+<noscript><p class="empty">Bu sayfa için JavaScript gerekir.</p></noscript><script src="/admin-he-report.js?v=2" defer></script>`);
   }
   if (path === "/admin/hauling-empire/oyun") {
     const range = rangeOf(url);

@@ -27,8 +27,7 @@
   // wrangler deploy, 2026-10). ADMIN_PASSWORD should be a Secret anyway; secrets always survive deploys.
   "keep_vars": true,
   "vars": {
-    "TURNSTILE_SITE_KEY": "0x4AAAAAAFMH6xbA0dPcxH_-",
-    "HE_SUPABASE_ANON_KEY": "sb_publishable_Wj002keASTm8HQygOYbAPw_rCNIboAp"
+    "TURNSTILE_SITE_KEY": "0x4AAAAAAFMH6xbA0dPcxH_-"
   },
   "observability": { "enabled": true }
 }
