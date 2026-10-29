@@ -200,12 +200,12 @@ const ROLE_LABELS = { creator: "Creator / Streamer", developer: "Game developer"
 const ADMIN_GROUPS = [
   ["Durum", "Hepsi tek bakışta", [["/admin", "Genel durum"]]],
   ["PromoVote", "Site, X, mağazalar", [["/admin/onay", "Onay kuyruğu"], ["/admin/bekleme", "Bekleme listesi"], ["/admin/visitors", "Ziyaretçiler"], ["/admin/x", "X"], ["/admin/app-store?p=promovote", "App Store"], ["/admin/google-play?p=promovote", "Google Play"]]],
-  ["Hauling Empire", "Oyun ve mağazalar", [["/admin/hauling-empire/oyun", "Oyun"], ["/admin/app-store?p=haulingempire", "App Store"], ["/admin/google-play?p=haulingempire", "Google Play"], ["/admin/unity-ads", "Reklam geliri"]]],
+  ["Hauling Empire", "Oyun ve mağazalar", [["/admin/hauling-empire/oyun", "Oyun"], ["/admin/app-store?p=haulingempire", "App Store"], ["/admin/google-play?p=haulingempire", "Google Play"], ["/admin/unity-ads", "Reklam geliri"], ["/admin/hauling-empire/rapor", "Haftalık rapor"]]],
   ["Poleris", "Uygulama ve mağazalar", [["/admin/poleris/uygulama", "Uygulama"], ["/admin/app-store?p=poleris", "App Store"], ["/admin/google-play?p=poleris", "Google Play"]]],
   ["Dovelet", "Uygulama ve mağazalar", [["/admin/lovelet/uygulama", "Uygulama"], ["/admin/app-store?p=lovelet", "App Store"], ["/admin/google-play?p=lovelet", "Google Play"]]],
 ];
 
-function adminPage(path, title, body) {
+function adminPage(path, title, body, { connect = "" } = {}) {
   const group = ADMIN_GROUPS.find(([, , items]) => items.some(([h]) => h === path));
   const page = group?.[2].find(([h]) => h === path);
   const groupsHtml = ADMIN_GROUPS.map(([name, sub, items]) => {
@@ -253,7 +253,10 @@ td a{color:#b394ff}.dim{color:var(--dim)}.center{text-align:center}.role{padding
 ${nav}
 ${body}
 </main><script src="/v-ignore.js"></script><script src="/admin-table.js?v=2" defer></script></body></html>`;
-  return new Response(html, { headers: { "Content-Type": "text/html; charset=utf-8", ...ADMIN_HEADERS } });
+  const headers = { "Content-Type": "text/html; charset=utf-8", ...ADMIN_HEADERS };
+  // A page that calls another service from the browser names it here; every other page keeps connect-src 'self'.
+  if (connect) headers["Content-Security-Policy"] = headers["Content-Security-Policy"].replace("connect-src 'self'", `connect-src 'self' ${connect}`);
+  return new Response(html, { headers });
 }
 
 const RANGES = [7, 30, 90];
@@ -1214,6 +1217,14 @@ ${tilesHtml([["Paylaşılan", sum.posted?.n || 0], ["Sırada", sum.queued?.n || 
     return adminPage(path, "Poleris: uygulama", heOpsPage(path, { ...r.data, _fx: await fxRates() }, range, "Poleris", "uygulama"));
   }
 
+  // Weekly report (founder request 2026-10-30): the browser signs in to Hauling Empire's own Supabase Auth and calls
+  // the read only RPC admin_weekly_report. Only the public anon key is used here; it is public by design.
+  if (path === "/admin/hauling-empire/rapor") {
+    const he = "https://bcwahdyqpbzyqllszeng.supabase.co";
+    return adminPage(path, "Hauling Empire: haftalık rapor", `<div class="top"><h1>Hauling Empire · Haftalık Rapor</h1></div>
+<div id="he-report" data-url="${he}" data-key="${esc(env.HE_SUPABASE_ANON_KEY || "")}"><p class="countries">Yükleniyor...</p></div>
+<noscript><p class="empty">Bu sayfa için JavaScript gerekir.</p></noscript><script src="/admin-he-report.js?v=1" defer></script>`, { connect: he });
+  }
   if (path === "/admin/hauling-empire/oyun") {
     const range = rangeOf(url);
     const r = await heOps(env, range);
