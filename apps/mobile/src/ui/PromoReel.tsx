@@ -103,6 +103,9 @@ export function PromoReel({ promo, active, height, muted, onSeen, bottomInset = 
   const c = promo.creator;
   // Android viewers get the Google Play button when the creator is on Play (the App Store link otherwise).
   const cta = Platform.OS === 'android' && promo.ctaAndroid ? promo.ctaAndroid : promo.cta;
+  // iOS (route A after the 3.2.2(i) review, 2026-10-29): no store button on the reel. The store link lives one level
+  // deeper on the creator page, like a link in bio; the reel is for watching and calling.
+  const reelLink = Platform.OS !== 'ios' && !!cta?.url && ctaVisible(cta.kind, Platform.OS);
 
   const vote = (choice: Call['choice']) => {
     tap();
@@ -194,7 +197,7 @@ export function PromoReel({ promo, active, height, muted, onSeen, bottomInset = 
           { name: 'save', label: saved ? t('saved') : t('save') },
           { name: 'share', label: t('share') },
           { name: 'creator', label: c.name },
-          ...(cta?.url && ctaVisible(cta.kind, Platform.OS) ? [{ name: 'cta', label: t(ctaLabel(cta.kind)) }] : []),
+          ...(reelLink && cta ? [{ name: 'cta', label: t(ctaLabel(cta.kind)) }] : []),
           { name: 'more', label: t('more_actions') },
         ]}
         onAccessibilityAction={(e) => {
@@ -266,7 +269,7 @@ export function PromoReel({ promo, active, height, muted, onSeen, bottomInset = 
             <Text maxFontSizeMultiplier={1.35} style={[styles.ctaText, following && { color: '#fff' }]}>{following ? t('notify_on') : t('cta_notify')}</Text>
           </Pressable>
         ) : null}
-        {cta?.url && ctaVisible(cta.kind, Platform.OS) ? (
+        {reelLink && cta ? (
           <Pressable onPress={openCta} style={({ pressed }) => [styles.cta, pressed && styles.pressed]} accessibilityRole="link">
             <Text maxFontSizeMultiplier={1.35} style={styles.ctaText}>{t(ctaLabel(cta.kind))}</Text>
             <Icon name="link" size={14} color={D.ink} />

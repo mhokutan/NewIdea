@@ -1,5 +1,6 @@
-// Explore in app style (docs/04 section 2.1): search, creator circles, category pills,
-// hashtags and a two column masonry grid. Tapping a tile opens it in the feed.
+// Explore in app style (docs/04 section 2.1): search, creator circles, hashtags and a two column masonry grid.
+// Tapping a tile opens it in the feed. Route A (2026-10-29, after the 3.2.2(i) review): creators lead; the charts
+// and the category pills live in a second segment, not at the top.
 import { Image } from 'expo-image';
 import { Link, router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
@@ -23,6 +24,8 @@ export default function Explore() {
   const { width } = useWindowDimensions();
   const [q, setQ] = useState('');
   const [cat, setCat] = useState<string>(params.cat || 'all');
+  const [mode, setMode] = useState<'creators' | 'charts'>(params.cat ? 'charts' : 'creators');
+  const pickMode = (m: 'creators' | 'charts') => { setMode(m); if (m === 'creators') setCat('all'); };
   const [tag, setTag] = useState<string>(params.tag || '');
   const [promos, setPromos] = useState<Promo[] | null>(null);
   const [creators, setCreators] = useState<Creator[]>([]);
@@ -70,6 +73,35 @@ export default function Explore() {
         </View>
       </View>
 
+      <View style={[styles.pad, styles.segment]} accessibilityRole="tablist">
+        {(['creators', 'charts'] as const).map((m) => (
+          <Pressable key={m} onPress={() => pickMode(m)} style={[styles.segBtn, mode === m && styles.segOn]} accessibilityRole="tab" accessibilityState={{ selected: mode === m }}>
+            <Text style={[styles.segText, mode === m && { color: C.bg }]} numberOfLines={1}>{t(m === 'creators' ? 'ex_creators' : 'ex_charts')}</Text>
+          </Pressable>
+        ))}
+      </View>
+
+      {mode === 'creators' ? (<>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.row}>
+        {creators.map((c) => (
+          <Link key={c.handle} href={`/creator/${c.handle}`} asChild>
+            <Pressable style={styles.story} accessibilityRole="link" accessibilityLabel={c.name}>
+              <Avatar uri={c.avatar} mono={c.mono} size={64} radius={18} />
+              <Text style={styles.storyName} numberOfLines={1}>{c.name}</Text>
+            </Pressable>
+          </Link>
+        ))}
+      </ScrollView>
+
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={[styles.row, { paddingTop: 0 }]}>
+        {tags.map((k) => (
+          <Pressable key={k} onPress={() => setTag(tag === k ? '' : k)} style={[styles.tag, tag === k && styles.tagOn]} accessibilityRole="button" accessibilityState={{ selected: tag === k }}>
+            <Text style={[styles.tagText, tag === k && { color: C.bg }]}>#{k}</Text>
+          </Pressable>
+        ))}
+      </ScrollView>
+
+      </>) : (<>
       {/* Charts: real ranks only. Until enough scouts call promos this week, an honest progress card. */}
       <View style={[styles.pad, { marginTop: 14 }]}>
         <View style={styles.charts}>
@@ -95,27 +127,10 @@ export default function Explore() {
       </View>
 
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.row}>
-        {creators.map((c) => (
-          <Link key={c.handle} href={`/creator/${c.handle}`} asChild>
-            <Pressable style={styles.story} accessibilityRole="link" accessibilityLabel={c.name}>
-              <Avatar uri={c.avatar} mono={c.mono} size={64} radius={18} />
-              <Text style={styles.storyName} numberOfLines={1}>{c.name}</Text>
-            </Pressable>
-          </Link>
-        ))}
-      </ScrollView>
-
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.row}>
         {CATS.map((k) => <Pill key={k.id} label={t(k.label)} active={cat === k.id} onPress={() => setCat(k.id)} />)}
       </ScrollView>
 
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={[styles.row, { paddingTop: 0 }]}>
-        {tags.map((k) => (
-          <Pressable key={k} onPress={() => setTag(tag === k ? '' : k)} style={[styles.tag, tag === k && styles.tagOn]} accessibilityRole="button" accessibilityState={{ selected: tag === k }}>
-            <Text style={[styles.tagText, tag === k && { color: C.bg }]}>#{k}</Text>
-          </Pressable>
-        ))}
-      </ScrollView>
+      </>)}
 
       <View style={[styles.pad, styles.grid]}>
         {promos === null ? <ActivityIndicator color={C.accent} style={{ marginTop: 40, flex: 1 }} /> : promos.length === 0 ? (
@@ -140,6 +155,10 @@ export default function Explore() {
 
 const styles = themed(() => ({
   pad: { paddingHorizontal: 16 },
+  segment: { flexDirection: 'row', gap: 8, marginTop: 14 },
+  segBtn: { flex: 1, minHeight: 36, borderRadius: 10, alignItems: 'center', justifyContent: 'center', backgroundColor: C.surface, borderWidth: 1, borderColor: C.line, paddingHorizontal: 8 },
+  segOn: { backgroundColor: C.text, borderColor: C.text },
+  segText: { color: C.text2, fontWeight: '700', fontSize: 13 },
   search: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: C.surface, borderRadius: 14, paddingHorizontal: 14, borderWidth: 1, borderColor: C.line },
   input: { flex: 1, color: C.text, fontSize: 15, paddingVertical: 13 },
   row: { paddingHorizontal: 16, paddingTop: 14, paddingBottom: 4, gap: 8 },

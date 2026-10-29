@@ -11,7 +11,7 @@ import { ActivityIndicator, FlatList, Platform, Pressable, ScrollView, StyleShee
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { setStatusBarStyle } from 'expo-status-bar';
 
-import { api, type Promo } from '@/lib/api';
+import { api, type Promo, type ScoutSummary } from '@/lib/api';
 import { nextRound } from '@/lib/fair-queue';
 import { lang, t } from '@/lib/i18n';
 import { D, theme, F } from '@/lib/theme';
@@ -157,6 +157,25 @@ export default function Feed() {
 
   const onSeen = useCallback((id: string) => { seen.current[id] = (seen.current[id] || 0) + 1; }, []);
 
+  // Scout strip on Today's Drop (route A, 2026-10-29): the call game is visible from the first second, with the
+  // scout's score, streak and right calls. Refreshed on focus and after each new call. Creators cannot vote: no strip.
+  const isScout = me?.profile?.type === 'scout';
+  const [scout, setScout] = useState<ScoutSummary | null>(null);
+  const callCount = Object.keys(vs.calls).length;
+  useEffect(() => {
+    if (!isScout || !focused) return;
+    let alive = true;
+    api.scout().then((r) => { if (alive) setScout(r); }).catch(() => {});
+    return () => { alive = false; };
+  }, [isScout, focused, callCount]);
+  const fill = (key: Parameters<typeof t>[0], vars: Record<string, number>) => Object.entries(vars).reduce((a, [k, n]) => a.replace(`{${k}}`, String(n)), t(key));
+  const stripText = !isScout || !scout || (!scout.score && !scout.resolved)
+    ? t('strip_guest')
+    : [fill('strip_score', { n: scout.score }),
+      scout.streak?.weeks ? fill('strip_streak', { n: scout.streak.weeks }) : '',
+      scout.resolved ? fill('strip_right', { n: scout.right, m: scout.resolved }) : ''].filter(Boolean).join('  ·  ');
+  const showStrip = tab === 'drop' && dropSize > 0 && active < dropSize && me?.profile?.type !== 'creator';
+
   if (error) {
     return (
       <View style={styles.center}>
@@ -234,7 +253,16 @@ export default function Feed() {
           </Pressable>
         </View>
         {tab === 'drop' && dropSize > 0 && active < dropSize ? (
-          <Text style={styles.counter} accessibilityLabel={`${active + 1} / ${dropSize}`} maxFontSizeMultiplier={1.2}>{active + 1} / {dropSize}</Text>
+          <View style={styles.stripRow} pointerEvents="box-none">
+            {showStrip ? (
+              <Pressable onPress={() => router.navigate(isScout ? '/me' : '/sign-in')} style={styles.strip} accessibilityRole="button" hitSlop={4}>
+                <Icon name="chevrons" size={14} color={D.lime} />
+                <Text style={styles.stripText} numberOfLines={1} maxFontSizeMultiplier={1.2}>{stripText}</Text>
+              </Pressable>
+            ) : null}
+            <View style={{ flexGrow: 1 }} />
+            <Text style={styles.counter} accessibilityLabel={`${active + 1} / ${dropSize}`} maxFontSizeMultiplier={1.2}>{active + 1} / {dropSize}</Text>
+          </View>
         ) : null}
         {tab === 'picks' && items.length > 0 && active === 0 ? <Text style={styles.note} maxFontSizeMultiplier={1.3}>{t('featured_note')}</Text> : null}
         {tab === 'drop' && fresh > 0 && active === 0 ? <Text style={styles.note} maxFontSizeMultiplier={1.3}>{t('drop_fresh').replace('{n}', String(fresh))}</Text> : null}
@@ -291,7 +319,10 @@ const styles = StyleSheet.create({
   dot: { marginTop: 5, width: 18, height: 3, borderRadius: 2, backgroundColor: 'transparent' },
   dotOn: { backgroundColor: D.lime },
   sound: { width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(28,28,30,0.72)', alignItems: 'center', justifyContent: 'center' },
-  counter: { alignSelf: 'flex-end', marginTop: 2, marginRight: 4, color: '#fff', fontSize: 13, fontWeight: '700', backgroundColor: 'rgba(28,28,30,0.72)', borderRadius: 99, paddingHorizontal: 10, paddingVertical: 5, overflow: 'hidden', fontVariant: ['tabular-nums'] },
+  stripRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 2 },
+  strip: { flexDirection: 'row', alignItems: 'center', gap: 6, flexShrink: 1, minHeight: 30, backgroundColor: 'rgba(28,28,30,0.72)', borderRadius: 99, paddingHorizontal: 10 },
+  stripText: { color: '#fff', fontSize: 13, fontWeight: '700', flexShrink: 1, fontVariant: ['tabular-nums'] },
+  counter: { marginRight: 4, color: '#fff', fontSize: 13, fontWeight: '700', backgroundColor: 'rgba(28,28,30,0.72)', borderRadius: 99, paddingHorizontal: 10, paddingVertical: 5, overflow: 'hidden', fontVariant: ['tabular-nums'] },
   end: { alignItems: 'center', justifyContent: 'center', backgroundColor: D.bg, padding: 32, gap: 8 },
   endTitle: { color: D.text, fontSize: 26, ...F.display, textAlign: 'center', marginTop: 8 },
   endText: { color: D.text2, fontSize: 15, lineHeight: 21, textAlign: 'center', maxWidth: 320 },
