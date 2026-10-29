@@ -1,6 +1,7 @@
-// Explore in app style (docs/04 section 2.1): search, creator circles, hashtags and a two column masonry grid.
-// Tapping a tile opens it in the feed. Route A (2026-10-29, after the 3.2.2(i) review): creators lead; the charts
-// and the category pills live in a second segment, not at the top.
+// Explore in app style (docs/04 section 2.1): creator circles and hashtags by default.
+// Route B (2026-10-29, after the 3.2.2(i) re-review): the default landing is people only, no search box,
+// no product grid. Search, category pills and the two column grid only exist inside the charts segment,
+// which a scout has to tap into on purpose.
 import { Image } from 'expo-image';
 import { Link, router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
@@ -65,14 +66,6 @@ export default function Explore() {
 
   return (
     <ScrollView style={{ flex: 1, backgroundColor: C.bg }} contentContainerStyle={{ paddingTop: insets.top + 12, paddingBottom: 40 }} keyboardShouldPersistTaps="handled">
-      <View style={styles.pad}>
-        <View style={styles.search}>
-          <Icon name="search" size={18} color={C.muted} />
-          <TextInput value={q} onChangeText={setQ} placeholder={t('search')} placeholderTextColor={C.muted} style={styles.input}
-            returnKeyType="search" autoCorrect={false} autoCapitalize="none" accessibilityLabel={t('search')} />
-        </View>
-      </View>
-
       <View style={[styles.pad, styles.segment]} accessibilityRole="tablist">
         {(['creators', 'charts'] as const).map((m) => (
           <Pressable key={m} onPress={() => pickMode(m)} style={[styles.segBtn, mode === m && styles.segOn]} accessibilityRole="tab" accessibilityState={{ selected: mode === m }}>
@@ -102,6 +95,14 @@ export default function Explore() {
       </ScrollView>
 
       </>) : (<>
+      <View style={styles.pad}>
+        <View style={styles.search}>
+          <Icon name="search" size={18} color={C.muted} />
+          <TextInput value={q} onChangeText={setQ} placeholder={t('search')} placeholderTextColor={C.muted} style={styles.input}
+            returnKeyType="search" autoCorrect={false} autoCapitalize="none" accessibilityLabel={t('search')} />
+        </View>
+      </View>
+
       {/* Charts: real ranks only. Until enough scouts call promos this week, an honest progress card. */}
       <View style={[styles.pad, { marginTop: 14 }]}>
         <View style={styles.charts}>
@@ -130,8 +131,6 @@ export default function Explore() {
         {CATS.map((k) => <Pill key={k.id} label={t(k.label)} active={cat === k.id} onPress={() => setCat(k.id)} />)}
       </ScrollView>
 
-      </>)}
-
       <View style={[styles.pad, styles.grid]}>
         {promos === null ? <ActivityIndicator color={C.accent} style={{ marginTop: 40, flex: 1 }} /> : promos.length === 0 ? (
           <Text style={styles.empty}>{t('nothing')}</Text>
@@ -148,6 +147,8 @@ export default function Explore() {
           </View>
         ))}
       </View>
+
+      </>)}
 
     </ScrollView>
   );
