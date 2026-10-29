@@ -200,7 +200,7 @@ const ROLE_LABELS = { creator: "Creator / Streamer", developer: "Game developer"
 const ADMIN_GROUPS = [
   ["Durum", "Hepsi tek bakışta", [["/admin", "Genel durum"]]],
   ["PromoVote", "Site, X, mağazalar", [["/admin/onay", "Onay kuyruğu"], ["/admin/bekleme", "Bekleme listesi"], ["/admin/visitors", "Ziyaretçiler"], ["/admin/x", "X"], ["/admin/app-store?p=promovote", "App Store"], ["/admin/google-play?p=promovote", "Google Play"]]],
-  ["Hauling Empire", "Oyun ve mağazalar", [["/admin/hauling-empire/oyun", "Oyun"], ["/admin/app-store?p=haulingempire", "App Store"], ["/admin/google-play?p=haulingempire", "Google Play"], ["/admin/unity-ads", "Reklam geliri"], ["/admin/hauling-empire/rapor", "Haftalık rapor"]]],
+  ["Hauling Empire", "Oyun ve mağazalar", [["/admin/hauling-empire/oyun", "Oyun"], ["/admin/app-store?p=haulingempire", "App Store"], ["/admin/google-play?p=haulingempire", "Google Play"], ["/admin/unity-ads", "Reklam geliri"], ["/admin/hauling-empire/rapor", "Raporlar"]]],
   ["Poleris", "Uygulama ve mağazalar", [["/admin/poleris/uygulama", "Uygulama"], ["/admin/app-store?p=poleris", "App Store"], ["/admin/google-play?p=poleris", "Google Play"]]],
   ["Dovelet", "Uygulama ve mağazalar", [["/admin/lovelet/uygulama", "Uygulama"], ["/admin/app-store?p=lovelet", "App Store"], ["/admin/google-play?p=lovelet", "Google Play"]]],
 ];
@@ -1217,11 +1217,28 @@ ${tilesHtml([["Paylaşılan", sum.posted?.n || 0], ["Sırada", sum.queued?.n || 
     return adminPage(path, "Poleris: uygulama", heOpsPage(path, { ...r.data, _fx: await fxRates() }, range, "Poleris", "uygulama"));
   }
 
-  // Weekly report (founder request 2026-10-30): the browser signs in to Hauling Empire's own Supabase Auth and calls
-  // the read only RPC admin_weekly_report. Only the public anon key is used here; it is public by design.
+  // Hauling Empire reports (founder request 2026-10-30, v2): Claude's written analyses and weekly reports for all
+  // players. The browser signs in to Hauling Empire's own Supabase Auth and calls read only RPCs. Only the public anon
+  // key is used here; it is public by design.
   if (path === "/admin/hauling-empire/rapor") {
     const he = "https://bcwahdyqpbzyqllszeng.supabase.co";
-    return adminPage(path, "Hauling Empire: haftalık rapor", `<div class="top"><h1>Hauling Empire · Haftalık Rapor</h1></div>
+    return adminPage(path, "Hauling Empire: raporlar", `<style>
+.rp-grid{display:grid;grid-template-columns:minmax(220px,300px) 1fr;gap:20px;align-items:start}
+.rp-list{display:grid;gap:8px;position:sticky;top:16px;max-height:calc(100dvh - 32px);overflow:auto}
+.rp-item{display:grid;gap:4px;text-align:left;padding:12px 14px;border-radius:14px;background:var(--surface);border:1.5px solid var(--line);color:#fff;font:inherit;cursor:pointer}
+.rp-item:hover{border-color:var(--muted)}.rp-item.on{border-color:var(--lime);background:rgba(255,214,10,.06)}.rp-item b{font-size:15px;line-height:1.3}
+.rp-tags{display:flex;gap:6px;align-items:center}.rp-head{display:flex;justify-content:space-between;align-items:flex-start;gap:14px;flex-wrap:wrap}
+.rp-toc{margin:0 0 18px;padding:12px 16px;border-radius:14px;background:var(--surface);border:1px solid var(--line)}.rp-toc summary{cursor:pointer;font-weight:700}
+.rp-toc ol{list-style:none;margin:10px 0 0;padding:0;display:grid;gap:6px}.rp-toc a{color:var(--muted);text-decoration:none;font-size:14px}.rp-toc a:hover{color:#fff}
+.md{max-width:820px;line-height:1.65;font-size:15px}.md .md-h{scroll-margin-top:16px;margin:28px 0 10px;line-height:1.25}.md h2.md-h{font-size:24px}.md h3.md-h{font-size:19px}.md h4.md-h,.md h5.md-h{font-size:16px}
+.md .md-p{margin:0 0 12px;color:#e5e5ea}.md .md-list{margin:0 0 14px;padding-left:22px;display:grid;gap:4px}.md .md-table{margin:6px 0 18px}
+.md .md-quote{margin:0 0 14px;padding:10px 14px;border-left:3px solid var(--lime);background:var(--surface);border-radius:0 10px 10px 0;color:#d1d1d6}
+.md code{padding:1px 6px;border-radius:6px;background:var(--surface-2);font-size:13px}.md .md-pre{padding:12px;border-radius:10px;background:var(--surface);overflow:auto;font-size:13px}
+.md hr{border:0;border-top:1px solid var(--line);margin:22px 0}.md a{color:var(--lime)}
+@media (max-width:860px){.rp-grid{grid-template-columns:1fr}.rp-list{position:static;max-height:none}}
+@media print{body{background:#fff;color:#000}.no-print,.adminbar,.grps,.subnav,.admin>.top{display:none!important}.rp-grid{display:block}
+.md,.md .md-p,.md .md-quote{color:#000}.md .md-quote,.tile,.tablewrap,th{background:#fff!important;border-color:#bbb!important;color:#000}.tile b,.tile span{color:#000}.md a{color:#000}.md .md-h{break-after:avoid}tr,.tile{break-inside:avoid}}
+</style><div class="top"><h1>Hauling Empire Raporları</h1></div>
 <div id="he-report" data-url="${he}" data-key="${esc(env.HE_SUPABASE_ANON_KEY || "")}"><p class="countries">Yükleniyor...</p></div>
 <noscript><p class="empty">Bu sayfa için JavaScript gerekir.</p></noscript><script src="/admin-he-report.js?v=1" defer></script>`, { connect: he });
   }

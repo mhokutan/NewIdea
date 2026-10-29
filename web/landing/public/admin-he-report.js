@@ -1,6 +1,9 @@
-// Hauling Empire weekly report (admin page /admin/hauling-empire/rapor, founder request 2026-10-30).
-// Reads only: one RPC, admin_weekly_report(p_week_start), on the Hauling Empire Supabase project, with the public
-// anon key and the signed in Hauling Empire admin's own session. The PromoVote admin password gives no access here.
+// Hauling Empire reports (admin page /admin/hauling-empire/rapor, founder request 2026-10-30, second version):
+// Claude's written player analyses (kind analysis) and the weekly reports (kind weekly), all players, never filtered
+// by the signed in account. Reads only: admin_reports_list, admin_report_get, admin_weekly_report (raw numbers tab),
+// on the Hauling Empire Supabase project with the public anon key and the signed in HE admin's own session.
+// The PromoVote admin password gives no access here. Markdown is turned into DOM nodes by a small renderer that never
+// parses HTML (player quotes in the reports can hold anything).
 // No Supabase library: Auth and RPC are plain REST calls. The session lives under its own storage key.
 // Player text (feedback) is always set as text, never as HTML.
 (() => {
@@ -144,17 +147,9 @@
   const BEHAVIOUR = [["top10_job_share_pct", "En aktif 10 oyuncunun iş payı", pct], ["median_jobs_per_player", "Oyuncu başı iş (ortanca)", fmtN], ["autodispatch_jobs", "Otomatik gönderilen iş", fmtN], ["ui_stuck_players", "Arayüzde takılan oyuncu", fmtN], ["quick_backout_players", "Hemen geri çıkan oyuncu", fmtN], ["solo_job_players", "Solo iş yapan oyuncu", fmtN], ["online_job_players", "Online iş yapan oyuncu", fmtN], ["daily_reward_claim_pct", "Günlük ödülü alanlar", pct]];
 
   // ---------- report ----------
-  function render(r, prev, week) {
+  function renderRaw(r, prev) {
     const s = r.summary || {}, p = prev?.summary || {};
-    const nav = h("div", { class: "top", style: "margin-top:4px" },
-      h("div", { style: "display:flex;align-items:center;gap:10px" },
-        h("a", { class: "tab", href: `?w=${addDays(r.week_start, -7)}`, "aria-label": "Önceki hafta" }, "‹"),
-        h("b", { style: "font-size:16px" }, `${trDate(r.week_start)} – ${trDate(r.week_end)}`),
-        new Date(addDays(r.week_start, 7) + "T00:00:00Z") <= new Date() ? h("a", { class: "tab", href: `?w=${addDays(r.week_start, 7)}`, "aria-label": "Sonraki hafta" }, "›") : null,
-        week ? h("a", { class: "tab", href: "?" }, "Geçen hafta") : null),
-      h("button", { class: "morebtn", style: "margin:0", onclick: (e) => { const m = markdown(r, prev); (navigator.clipboard?.writeText(m) || Promise.reject()).then(() => { e.target.textContent = "Kopyalandı"; }, () => { e.target.textContent = "Kopyalanamadı"; }); } }, "Markdown olarak kopyala"),
-      h("button", { class: "logout", style: "cursor:pointer;background:none", onclick: logout }, "HE hesabından çık"));
-    if (!num(s.wau)) return show(nav, box("Bu hafta için veri yok. Önceki haftaya bak ya da hafta bitince tekrar gel."));
+    if (!num(s.wau)) return [box("Bu hafta için ham sayı yok.")];
 
     const days = (r.daily || []).map((d) => [d.day, num(d.dau) ?? 0]);
     const maxDau = Math.max(1, ...days.map((d) => d[1]));
@@ -185,7 +180,7 @@
     const failRate = num(m.iap_start_players) ? (num(m.iap_failed_players) || 0) / num(m.iap_start_players) : 0;
     const objTable = (o, a, bLabel) => table([a, bLabel], entries(o).map(([k, n]) => [k, fmtN(n)]));
 
-    show(nav,
+    return [
       sec("Özet"),
       tiles(...SUMMARY.map(([k, l]) => tile(l, num(s[k]) == null ? null : fmtN(s[k]), { note: delta(s[k], p[k]) }))),
       sec("Günlük aktif oyuncu"), daily,
@@ -217,22 +212,7 @@
       table(["Tür", "Mesaj", "Sayı", "Oyuncu"], (st.top || []).slice(0, 5).map((x) => [x.kind || "", x.message || "", fmtN(x.count), fmtN(x.players)])),
       sec("Geri bildirim"),
       tiles(tile("Toplam", fmtN(fb.count)), ...entries(fb.by_category).map(([k, n]) => tile(k, fmtN(n)))),
-      table(["Tarih", "Kategori", "Yorum"], (fb.latest || []).slice(0, 10).map((x) => [x.at ? new Date(x.at).toLocaleString("tr-TR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) : "", x.category || "", x.text || ""])));
-  }
-
-  function markdown(r, prev) {
-    const s = r.summary || {}, p = prev?.summary || {}, ret = r.retention || {}, ses = r.sessions || {}, m = r.monetization || {}, st = r.stability || {};
-    const line = (l, v) => `- ${l}: ${v ?? "veri yok"}`;
-    return [
-      `# Hauling Empire haftalık rapor (${r.week_start} / ${r.week_end})`, "",
-      "## Özet", ...SUMMARY.map(([k, l]) => line(l, num(s[k]) == null ? null : `${fmtN(s[k])}${delta(s[k], p[k]) ? ` (${delta(s[k], p[k])})` : ""}`)), "",
-      "## Tutma", line("D1", pct(ret.d1)), line("D3", pct(ret.d3)), line("D7", pct(ret.d7)), line("Sadece 1 gün", pct(ret.one_day_only_pct)), line("Kohort", fmtN(ret.cohort)), "",
-      "## Oturum", line("Ortanca", mmss(ses.median_s)), line("Ortalama", mmss(ses.avg_s)), line("%90", mmss(ses.p90_s)), "",
-      "## Huni", ...(r.funnel || []).map((f) => line(FUNNEL[f.step] || f.step, fmtN(f.players))), "",
-      "## Para", line("Reklam ödülü", fmtN(m.ad_rewards)), line("Satın alma başlatan", fmtN(m.iap_start_players)), line("Ödeme hatası", fmtN(m.iap_failed_players)), "",
-      "## Kararlılık", line("Çökme", fmtN(st.crash_reports)), line("Etkilenen oyuncu", fmtN(st.crash_players)),
-      ...(st.top || []).slice(0, 5).map((x) => `  - ${x.kind}: ${String(x.message || "").slice(0, 80)} (${fmtN(x.count)})`), "",
-    ].join("\n");
+      table(["Tarih", "Kategori", "Yorum"], (fb.latest || []).slice(0, 10).map((x) => [x.at ? new Date(x.at).toLocaleString("tr-TR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) : "", x.category || "", x.text || ""]))];
   }
 
   async function logout() {
@@ -246,6 +226,159 @@
     : e.kind === "network" ? "Hauling Empire sunucusuna ulaşılamadı. İnternet bağlantını kontrol et, sonra sayfayı yenile."
     : `Rapor alınamadı: ${e.message}`;
 
+  // ---------- safe Markdown: text only, no HTML ever parsed ----------
+  const slug = (t, used) => { let b = t.toLowerCase().normalize("NFKD").replace(/[^\w\s-]/g, "").trim().replace(/\s+/g, "-").slice(0, 60) || "bolum"; let k = b, i = 2; while (used.has(k)) k = `${b}-${i++}`; used.add(k); return k; };
+  function inline(text) {
+    const out = [];
+    const re = /(\*\*([^*]+)\*\*|__([^_]+)__|\*([^*\s][^*]*)\*|_([^_\s][^_]*)_|`([^`]+)`|\[([^\]]+)\]\(([^)\s]+)\))/g;
+    let last = 0, m;
+    while ((m = re.exec(text))) {
+      if (m.index > last) out.push(text.slice(last, m.index));
+      if (m[2] || m[3]) out.push(h("strong", {}, ...inline(m[2] || m[3])));
+      else if (m[4] || m[5]) out.push(h("em", {}, m[4] || m[5]));
+      else if (m[6]) out.push(h("code", {}, m[6]));
+      else if (m[7]) out.push(/^https:\/\//.test(m[8]) ? h("a", { href: m[8], target: "_blank", rel: "noopener noreferrer" }, m[7]) : m[7]);
+      last = re.lastIndex;
+    }
+    if (last < text.length) out.push(text.slice(last));
+    return out;
+  }
+  const isNum = (c) => /^[\s$€£₺%+\-−]*[\d.,]+\s*(%|s|dk|sn|x)?\s*$/.test(c) && /\d/.test(c);
+  function md(src) {
+    const L = String(src || "").replace(/\r/g, "").split("\n");
+    const nodes = [], toc = [], used = new Set();
+    let i = 0;
+    const cells = (row) => row.trim().replace(/^\|/, "").replace(/\|$/, "").split("|").map((c) => c.trim());
+    while (i < L.length) {
+      const line = L[i];
+      if (!line.trim()) { i++; continue; }
+      let m;
+      if ((m = /^(#{1,4})\s+(.*)$/.exec(line))) {
+        const lv = m[1].length, txt = m[2].replace(/#+\s*$/, "").trim(), id = slug(txt, used);
+        nodes.push(h(`h${Math.min(lv + 1, 5)}`, { id, class: "md-h" }, ...inline(txt)));
+        if (lv <= 3) toc.push({ lv, txt, id });
+        i++; continue;
+      }
+      if (/^(-{3,}|\*{3,})\s*$/.test(line)) { nodes.push(h("hr", {})); i++; continue; }
+      if (/^\s*\|.*\|\s*$/.test(line) && /^\s*\|?[\s:-]+\|[\s|:-]*$/.test(L[i + 1] || "")) {
+        const head = cells(line); i += 2;
+        const rows = [];
+        while (i < L.length && /^\s*\|.*\|\s*$/.test(L[i])) rows.push(cells(L[i++]));
+        const right = head.map((_, c) => rows.length > 0 && rows.every((r) => !r[c] || isNum(r[c])));
+        nodes.push(h("div", { class: "tablewrap md-table" }, h("table", {},
+          h("thead", {}, h("tr", {}, ...head.map((c, k) => h("th", { style: right[k] ? "text-align:right" : "" }, ...inline(c))))),
+          h("tbody", {}, ...rows.map((r) => h("tr", {}, ...head.map((_, k) => h("td", { style: `white-space:normal${right[k] ? ";text-align:right" : ""}` }, ...inline(r[k] || "")))))))));
+        continue;
+      }
+      if (/^\s*>/.test(line)) {
+        const q = [];
+        while (i < L.length && /^\s*>/.test(L[i])) q.push(L[i++].replace(/^\s*>\s?/, ""));
+        nodes.push(h("blockquote", { class: "md-quote" }, ...inline(q.join(" "))));
+        continue;
+      }
+      if (/^\s*([-*+]|\d+[.)])\s+/.test(line)) {
+        const ordered = /^\s*\d/.test(line), items = [];
+        while (i < L.length && /^\s*([-*+]|\d+[.)])\s+/.test(L[i]) && /^\s*\d/.test(L[i]) === ordered) {
+          let t = L[i++].replace(/^\s*([-*+]|\d+[.)])\s+/, "");
+          while (i < L.length && /^\s{2,}\S/.test(L[i]) && !/^\s*([-*+]|\d+[.)])\s+/.test(L[i])) t += " " + L[i++].trim();
+          items.push(h("li", {}, ...inline(t)));
+        }
+        nodes.push(h(ordered ? "ol" : "ul", { class: "md-list" }, ...items));
+        continue;
+      }
+      if (/^```/.test(line)) {
+        const code = []; i++;
+        while (i < L.length && !/^```/.test(L[i])) code.push(L[i++]);
+        i++;
+        nodes.push(h("pre", { class: "md-pre" }, code.join("\n")));
+        continue;
+      }
+      const para = [];
+      while (i < L.length && L[i].trim() && !/^(#{1,4}\s|\s*\||\s*>|\s*([-*+]|\d+[.)])\s+|```|-{3,}\s*$)/.test(L[i])) para.push(L[i++].trim());
+      if (!para.length) { para.push(L[i++].trim()); }
+      nodes.push(h("p", { class: "md-p" }, ...inline(para.join(" "))));
+    }
+    return { nodes, toc };
+  }
+
+  // ---------- reports viewer ----------
+  const KIND = { weekly: "Haftalık", analysis: "Analiz" };
+  const period = (r) => r.period_start ? `${trDate(String(r.period_start).slice(0, 10))} – ${trDate(String(r.period_end || r.period_start).slice(0, 10))}` : "";
+  const isNew = (r) => r.created_at && Date.now() - new Date(r.created_at).getTime() < 7 * 864e5;
+  const copy = (text, btn) => (navigator.clipboard?.writeText(text) || Promise.reject()).then(() => { btn.textContent = "Kopyalandı"; }, () => { btn.textContent = "Kopyalanamadı"; });
+
+  function highlights(x) {
+    const g = x || {};
+    const out = [];
+    const ch = num(g.wau_change_pct);
+    if (num(g.players) != null) out.push(tile("Oyuncu", fmtN(g.players)));
+    if (num(g.wau) != null) out.push(tile("Haftalık aktif", fmtN(g.wau), { level: ch == null ? "" : ch >= 0 ? "g" : "r", note: ch == null ? null : `${ch >= 0 ? "▲" : "▼"} %${Math.abs(ch).toLocaleString("tr-TR", { maximumFractionDigits: 1 })} önceki haftaya göre` }));
+    if (num(g.new_players) != null) out.push(tile("Yeni oyuncu", fmtN(g.new_players)));
+    if (num(g.d1_pct) != null) out.push(tile("1. gün dönen (D1)", pct(g.d1_pct)));
+    if (num(g.d7_pct) != null) out.push(tile("7. gün dönen (D7)", pct(g.d7_pct)));
+    if (num(g.median_session_s) != null) out.push(tile("Ortanca oturum", mmss(g.median_session_s)));
+    if (num(g.crash_players) != null) out.push(tile("Çökme yaşayan oyuncu", fmtN(g.crash_players), { level: num(g.crash_players) > 0 ? "y" : "g" }));
+    if (out.length < 4) {
+      if (num(g.avg_dau) != null) out.push(tile("Günlük ortalama aktif", fmtN(g.avg_dau)));
+      if (num(g.first_delivery_pct) != null) out.push(tile("İlk teslimata ulaşan", pct(g.first_delivery_pct)));
+      if (num(g.iap_failed_players) != null) out.push(tile("Ödemesi hata veren", fmtN(g.iap_failed_players)));
+    }
+    return out.length ? tiles(...out.slice(0, 6)) : null;
+  }
+
+  async function viewer() {
+    const list = await rpc("admin_reports_list");
+    const reports = Array.isArray(list) ? list : [];
+    const bar = h("div", { class: "top no-print", style: "margin:4px 0 16px" },
+      h("span", { class: "countries", style: "margin:0" }, "Bütün oyuncuları kapsar. Giriş sadece yetki için."),
+      h("button", { class: "logout", style: "cursor:pointer;background:none", onclick: logout }, "HE hesabından çık"));
+    if (!reports.length) return show(bar, box("Henüz rapor yok. Haftalık rapor her Pazartesi sabahı eklenir."));
+    const pane = h("section", { class: "rp-pane", "aria-live": "polite" });
+    const items = reports.map((r) => h("button", { class: "rp-item", "data-id": r.id, onclick: () => open(r.id) },
+      h("span", { class: "rp-tags" }, h("span", { class: "role" }, KIND[r.kind] || r.kind || "Rapor"), isNew(r) ? h("span", { class: "badge-on" }, "Yeni") : null),
+      h("b", {}, r.title || "Rapor"), h("small", { class: "dim" }, period(r))));
+    const listEl = h("nav", { class: "rp-list no-print", "aria-label": "Raporlar" }, ...items);
+    show(bar, h("div", { class: "rp-grid" }, listEl, pane));
+
+    async function open(id) {
+      items.forEach((b) => b.classList.toggle("on", b.dataset.id === String(id)));
+      pane.replaceChildren(box("Yükleniyor...", "countries"));
+      let r;
+      try { r = await rpc("admin_report_get", { p_id: id }); if (Array.isArray(r)) r = r[0]; }
+      catch (e) { if (e.kind === "login") return loginView("Oturumun süresi doldu, tekrar giriş yap."); return pane.replaceChildren(box(why(e))); }
+      if (!r) return pane.replaceChildren(box("Rapor bulunamadı."));
+      const { nodes, toc } = md(r.body_md);
+      const body = h("article", { class: "md" }, ...nodes);
+      const tocEl = toc.length > 2 ? h("details", { class: "rp-toc no-print", open: true }, h("summary", {}, "İçindekiler"),
+        h("ol", {}, ...toc.map((t) => h("li", { style: `margin-left:${(t.lv - 1) * 14}px` }, h("a", { href: `#${t.id}` }, t.txt))))) : null;
+      const btnCopy = h("button", { class: "morebtn", style: "margin:0", onclick: (e) => copy(r.body_md || "", e.target) }, "Markdown kopyala");
+      const btnPrint = h("button", { class: "morebtn", style: "margin:0", onclick: () => window.print() }, "Yazdır / PDF");
+      const tabs = h("div", { class: "tabs no-print", style: "margin:16px 0" });
+      const content = h("div", {});
+      const textTab = [highlights(r.highlights), tocEl, body];
+      const setTab = async (which) => {
+        tabs.querySelectorAll(".tab").forEach((t) => t.classList.toggle("on", t.dataset.t === which));
+        if (which === "text") return content.replaceChildren(...textTab.filter(Boolean));
+        content.replaceChildren(box("Yükleniyor...", "countries"));
+        try {
+          const w = String(r.period_start).slice(0, 10);
+          const [raw, prev] = await Promise.all([rpc("admin_weekly_report", { p_week_start: w }), rpc("admin_weekly_report", { p_week_start: addDays(w, -7) }).catch(() => null)]);
+          content.replaceChildren(...(raw && raw.week_start ? renderRaw(raw, prev) : [box("Bu hafta için ham sayı yok.")]).filter(Boolean));
+        } catch (e) { content.replaceChildren(box(why(e))); }
+      };
+      tabs.append(h("a", { class: "tab", href: "#", "data-t": "text", onclick: (e) => { e.preventDefault(); setTab("text"); } }, "Rapor"));
+      if (r.kind === "weekly" && r.period_start) tabs.append(h("a", { class: "tab", href: "#", "data-t": "raw", onclick: (e) => { e.preventDefault(); setTab("raw"); } }, "Ham sayılar"));
+      pane.replaceChildren(
+        h("div", { class: "rp-head" },
+          h("div", {}, h("span", { class: "role" }, KIND[r.kind] || r.kind || "Rapor"), h("h2", { style: "font-size:26px;margin:8px 0 4px" }, r.title || "Rapor"), h("p", { class: "dim", style: "margin:0" }, period(r))),
+          h("div", { class: "no-print", style: "display:flex;gap:8px;flex-wrap:wrap" }, btnCopy, btnPrint)),
+        tabs, content);
+      setTab("text");
+      if (window.matchMedia("(max-width:860px)").matches) pane.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+    open(reports[0].id);
+  }
+
   async function start() {
     if (!KEY) return show(box("Hauling Empire anahtarı girilmedi. Worker'a HE_SUPABASE_ANON_KEY (public anon anahtar) eklenince bu sayfa çalışır."));
     if (!(await session())) return loginView(hashError ? `Giriş tamamlanamadı: ${hashError}` : "");
@@ -253,11 +386,7 @@
     try {
       const ok = await rpc("am_i_admin");
       if (ok !== true) return show(box("Bu hesap admin değil."), h("button", { class: "morebtn", onclick: logout }, "Başka hesapla giriş yap"));
-      const week = /^\d{4}-\d{2}-\d{2}$/.test(new URLSearchParams(location.search).get("w") || "") ? new URLSearchParams(location.search).get("w") : null;
-      const r = await rpc("admin_weekly_report", { p_week_start: week });
-      if (!r || !r.week_start) return show(box("Bu hafta için veri yok."));
-      const prev = await rpc("admin_weekly_report", { p_week_start: addDays(r.week_start, -7) }).catch(() => null);
-      render(r, prev, week);
+      await viewer();
     } catch (e) {
       if (e.kind === "login") return loginView("Oturumun süresi doldu, tekrar giriş yap.");
       show(box(why(e)), e.kind === "admin" ? h("button", { class: "morebtn", onclick: logout }, "Başka hesapla giriş yap") : null);
