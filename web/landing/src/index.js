@@ -737,15 +737,18 @@ function heOpsPage(path, ops, range, name = "Hauling Empire", kind = "oyun") {
     out.push(dayChart(days.map((r) => ({ d: r.date, dim: !!r.partial, parts: [{ v: fnum(r.dau_ios) || 0, c: BRAND_B, n: "iOS" }, { v: fnum(r.dau_android) || 0, c: BRAND_A, n: "Android" }] })), { aria: "Günlük aktif oyuncu", title: "Günlük aktif oyuncu", legend: [["iOS", BRAND_B], ["Android", BRAND_A]] }));
     const v = (x) => (fnum(x) === null ? '<span class="dim">veri yok</span>' : x);
     const has = (k) => days.some((r) => fnum(r[k]) !== null);
+    const FREE_KEYS = ["ad_free_rewards", "adfree_rewards", "ad_rewards_free", "ad_rewards_no_video", "rewards_no_video", "no_video_rewards", "free_rewards", "pro_rewards"];
     const C = [
       ["Aktif iOS", (r) => v(r.dau_ios), true], ["Aktif Android", (r) => v(r.dau_android), true],
       ["Oturum", (r) => v(r.sessions), has("sessions")], ["Yeni hesap", (r) => v(r.new_accounts), true],
       ["Ort. oturum", (r) => (fnum(r.avg_session_min) === null ? '<span class="dim">veri yok</span>' : fnum(r.avg_session_min).toFixed(1) + " dk"), has("avg_session_min")],
       ["Reklam ödülü / dokunma", (r) => `${v(r.ad_rewards)} / ${v(r.ad_taps)}`, has("ad_rewards") || has("ad_taps")],
+      // Rewards given without a video to ad-free and Pro buyers (HE fix 2026-10-31); ad_rewards now counts videos only.
+      ["Reklamsız ödül", (r) => v(r[FREE_KEYS.find((k) => fnum(r[k]) !== null)]), FREE_KEYS.some(has)],
     ].filter((c) => c[2]);
     const rows = days.slice().reverse().map((r) => `<tr${r.partial ? ' class="dim"' : ""}><td>${esc(r.date)}${r.partial ? " (bugün, devam ediyor)" : ""}</td>${C.map((c) => `<td>${c[1](r)}</td>`).join("")}</tr>`).join("");
     out.push(`<div class="tablewrap" style="margin-top:12px"><table><thead><tr><th>Gün</th>${C.map((c) => `<th>${c[0]}</th>`).join("")}</tr></thead><tbody>${rows}</tbody></table></div>`);
-    const STD = new Set(["date", "dau_ios", "dau_android", "sessions", "new_accounts", "avg_session_min", "ad_rewards", "ad_taps", "partial"]);
+    const STD = new Set(["date", "dau_ios", "dau_android", "sessions", "new_accounts", "avg_session_min", "ad_rewards", "ad_taps", "partial", ...FREE_KEYS]);
     const LABEL = { installs: "Yükleme", onboarding_done: "Tanıtımı bitiren", rituals_started: "Ritüel başlatan", rituals_completed: "Ritüel bitiren", paywall_views: "Ödeme ekranı gören", trial_starts: "Deneme başlatan", purchase_events: "Satın alan", notif_permission_granted: "Bildirim izni veren", share_exports: "Paylaşan" };
     const extraKeys = [...new Set(days.flatMap((r) => Object.keys(r).filter((k) => !STD.has(k) && (typeof r[k] === "number" || r[k] === null))))];
     if (extraKeys.length) {
