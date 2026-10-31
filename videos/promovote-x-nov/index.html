@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1920, height=1080" />
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <style>
+      @font-face { font-family: "Geist"; src: url("assets/geist-latin.woff2") format("woff2"); font-weight: 100 900; font-display: block; }
+      :root { --ground: #0a0a0a; --ink: #f5f5f7; --muted: #98989d; --yellow: #ffd60a; }
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      html, body { width: 1920px; height: 1080px; overflow: hidden; background: var(--ground); }
+      #root { position: relative; width: 1920px; height: 1080px; font-family: "Geist", sans-serif; color: var(--ink); background: var(--ground); }
+      .clip { position: absolute; inset: 0; }
+      .bg { background: radial-gradient(1200px 520px at 50% 118%, rgba(255, 214, 10, 0.16), rgba(255, 214, 10, 0) 70%), var(--ground); }
+      .arc { position: absolute; left: 50%; top: 820px; width: 2600px; height: 900px; margin-left: -1300px; border-radius: 50%; border-top: 2px solid rgba(255, 214, 10, 0.35); }
+      .center { display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
+      .big { font-size: 160px; font-weight: 760; letter-spacing: -0.045em; line-height: 0.98; }
+      .mid { font-size: 96px; font-weight: 720; letter-spacing: -0.04em; line-height: 1.02; }
+      .small { font-size: 40px; font-weight: 500; color: var(--muted); }
+      .y { color: var(--yellow); }
+      .line { display: block; overflow: hidden; padding-bottom: 0.08em; }
+      .line > span { display: inline-block; }
+
+      .q { position: absolute; top: 70px; left: 0; right: 0; text-align: center; font-size: 64px; font-weight: 720; letter-spacing: -0.035em; }
+      .card { position: absolute; top: 165px; width: 420px; height: 730px; border-radius: 44px; overflow: hidden; background: #000; border: 4px solid #2c2c2e; }
+      .card video { width: 100%; height: 100%; object-fit: cover; display: block; }
+      .card.left { left: 510px; }
+      .card.right { left: 990px; }
+      .tag { position: absolute; left: 0; right: 0; bottom: 0; padding: 26px 28px; background: linear-gradient(transparent, rgba(0, 0, 0, 0.85)); font-size: 34px; font-weight: 700; }
+      .tag small { display: block; font-size: 28px; font-weight: 500; color: #d1d1d6; margin-top: 4px; }
+      .vs { position: absolute; left: 960px; top: 530px; width: 120px; height: 120px; margin: -60px 0 0 -60px; border-radius: 50%; background: var(--yellow); color: #0a0a0a; font-size: 44px; font-weight: 800; display: flex; align-items: center; justify-content: center; letter-spacing: -0.03em; }
+      .pick { position: absolute; left: 510px; top: 920px; width: 420px; height: 0; }
+      .btn { position: absolute; left: 0; top: 0; width: 420px; padding: 22px 0; border-radius: 22px; background: var(--yellow); color: #0a0a0a; text-align: center; font-size: 32px; font-weight: 750; }
+      .ring { position: absolute; left: 502px; top: 157px; width: 436px; height: 746px; border-radius: 50px; border: 6px solid var(--yellow); box-shadow: 0 0 60px rgba(255, 214, 10, 0.45); }
+
+      .logo { width: 120px; height: 120px; }
+      .logo path { fill: none; stroke: var(--yellow); stroke-width: 9.5; stroke-miterlimit: 10; }
+      .phone { position: absolute; left: 1220px; top: 96px; width: 420px; height: 909px; border-radius: 62px; background: #000; border: 10px solid #1c1c1e; overflow: hidden; }
+      .phone img { width: 100%; height: 100%; object-fit: cover; object-position: top; }
+      .feat-text { position: absolute; left: 170px; top: 360px; width: 960px; }
+      .url { margin-top: 50px; padding: 24px 54px; border-radius: 999px; background: var(--yellow); color: #0a0a0a; font-size: 42px; font-weight: 700; }
+      .note { margin-top: 26px; font-size: 30px; color: var(--muted); }
+    </style>
+  </head>
+  <body>
+    <div id="root" data-composition-id="main" data-start="0" data-duration="20" data-width="1920" data-height="1080">
+      <audio id="music" src="assets/music.wav" data-start="0" data-duration="20" data-track-index="2" data-volume="1"></audio>
+      <div id="ground" class="clip bg" data-start="0" data-duration="20" data-track-index="0"><div class="arc" data-layout-ignore></div></div>
+
+      <div id="s1" class="clip center big" data-start="0" data-duration="2.2" data-track-index="1">
+        <span class="line"><span>Night shift</span></span>
+        <span class="line"><span class="y">vs 21 days.</span></span>
+      </div>
+
+      <div id="s2" class="clip" data-start="2.2" data-duration="8" data-track-index="1">
+        <div class="q">Who wins the <span class="y">feed</span>?</div>
+        <div class="card left"><video id="vid-he" src="assets/hauling-empire-depot-night.mp4" muted playsinline data-start="2.2" data-duration="8" data-track-index="3"></video><div class="tag">Hauling Empire<small>Truck tycoon game</small></div></div>
+        <div class="card right"><video id="vid-pol" src="assets/poleris-21-day.mp4" muted playsinline data-start="2.2" data-duration="8" data-track-index="4"></video><div class="tag">Poleris<small>A 21 day ritual</small></div></div>
+        <div class="vs">VS</div>
+        <div class="ring"></div>
+        <div class="pick"><div class="btn">This one blows up</div></div>
+      </div>
+
+      <div id="s3" class="clip center" data-start="10.2" data-duration="2.6" data-track-index="1">
+        <div class="big"><span class="line"><span>One tap.</span></span><span class="line"><span class="y">No account.</span></span></div>
+      </div>
+
+      <div id="s4" class="clip" data-start="12.8" data-duration="3.4" data-track-index="1">
+        <div class="feat-text">
+          <div class="mid"><span class="line"><span>7 duels.</span></span><span class="line"><span class="y">About a minute.</span></span></div>
+          <div class="small" style="margin-top: 30px">No account needed. Play it in your browser.</div>
+        </div>
+        <div class="phone"><img src="assets/duel.png" alt="" /></div>
+      </div>
+
+      <div id="s5" class="clip center" data-start="16.2" data-duration="3.8" data-track-index="1">
+        <svg class="logo" viewBox="0 0 64 64"><path d="M14 33 32 15 50 33" /><path d="M14 51 32 33 50 51" /></svg>
+        <div class="big" style="margin-top: 28px"><span class="line"><span>Play the <span class="y">Duel.</span></span></span></div>
+        <div class="url">promovote.com/duel</div>
+        <div class="note">Link in our profile</div>
+      </div>
+    </div>
+    <script>
+      const tl = gsap.timeline({ paused: true });
+      const E = "power4.out";
+      const lines = (sel, at) => tl.from(`${sel} .line > span`, { yPercent: 110, duration: 0.7, ease: E, stagger: 0.12 }, at);
+      lines("#s1", 0.15);
+      // S2: cards fly in, VS pops, the pick lands on the left card
+      tl.from("#s2 .q", { opacity: 0, y: -30, duration: 0.5, ease: E }, 2.25);
+      tl.from("#s2 .card.left", { x: -260, opacity: 0, rotation: -4, duration: 0.8, ease: E }, 2.3);
+      tl.from("#s2 .card.right", { x: 260, opacity: 0, rotation: 4, duration: 0.8, ease: E }, 2.4);
+      tl.from("#s2 .vs", { scale: 0, duration: 0.5, ease: "back.out(2)" }, 2.9);
+      tl.set("#s2 .ring", { opacity: 0 }, 2.2);
+      tl.from("#s2 .btn", { opacity: 0, y: 40, duration: 0.5, ease: E }, 6.2);
+      tl.to("#s2 .btn", { scale: 0.94, duration: 0.12, yoyo: true, repeat: 1 }, 7.0);
+      tl.to("#s2 .ring", { opacity: 1, duration: 0.2 }, 7.15);
+      tl.to("#s2 .card.right", { opacity: 0.35, scale: 0.96, duration: 0.5 }, 7.2);
+      lines("#s3", 10.25);
+      lines("#s4", 12.9);
+      tl.from("#s4 .small", { opacity: 0, y: 16, duration: 0.5, ease: E }, 13.5);
+      tl.from("#s4 .phone", { y: 220, opacity: 0, rotation: 4, duration: 0.9, ease: E }, 12.8);
+      tl.from("#s5 .logo", { opacity: 0, scale: 0.6, duration: 0.6, ease: E }, 16.25);
+      lines("#s5", 16.5);
+      tl.from("#s5 .url", { opacity: 0, y: 30, scale: 0.92, duration: 0.6, ease: "back.out(1.6)" }, 17.1);
+      tl.from("#s5 .note", { opacity: 0, duration: 0.5 }, 17.5);
+      window.__timelines = window.__timelines || {};
+      window.__timelines["main"] = tl;
+      tl.seek(0);
+    </script>
+  </body>
+</html>
