@@ -203,7 +203,71 @@ const ADMIN_GROUPS = [
   ["Hauling Empire", "Oyun ve mağazalar", [["/admin/hauling-empire/oyun", "Oyun"], ["/admin/app-store?p=haulingempire", "App Store"], ["/admin/google-play?p=haulingempire", "Google Play"], ["/admin/unity-ads", "Reklam geliri"], ["/admin/hauling-empire/rapor", "Raporlar"]]],
   ["Poleris", "Uygulama ve mağazalar", [["/admin/poleris/uygulama", "Uygulama"], ["/admin/app-store?p=poleris", "App Store"], ["/admin/google-play?p=poleris", "Google Play"]]],
   ["Dovelet", "Uygulama ve mağazalar", [["/admin/lovelet/uygulama", "Uygulama"], ["/admin/app-store?p=lovelet", "App Store"], ["/admin/google-play?p=lovelet", "Google Play"]]],
+  ["Dropolis", "Oyun (yolda)", [["/admin/dropolis/oyun", "Oyun"]]],
 ];
+
+// Dropolis (founder request 2026-11-02): read only from its own D1 (binding DROPOLIS_DB); online count from the
+// dropolis-api Durable Object through the service binding. Player names are user input: always escaped.
+async function dropolisPage(env) {
+  const head = `<div class="top"><h1>Dropolis: oyun</h1></div>`;
+  if (!env.DROPOLIS_DB) return head + '<p class="empty">Dropolis veritabanı bağlı değil.</p>';
+  const db = env.DROPOLIS_DB;
+  const day = (n) => new Date(Date.now() - n * 864e5).toISOString().slice(0, 10);
+  const td = day(0);
+  const monday = (() => { const t = new Date(); t.setUTCHours(0, 0, 0, 0); t.setUTCDate(t.getUTCDate() - ((t.getUTCDay() + 6) % 7)); return t.toISOString().slice(0, 10); })();
+  const RET = "select substr(u.created_at, 1, 10) as d, count(*) as n, sum(exists (select 1 from daily_active a where a.user_id = u.id and a.day = date(substr(u.created_at, 1, 10), '+1 day'))) as r1, sum(exists (select 1 from daily_active a where a.user_id = u.id and a.day = date(substr(u.created_at, 1, 10), '+7 day'))) as r7 from users u where u.created_at >= ? group by d order by d desc";
+  const FUN = "select json_extract(e.value, '$.props.step') as step, count(distinct b.user_id) as n from event_batches b, json_each(b.payload) e where b.day >= ? and json_extract(e.value, '$.name') = 'tutorial_step' group by step";
+  const EVN = "select json_extract(e.value, '$.name') as name, count(*) as n from event_batches b, json_each(b.payload) e where b.day >= ? group by name order by n desc limit 15";
+  const LB = "select s.board, s.period, s.value, u.name, u.country from scores s join users u on u.id = s.user_id where (s.period = 'all' or s.period = ?) and (select count(*) from scores s2 where s2.board = s.board and s2.period = s.period and s2.value > s.value) < 10 order by s.board, s.period, s.value desc";
+  let r;
+  try {
+    r = await db.batch([
+      db.prepare("select count(*) as n, sum(created_at >= ?) as week from users").bind(day(6)),
+      db.prepare("select count(distinct user_id) as n from identities"),
+      db.prepare("select day, count(*) as n from daily_active where day >= ? group by day order by day").bind(day(29)),
+      db.prepare("select count(distinct user_id) as n from daily_active where day >= ?").bind(day(29)),
+      db.prepare(RET).bind(day(37)),
+      db.prepare(FUN).bind(day(29)),
+      db.prepare(EVN).bind(day(6)),
+      db.prepare(LB).bind(monday),
+      db.prepare("select coalesce(sum(count), 0) as n from deletion_log where day >= ?").bind(day(29)),
+    ]);
+  } catch (e) { console.error("dropolis_admin", e?.message); return head + '<p class="empty">Dropolis verisi okunamadı.</p>'; }
+  const [tot, linked, dau, mau, ret, fun, evn, lb, del] = r.map((x) => x.results);
+  let online = null;
+  try { if (env.DROPOLIS) online = (await (await env.DROPOLIS.fetch("https://dropolis-api.promovote.com/v1/online")).json()).online; } catch { /* shown as Veri yok */ }
+  const sec = (t) => `<h2 style="font-size:22px;margin:34px 0 12px">${esc(t)}</h2>`;
+  const dauToday = dau.find((x) => x.day === td)?.n || 0;
+  // Retention over cohorts old enough to be measured (D1: joined before yesterday, D7: before 7 days ago).
+  const pctOf = (rows, k, minAge) => { const ok = rows.filter((x) => x.d <= day(minAge)); const n = ok.reduce((a, x) => a + x.n, 0); return n ? Math.round((100 * ok.reduce((a, x) => a + (x[k] || 0), 0)) / n) : null; };
+  const d1 = pctOf(ret, "r1", 2), d7 = pctOf(ret, "r7", 8);
+  const tiles = ctiles([
+    ctile("Şu an oyunda", online),
+    ctile("Bugün aktif", dauToday),
+    ctile("Son 30 gün aktif (MAU)", mau[0]?.n ?? 0),
+    ctile("Ertesi gün dönen (D1)", d1 === null ? null : `%${d1}`, "", "Son 30 günde katılanlar"),
+    ctile("7. gün dönen (D7)", d7 === null ? null : `%${d7}`),
+    ctile("Toplam oyuncu", tot[0]?.n ?? 0, "", `${tot[0]?.week ?? 0} tanesi son 7 günde`),
+    ctile("Apple / Google bağlı", linked[0]?.n ?? 0),
+    ctile("Silinen hesap (30 gün)", del[0]?.n ?? 0),
+  ]);
+  const days = Array.from({ length: 30 }, (_, i) => day(29 - i));
+  const chart = dayChart(days.map((d) => ({ d, dim: d === td, parts: [{ v: dau.find((x) => x.day === d)?.n || 0, c: BRAND_A, n: "Aktif" }] })), { aria: "Günlük aktif oyuncu" });
+  const steps = fun.map((x) => [x.step, x.n]).sort((a, b) => (Number(a[0]) - Number(b[0])) || String(a[0]).localeCompare(String(b[0])));
+  const first = steps[0]?.[1] || 0;
+  const funnel = steps.length ? steps.map(([s, n], i) => { const prev = i ? steps[i - 1][1] : n; const lost = i && prev ? Math.round((100 * (prev - n)) / prev) : 0;
+    return `<div class="fun"><span class="fun-l">Adım ${esc(String(s))}</span><span class="fun-b"><i style="width:${first ? Math.round((100 * n) / first) : 0}%"></i></span><span class="fun-n">${n}${i ? ` (−%${lost})` : ""}</span></div>`; }).join("")
+    : '<p class="empty">Henüz tanıtım verisi yok. Oyun "tutorial_step" olayını ({ step }) gönderince burada görünür.</p>';
+  const evTable = evn.length ? `<div class="tablewrap"><table><thead><tr><th>Olay</th><th>Sayı (7 gün)</th></tr></thead><tbody>${evn.map((x) => `<tr><td>${esc(x.name)}</td><td>${x.n}</td></tr>`).join("")}</tbody></table></div>` : '<p class="empty">Henüz olay yok.</p>';
+  const BOARD = { city_level: "Şehir seviyesi", deliveries: "Toplam teslimat", colonists: "Mars kolonistleri" };
+  const board = (b, period) => { const rows = lb.filter((x) => x.board === b && (period === "all" ? x.period === "all" : x.period !== "all")).slice(0, 10);
+    return `<div class="st-card"><div class="st-head"><h2>${BOARD[b]} · ${period === "all" ? "tüm zamanlar" : "bu hafta"}</h2></div>${rows.length ? rows.map((x, i) => `<div class="st-row"><span>${i + 1}. ${esc(x.name || "Player")}${x.country ? ` <span class="dim">${esc(x.country)}</span>` : ""}</span><span class="st-v">${x.value}</span></div>`).join("") : '<p class="dim" style="margin:0">Henüz skor yok.</p>'}</div>`; };
+  return head + `<p class="countries">Kaynak: Dropolis veritabanı (dropolis-api.promovote.com). Günler UTC. "Şu an oyunda" son 6 dakikada sinyal gönderenler.</p>`
+    + tiles + sec("Günlük aktif oyuncu (30 gün)") + chart
+    + sec("Tanıtım adımları (30 gün)") + `<p class="countries">Her adıma ulaşan oyuncu, parantez içi bir önceki adıma göre kayıp.</p>` + funnel
+    + sec("Sıralama tabloları") + `<div class="st-grid">${Object.keys(BOARD).map((b) => board(b, "week") + board(b, "all")).join("")}</div>`
+    + sec("En sık olaylar (7 gün)") + evTable;
+}
 
 function adminPage(path, title, body) {
   const group = ADMIN_GROUPS.find(([, , items]) => items.some(([h]) => h === path));
@@ -232,7 +296,7 @@ td a{color:#b394ff}.dim{color:var(--dim)}.center{text-align:center}.role{padding
 .badge-on{padding:2px 9px;border-radius:99px;font-size:12px;font-weight:700;background:rgba(198,255,61,.15);color:var(--lime)}.badge-solo{padding:2px 9px;border-radius:99px;font-size:12px;font-weight:700;background:var(--surface-2);color:var(--muted)}
 .tsearch{width:100%;max-width:360px;margin:0 0 10px;padding:10px 14px;border-radius:12px;border:1px solid var(--line);background:var(--surface);color:#fff;font:inherit}
 .adminbar{display:flex;justify-content:space-between;align-items:center;gap:12px;margin:0 0 14px}.logout{color:var(--muted);font-size:14px;font-weight:600;text-decoration:none;padding:6px 12px;border-radius:99px;border:1px solid var(--line)}.logout:hover{color:#fff;border-color:var(--muted)}
-.grps{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}.grp{display:flex;flex-direction:column;gap:3px;padding:14px 16px;border-radius:16px;background:var(--surface);border:1.5px solid var(--line);text-decoration:none;transition:border-color .2s,transform .15s}
+.grps{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}.grp{display:flex;flex-direction:column;gap:3px;padding:14px 16px;border-radius:16px;background:var(--surface);border:1.5px solid var(--line);text-decoration:none;transition:border-color .2s,transform .15s}
 .grp b{font:700 17px var(--display);color:#fff}.grp span{font-size:13px;color:var(--muted)}.grp:hover{border-color:var(--muted)}.grp:active{transform:scale(.98)}.grp.on{border-color:var(--lime);background:rgba(198,255,61,.07)}.grp.on b{color:var(--lime)}
 .subnav{display:flex;gap:8px;flex-wrap:wrap;margin:14px 0 0;padding:0 0 14px;border-bottom:1px solid var(--line)}.tab.on{background:var(--lime);color:#0a0a0f}
 @media (max-width:700px){.grps{grid-template-columns:repeat(2,minmax(0,1fr))}.grp{padding:12px 14px}.grp b{font-size:15px}}
@@ -1203,6 +1267,7 @@ ${tilesHtml([["Paylaşılan", sum.posted?.n || 0], ["Sırada", sum.queued?.n || 
     return adminPage(path, "Unity Ads", lp.html ?? lp.note + (await unityPage(env, path, range)));
   }
 
+  if (path === "/admin/dropolis/oyun") return adminPage(path, "Dropolis: oyun", await dropolisPage(env));
   if (path === "/admin/lovelet/uygulama") {
     const range = rangeOf(url);
     const r = await productFeed(env, "lovelet", `feed=ops&days=${range}`, 300);

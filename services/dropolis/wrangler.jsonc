@@ -1,0 +1,22 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  // Dropolis game API (founder request 2026-11-02): guest accounts, Apple / Google linking, one cloud save per
+  // player, leaderboards, batched behaviour events, online count. Separate from promovote-api on purpose.
+  "name": "dropolis-api",
+  "main": "src/index.js",
+  "compatibility_date": "2026-10-01",
+  "workers_dev": false,
+  "routes": [{ "pattern": "dropolis-api.promovote.com", "custom_domain": true }],
+  "d1_databases": [
+    { "binding": "DB", "database_name": "dropolis-db", "database_id": "6d4ff003-a772-4123-87c2-9f22bdf18639", "migrations_dir": "migrations" }
+  ],
+  "durable_objects": { "bindings": [{ "name": "PRESENCE", "class_name": "Presence" }] },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Presence"] }],
+  "ratelimits": [{ "name": "LIMIT", "namespace_id": "1002", "simple": { "limit": 120, "period": 60 } }],
+  "vars": {
+    // Public audience values for ID token checks (not secrets). Google client ids are added when they exist.
+    "APPLE_AUDIENCES": "com.promovote.dropolis",
+    "GOOGLE_CLIENT_IDS": ""
+  },
+  "observability": { "enabled": true }
+}

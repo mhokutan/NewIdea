@@ -21,8 +21,12 @@
   "d1_databases": [
     { "binding": "DB", "database_name": "promovote-waitlist", "database_id": "05af65d5-9b4d-454e-8b70-ca4a15269396" },
     // App database, read only from /admin (X post stats). Never written from this Worker.
-    { "binding": "APPDB", "database_name": "promovote-db", "database_id": "b6a6a86f-5e7e-48fe-9ad1-2a29b1222a31" }
+    { "binding": "APPDB", "database_name": "promovote-db", "database_id": "b6a6a86f-5e7e-48fe-9ad1-2a29b1222a31" },
+    // Dropolis game database, read only from /admin/dropolis/oyun. Never written from this Worker.
+    { "binding": "DROPOLIS_DB", "database_name": "dropolis-db", "database_id": "6d4ff003-a772-4123-87c2-9f22bdf18639" }
   ],
+  // Dropolis API (online count): a Worker fetching another Worker on the same zone by URL can be refused.
+  "services": [{ "binding": "DROPOLIS", "service": "dropolis-api" }],
   // Keep variables added in the Cloudflare dashboard on deploy (an ADMIN_PASSWORD saved as plain text was lost on a
   // wrangler deploy, 2026-10). ADMIN_PASSWORD should be a Secret anyway; secrets always survive deploys.
   "keep_vars": true,
