@@ -21,7 +21,7 @@ linked to the guest (`token` is `null`, keep the current one; progress stays). I
 belongs to another player, the call signs in to that player: `token` is the new token and `switched` is `true`
 (ask the player first; the guest on this phone is left as it was). ID tokens are checked against Apple's and
 Google's public keys; audiences are the public vars `APPLE_AUDIENCES` (`com.promovote.dropolis`) and
-`GOOGLE_CLIENT_IDS` (web, Android upload key, Android debug key from the Google Cloud project "dropolis"; the token `aud` is the web client id). Append the Play App Signing client id after the first Play upload.
+`GOOGLE_CLIENT_IDS` (web, Play App Signing, Android upload key, Android debug key from the Google Cloud project "dropolis"; the token `aud` is the web client id).
 
 ## Player
 | Method | Path | Body | Returns |
