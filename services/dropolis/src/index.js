@@ -80,8 +80,11 @@ const ISS = { apple: ["https://appleid.apple.com"], google: ["https://accounts.g
 async function verifyIdToken(provider, idToken, audiences, nonce) {
   const parts = String(idToken || "").split(".");
   if (parts.length !== 3) throw new Error("bad_token");
-  const header = JSON.parse(new TextDecoder().decode(fromB64url(parts[0])));
-  const claims = JSON.parse(new TextDecoder().decode(fromB64url(parts[1])));
+  let header, claims;
+  try {
+    header = JSON.parse(new TextDecoder().decode(fromB64url(parts[0])));
+    claims = JSON.parse(new TextDecoder().decode(fromB64url(parts[1])));
+  } catch { throw new Error("bad_token"); }
   if (header.alg !== "RS256") throw new Error("bad_alg");
   const res = await fetch(JWKS[provider], { cf: { cacheTtl: 3600, cacheEverything: true } });
   const { keys } = await res.json();

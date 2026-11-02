@@ -14,9 +14,10 @@
   "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Presence"] }],
   "ratelimits": [{ "name": "LIMIT", "namespace_id": "1002", "simple": { "limit": 120, "period": 60 } }],
   "vars": {
-    // Public audience values for ID token checks (not secrets). Google client ids are added when they exist.
+    // Public audience values for ID token checks (not secrets). Google: web, Android upload key, Android debug key
+    // (Google Cloud project "dropolis"); the token aud is the web id. Append the Play App Signing client id later.
     "APPLE_AUDIENCES": "com.promovote.dropolis",
-    "GOOGLE_CLIENT_IDS": ""
+    "GOOGLE_CLIENT_IDS": "819507153226-170ivup80k1g5fo1illl1bkoaf0qua5b.apps.googleusercontent.com,819507153226-if2mb5uo7gn6tcvrbbudu48hrua7dpa9.apps.googleusercontent.com,819507153226-k4eda2s55i53fr0c3g0uf4qjpkl0nd04.apps.googleusercontent.com"
   },
   "observability": { "enabled": true }
 }
