@@ -1,4 +1,5 @@
 // Dropolis game API (Cloudflare Worker + D1 + one Durable Object). No framework, no dependencies.
+import APP_ADS from "./app-ads.txt"; // copied as is from mhokutan/NewRoboticGame docs/store/app-ads.txt
 // Auth: every player starts as a guest (bearer token). Apple (iOS) and Google (Android) sign in verify the ID token
 // against the providers' public keys and link it to the guest account, so progress is never lost. No secrets needed:
 // audiences (bundle id, client ids) are public vars. Tokens are random and stored only as SHA-256 hashes.
@@ -187,6 +188,8 @@ ${c ? `<button onclick="navigator.clipboard&&navigator.clipboard.writeText('${c}
 async function route(req, env, url) {
   const p = url.pathname, m = req.method, db = env.DB;
 
+  // Ad network seller list for the stores' developer website (dropolis.promovote.com), plain text, no redirect.
+  if (p === "/app-ads.txt") return new Response(APP_ADS, { headers: { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "public, max-age=3600" } });
   if (url.hostname === INVITE_HOST) {
     const mm = /^\/i\/([A-Za-z0-9]{1,12})\/?$/.exec(p);
     return invitePage(mm ? mm[1].toUpperCase() : "");
