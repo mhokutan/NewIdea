@@ -56,3 +56,24 @@ Boards: `city_level`, `deliveries`, `colonists`. Send scores when they change or
 
 Event names: lowercase `snake_case`. The admin panel reads: `session_start`, `session_end` (`props.seconds`),
 `tutorial_step` (`props.step`, a number from 1), `mission_done`, `level_up` (`props.level`), `first_rocket`.
+
+## Friend invites (2026-11-04)
+The server is the ledger: the game shows only what these endpoints return. Every grant is written to
+`referral_ledger` (who, because of whom, coins, gems, when).
+
+| Method | Path | Body | Returns |
+|---|---|---|---|
+| GET | `/v1/referral` | | `{ code, link, invited, canRedeem, pending: [{ id, friendName, coins, gems }] }` (code made on first call) |
+| POST | `/v1/referral/redeem` | `{ code }` | `{ coins: 0, gems: 10 }` |
+| POST | `/v1/referral/progress` | `{ milestone: "chapter1" }` | `{ created }`; 404 `not_invited` for a player who used no code; a second call creates nothing |
+| POST | `/v1/referral/claim` | `{ id }` | `{ coins: 500, gems: 20 }`; 409 `already_claimed`; 404 for another player's reward |
+
+* Codes: 7 characters from `A-Z` and `2-9` without `0 O 1 I`, unique per player.
+* Link: `https://dropolis.promovote.com/i/<code>`: landing page with the code and both store buttons; the Google Play
+  button passes `referrer=code=<code>` (read it with the Play Install Referrer API to prefill the code).
+* `canRedeem`: never redeemed, this device never redeemed, account younger than 7 days.
+* Redeem errors: 404 `unknown_code`, 400 `own_code`, 409 `already_redeemed`, 403 `too_old`, 409 `device_used`,
+  400 `mutual` (a player cannot redeem the code of someone they invited), 400 `device_required`.
+* Limits: at most 50 invite rewards per inviter (after that `progress` answers `{ created: false, reason: "inviter_cap" }`);
+  one redeem per device (stored as a SHA-256 hash, kept after account deletion).
+* Analytics: the server writes `referral_redeem` and `referral_claim` events. Admin: promovote.com/admin/dropolis/oyun, "Davetler".

@@ -231,9 +231,12 @@ async function dropolisPage(env) {
       db.prepare(EVN).bind(day(6)),
       db.prepare(LB).bind(monday),
       db.prepare("select coalesce(sum(count), 0) as n from deletion_log where day >= ?").bind(day(29)),
+      // Friend invites (2026-11-04): redeems, chapter 1 conversions, rewards, top inviters.
+      db.prepare("select (select count(*) from referral_codes) as codes, count(*) as redeems, sum(redeemed_at >= ?) as redeems30, sum(chapter1_at is not null) as converted, (select count(*) from referral_rewards where claimed_at is not null) as claimed, (select count(*) from referral_rewards where claimed_at is null) as pending, (select coalesce(sum(gems), 0) from referral_ledger) as gems, (select coalesce(sum(coins), 0) from referral_ledger) as coins from referrals").bind(day(29)),
+      db.prepare("select u.name, count(*) as invited, sum(r.chapter1_at is not null) as converted from referrals r join users u on u.id = r.inviter_id group by r.inviter_id order by invited desc limit 10"),
     ]);
   } catch (e) { console.error("dropolis_admin", e?.message); return head + '<p class="empty">Dropolis verisi okunamadı.</p>'; }
-  const [tot, linked, dau, mau, ret, fun, evn, lb, del] = r.map((x) => x.results);
+  const [tot, linked, dau, mau, ret, fun, evn, lb, del, refs, inviters] = r.map((x) => x.results);
   let online = null;
   try { if (env.DROPOLIS) online = (await (await env.DROPOLIS.fetch("https://dropolis-api.promovote.com/v1/online")).json()).online; } catch { /* shown as Veri yok */ }
   const sec = (t) => `<h2 style="font-size:22px;margin:34px 0 12px">${esc(t)}</h2>`;
@@ -265,6 +268,17 @@ async function dropolisPage(env) {
   return head + `<p class="countries">Kaynak: Dropolis veritabanı (dropolis-api.promovote.com). Günler UTC. "Şu an oyunda" son 6 dakikada sinyal gönderenler.</p>`
     + tiles + sec("Günlük aktif oyuncu (30 gün)") + chart
     + sec("Tanıtım adımları (30 gün)") + `<p class="countries">Her adıma ulaşan oyuncu, parantez içi bir önceki adıma göre kayıp.</p>` + funnel
+    + sec("Davetler") + (() => {
+      const f = refs[0] || {};
+      const conv = f.redeems ? Math.round((100 * (f.converted || 0)) / f.redeems) : null;
+      return ctiles([
+        ctile("Davet kodu olan oyuncu", f.codes ?? 0),
+        ctile("Kodla gelen oyuncu", f.redeems ?? 0, "", `${f.redeems30 ?? 0} tanesi son 30 günde`),
+        ctile("1. bölümü bitiren davetli", f.converted ?? 0, "", conv === null ? "" : `davetlilerin %${conv}`),
+        ctile("Alınan davet ödülü", f.claimed ?? 0, "", `${f.pending ?? 0} bekliyor`),
+        ctile("Verilen elmas / altın", `${f.gems ?? 0} / ${f.coins ?? 0}`),
+      ]) + (inviters.length ? `<div class="tablewrap"><table><thead><tr><th>Davet eden</th><th>Davet</th><th>1. bölümü bitiren</th></tr></thead><tbody>${inviters.map((x) => `<tr><td>${esc(x.name || "Player")}</td><td>${x.invited}</td><td>${x.converted || 0}</td></tr>`).join("")}</tbody></table></div>` : '<p class="empty">Henüz davetle gelen oyuncu yok.</p>');
+    })()
     + sec("Sıralama tabloları") + `<div class="st-grid">${Object.keys(BOARD).map((b) => board(b, "week") + board(b, "all")).join("")}</div>`
     + sec("En sık olaylar (7 gün)") + evTable;
 }

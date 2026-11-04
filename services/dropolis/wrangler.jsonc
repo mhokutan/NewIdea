@@ -6,7 +6,7 @@
   "main": "src/index.js",
   "compatibility_date": "2026-10-01",
   "workers_dev": false,
-  "routes": [{ "pattern": "dropolis-api.promovote.com", "custom_domain": true }],
+  "routes": [{ "pattern": "dropolis-api.promovote.com", "custom_domain": true }, { "pattern": "dropolis.promovote.com", "custom_domain": true }],
   "d1_databases": [
     { "binding": "DB", "database_name": "dropolis-db", "database_id": "6d4ff003-a772-4123-87c2-9f22bdf18639", "migrations_dir": "migrations" }
   ],
