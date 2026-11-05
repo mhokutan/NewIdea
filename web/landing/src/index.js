@@ -685,6 +685,9 @@ const regionKey = (r) => {
 };
 const regionLabel = (k) => (k === "?" ? "Bilinmiyor" : k.toUpperCase());
 
+// Players seen in 7 days: the feed's count field when it sends one; the list itself stops at 200.
+const players7 = (pl) => fnum(pl?.recent_7d_total ?? pl?.total_7d ?? pl?.recent_7d_count) ?? (Array.isArray(pl?.recent_7d) && pl.recent_7d.length >= 200 ? "200+" : (pl?.recent_7d || []).length);
+
 function playersSection(players) {
   const sec = (t) => `<h2 style="font-size:22px;margin:34px 0 12px">${esc(t)}</h2>`;
   if (players === undefined) return "";
@@ -713,7 +716,7 @@ function playersSection(players) {
   all7.forEach((p) => { bump(p.region, "d7"); if (Date.parse(p.last_seen || "") >= day1) bump(p.region, "d1"); });
   const regRows = Object.entries(regs).sort((a, b) => b[1].now - a[1].now || b[1].d7 - a[1].d7);
   const regHtml = regRows.length
-    ? `${sec("Bölgelere göre aktif oyuncu")}<div class="tablewrap"><table data-sortable><thead><tr><th>Bölge</th><th>Şu an oyunda</th><th>Son 24 saat</th><th>Son 7 gün</th></tr></thead><tbody>${regRows.map(([r, x]) => `<tr><td>${r === "?" ? '<span class="dim">bilinmiyor</span>' : `${esc(r.toUpperCase())}${RN[r] ? ` <span class="dim">${RN[r]}</span>` : ""}`}</td><td data-v="${x.now}">${x.now ? `<b>${x.now}</b>` : "0"}</td><td data-v="${x.d1}">${x.d1}</td><td data-v="${x.d7}">${x.d7}</td></tr>`).join("")}</tbody><tfoot><tr><td><b>Toplam</b></td><td><b>${on.length}</b></td><td><b>${regRows.reduce((a, [, x]) => a + x.d1, 0)}</b></td><td><b>${all7.length}</b></td></tr></tfoot></table></div>`
+    ? `${sec("Bölgelere göre aktif oyuncu")}<div class="tablewrap"><table data-sortable><thead><tr><th>Bölge</th><th>Şu an oyunda</th><th>Son 24 saat</th><th>Son 7 gün${total7 == null && all7.length >= 200 ? " (ilk 200 oyuncudan)" : ""}</th></tr></thead><tbody>${regRows.map(([r, x]) => `<tr><td>${r === "?" ? '<span class="dim">bilinmiyor</span>' : `${esc(r.toUpperCase())}${RN[r] ? ` <span class="dim">${RN[r]}</span>` : ""}`}</td><td data-v="${x.now}">${x.now ? `<b>${x.now}</b>` : "0"}</td><td data-v="${x.d1}">${x.d1}</td><td data-v="${x.d7}">${x.d7}</td></tr>`).join("")}</tbody><tfoot><tr><td><b>Toplam</b></td><td><b>${on.length}</b></td><td><b>${regRows.reduce((a, [, x]) => a + x.d1, 0)}</b></td><td><b>${players7(players)}</b></td></tr></tfoot></table></div>`
     : "";
   return `${regHtml}${sec("Şu an oyunda")}<div class="tablewrap"><table id="tbl-online" data-sortable data-collapse="10"><thead><tr><th>Şirket</th><th>Kullanıcı</th><th>Platform</th><th>Bölge</th><th>Mod</th><th>Son görülme</th></tr></thead><tbody>${onRows}</tbody></table></div>
 ${sec(`Son 7 gün oyuncular (${total7 ?? (all7.length >= 200 ? "200+" : all7.length)})`)}${total7 == null && all7.length >= 200 ? '<p class="countries">Oyun en fazla 200 oyuncuyu listeliyor; gerçek sayı daha fazla. Tablo ilk 200 oyuncuyu gösteriyor.</p>' : ""}<input class="tsearch" type="search" placeholder="Şirket veya kullanıcı adı ara" aria-label="Şirket veya kullanıcı adı ara" data-filter="tbl-recent">
@@ -1096,7 +1099,7 @@ async function statusPage(env) {
       row("Oyun verisi", ops ? chip("g", "geliyor") : chip("r", "gelmiyor")),
       row("Son güncelleme", when(ops?.generated_at)),
       row("Şu an oyunda", online === null || online === undefined ? '<span class="dim">veri yok</span>' : `${online}${Array.isArray(ops?.players?.online_now) ? ` <span class="dim">(${(() => { const c = Object.fromEntries(REGION_ORDER.map((k) => [k, 0])); ops.players.online_now.forEach((p) => { const k = regionKey(p.region); c[k] = (c[k] || 0) + 1; }); return Object.entries(c).map(([k, v]) => `${regionLabel(k)} ${v}`).join(", "); })()})</span>` : ""}`),
-      row("Oyuncu listesi", ops ? (Array.isArray(ops.players?.recent_7d) ? `${ops.players.recent_7d.length} oyuncu (7 gün)` : '<span class="dim">gelmiyor</span>') : '<span class="dim">-</span>'),
+      row("Oyuncu listesi", ops ? (Array.isArray(ops.players?.recent_7d) ? `${players7(ops.players)} oyuncu (7 gün)` : '<span class="dim">gelmiyor</span>') : '<span class="dim">-</span>'),
       row("Mağaza verisi", heS?.ok ? chip("g", "geliyor") : chip("r", "gelmiyor")),
       row("Reklam geliri (7 gün)", lp?.ok ? `$${lp.rows.reduce((a, r) => a + (Number(r.revenue) || 0), 0).toFixed(2)}, ${Math.round(lp.rows.reduce((a, r) => a + (Number(r.impressions) || 0), 0))} gösterim <span class="dim">(LevelPlay)</span>` : ua?.ok ? `$${ua.rows.reduce((a, r) => a + (Number(r.revenue_sum) || 0), 0).toFixed(2)}, ${Math.round(ua.rows.reduce((a, r) => a + (Number(r.view_count) || 0), 0))} gösterim` : ua?.reason === "no_key" ? '<span class="dim">bağlı değil</span>' : chip("r", "gelmiyor")),
     ], (he?.staleMin != null ? [`Canlı veri şu an gelmedi, ${he.staleMin} dk önceki veri gösteriliyor. Neden: ${feedWhy(he, "Hauling Empire", "HE_STATS_KEY")}`, ...notes] : notes).join("<br>")));
