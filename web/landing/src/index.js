@@ -703,6 +703,8 @@ function playersSection(players) {
   // Active players per region (founder request 2026-10-21: the game has 4 regions). From the same player lists:
   // online now, last seen in 24 h, and the whole 7 day list (not cut to 200 like the table below).
   const all7 = Array.isArray(players.recent_7d) ? players.recent_7d : [];
+  // The feed caps the list at 200 players; a count field, when the feed sends one, is the real total.
+  const total7 = fnum(players.recent_7d_total ?? players.total_7d ?? players.recent_7d_count);
   const RN = REGION_NAME, rk = regionKey;
   const day1 = Date.now() - 864e5;
   const regs = Object.fromEntries(REGION_ORDER.map((k) => [k, { now: 0, d1: 0, d7: 0 }]));
@@ -714,7 +716,7 @@ function playersSection(players) {
     ? `${sec("Bölgelere göre aktif oyuncu")}<div class="tablewrap"><table data-sortable><thead><tr><th>Bölge</th><th>Şu an oyunda</th><th>Son 24 saat</th><th>Son 7 gün</th></tr></thead><tbody>${regRows.map(([r, x]) => `<tr><td>${r === "?" ? '<span class="dim">bilinmiyor</span>' : `${esc(r.toUpperCase())}${RN[r] ? ` <span class="dim">${RN[r]}</span>` : ""}`}</td><td data-v="${x.now}">${x.now ? `<b>${x.now}</b>` : "0"}</td><td data-v="${x.d1}">${x.d1}</td><td data-v="${x.d7}">${x.d7}</td></tr>`).join("")}</tbody><tfoot><tr><td><b>Toplam</b></td><td><b>${on.length}</b></td><td><b>${regRows.reduce((a, [, x]) => a + x.d1, 0)}</b></td><td><b>${all7.length}</b></td></tr></tfoot></table></div>`
     : "";
   return `${regHtml}${sec("Şu an oyunda")}<div class="tablewrap"><table id="tbl-online" data-sortable data-collapse="10"><thead><tr><th>Şirket</th><th>Kullanıcı</th><th>Platform</th><th>Bölge</th><th>Mod</th><th>Son görülme</th></tr></thead><tbody>${onRows}</tbody></table></div>
-${sec(`Son 7 gün oyuncular (${rec.length})`)}<input class="tsearch" type="search" placeholder="Şirket veya kullanıcı adı ara" aria-label="Şirket veya kullanıcı adı ara" data-filter="tbl-recent">
+${sec(`Son 7 gün oyuncular (${total7 ?? (all7.length >= 200 ? "200+" : all7.length)})`)}${total7 == null && all7.length >= 200 ? '<p class="countries">Oyun en fazla 200 oyuncuyu listeliyor; gerçek sayı daha fazla. Tablo ilk 200 oyuncuyu gösteriyor.</p>' : ""}<input class="tsearch" type="search" placeholder="Şirket veya kullanıcı adı ara" aria-label="Şirket veya kullanıcı adı ara" data-filter="tbl-recent">
 <div class="tablewrap"><table id="tbl-recent" data-sortable data-collapse="10"><thead><tr><th>Şirket</th><th>Kullanıcı</th><th>Platform</th><th>Bölge</th><th>İlk görülme</th><th>Son görülme</th><th>Aktif gün</th><th>Oturum</th>${hasPlay ? "<th>Oyun süresi</th>" : ""}</tr></thead><tbody>${recRows}</tbody></table></div>`;
 }
 
@@ -780,6 +782,16 @@ function opsMissing(ops, skip = []) {
   return OPS_SECTIONS.filter(([k]) => !skip.includes(k) && !has(k)).map(([, l]) => l);
 }
 
+// All time store downloads per product for the game / app pages (Apple first downloads + Google Play installs).
+async function storeTotals(env, prod) {
+  if (!env.APPDB) return null;
+  try {
+    const { results } = await env.APPDB.prepare("SELECT source, SUM(value) AS n, MAX(date) AS last FROM metrics_daily WHERE product_id = ? AND ((source = 'app_store' AND metric = 'downloads') OR (source = 'google_play' AND metric = 'installs')) GROUP BY source").bind(prod).all();
+    const a = results.find((r) => r.source === "app_store"), g = results.find((r) => r.source === "google_play");
+    return { apple: a ? Math.round(a.n) : 0, play: g ? Math.round(g.n) : 0, appleTo: a?.last, playTo: g?.last };
+  } catch { return null; }
+}
+
 function heOpsPage(path, ops, range, name = "Hauling Empire", kind = "oyun") {
   const st = ops.status || {};
   // "stale" (HE 2026-10-18): the feed is prebuilt every 5 min; when a build is late it sends the last one and says so.
@@ -798,6 +810,16 @@ function heOpsPage(path, ops, range, name = "Hauling Empire", kind = "oyun") {
   // 1. Now
   out.push(sec("Şu an"));
   out.push(ops.now ? ctiles([ctile("Son 5 dakikada aktif", fnum(ops.now.players_online_5min ?? ops.now.users_online_5min)), ...("online_mode_live" in ops.now ? [ctile("Online modda", fnum(ops.now.online_mode_live))] : [])]) : none);
+  // All time downloads from the store reports (metrics_daily): Apple first downloads + Google Play installs.
+  const T = ops._totals;
+  if (T && (T.apple || T.play)) {
+    const trd = (d) => (d ? new Date(d + "T00:00:00Z").toLocaleDateString("tr-TR", { day: "numeric", month: "short", timeZone: "UTC" }) : "");
+    out.push(ctiles([
+      ctile("Toplam indirme (tüm zamanlar)", (T.apple || 0) + (T.play || 0), "", "Mağaza raporlarından, yeniden indirmeler hariç"),
+      ctile("App Store", T.apple || 0, "", T.appleTo ? `${trd(T.appleTo)} tarihine kadar` : ""),
+      ctile("Google Play", T.play || 0, "", T.playTo ? `${trd(T.playTo)} tarihine kadar (Google raporu birkaç gün geriden gelir)` : ""),
+    ]));
+  }
   // Online now per region (founder request 2026-10-21), from the online player list.
   if (kind === "oyun" && ops.players && Array.isArray(ops.players.online_now)) {
     const cnt = Object.fromEntries(REGION_ORDER.map((k) => [k, 0]));
@@ -1286,14 +1308,14 @@ ${tilesHtml([["Paylaşılan", sum.posted?.n || 0], ["Sırada", sum.queued?.n || 
     const range = rangeOf(url);
     const r = await productFeed(env, "lovelet", `feed=ops&days=${range}`, 300);
     if (!r.ok) return adminPage(path, "Dovelet: uygulama", `<div class="top"><h1>Dovelet: uygulama</h1></div><p class="empty">${r.reason === "no_key" ? "Bağlantı anahtarı (LOVELET_STATS_KEY) henüz bu Worker'da yok. Dovelet ucu kurulup anahtar girilince veriler burada görünür." : esc(feedWhy(r, "Lovelet", "LOVELET_STATS_KEY"))}</p>`);
-    return adminPage(path, "Dovelet: uygulama", heOpsPage(path, { ...r.data, _fx: await fxRates() }, range, "Dovelet", "uygulama"));
+    return adminPage(path, "Dovelet: uygulama", heOpsPage(path, { ...r.data, _fx: await fxRates(), _totals: await storeTotals(env, "lovelet") }, range, "Dovelet", "uygulama"));
   }
 
   if (path === "/admin/poleris/uygulama") {
     const range = rangeOf(url);
     const r = await productFeed(env, "poleris", `feed=ops&days=${range}`, 300);
     if (!r.ok) return adminPage(path, "Poleris: uygulama", `<div class="top"><h1>Poleris: uygulama</h1></div><p class="empty">${r.reason === "no_key" ? "Bağlantı anahtarı (POLERIS_STATS_KEY) yok." : "Poleris verileri şu an alınamadı. Biraz sonra tekrar dene."}</p>`);
-    return adminPage(path, "Poleris: uygulama", heOpsPage(path, { ...r.data, _fx: await fxRates() }, range, "Poleris", "uygulama"));
+    return adminPage(path, "Poleris: uygulama", heOpsPage(path, { ...r.data, _fx: await fxRates(), _totals: await storeTotals(env, "poleris") }, range, "Poleris", "uygulama"));
   }
 
   // Hauling Empire reports (founder request 2026-10-30, v2): Claude's written analyses and weekly reports for all
@@ -1334,7 +1356,7 @@ ${tilesHtml([["Paylaşılan", sum.posted?.n || 0], ["Sırada", sum.queued?.n || 
     const range = rangeOf(url);
     const r = await heOps(env, range);
     if (!r.ok) return adminPage(path, "Hauling Empire: oyun", `<div class="top"><h1>Hauling Empire: oyun</h1></div><p class="empty">${esc(feedWhy(r, "Hauling Empire", "HE_STATS_KEY"))}</p>`);
-    return adminPage(path, "Hauling Empire: oyun", heOpsPage(path, { ...r.data, _fx: await fxRates() }, range));
+    return adminPage(path, "Hauling Empire: oyun", heOpsPage(path, { ...r.data, _fx: await fxRates(), _totals: await storeTotals(env, "haulingempire") }, range));
   }
 
   if (path === "/admin/app-store" || path === "/admin/google-play") {
