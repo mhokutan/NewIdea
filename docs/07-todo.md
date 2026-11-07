@@ -12,8 +12,8 @@ Kurucu ile konuşulan, zamanı gelince yapılacak işler. Bitince [x] yapılır 
 
 ### Web sitesinden uygulama reklamı testi (kurucu fikri 2026-10-07)
 Fikir: reklam parasını doğrudan uygulama indirme reklamına değil promovote.com'a harcamak. Ziyaretçi sitede videoları izler (kurucunun ürünleri de reklam olmuş olur), sonra App Store veya Google Play'e gider.
-- [ ] Sitede App Store ve Google Play butonları. Cihaza göre doğru olan gösterilir; iPhone'da Google Play butonu ve linki asla görünmez.
-- [ ] iPhone Safari için Smart App Banner (`<meta name="apple-itunes-app" content="app-id=6819894584">`).
+- [x] Sitede App Store ve Google Play butonları (2026-11-07, Düello bitiş kartı). Cihaza göre doğru olan gösterilir; iPhone'da Google Play butonu ve linki asla görünmez.
+- [x] (2026-11-07) iPhone Safari için Smart App Banner (`<meta name="apple-itunes-app" content="app-id=6819894584">`).
 - [ ] Kampanya linkleri: App Store `pt` ve `ct` (örnek `ct=web-test`), Google Play `referrer=utm_source%3Dpromovote_web%26utm_campaign%3D...`. Hangi indirme siteden geldi, App Store Connect ve Play Console raporlarında görünür.
 - [ ] Mağaza butonu tıklama sayacı (kendi visit counter'ımız gibi, çerezsiz), admin panelinde günlük sayı.
 - [ ] Reklamdan gelenler için sade sayfa (`/get` gibi): otomatik oynayan video akışı ve sabit "Uygulamayı indir" butonu. Video izlemek ZORUNLU değil, buton baştan görünür.

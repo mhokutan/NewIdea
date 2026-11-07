@@ -35,6 +35,7 @@ def head(title, desc, canonical, og_image, extra_css="", og_type="website"):
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="apple-itunes-app" content="app-id=6819894584">
   <title>{e(title)}</title>
   <meta name="description" content="{e(desc)}">
   <link rel="canonical" href="{canonical}">
@@ -442,7 +443,7 @@ def build_duel():
       <p class="dend-b" data-i18n="d_done_b">{t('d_done_b')}</p>
       <div class="dend-cta">
         <a class="btn dget-android" href="https://play.google.com/store/apps/details?id=com.miapera.promovote" target="_blank" rel="noopener" hidden><span data-i18n="cta_googleplay">{t('cta_googleplay')}</span></a>
-        <button type="button" class="btn btn-ghost dget-ios" data-sheet="join" hidden data-i18n="d_ios">{t('d_ios')}</button>
+        <a class="btn dget-ios" href="https://apps.apple.com/app/id6819894584" target="_blank" rel="noopener" hidden><span data-i18n="cta_appstore">{t('cta_appstore')}</span></a>
         <button type="button" class="btn btn-ghost dshare" data-i18n="d_share">{t('d_share')}</button>
         <button type="button" class="btn btn-ghost dagain" data-i18n="d_again">{t('d_again')}</button>
       </div>
