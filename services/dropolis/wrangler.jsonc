@@ -17,7 +17,7 @@
     // Public audience values for ID token checks (not secrets). Google (Cloud project "dropolis"): web, Play App
     // Signing, Android upload key, Android debug key; the token aud is the web id.
     "APPLE_AUDIENCES": "com.promovote.dropolis",
-    "GOOGLE_CLIENT_IDS": "819507153226-170ivup80k1g5fo1illl1bkoaf0qua5b.apps.googleusercontent.com,819507153226-mp6sc8na50rvcgq3t8p0fi6do2s4n7aj.apps.googleusercontent.com,819507153226-if2mb5uo7gn6tcvrbbudu48hrua7dpa9.apps.googleusercontent.com,819507153226-k4eda2s55i53fr0c3g0uf4qjpkl0nd04.apps.googleusercontent.com"
+    "GOOGLE_CLIENT_IDS": "819507153226-170ivup80k1g5fo1illl1bkoaf0qua5b.apps.googleusercontent.com,819507153226-mp6sc8na50rvcgq3t8p0fi6do2s4n7aj.apps.googleusercontent.com,819507153226-if2mb5uo7gn6tcvrbbudu48hrua7dpa9.apps.googleusercontent.com,819507153226-k4eda2s55i53fr0c3g0uf4qjpkl0nd04.apps.googleusercontent.com,819507153226-l3pekn76qi27d2vbvpscsninrojctira.apps.googleusercontent.com"
   },
   "observability": { "enabled": true }
 }
