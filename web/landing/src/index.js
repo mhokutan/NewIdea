@@ -427,11 +427,14 @@ async function unityStats(env, query) {
 
 // LevelPlay (founder 2026-10-22: LevelPlay showed $4.28, the Unity stats $3.88). The mediation's own Reporting API
 // gives the same numbers as the LevelPlay site, every network included. Keys in Worker secrets LEVELPLAY_SECRET_KEY
-// and LEVELPLAY_REFRESH_TOKEN (LevelPlay > My Account > API). The bearer token lives 24 h; we keep it 20 h.
-async function levelPlayToken(env) {
+// and LEVELPLAY_REFRESH_TOKEN (LevelPlay > My Account > API). The bearer token expires after about 60 minutes
+// (2026-11-08: a 20 h cache made reporting fail after the first hour), so we keep it 50 minutes and get a new one on a 401.
+const LP_TOKEN_KEY = "https://promovote.com/__cache/levelplay-token-v2";
+async function levelPlayToken(env, fresh = false) {
   const cache = caches.default;
-  const key = new Request("https://promovote.com/__cache/levelplay-token-v1");
-  const hit = await cache.match(key);
+  const key = new Request(LP_TOKEN_KEY);
+  if (fresh) await cache.delete(key);
+  const hit = fresh ? null : await cache.match(key);
   if (hit) return hit.text();
   const res = await fetch("https://platform.ironsrc.com/partners/publisher/auth", {
     headers: { secretkey: env.LEVELPLAY_SECRET_KEY, refreshToken: env.LEVELPLAY_REFRESH_TOKEN }, signal: AbortSignal.timeout(10000),
@@ -439,7 +442,7 @@ async function levelPlayToken(env) {
   if (!res.ok) throw Object.assign(new Error("auth"), { reason: "auth_" + res.status });
   const token = (await res.text()).trim().replace(/^"|"$/g, "");
   if (!token) throw Object.assign(new Error("auth"), { reason: "auth_empty" });
-  await cache.put(key, new Response(token, { headers: { "Cache-Control": "max-age=72000" } }));
+  await cache.put(key, new Response(token, { headers: { "Cache-Control": "max-age=3000" } }));
   return token;
 }
 async function levelPlayStats(env, query) {
@@ -449,10 +452,19 @@ async function levelPlayStats(env, query) {
   const hit = await cache.match(cacheKey);
   if (hit) return { ok: true, rows: await hit.json() };
   try {
-    const token = await levelPlayToken(env);
+    let token = await levelPlayToken(env);
+    let retried = false;
     const rows = [];
     for (let page = 1; page <= 5; page++) {
-      const res = await fetch(`https://platform.ironsrc.com/levelPlay/reporting/v1?${query}&page=${page}&resultsPerPage=5000`, { headers: { Authorization: `Bearer ${token}` }, signal: AbortSignal.timeout(15000) });
+      const url = `https://platform.ironsrc.com/levelPlay/reporting/v1?${query}&page=${page}&resultsPerPage=5000`;
+      let res = await fetch(url, { headers: { Authorization: `Bearer ${token}` }, signal: AbortSignal.timeout(15000) });
+      if (res.status === 401 && !retried) {
+        // The cached token expired early: drop it, get a new one and try this page once more.
+        retried = true;
+        console.error("levelplay_status", 401, "retry");
+        token = await levelPlayToken(env, true);
+        res = await fetch(url, { headers: { Authorization: `Bearer ${token}` }, signal: AbortSignal.timeout(15000) });
+      }
       if (!res.ok) { console.error("levelplay_status", res.status); return { ok: false, reason: "http_" + res.status }; }
       const j = await res.json();
       rows.push(...(Array.isArray(j.data) ? j.data : []));
