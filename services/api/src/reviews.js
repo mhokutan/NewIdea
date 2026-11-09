@@ -2,7 +2,7 @@
 // job, one app per run, each app about every 6 hours, so one run stays far under the Workers subrequest limit.
 // Apple: the public customer reviews RSS feed (newest 50 per country, no key). Google: the monthly reviews CSV in the
 // Play reports bucket (same service account as the store stats). Reviewer names and devices are never stored.
-import { APPS, googleToken } from "./stats.js";
+import { APPS, googleToken, appleToken } from "./stats.js";
 
 const APPLE_COUNTRIES = ["us", "tr", "gb", "ca", "au", "de", "fr", "mx", "br", "es", "it", "nl"];
 const EVERY = 6 * 3600e3;
@@ -55,6 +55,29 @@ async function appleReviews(app, notes) {
   return out;
 }
 
+// App Store Connect API (the Worker's IPs get 403 from the public feed). Needs a key whose role can read customer
+// reviews (Admin, App Manager or Customer Support); the Sales key answers 403 and the note says so.
+const ISO3 = { USA: "us", TUR: "tr", GBR: "gb", CAN: "ca", AUS: "au", DEU: "de", FRA: "fr", MEX: "mx", BRA: "br", ESP: "es", ITA: "it", NLD: "nl" };
+async function appleApiReviews(env, app) {
+  const token = await appleToken(env);
+  const out = [];
+  let url = `https://api.appstoreconnect.apple.com/v1/apps/${app.apple}/customerReviews?sort=-createdDate&limit=200&include=response`;
+  for (let page = 0; page < 3 && url; page++) {
+    const r = await fetch(url, { headers: { Authorization: `Bearer ${token}` }, signal: AbortSignal.timeout(15000) });
+    if (!r.ok) throw Object.assign(new Error("api " + r.status), { status: r.status });
+    const j = await r.json();
+    const replies = Object.fromEntries((j.included || []).filter((x) => x.type === "customerReviewResponses").map((x) => [x.id, x.attributes?.responseBody]));
+    for (const x of j.data || []) {
+      const a = x.attributes || {};
+      const rid = x.relationships?.response?.data?.id;
+      out.push({ store: "app_store", id: x.id, country: ISO3[a.territory] || String(a.territory || "").toLowerCase().slice(0, 3), rating: Number(a.rating),
+        title: clip(a.title, 200), body: clip(a.body, 4000), version: null, at: new Date(a.createdDate || Date.now()).toISOString(), reply: rid ? clip(replies[rid], 4000) : null });
+    }
+    url = j.links?.next || null;
+  }
+  return out.filter((x) => x.rating >= 1 && x.rating <= 5);
+}
+
 async function googleReviews(env, app, token) {
   const out = [];
   const now = new Date();
@@ -89,7 +112,12 @@ export async function collectReviews(env) {
   const a = app.a;
   const notes = [];
   let rows = [];
-  try { rows = rows.concat(await appleReviews(a, notes)); } catch (e) { notes.push("apple: " + e.message); }
+  let appleDone = false;
+  if (env.ASC_STATS_KEY_P8 && env.ASC_STATS_KEY_ID && env.ASC_STATS_ISSUER_ID) {
+    try { rows = rows.concat(await appleApiReviews(env, a)); appleDone = true; }
+    catch (e) { notes.push(e.status === 403 ? "apple api: 403, the App Store Connect key cannot read reviews" : "apple api: " + e.message); }
+  }
+  if (!appleDone) { try { rows = rows.concat(await appleReviews(a, notes)); } catch (e) { notes.push("apple: " + e.message); } }
   if (env.GOOGLE_PLAY_SA_JSON && env.PLAY_REPORTS_BUCKET) {
     try { rows = rows.concat(await googleReviews(env, a, await googleToken(env))); } catch (e) { notes.push("google: " + e.message); }
   } else notes.push("google: missing_key");

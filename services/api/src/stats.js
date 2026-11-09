@@ -22,7 +22,7 @@ function pemToDer(pem) {
 }
 const day = (offset) => new Date(Date.now() - offset * 864e5).toISOString().slice(0, 10);
 
-async function appleToken(env) {
+export async function appleToken(env) {
   const key = await crypto.subtle.importKey("pkcs8", pemToDer(env.ASC_STATS_KEY_P8), { name: "ECDSA", namedCurve: "P-256" }, false, ["sign"]);
   const now = Math.floor(Date.now() / 1000);
   const head = b64urlJson({ alg: "ES256", kid: env.ASC_STATS_KEY_ID, typ: "JWT" });
