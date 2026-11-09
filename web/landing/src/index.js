@@ -199,10 +199,10 @@ const ROLE_LABELS = { creator: "Creator / Streamer", developer: "Game developer"
 // Admin navigation: one row of product groups, then the pages of the chosen group (founder: flat tabs were confusing).
 const ADMIN_GROUPS = [
   ["Durum", "Hepsi tek bakışta", [["/admin", "Genel durum"]]],
-  ["PromoVote", "Site, X, mağazalar", [["/admin/onay", "Onay kuyruğu"], ["/admin/bekleme", "Bekleme listesi"], ["/admin/visitors", "Ziyaretçiler"], ["/admin/x", "X"], ["/admin/app-store?p=promovote", "App Store"], ["/admin/google-play?p=promovote", "Google Play"]]],
-  ["Hauling Empire", "Oyun ve mağazalar", [["/admin/hauling-empire/oyun", "Oyun"], ["/admin/app-store?p=haulingempire", "App Store"], ["/admin/google-play?p=haulingempire", "Google Play"], ["/admin/unity-ads", "Reklam geliri"], ["/admin/hauling-empire/rapor", "Raporlar"]]],
-  ["Poleris", "Uygulama ve mağazalar", [["/admin/poleris/uygulama", "Uygulama"], ["/admin/app-store?p=poleris", "App Store"], ["/admin/google-play?p=poleris", "Google Play"]]],
-  ["Dovelet", "Uygulama ve mağazalar", [["/admin/lovelet/uygulama", "Uygulama"], ["/admin/app-store?p=lovelet", "App Store"], ["/admin/google-play?p=lovelet", "Google Play"]]],
+  ["PromoVote", "Site, X, mağazalar", [["/admin/onay", "Onay kuyruğu"], ["/admin/bekleme", "Bekleme listesi"], ["/admin/visitors", "Ziyaretçiler"], ["/admin/x", "X"], ["/admin/app-store?p=promovote", "App Store"], ["/admin/google-play?p=promovote", "Google Play"], ["/admin/yorumlar?p=promovote", "Yorumlar"]]],
+  ["Hauling Empire", "Oyun ve mağazalar", [["/admin/hauling-empire/oyun", "Oyun"], ["/admin/app-store?p=haulingempire", "App Store"], ["/admin/google-play?p=haulingempire", "Google Play"], ["/admin/yorumlar?p=haulingempire", "Yorumlar"], ["/admin/unity-ads", "Reklam geliri"], ["/admin/hauling-empire/rapor", "Raporlar"]]],
+  ["Poleris", "Uygulama ve mağazalar", [["/admin/poleris/uygulama", "Uygulama"], ["/admin/app-store?p=poleris", "App Store"], ["/admin/google-play?p=poleris", "Google Play"], ["/admin/yorumlar?p=poleris", "Yorumlar"]]],
+  ["Dovelet", "Uygulama ve mağazalar", [["/admin/lovelet/uygulama", "Uygulama"], ["/admin/app-store?p=lovelet", "App Store"], ["/admin/google-play?p=lovelet", "Google Play"], ["/admin/yorumlar?p=lovelet", "Yorumlar"]]],
   ["Dropolis", "Oyun (yolda)", [["/admin/dropolis/oyun", "Oyun"]]],
 ];
 
@@ -1046,6 +1046,57 @@ ${series.length ? `<h2 style="font-size:20px;margin:28px 0 10px">Günlük ${appl
 
 // Status page (/admin): one card per product with plain green / yellow / red signals, so the founder sees at a glance
 // what works and what is missing. Every source is read in parallel and a failing source only marks its own card.
+// Store reviews (founder request 2026-11-09). Rows come from promovote-db table store_reviews, filled by the API
+// Worker (services/api/src/reviews.js) about every 6 hours per app. Review text is user input: always escaped.
+const REVIEW_PRODUCTS = [["promovote", "PromoVote"], ["haulingempire", "Hauling Empire"], ["poleris", "Poleris"], ["lovelet", "Dovelet"]];
+async function reviewsPage(env, url, prod) {
+  const name = REVIEW_PRODUCTS.find(([k]) => k === prod)[1];
+  const head = `<div class="top"><h1>Mağaza yorumları: ${esc(name)}</h1></div>`;
+  if (!env.APPDB) return head + '<p class="empty">Veri yok</p>';
+  const store = ["app_store", "google_play"].includes(url.searchParams.get("s")) ? url.searchParams.get("s") : "";
+  const star = /^[1-5]$/.test(url.searchParams.get("star") || "") ? Number(url.searchParams.get("star")) : 0;
+  const where = ["product_id = ?"]; const args = [prod];
+  if (store) { where.push("store = ?"); args.push(store); }
+  if (star) { where.push("rating = ?"); args.push(star); }
+  let list, sum, runs;
+  try {
+    [list, sum, runs] = await Promise.all([
+      env.APPDB.prepare(`SELECT store, country, rating, title, body, version, reviewed_at, reply FROM store_reviews WHERE ${where.join(" AND ")} ORDER BY reviewed_at DESC LIMIT 300`).bind(...args).all(),
+      env.APPDB.prepare("SELECT store, COUNT(*) n, AVG(rating) avg, SUM(reviewed_at >= ?) n7, SUM(rating <= 2 AND reviewed_at >= ?) low7 FROM store_reviews WHERE product_id = ? GROUP BY store").bind(new Date(Date.now() - 7 * 864e5).toISOString(), new Date(Date.now() - 7 * 864e5).toISOString(), prod).all(),
+      env.APPDB.prepare("SELECT name, ran_at FROM job_runs WHERE name IN (?, ?)").bind("reviews_" + prod, "reviews_note_" + prod).all(),
+    ]);
+  } catch { return head + '<p class="empty">Yorumlar henüz okunamadı. İlk toplama birkaç saat içinde yapılır.</p>'; }
+  const S = Object.fromEntries((sum.results || []).map((r) => [r.store, r]));
+  const all = (k) => (sum.results || []).reduce((a, r) => a + (Number(r[k]) || 0), 0);
+  const total = all("n");
+  const avgAll = total ? (sum.results || []).reduce((a, r) => a + r.avg * r.n, 0) / total : null;
+  const run = Object.fromEntries((runs.results || []).map((r) => [r.name, r.ran_at]));
+  const stars = (n) => `<span style="color:var(--lime);letter-spacing:1px">${"★".repeat(n)}</span><span class="dim" style="letter-spacing:1px">${"★".repeat(5 - n)}</span>`;
+  const avgTxt = (r) => (r && r.n ? `${Number(r.avg).toFixed(1)} <span class="dim" style="font-size:13px;font-weight:500">(${r.n})</span>` : '<span class="dim" style="font-size:16px">yok</span>');
+  const tiles = tilesHtml([
+    ["Toplam yorum", total],
+    ["Ortalama puan", avgAll ? avgAll.toFixed(1) : '<span class="dim" style="font-size:16px">yok</span>'],
+    ["App Store ortalaması", avgTxt(S.app_store)],
+    ["Google Play ortalaması", avgTxt(S.google_play)],
+    ["Son 7 gün yeni yorum", all("n7")],
+    ["Son 7 gün 1 ve 2 yıldız", all("low7") ? `<span style="color:#facc15">${all("low7")}</span>` : "0"],
+  ]);
+  const q = (o) => { const u = new URLSearchParams({ p: prod }); const v = { s: store, star, ...o }; if (v.s) u.set("s", v.s); if (v.star) u.set("star", v.star); return "/admin/yorumlar?" + u; };
+  const pill = (href, on, label) => `<a class="tab${on ? " on" : ""}" href="${esc(href)}"${on ? ' aria-current="true"' : ""}>${esc(label)}</a>`;
+  const filters = `<div class="tabs" style="margin:18px 0 8px">${pill(q({ s: "" }), !store, "Hepsi")}${pill(q({ s: "app_store" }), store === "app_store", "App Store")}${pill(q({ s: "google_play" }), store === "google_play", "Google Play")}</div>
+<div class="tabs" style="margin:0 0 18px">${pill(q({ star: 0 }), !star, "Bütün yıldızlar")}${[5, 4, 3, 2, 1].map((n) => pill(q({ star: n }), star === n, `${n} yıldız`)).join("")}</div>`;
+  const STORE = { app_store: "App Store", google_play: "Google Play" };
+  const rows = (list.results || []).map((r) => `<section class="st-card" style="padding:14px 16px${r.rating <= 2 ? ";border-color:rgba(250,204,21,.5)" : ""}">
+  <div class="st-head" style="margin:0 0 6px"><div>${stars(r.rating)} ${r.title ? `<b style="margin-left:6px">${esc(r.title)}</b>` : ""}</div><span class="chip chip-${r.store === "app_store" ? "g" : "y"}" style="background:var(--surface-2);color:var(--muted)">${esc(STORE[r.store] || r.store)}</span></div>
+  ${r.body ? `<p style="margin:0 0 8px;white-space:pre-wrap;line-height:1.5">${esc(r.body)}</p>` : '<p class="dim" style="margin:0 0 8px">Yazı yok, sadece puan.</p>'}
+  ${r.reply ? `<p style="margin:0 0 8px;padding:8px 12px;border-left:3px solid var(--lime);background:var(--surface);border-radius:0 8px 8px 0;white-space:pre-wrap"><b>Senin cevabın:</b> ${esc(r.reply)}</p>` : ""}
+  <p class="dim" style="margin:0;font-size:13px">${esc(String(r.reviewed_at).slice(0, 16).replace("T", " "))} UTC · ${r.store === "app_store" ? "Ülke" : "Dil"} ${esc(String(r.country || "?").toUpperCase())}${r.version ? ` · Sürüm ${esc(r.version)}` : ""}</p>
+</section>`).join("");
+  const note = run["reviews_note_" + prod] && !/^ok/.test(run["reviews_note_" + prod]) ? `<div class="warnbar">Son toplama notu: ${esc(run["reviews_note_" + prod])}</div>` : "";
+  return head + `<p class="countries" style="margin-top:-12px">App Store: ${APPLE_REVIEW_COUNTRIES} ülkelerinden en yeni yorumlar. Google Play: bütün yorumlar (aylık rapor dosyası). Yaklaşık 6 saatte bir yenilenir. Son toplama: ${run["reviews_" + prod] ? esc(String(run["reviews_" + prod]).slice(0, 16).replace("T", " ")) + " UTC" : "henüz yok"}. Cevap yazmak için mağaza panelini kullan.</p>${note}${tiles}${filters}${rows ? `<div style="display:grid;gap:10px">${rows}</div>` : '<p class="empty">Bu seçimde yorum yok.</p>'}`;
+}
+const APPLE_REVIEW_COUNTRIES = "ABD, Türkiye, İngiltere, Kanada, Avustralya, Almanya, Fransa, Meksika, Brezilya, İspanya, İtalya, Hollanda";
+
 async function statusPage(env) {
   const today = new Date().toISOString().slice(0, 10);
   const chip = (lv, t) => `<span class="chip chip-${lv}">${esc(t)}</span>`;
@@ -1129,6 +1180,19 @@ async function statusPage(env) {
       row("Son gün aktif (iOS + Android)", last ? (fnum(last.dau_ios) || 0) + (fnum(last.dau_android) || 0) : '<span class="dim">veri yok</span>'),
       row("Son gün yükleme", last && fnum(last.installs) !== null ? fnum(last.installs) : '<span class="dim">veri yok</span>'),
     ], !ops ? feedWhy(pol, "Poleris", "POLERIS_STATS_KEY") : [pol.staleMin != null ? `Canlı veri şu an gelmedi, ${pol.staleMin} dk önceki veri gösteriliyor. Neden: ${feedWhy(pol, "Poleris", "POLERIS_STATS_KEY")}` : "", missing.length ? `Poleris tarafı henüz göndermiyor: <b>${missing.map(esc).join(", ")}</b>.` : ""].filter(Boolean).join("<br>")));
+  }
+
+  // Store reviews: one card for all apps (founder request 2026-11-09).
+  if (app) {
+    const since = new Date(Date.now() - 7 * 864e5).toISOString();
+    const rv = await safe(app.prepare("SELECT product_id p, COUNT(*) n, AVG(rating) avg, SUM(reviewed_at >= ?) n7, SUM(rating <= 2 AND reviewed_at >= ?) low7 FROM store_reviews GROUP BY product_id").bind(since, since).all());
+    const by = Object.fromEntries((rv?.results || []).map((r) => [r.p, r]));
+    const low = (rv?.results || []).reduce((a, r) => a + (Number(r.low7) || 0), 0);
+    const lv = !rv ? "y" : low ? "y" : "g";
+    cards.push(card("Mağaza yorumları", "/admin/yorumlar?p=haulingempire", lv, !rv ? "Henüz yok" : low ? "Kötü yorum var" : "İyi", REVIEW_PRODUCTS.map(([k, n]) => {
+      const r = by[k];
+      return row(n, r ? `<a href="/admin/yorumlar?p=${k}" style="color:inherit">${Number(r.avg).toFixed(1)} ★ (${r.n})${r.n7 ? `, 7 günde +${r.n7}` : ""}${r.low7 ? ` <span style="color:#facc15">${r.low7} kötü</span>` : ""}</a>` : '<span class="dim">yorum yok</span>');
+    }), !rv ? "Yorumlar henüz toplanmadı. İlk toplama birkaç saat içinde yapılır." : low ? `Son 7 günde ${low} tane 1 veya 2 yıldızlı yorum geldi. Okuyup mağaza panelinden cevap ver.` : ""));
   }
 
   return `<div class="top"><h1>Genel durum</h1></div>
@@ -1318,6 +1382,11 @@ ${tilesHtml([["Paylaşılan", sum.posted?.n || 0], ["Sırada", sum.queued?.n || 
     return adminPage(path, "Unity Ads", lp.html ?? lp.note + (await unityPage(env, path, range)));
   }
 
+  if (path === "/admin/yorumlar") {
+    const p0 = url.searchParams.get("p");
+    const prod = REVIEW_PRODUCTS.some(([k]) => k === p0) ? p0 : "haulingempire";
+    return adminPage(`${path}?p=${prod}`, "Mağaza yorumları", await reviewsPage(env, url, prod));
+  }
   if (path === "/admin/dropolis/oyun") return adminPage(path, "Dropolis: oyun", await dropolisPage(env));
   if (path === "/admin/lovelet/uygulama") {
     const range = rangeOf(url);

@@ -3,6 +3,7 @@
 // Payments (version 2) arrive from Apple App Store Server Notifications and Google Play RTDN (Pub/Sub push).
 import { Hono } from "hono";
 import { collectStoreStats } from "./stats.js";
+import { collectReviews } from "./reviews.js";
 import { cors } from "hono/cors";
 import { createAuth } from "./auth.js";
 
@@ -1784,6 +1785,7 @@ export default {
       : event.cron === "0 * * * *"
         ? postDueSocial(env).catch((e) => console.error("social_failed", e?.message))
           .then(() => collectStoreStats(env)).catch((e) => console.error("store_stats_failed", e?.message))
+          .then(() => collectReviews(env)).catch((e) => console.error("store_reviews_failed", e?.message))
         : resolveCalls(env.DB).catch((e) => console.error("resolve_calls_failed", e?.message))
           .then(() => postDueSocial(env, 5 * 60 * 1000)).catch((e) => console.error("social_failed", e?.message))
           .then(() => refreshSocialStats(env)).catch((e) => console.error("social_stats_failed", e?.message))

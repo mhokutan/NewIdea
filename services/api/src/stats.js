@@ -3,7 +3,7 @@
 // Apple: Sales and Trends daily SUMMARY report (App Store Connect API key with Sales and Reports, secrets ASC_STATS_*).
 // Google: monthly overview CSVs in the Play reports bucket (service account GOOGLE_PLAY_SA_JSON, bucket PLAY_REPORTS_BUCKET).
 
-const APPS = [
+export const APPS = [
   { product: "promovote", apple: "6819894584", play: "com.miapera.promovote" },
   { product: "poleris", apple: "6792844860", play: "com.miapera.poleris" },
   { product: "haulingempire", apple: "6815224121", play: "com.mhokutan.haulingempire" },
@@ -31,7 +31,7 @@ async function appleToken(env) {
   return `${head}.${body}.${b64url(sig)}`;
 }
 
-async function googleToken(env) {
+export async function googleToken(env) {
   const sa = JSON.parse(env.GOOGLE_PLAY_SA_JSON);
   const key = await crypto.subtle.importKey("pkcs8", pemToDer(sa.private_key), { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" }, false, ["sign"]);
   const now = Math.floor(Date.now() / 1000);
