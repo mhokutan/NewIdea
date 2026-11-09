@@ -1093,7 +1093,7 @@ async function reviewsPage(env, url, prod) {
   <p class="dim" style="margin:0;font-size:13px">${esc(String(r.reviewed_at).slice(0, 16).replace("T", " "))} UTC · ${r.store === "app_store" ? "Ülke" : "Dil"} ${esc(String(r.country || "?").toUpperCase())}${r.version ? ` · Sürüm ${esc(r.version)}` : ""}</p>
 </section>`).join("");
   const note = run["reviews_note_" + prod] && !/^ok/.test(run["reviews_note_" + prod]) ? `<div class="warnbar">Son toplama notu: ${esc(run["reviews_note_" + prod])}</div>` : "";
-  return head + `<p class="countries" style="margin-top:-12px">App Store: ${APPLE_REVIEW_COUNTRIES} ülkelerinden en yeni yorumlar. Google Play: bütün yorumlar (aylık rapor dosyası). Yaklaşık 6 saatte bir yenilenir. Son toplama: ${run["reviews_" + prod] ? esc(String(run["reviews_" + prod]).slice(0, 16).replace("T", " ")) + " UTC" : "henüz yok"}. Cevap yazmak için mağaza panelini kullan.</p>${note}${tiles}${filters}${rows ? `<div style="display:grid;gap:10px">${rows}</div>` : '<p class="empty">Bu seçimde yorum yok.</p>'}`;
+  return head + `<p class="countries" style="margin-top:-12px">App Store ve Google Play: bütün ülkelerden yorumlar ve senin cevapların. Yaklaşık 6 saatte bir yenilenir. Son toplama: ${run["reviews_" + prod] ? esc(String(run["reviews_" + prod]).slice(0, 16).replace("T", " ")) + " UTC" : "henüz yok"}. Cevap yazmak için mağaza panelini kullan.</p>${note}${tiles}${filters}${rows ? `<div style="display:grid;gap:10px">${rows}</div>` : '<p class="empty">Bu seçimde yorum yok.</p>'}`;
 }
 const APPLE_REVIEW_COUNTRIES = "ABD, Türkiye, İngiltere, Kanada, Avustralya, Almanya, Fransa, Meksika, Brezilya, İspanya, İtalya, Hollanda";
 
