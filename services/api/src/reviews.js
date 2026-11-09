@@ -32,13 +32,17 @@ const decode = (buf) => {
 };
 const clip = (s, n) => (s ? String(s).slice(0, n) : null);
 
-async function appleReviews(app) {
+async function appleReviews(app, notes) {
   const out = [];
+  const bad = {};
   for (const cc of APPLE_COUNTRIES) {
-    const r = await fetch(`https://itunes.apple.com/${cc}/rss/customerreviews/id=${app.apple}/sortby=mostrecent/json`, { signal: AbortSignal.timeout(10000) });
-    if (!r.ok) continue;
+    // Apple answers an empty or refused feed to requests without a normal client header (2026-11-09: 0 rows from the Worker).
+    const r = await fetch(`https://itunes.apple.com/${cc}/rss/customerreviews/page=1/id=${app.apple}/sortby=mostrecent/json`, {
+      headers: { "User-Agent": "Mozilla/5.0 (compatible; PromoVoteAdmin/1.0)", Accept: "application/json" }, signal: AbortSignal.timeout(10000) });
+    if (!r.ok) { bad[r.status] = (bad[r.status] || 0) + 1; continue; }
     const j = await r.json().catch(() => null);
-    let e = j?.feed?.entry; if (!e) continue; if (!Array.isArray(e)) e = [e];
+    if (!j?.feed) { bad.not_json = (bad.not_json || 0) + 1; continue; }
+    let e = j.feed.entry; if (!e) continue; if (!Array.isArray(e)) e = [e];
     for (const x of e) {
       const rating = Number(x?.["im:rating"]?.label);
       const id = x?.id?.label;
@@ -47,6 +51,7 @@ async function appleReviews(app) {
         version: clip(x?.["im:version"]?.label, 40), at: new Date(x?.updated?.label || Date.now()).toISOString(), reply: null });
     }
   }
+  if (Object.keys(bad).length) notes.push("apple: " + Object.entries(bad).map(([k, v]) => `${v}x ${k}`).join(", "));
   return out;
 }
 
@@ -84,7 +89,7 @@ export async function collectReviews(env) {
   const a = app.a;
   const notes = [];
   let rows = [];
-  try { rows = rows.concat(await appleReviews(a)); } catch (e) { notes.push("apple: " + e.message); }
+  try { rows = rows.concat(await appleReviews(a, notes)); } catch (e) { notes.push("apple: " + e.message); }
   if (env.GOOGLE_PLAY_SA_JSON && env.PLAY_REPORTS_BUCKET) {
     try { rows = rows.concat(await googleReviews(env, a, await googleToken(env))); } catch (e) { notes.push("google: " + e.message); }
   } else notes.push("google: missing_key");
@@ -94,7 +99,7 @@ export async function collectReviews(env) {
     "on conflict (store, review_id) do update set rating = excluded.rating, title = excluded.title, body = excluded.body, version = excluded.version, reviewed_at = excluded.reviewed_at, reply = excluded.reply, collected_at = excluded.collected_at",
   ).bind(r.store, r.id, a.product, r.country, r.rating, r.title, r.body, r.version, r.at, r.reply, now));
   stmts.push(db.prepare("insert into job_runs (name, ran_at) values (?, ?) on conflict (name) do update set ran_at = excluded.ran_at").bind("reviews_" + a.product, now));
-  stmts.push(db.prepare("insert into job_runs (name, ran_at) values (?, ?) on conflict (name) do update set ran_at = excluded.ran_at").bind("reviews_note_" + a.product, notes.join(" | ").slice(0, 300) || `ok ${rows.length}`));
+  stmts.push(db.prepare("insert into job_runs (name, ran_at) values (?, ?) on conflict (name) do update set ran_at = excluded.ran_at").bind("reviews_note_" + a.product, (notes.length ? notes.join(" | ") + ` (${rows.length} rows)` : `ok ${rows.length}`).slice(0, 300)));
   for (let i = 0; i < stmts.length; i += 50) await db.batch(stmts.slice(i, i + 50));
   if (notes.length) console.error("store_reviews", a.product, notes.join(" | "));
 }
