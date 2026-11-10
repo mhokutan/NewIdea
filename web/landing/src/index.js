@@ -1034,7 +1034,8 @@ async function storeMetricsPage(env, path, prod, name, apple, range, feed = null
     ? dates.map((d) => `<tr><td>${esc(d)}</td>${cols.map(([k]) => `<td>${v(byDate[d][k])}</td>`).join("")}</tr>`).join("")
     : `<tr><td colspan="${cols.length + 1}" class="dim center">Henüz veri yok.</td></tr>`;
   const note = apple ? "Apple satış raporu her gün güncellenir, 1 gün gecikmeli gelir." : "Google rapor dosyaları 2 ile 4 gün gecikmeli gelir; yeni bağlanan hesapta ilk veri 24 saat sürebilir.";
-  const status = runs.store_stats_note && runs.store_stats_note !== "ok" ? ` Son toplama notu: ${esc(runs.store_stats_note)}.` : "";
+  const sn = splitStoreNote(runs.store_stats_note);
+  const status = (sn.warn ? ` Son toplama notu: ${esc(sn.warn)}.` : "") + (!apple && sn.quiet.includes(prod) ? ` ${esc(quietLine([prod]))}` : "");
   return `<div class="top"><h1>${store}: ${esc(name)}</h1></div>
 <p class="countries">${note} Son toplama: ${esc(String(runs.store_stats || "henüz yok").slice(0, 16).replace("T", " "))} UTC.${status}</p>
 ${rangePills(path, range, `&p=${prod}`)}
@@ -1097,6 +1098,20 @@ async function reviewsPage(env, url, prod) {
 }
 const APPLE_REVIEW_COUNTRIES = "ABD, Türkiye, İngiltere, Kanada, Avustralya, Almanya, Fransa, Meksika, Brezilya, İspanya, İtalya, Hollanda";
 
+// The store stats note (job_runs.store_stats_note) mixes real problems with "Google has no report for this app yet",
+// which only means the app has had no Google Play downloads (Google makes no file then). Split them so the second
+// shows as a calm line, not as an error (founder 2026-11-10).
+const STORE_NAMES = { promovote: "PromoVote", poleris: "Poleris", haulingempire: "Hauling Empire", lovelet: "Dovelet" };
+function splitStoreNote(raw) {
+  const quiet = [], warn = [];
+  for (const part of String(raw || "").split(" | ").map((x) => x.trim()).filter((x) => x && x !== "ok")) {
+    const m = part.match(/^google: no installs report for (\w+) this month \(latest: none\)$/);
+    if (m) quiet.push(m[1]); else warn.push(part);
+  }
+  return { quiet, warn: warn.join(" | ") };
+}
+const quietLine = (ids) => ids.length ? `Google Play: ${ids.map((k) => STORE_NAMES[k] || k).join(" ve ")} için henüz indirme yok. Google ilk indirmeden sonra rapor yapar, sayılar o zaman gelir.` : "";
+
 async function statusPage(env) {
   const today = new Date().toISOString().slice(0, 10);
   const chip = (lv, t) => `<span class="chip chip-${lv}">${esc(t)}</span>`;
@@ -1131,7 +1146,8 @@ async function statusPage(env) {
     if (xs?.failed) problems.push(`Son 3 günde ${xs.failed} X postu gönderilemedi.`);
     const waiting = rq?.ok ? (rq.data.items || []).length : null;
     if (waiting) problems.push(`${waiting} creator videosu onay bekliyor. Onay kuyruğuna bak.`);
-    const note = store?.note && store.note !== "ok" ? `Mağaza raporu notu: ${esc(store.note)}` : "";
+    const sn = splitStoreNote(store?.note);
+    const note = [sn.warn ? `Mağaza raporu notu: ${esc(sn.warn)}` : "", sn.quiet.length ? `<span class="dim">${esc(quietLine(sn.quiet))}</span>` : ""].filter(Boolean).join("<br>");
     const lv = problems.length ? (xs && !xs.queued ? "r" : "y") : "g";
     cards.push(card("PromoVote", "/admin/bekleme", lv, lv === "g" ? "Çalışıyor" : "Dikkat", [
       row("Onay bekleyen video", waiting === null ? '<span class="dim">okunamadı</span>' : waiting ? `<a href="/admin/onay" style="color:#facc15">${waiting} video</a>` : "0"),
