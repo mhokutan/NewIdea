@@ -51,13 +51,15 @@ export function PromoReel({ promo, active, height, muted, onSeen, bottomInset = 
   const [gift, setGift] = useState(false);
   const watched = useRef(0);
   const reported = useRef(false);
+  const finished = useRef(false);
+  const lastTime = useRef(0);
 
   // expo-video players are configured by setting properties (see expo-video docs).
   // eslint-disable-next-line react-hooks/immutability
   useEffect(() => { player.muted = muted; }, [muted, player]);
   useEffect(() => {
     if (active && !paused) player.play(); else player.pause();
-    if (!active) { watched.current = 0; reported.current = false; }
+    if (!active) { watched.current = 0; reported.current = false; finished.current = false; lastTime.current = 0; }
   }, [active, paused, player]);
 
   // Loading and recovery (founder request 2026-10-09): a spinner while the active video is not playing yet, and a
@@ -88,14 +90,23 @@ export function PromoReel({ promo, active, height, muted, onSeen, bottomInset = 
     return () => clearTimeout(id);
   }, [loading]);
 
-  // A view counts after 3 seconds on screen, once per promo per session.
+  // A view counts after 3 seconds on screen, once per promo per session. A second report marks the view as finished
+  // when the video reaches its end (near the last half second, or it loops back to the start after playing most of
+  // it). Before 2026-11-10 only the 3 s report was sent, so "finished" was always 0 in creator stats.
   useEventListener(player, 'timeUpdate', ({ currentTime }) => {
     if (!active) return;
+    const dur = player.duration || 0;
+    const looped = lastTime.current > 0 && currentTime + 1 < lastTime.current && dur > 0 && lastTime.current >= dur * 0.8;
+    lastTime.current = currentTime;
     watched.current = Math.max(watched.current, currentTime);
     if (!reported.current && watched.current >= 3) {
       reported.current = true;
       onSeen(promo.id);
       api.view(promo.id, Math.floor(watched.current), false).catch(() => {});
+    }
+    if (reported.current && !finished.current && dur > 0 && (looped || currentTime >= dur - 0.6)) {
+      finished.current = true;
+      api.view(promo.id, Math.ceil(dur), true).catch(() => {});
     }
   });
 

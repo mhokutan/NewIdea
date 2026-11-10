@@ -134,8 +134,11 @@ export async function collectStoreStats(env) {
       const token = await googleToken(env);
       const months = [day(0).slice(0, 7).replace("-", "")];
       if (Number(day(0).slice(8, 10)) <= 4) months.push(day(6).slice(0, 7).replace("-", ""));
+      const noFile = [];
       for (const app of APPS) for (const ym of months) {
         const inst = await playFile(token, env.PLAY_REPORTS_BUCKET, `stats/installs/installs_${app.play}_${ym}_overview.csv`);
+        // Google writes no report for an app it has no stats for yet; say so instead of skipping in silence.
+        if (!inst && ym === months[0]) noFile.push(app.product);
         for (const r of inst || []) {
           const d = r["date"]; if (!/^\d{4}-\d{2}-\d{2}$/.test(d || "")) continue;
           const add = (metric, v) => { if (num(v) !== null) rows.push([app.product, "google_play", d, metric, num(v)]); };
@@ -155,6 +158,18 @@ export async function collectStoreStats(env) {
           if (num(r["daily crashes"]) !== null) rows.push([app.product, "google_play", d, "crashes", num(r["daily crashes"])]);
           if (num(r["daily anrs"]) !== null) rows.push([app.product, "google_play", d, "anrs", num(r["daily anrs"])]);
         }
+      }
+      for (const prod of noFile) {
+        // Which installs reports exist at all for this app (none = Google has not made any for it, or the
+        // service account cannot see this app).
+        const app = APPS.find((a) => a.product === prod);
+        let seen = "?";
+        try {
+          const r = await fetch(`https://storage.googleapis.com/storage/v1/b/${env.PLAY_REPORTS_BUCKET}/o?prefix=${encodeURIComponent(`stats/installs/installs_${app.play}_`)}&fields=items(name)`, { headers: { Authorization: `Bearer ${token}` } });
+          const j = r.ok ? await r.json() : null;
+          seen = !r.ok ? `list ${r.status}` : (j.items || []).map((x) => x.name.match(/_(\d{6})_/)?.[1]).filter(Boolean).sort().pop() || "none";
+        } catch { /* keep "?" */ }
+        notes.push(`google: no installs report for ${prod} this month (latest: ${seen})`);
       }
     } catch (e) { notes.push("google: " + e.message); }
   } else notes.push("google: missing_key");
