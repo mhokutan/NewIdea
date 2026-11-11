@@ -712,9 +712,13 @@ function playersSection(players) {
     : '<tr data-empty="1"><td colspan="6" class="dim center">Şu an kimse oyunda değil.</td></tr>';
   const day = (iso) => (iso ? esc(String(iso).slice(0, 16).replace("T", " ")) : "-");
   const hasPlay = rec.some((p) => fnum(p.playtime_min) !== null); // total minutes played in the 7 days (founder request 2026-10-18)
+  // Active days, sessions and playtime in this list count only the last 7 days (a 7 x 24 h window touches at most
+  // 8 dates, so the column never goes above 8). All time totals show when the feed sends them (founder 2026-11-11).
+  const hasTot = rec.some((p) => fnum(p.days_active_total) !== null || fnum(p.sessions_total) !== null || fnum(p.playtime_min_total) !== null);
+  const mins = (v) => (fnum(v) === null ? "-" : fnum(v) >= 60 ? `${Math.floor(fnum(v) / 60)} sa ${Math.round(fnum(v) % 60)} dk` : `${Math.round(fnum(v))} dk`);
   const recRows = rec.length
-    ? rec.map((p) => `<tr data-search="${esc(`${p.company || ""} ${p.username || ""}`.toLowerCase())}"><td>${dash(p.company)}</td><td>${dash(p.username)}</td><td>${dash(PLAT[p.platform] || p.platform)}</td><td>${reg(p.region)}</td><td data-v="${Date.parse(p.first_seen || "") || 0}">${day(p.first_seen)}</td><td data-v="${Date.parse(p.last_seen || "") || 0}">${day(p.last_seen)} <span class="dim">(${esc(ago(p.last_seen))})</span></td><td>${fnum(p.days_active) ?? "-"}</td><td>${fnum(p.sessions) ?? "-"}</td>${hasPlay ? `<td data-v="${fnum(p.playtime_min) ?? 0}">${fnum(p.playtime_min) === null ? "-" : fnum(p.playtime_min) >= 60 ? `${Math.floor(fnum(p.playtime_min) / 60)} sa ${Math.round(fnum(p.playtime_min) % 60)} dk` : `${Math.round(fnum(p.playtime_min))} dk`}</td>` : ""}</tr>`).join("")
-    : `<tr data-empty="1"><td colspan="${hasPlay ? 9 : 8}" class="dim center">Son 7 günde oyuncu yok.</td></tr>`;
+    ? rec.map((p) => `<tr data-search="${esc(`${p.company || ""} ${p.username || ""}`.toLowerCase())}"><td>${dash(p.company)}</td><td>${dash(p.username)}</td><td>${dash(PLAT[p.platform] || p.platform)}</td><td>${reg(p.region)}</td><td data-v="${Date.parse(p.first_seen || "") || 0}">${day(p.first_seen)}</td><td data-v="${Date.parse(p.last_seen || "") || 0}">${day(p.last_seen)} <span class="dim">(${esc(ago(p.last_seen))})</span></td><td>${fnum(p.days_active) ?? "-"}</td><td>${fnum(p.sessions) ?? "-"}</td>${hasPlay ? `<td data-v="${fnum(p.playtime_min) ?? 0}">${mins(p.playtime_min)}</td>` : ""}${hasTot ? `<td>${fnum(p.days_active_total) ?? "-"}</td><td>${fnum(p.sessions_total) ?? "-"}</td><td data-v="${fnum(p.playtime_min_total) ?? 0}">${mins(p.playtime_min_total)}</td>` : ""}</tr>`).join("")
+    : `<tr data-empty="1"><td colspan="${(hasPlay ? 9 : 8) + (hasTot ? 3 : 0)}" class="dim center">Son 7 günde oyuncu yok.</td></tr>`;
   // Active players per region (founder request 2026-10-21: the game has 4 regions). From the same player lists:
   // online now, last seen in 24 h, and the whole 7 day list (not cut to 200 like the table below).
   const all7 = Array.isArray(players.recent_7d) ? players.recent_7d : [];
@@ -732,7 +736,7 @@ function playersSection(players) {
     : "";
   return `${regHtml}${sec("Şu an oyunda")}<div class="tablewrap"><table id="tbl-online" data-sortable data-collapse="10"><thead><tr><th>Şirket</th><th>Kullanıcı</th><th>Platform</th><th>Bölge</th><th>Mod</th><th>Son görülme</th></tr></thead><tbody>${onRows}</tbody></table></div>
 ${sec(`Son 7 gün oyuncular (${total7 ?? (all7.length >= 200 ? "200+" : all7.length)})`)}${total7 == null && all7.length >= 200 ? '<p class="countries">Oyun en fazla 200 oyuncuyu listeliyor; gerçek sayı daha fazla. Tablo ilk 200 oyuncuyu gösteriyor.</p>' : ""}<input class="tsearch" type="search" placeholder="Şirket veya kullanıcı adı ara" aria-label="Şirket veya kullanıcı adı ara" data-filter="tbl-recent">
-<div class="tablewrap"><table id="tbl-recent" data-sortable data-collapse="10"><thead><tr><th>Şirket</th><th>Kullanıcı</th><th>Platform</th><th>Bölge</th><th>İlk görülme</th><th>Son görülme</th><th>Aktif gün</th><th>Oturum</th>${hasPlay ? "<th>Oyun süresi</th>" : ""}</tr></thead><tbody>${recRows}</tbody></table></div>`;
+<div class="tablewrap"><table id="tbl-recent" data-sortable data-collapse="10"><thead><tr><th>Şirket</th><th>Kullanıcı</th><th>Platform</th><th>Bölge</th><th>İlk görülme</th><th>Son görülme</th><th>Aktif gün (7 günde)</th><th>Oturum (7 günde)</th>${hasPlay ? "<th>Oyun süresi (7 günde)</th>" : ""}${hasTot ? "<th>Toplam aktif gün</th><th>Toplam oturum</th><th>Toplam oyun süresi</th>" : ""}</tr></thead><tbody>${recRows}</tbody></table></div>`;
 }
 
 // Download sources (store feed) and top search terms, for the Hauling Empire store pages.
