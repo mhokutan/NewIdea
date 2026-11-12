@@ -49,10 +49,13 @@ const q = (s) => (s === null ? "null" : `'${String(s).replace(/'/g, "''")}'`);
 const AGENTS = [
   ["ceo", "CEO", "working", "Haftalık planı güncelliyor", null],
   ["hauling-dev", "Hauling Geliştirici", "waiting_owner", "2.5.2 derlemesi hazır", "2.5.2 iOS ve Android derlemesi için evet"],
-  ["empire-desktop", "Masaüstü (derleme, mağaza)", "idle", "Mağaza testleri bitti", null],
-  ["robo-works", "Robo Works", "blocked", "Android manifest kontrolü takıldı", null],
-  ["promovote", "PromoVote", "working", "Ofis sayfasını kuruyor", null],
-  ["poleris", "Poleris", "offline", null, null],
+  ["hauling-desktop", "Hauling Masaüstü", "idle", "Mağaza testleri bitti", null],
+  ["dropolis", "Dropolis", "blocked", "Android manifest kontrolü takıldı", null],
+  ["promovote-dev", "PromoVote Geliştirici", "working", "Ofis sayfasını kuruyor", null],
+  ["dovelet-dev", "Dovelet Geliştirici", "idle", "Play metinleri güncellendi", null],
+  ["macmini-test", "Mac mini Test", "offline", null, null],
+  ["analyst", "Analist", "working", "Haftalık oyuncu raporu", null],
+  ["poleris", "Poleris", "working", "Yeni sürüm notları", null],
 ];
 
 before(async () => {
@@ -103,7 +106,7 @@ test("API read needs the admin token", async () => {
   const r = await get(API + "/v1/admin/office", { headers: { "X-Admin-Token": TOKEN } });
   assert.equal(r.status, 200);
   const j = await r.json();
-  assert.equal(j.agents.length, 6);
+  assert.equal(j.agents.length, 9);
   assert.equal(j.agents[0].id, "ceo");
 });
 
@@ -112,7 +115,7 @@ test("site read needs the admin login", async () => {
   assert.equal((await get(WEB + "/admin/office.json", { headers: { Authorization: "Basic " + Buffer.from("admin:wrong").toString("base64") } })).status, 401);
   const r = await get(WEB + "/admin/office.json", { headers: { Authorization: AUTH } });
   assert.equal(r.status, 200);
-  assert.equal((await r.json()).agents.length, 6);
+  assert.equal((await r.json()).agents.length, 9);
 });
 
 test("page renders list, 3D canvas and panel; screenshots", async () => {
@@ -130,9 +133,9 @@ test("page renders list, 3D canvas and panel; screenshots", async () => {
       page.on("pageerror", (e) => errors.push(e.message));
       await page.goto(WEB + "/admin/office", { waitUntil: "networkidle" });
       assert.match(await page.locator("#of-ask").innerText(), /Senden beklenen: 1 evet/);
-      assert.equal(await page.locator("#of-list [data-id]").count(), 6);
-      await page.waitForSelector("#of-stage canvas", { timeout: 15000 });
-      await page.waitForTimeout(800);
+      assert.equal(await page.locator("#of-list [data-id]").count(), 9);
+      await page.waitForSelector('#of-stage[data-ready="1"] canvas', { timeout: 30000 });
+      await page.waitForTimeout(1500);
       const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
       assert.ok(overflow <= 0, `${name}: no horizontal scroll (${overflow}px)`);
       await page.locator("#of-stage").scrollIntoViewIfNeeded();

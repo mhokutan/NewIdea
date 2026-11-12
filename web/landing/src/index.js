@@ -191,7 +191,11 @@ async function handleDuel(request, env) {
   return ok;
 }
 
-const ADMIN_HEADERS = { "Cache-Control": "no-store", "X-Robots-Tag": "noindex, nofollow", ...SECURITY_HEADERS };
+// Admin pages may read blob: URLs: the office page's model loader turns textures inside .glb files into blob: images.
+const ADMIN_CSP = SECURITY_HEADERS["Content-Security-Policy"]
+  .replace("img-src 'self' data:", "img-src 'self' data: blob:")
+  .replace("connect-src 'self'", "connect-src 'self' blob:");
+const ADMIN_HEADERS = { "Cache-Control": "no-store", "X-Robots-Tag": "noindex, nofollow", ...SECURITY_HEADERS, "Content-Security-Policy": ADMIN_CSP };
 const ROLE_LABELS = { creator: "Creator / Streamer", developer: "Game developer", brand: "Brand / Business", viewer: "Viewer", api: "API early access" };
 
 // Admin is split into pages (founder request 2026-10-12): waitlist, visitors, X, App Store, Google Play.
@@ -1146,7 +1150,7 @@ ${a.last_action ? `<p style="margin:0 0 6px">${esc(a.last_action)}</p>` : ""}${a
   return `<style>
 .of-top{display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap;margin:-8px 0 14px}
 .of-ask{font-size:17px;font-weight:700}.of-ask b{color:var(--lime)}
-.of-stage{position:relative;height:min(62vh,560px);min-height:300px;border-radius:18px;overflow:hidden;background:#111114;border:1px solid var(--line);display:none}
+.of-stage{position:relative;height:min(72vh,680px);min-height:320px;border-radius:18px;overflow:hidden;background:#f3efe8;border:1px solid var(--line);display:none}
 .of-stage.on{display:block}.of-stage canvas{display:block;width:100%;height:100%;touch-action:manipulation}
 .of-panel{position:absolute;top:12px;right:12px;width:min(320px,calc(100% - 24px));max-height:calc(100% - 24px);overflow:auto;padding:14px 16px;border-radius:14px;background:rgba(16,16,20,.94);border:1px solid var(--line);display:none}
 .of-panel.on{display:block}.of-panel h2{font-size:18px;margin:0 0 8px}.of-panel dl{margin:0;display:grid;gap:8px}.of-panel dt{color:var(--muted);font-size:13px}.of-panel dd{margin:0;overflow-wrap:anywhere}
@@ -1156,7 +1160,7 @@ ${a.last_action ? `<p style="margin:0 0 6px">${esc(a.last_action)}</p>` : ""}${a
 .of-need{margin:0 0 6px;padding:8px 10px;border-radius:10px;background:rgba(255,214,10,.1);color:#ffe066}
 .chip-n{background:var(--surface-2);color:var(--muted)}
 .of-legend{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0 0;font-size:13px;color:var(--muted)}.of-legend span::before{content:"";display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:6px;background:var(--c)}
-@media (max-width:600px){.of-stage{height:58vh}.of-panel{top:auto;bottom:10px;right:10px;left:10px;width:auto;max-height:55%}}
+@media (max-width:600px){.of-stage{height:62vh}.of-panel{top:auto;bottom:10px;right:10px;left:10px;width:auto;max-height:55%}}
 </style>
 <div class="top"><h1>Ofis</h1></div>
 <div class="of-top"><p class="of-ask" id="of-ask" aria-live="polite">Senden beklenen: <b>${waiting}</b> evet</p><p class="dim" style="margin:0;font-size:13px">30 saniyede bir yenilenir. Karaktere dokun.</p></div>
@@ -1164,7 +1168,7 @@ ${a.last_action ? `<p style="margin:0 0 6px">${esc(a.last_action)}</p>` : ""}${a
 <div class="of-legend" aria-hidden="true"><span style="--c:#4ade80">Çalışıyor</span><span style="--c:#8e8e93">Boşta</span><span style="--c:#ffd60a">Senden evet bekliyor</span><span style="--c:#f87171">Takıldı</span><span style="--c:#3a3a40">Kapalı</span></div>
 <ul class="of-list" id="of-list">${list || `<li class="of-item dim">${esc(empty)}</li>`}</ul>
 <script type="application/json" id="of-data">${JSON.stringify(r.agents).replace(/</g, "\\u003c")}</script>
-<script type="module" src="/admin-office.js?v=1"></script>`;
+<script type="module" src="/admin-office.js?v=2"></script>`;
 }
 
 async function statusPage(env) {
