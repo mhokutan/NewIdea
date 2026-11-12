@@ -1082,6 +1082,15 @@ function adminOk(c) {
   for (let i = 0; i < t.length; i++) d |= t.charCodeAt(i) ^ want.charCodeAt(i);
   return d === 0;
 }
+// Office (promovote.com/admin/office, founder request 2026-11-12): read only, for the admin site with ADMIN_API_TOKEN.
+// There is no write endpoint on purpose: the CEO Claude session writes office_agents directly with the D1 tool.
+app.get("/v1/admin/office", async (c) => {
+  if (!adminOk(c)) return fail(c, 401, "admin_only", "Not allowed.");
+  const { results } = await c.env.DB.prepare(
+    "select id, role, status, last_action, needs_owner, updated_at from office_agents order by case id when 'ceo' then 0 else 1 end, id limit 40",
+  ).all();
+  return c.json({ agents: results });
+});
 app.get("/v1/admin/review", async (c) => {
   if (!adminOk(c)) return fail(c, 401, "admin_only", "Not allowed.");
   const { results } = await c.env.DB.prepare(`select pr.id, pr.title, pr.description, pr.lang, pr.cta_kind, pr.cta_url, pr.ai_generated, pr.submitted_at, pr.rights_confirmed_at,

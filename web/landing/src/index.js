@@ -198,7 +198,7 @@ const ROLE_LABELS = { creator: "Creator / Streamer", developer: "Game developer"
 // Store pages fill in when the Hauling Empire stats endpoint is connected (secret stays on this Worker).
 // Admin navigation: one row of product groups, then the pages of the chosen group (founder: flat tabs were confusing).
 const ADMIN_GROUPS = [
-  ["Durum", "Hepsi tek bakışta", [["/admin", "Genel durum"]]],
+  ["Durum", "Hepsi tek bakışta", [["/admin", "Genel durum"], ["/admin/office", "Ofis"]]],
   ["PromoVote", "Site, X, mağazalar", [["/admin/onay", "Onay kuyruğu"], ["/admin/bekleme", "Bekleme listesi"], ["/admin/visitors", "Ziyaretçiler"], ["/admin/x", "X"], ["/admin/app-store?p=promovote", "App Store"], ["/admin/google-play?p=promovote", "Google Play"], ["/admin/yorumlar?p=promovote", "Yorumlar"]]],
   ["Hauling Empire", "Oyun ve mağazalar", [["/admin/hauling-empire/oyun", "Oyun"], ["/admin/app-store?p=haulingempire", "App Store"], ["/admin/google-play?p=haulingempire", "Google Play"], ["/admin/yorumlar?p=haulingempire", "Yorumlar"], ["/admin/unity-ads", "Reklam geliri"], ["/admin/hauling-empire/rapor", "Raporlar"]]],
   ["Poleris", "Uygulama ve mağazalar", [["/admin/poleris/uygulama", "Uygulama"], ["/admin/app-store?p=poleris", "App Store"], ["/admin/google-play?p=poleris", "Google Play"], ["/admin/yorumlar?p=poleris", "Yorumlar"]]],
@@ -1116,6 +1116,57 @@ function splitStoreNote(raw) {
 }
 const quietLine = (ids) => ids.length ? `Google Play: ${ids.map((k) => STORE_NAMES[k] || k).join(" ve ")} için henüz indirme yok. Google ilk indirmeden sonra rapor yapar, sayılar o zaman gelir.` : "";
 
+// Office (founder request 2026-11-12): the founder's Claude sessions as characters in a small 3D office. Read only:
+// rows in promovote-db office_agents are written by the CEO session with the D1 tool, read here through promovote-api
+// (GET /v1/admin/office with ADMIN_API_TOKEN). The 3D view is
+// public/admin-office.js (three.js vendored in public/vendor, CSP allows only 'self'); this list is the fallback.
+const OFFICE_STATUS = {
+  working: ["Çalışıyor", "g"], idle: ["Boşta", "n"], waiting_owner: ["Senden evet bekliyor", "y"], blocked: ["Takıldı", "r"], offline: ["Kapalı", "n"],
+};
+async function officeAgents(env) {
+  // Read through promovote-api (founder 2026-11-12): the API answers only with ADMIN_API_TOKEN, held by this admin site.
+  const r = await reviewApi(env, "GET", "/v1/admin/office");
+  return r.ok ? { ok: true, agents: r.data.agents || [] } : { ok: false, agents: [], reason: r.reason };
+}
+const nyTime = (iso) => {
+  const d = new Date(iso || "");
+  if (isNaN(d)) return "-";
+  return new Intl.DateTimeFormat("tr-TR", { timeZone: "America/New_York", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }).format(d) + " (New York)";
+};
+async function officePage(env) {
+  const r = await officeAgents(env);
+  const waiting = r.agents.filter((a) => a.status === "waiting_owner" || a.needs_owner).length;
+  const chipCls = { g: "chip-g", y: "chip-y", r: "chip-r", n: "chip-n" };
+  const list = r.agents.map((a) => {
+    const [label, lv] = OFFICE_STATUS[a.status] || [a.status, "n"];
+    return `<li class="of-item" data-id="${esc(a.id)}"><div class="st-head" style="margin:0 0 6px"><b>${esc(a.role)}</b><span class="chip ${chipCls[lv]}">${esc(label)}</span></div>
+${a.last_action ? `<p style="margin:0 0 6px">${esc(a.last_action)}</p>` : ""}${a.needs_owner ? `<p class="of-need"><b>Senden beklenen:</b> ${esc(a.needs_owner)}</p>` : ""}<p class="dim" style="margin:0;font-size:13px">${esc(nyTime(a.updated_at))}</p></li>`;
+  }).join("");
+  const empty = !r.ok ? "Ofis verisi okunamadı (göç 0024 canlıda değil ya da API cevap vermedi)." : "Henüz kimse yok. CEO oturumu ilk durumu yazınca karakterler burada görünür.";
+  return `<style>
+.of-top{display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap;margin:-8px 0 14px}
+.of-ask{font-size:17px;font-weight:700}.of-ask b{color:var(--lime)}
+.of-stage{position:relative;height:min(62vh,560px);min-height:300px;border-radius:18px;overflow:hidden;background:#111114;border:1px solid var(--line);display:none}
+.of-stage.on{display:block}.of-stage canvas{display:block;width:100%;height:100%;touch-action:manipulation}
+.of-panel{position:absolute;top:12px;right:12px;width:min(320px,calc(100% - 24px));max-height:calc(100% - 24px);overflow:auto;padding:14px 16px;border-radius:14px;background:rgba(16,16,20,.94);border:1px solid var(--line);display:none}
+.of-panel.on{display:block}.of-panel h2{font-size:18px;margin:0 0 8px}.of-panel dl{margin:0;display:grid;gap:8px}.of-panel dt{color:var(--muted);font-size:13px}.of-panel dd{margin:0;overflow-wrap:anywhere}
+.of-close{position:absolute;top:8px;right:8px;width:44px;height:44px;border:0;background:none;color:var(--muted);font-size:22px;cursor:pointer}
+.of-list{list-style:none;margin:16px 0 0;padding:0;display:grid;gap:10px;grid-template-columns:repeat(auto-fill,minmax(min(100%,280px),1fr))}
+.of-item{padding:14px 16px;border-radius:14px;background:var(--surface);border:1px solid var(--line);overflow-wrap:anywhere}.of-item.sel{border-color:var(--lime)}
+.of-need{margin:0 0 6px;padding:8px 10px;border-radius:10px;background:rgba(255,214,10,.1);color:#ffe066}
+.chip-n{background:var(--surface-2);color:var(--muted)}
+.of-legend{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0 0;font-size:13px;color:var(--muted)}.of-legend span::before{content:"";display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:6px;background:var(--c)}
+@media (max-width:600px){.of-stage{height:58vh}.of-panel{top:auto;bottom:10px;right:10px;left:10px;width:auto;max-height:55%}}
+</style>
+<div class="top"><h1>Ofis</h1></div>
+<div class="of-top"><p class="of-ask" id="of-ask" aria-live="polite">Senden beklenen: <b>${waiting}</b> evet</p><p class="dim" style="margin:0;font-size:13px">30 saniyede bir yenilenir. Karaktere dokun.</p></div>
+<div class="of-stage" id="of-stage" aria-label="Claude oturumları ofisi, 3D görünüm"><div class="of-panel" id="of-panel" role="dialog" aria-modal="false" aria-labelledby="of-p-title"><button type="button" class="of-close" id="of-close" aria-label="Kapat">×</button><h2 id="of-p-title"></h2><dl id="of-p-body"></dl></div></div>
+<div class="of-legend" aria-hidden="true"><span style="--c:#4ade80">Çalışıyor</span><span style="--c:#8e8e93">Boşta</span><span style="--c:#ffd60a">Senden evet bekliyor</span><span style="--c:#f87171">Takıldı</span><span style="--c:#3a3a40">Kapalı</span></div>
+<ul class="of-list" id="of-list">${list || `<li class="of-item dim">${esc(empty)}</li>`}</ul>
+<script type="application/json" id="of-data">${JSON.stringify(r.agents).replace(/</g, "\\u003c")}</script>
+<script type="module" src="/admin-office.js?v=1"></script>`;
+}
+
 async function statusPage(env) {
   const today = new Date().toISOString().slice(0, 10);
   const chip = (lv, t) => `<span class="chip chip-${lv}">${esc(t)}</span>`;
@@ -1222,11 +1273,11 @@ async function statusPage(env) {
 
 // Review queue (founder decision 2026-10-16): creator uploads wait here until the founder approves or rejects them.
 // Reads and writes go to the API Worker with the shared secret ADMIN_API_TOKEN; this Worker never writes promovote-db.
-const API_BASE = "https://api.promovote.com";
+const API_BASE = "https://api.promovote.com"; // API_BASE_URL (var) overrides it only in local tests
 async function reviewApi(env, method, path, body) {
   if (!env.ADMIN_API_TOKEN) return { ok: false, reason: "no_key" };
   try {
-    const res = await fetch(API_BASE + path, { method, headers: { "X-Admin-Token": env.ADMIN_API_TOKEN, "Content-Type": "application/json" }, body: body ? JSON.stringify(body) : undefined, signal: AbortSignal.timeout(8000) });
+    const res = await fetch((env.API_BASE_URL || API_BASE) + path, { method, headers: { "X-Admin-Token": env.ADMIN_API_TOKEN, "Content-Type": "application/json" }, body: body ? JSON.stringify(body) : undefined, signal: AbortSignal.timeout(8000) });
     const data = await res.json().catch(() => ({}));
     return res.ok ? { ok: true, data } : { ok: false, reason: data?.error?.code || "http_" + res.status };
   } catch { return { ok: false, reason: "fetch_failed" }; }
@@ -1402,6 +1453,11 @@ ${tilesHtml([["Paylaşılan", sum.posted?.n || 0], ["Sırada", sum.queued?.n || 
     return adminPage(path, "Unity Ads", lp.html ?? lp.note + (await unityPage(env, path, range)));
   }
 
+  if (path === "/admin/office") return adminPage(path, "Ofis", await officePage(env));
+  if (path === "/admin/office.json") {
+    const r = await officeAgents(env);
+    return new Response(JSON.stringify(r), { headers: { "Content-Type": "application/json; charset=utf-8", ...ADMIN_HEADERS } });
+  }
   if (path === "/admin/yorumlar") {
     const p0 = url.searchParams.get("p");
     const prod = REVIEW_PRODUCTS.some(([k]) => k === p0) ? p0 : "haulingempire";
