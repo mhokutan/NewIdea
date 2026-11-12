@@ -1,12 +1,13 @@
 // Office page tests (2026-11-12). Run from the repo root: node --test web/landing/tests/office.test.mjs
-// Starts promovote-api and the landing Worker locally (wrangler dev) on one shared local D1, applies the migrations
+// Starts promovote-api and the landing Worker locally (wrangler dev) on shared local D1 (promovote-db and office-db),
+// applies the migrations
 // and writes test rows the way the CEO session will (direct SQL), then checks: no write endpoint exists, the data
 // is readable only with the admin token (API) and the admin login (site), the table rules hold, and the page shows
 // the list, the 3D canvas and the side panel. Saves phone and desktop screenshots. Never touches the live database.
 import { test, before, after } from "node:test";
 import assert from "node:assert/strict";
 import { spawn, execFileSync, spawnSync } from "node:child_process";
-import { mkdtempSync, mkdirSync } from "node:fs";
+import { mkdtempSync, mkdirSync, readFileSync, writeFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { randomBytes } from "node:crypto";
@@ -23,9 +24,13 @@ const API = "http://127.0.0.1:8791", WEB = "http://127.0.0.1:8792";
 const AUTH = "Basic " + Buffer.from("admin:" + PASS).toString("base64");
 const ENV = { ...process.env, CI: "1", WRANGLER_SEND_METRICS: "false" };
 const procs = [];
+// office-db does not exist live yet, so the real wrangler.jsonc has no OFFICE_DB binding. The test adds it in a
+// throwaway config next to it (gitignored), with a local only id.
+const TEST_CFG = join(API_DIR, "wrangler.office-test.jsonc");
+const OFFICE_LINE = '{ "binding": "OFFICE_DB", "database_name": "office-db", "database_id": "00000000-0000-4000-8000-0000000000aa", "migrations_dir": "office-migrations" },';
 
-function startWorker(dir, port, vars) {
-  const args = ["wrangler", "dev", "--local", "--ip", "127.0.0.1", "--port", String(port), "--persist-to", STATE, "--inspector-port", "0"];
+function startWorker(dir, port, vars, cfg) {
+  const args = ["wrangler", "dev", ...(cfg ? ["-c", cfg] : []), "--local", "--ip", "127.0.0.1", "--port", String(port), "--persist-to", STATE, "--inspector-port", "0"];
   for (const [k, v] of Object.entries(vars)) args.push("--var", `${k}:${v}`);
   const p = spawn("npx", args, { cwd: dir, detached: true, env: ENV, stdio: ["ignore", "pipe", "pipe"] });
   procs.push(p);
@@ -36,7 +41,8 @@ function startWorker(dir, port, vars) {
     p.stdout.on("data", on); p.stderr.on("data", on);
   });
 }
-const sql = (command) => spawnSync("npx", ["wrangler", "d1", "execute", "promovote-db", "--local", "--persist-to", STATE, "--command", command], { cwd: API_DIR, env: ENV, encoding: "utf8" });
+const d1 = (db, command) => spawnSync("npx", ["wrangler", "d1", "execute", db, "-c", TEST_CFG, "--local", "--persist-to", STATE, "--json", "--command", command], { cwd: API_DIR, env: ENV, encoding: "utf8" });
+const sql = (command) => d1("office-db", command);
 // The local dev server can close a kept alive socket between requests ("other side closed"); try once more then.
 const get = async (url, opts) => { try { return await fetch(url, opts); } catch { return fetch(url, opts); } };
 const q = (s) => (s === null ? "null" : `'${String(s).replace(/'/g, "''")}'`);
@@ -51,17 +57,30 @@ const AGENTS = [
 ];
 
 before(async () => {
-  execFileSync("npx", ["wrangler", "d1", "migrations", "apply", "promovote-db", "--local", "--persist-to", STATE], { cwd: API_DIR, stdio: "ignore", env: ENV });
+  const cfg = readFileSync(join(API_DIR, "wrangler.jsonc"), "utf8").replace('"d1_databases": [', '"d1_databases": [\n    ' + OFFICE_LINE);
+  writeFileSync(TEST_CFG, cfg);
+  for (const db of ["promovote-db", "office-db"]) execFileSync("npx", ["wrangler", "d1", "migrations", "apply", db, "-c", TEST_CFG, "--local", "--persist-to", STATE], { cwd: API_DIR, stdio: "ignore", env: ENV });
   // The CEO session writes like this (direct SQL through the D1 tool).
   const r = sql("insert into office_agents (id, role, status, last_action, needs_owner) values " + AGENTS.map((a) => `(${a.map(q).join(", ")})`).join(", "));
   assert.equal(r.status, 0, r.stderr);
   await Promise.all([
-    startWorker(API_DIR, 8791, { ADMIN_API_TOKEN: TOKEN }),
+    startWorker(API_DIR, 8791, { ADMIN_API_TOKEN: TOKEN }, TEST_CFG),
     startWorker(WEB_DIR, 8792, { ADMIN_PASSWORD: PASS, ADMIN_API_TOKEN: TOKEN, API_BASE_URL: API }),
   ]);
 });
 // Kill the whole process group (npx, wrangler and workerd), or node --test waits for them forever.
-after(() => { for (const p of procs) { try { process.kill(-p.pid, "SIGTERM"); } catch { /* already gone */ } } });
+after(() => {
+  for (const p of procs) { try { process.kill(-p.pid, "SIGTERM"); } catch { /* already gone */ } }
+  rmSync(TEST_CFG, { force: true });
+});
+
+test("promovote-db has nothing of the office", () => {
+  const r = d1("promovote-db", "select name from sqlite_master where name like 'office%'");
+  assert.equal(r.status, 0, r.stderr);
+  assert.deepEqual(JSON.parse(r.stdout)[0].results, []);
+  const m = d1("office-db", "select name from sqlite_master where type = 'table' and name like 'office%' order by name");
+  assert.deepEqual(JSON.parse(m.stdout)[0].results.map((x) => x.name), ["office_agents", "office_notes"]);
+});
 
 test("no write endpoint: anon cannot write through the API", async () => {
   const r = await fetch(API + "/v1/office/agents", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: "x", role: "x", status: "working" }) });

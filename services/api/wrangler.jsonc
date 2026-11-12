@@ -9,6 +9,8 @@
   "routes": [{ "pattern": "api.promovote.com", "custom_domain": true }],
   "d1_databases": [
     { "binding": "DB", "database_name": "promovote-db", "database_id": "b6a6a86f-5e7e-48fe-9ad1-2a29b1222a31", "migrations_dir": "migrations" }
+    // Office (2026-11-12): after the founder's yes, create office-db and add here (read only use, SELECT in one route):
+    // { "binding": "OFFICE_DB", "database_name": "office-db", "database_id": "<id from wrangler d1 create office-db>", "migrations_dir": "office-migrations" }
   ],
   // Profile photos and banners (R2 enabled 2026-10-07, bucket created with the Cloudflare connector).
   "r2_buckets": [{ "binding": "MEDIA", "bucket_name": "promovote-media" }],

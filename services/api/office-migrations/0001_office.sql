@@ -1,7 +1,9 @@
--- Office (founder request 2026-11-12): promovote.com/admin/office shows the founder's Claude sessions as characters
--- in a small 3D office. The "CEO" Claude session writes these rows DIRECTLY with the Cloudflare D1 tool; there is no
--- write endpoint on any Worker. Reading: GET https://api.promovote.com/v1/admin/office, only with ADMIN_API_TOKEN,
--- which only the admin site (behind the admin login) holds. D1 itself is never public.
+-- office-db, migration 0001 (founder request 2026-11-12, own database decided the same day so the CEO session can
+-- never touch promovote-db). promovote.com/admin/office shows the founder's Claude sessions as characters in a small
+-- 3D office. The "CEO" Claude session writes these rows DIRECTLY with the Cloudflare D1 tool; there is no write
+-- endpoint on any Worker. Reading: GET https://api.promovote.com/v1/admin/office (binding OFFICE_DB, SELECT only),
+-- only with ADMIN_API_TOKEN, which only the admin site (behind the admin login) holds. D1 itself is never public.
+-- Apply: npx wrangler d1 migrations apply office-db --remote (from services/api, after the database exists).
 -- No personal data: short role names and work notes only (no e-mails, names of players or customers, keys).
 create table if not exists office_agents (
   id text primary key check (length(id) between 2 and 40 and id not glob '*[^a-z0-9-]*'), -- 'ceo', 'hauling-dev', 'empire-desktop', 'robo-works'
