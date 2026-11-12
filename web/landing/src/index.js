@@ -1142,7 +1142,7 @@ async function officePage(env) {
     return `<li class="of-item" data-id="${esc(a.id)}"><div class="st-head" style="margin:0 0 6px"><b>${esc(a.role)}</b><span class="chip ${chipCls[lv]}">${esc(label)}</span></div>
 ${a.last_action ? `<p style="margin:0 0 6px">${esc(a.last_action)}</p>` : ""}${a.needs_owner ? `<p class="of-need"><b>Senden beklenen:</b> ${esc(a.needs_owner)}</p>` : ""}<p class="dim" style="margin:0;font-size:13px">${esc(nyTime(a.updated_at))}</p></li>`;
   }).join("");
-  const empty = !r.ok ? "Ofis verisi okunamadı (göç 0024 canlıda değil ya da API cevap vermedi)." : "Henüz kimse yok. CEO oturumu ilk durumu yazınca karakterler burada görünür.";
+  const empty = !r.ok ? "Ofis verisi okunamadı (office-db bağlı değil ya da API cevap vermedi)." : "Henüz kimse yok. CEO oturumu ilk durumu yazınca karakterler burada görünür.";
   return `<style>
 .of-top{display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap;margin:-8px 0 14px}
 .of-ask{font-size:17px;font-weight:700}.of-ask b{color:var(--lime)}

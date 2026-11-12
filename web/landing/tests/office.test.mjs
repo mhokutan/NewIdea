@@ -24,8 +24,7 @@ const API = "http://127.0.0.1:8791", WEB = "http://127.0.0.1:8792";
 const AUTH = "Basic " + Buffer.from("admin:" + PASS).toString("base64");
 const ENV = { ...process.env, CI: "1", WRANGLER_SEND_METRICS: "false" };
 const procs = [];
-// office-db does not exist live yet, so the real wrangler.jsonc has no OFFICE_DB binding. The test adds it in a
-// throwaway config next to it (gitignored), with a local only id.
+// The test swaps the real OFFICE_DB line for a local only id in a throwaway config next to it (gitignored).
 const TEST_CFG = join(API_DIR, "wrangler.office-test.jsonc");
 const OFFICE_LINE = '{ "binding": "OFFICE_DB", "database_name": "office-db", "database_id": "00000000-0000-4000-8000-0000000000aa", "migrations_dir": "office-migrations" },';
 
@@ -57,7 +56,9 @@ const AGENTS = [
 ];
 
 before(async () => {
-  const cfg = readFileSync(join(API_DIR, "wrangler.jsonc"), "utf8").replace('"d1_databases": [', '"d1_databases": [\n    ' + OFFICE_LINE);
+  // Local only: point OFFICE_DB at a throwaway id so the test never needs the live database.
+  const base = readFileSync(join(API_DIR, "wrangler.jsonc"), "utf8").replace(/^\s*\{ "binding": "OFFICE_DB".*$/m, "");
+  const cfg = base.replace('"d1_databases": [', '"d1_databases": [\n    ' + OFFICE_LINE);
   writeFileSync(TEST_CFG, cfg);
   for (const db of ["promovote-db", "office-db"]) execFileSync("npx", ["wrangler", "d1", "migrations", "apply", db, "-c", TEST_CFG, "--local", "--persist-to", STATE], { cwd: API_DIR, stdio: "ignore", env: ENV });
   // The CEO session writes like this (direct SQL through the D1 tool).
