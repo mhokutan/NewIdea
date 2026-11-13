@@ -46,19 +46,10 @@ const sql = (command) => d1("office-db", command);
 const get = async (url, opts) => { try { return await fetch(url, opts); } catch { return fetch(url, opts); } };
 const q = (s) => (s === null ? "null" : `'${String(s).replace(/'/g, "''")}'`);
 
-const AGENTS = [
-  ["ceo", "CEO", "working", "Haftalık planı güncelliyor", null],
-  ["hauling-dev", "Hauling Geliştirici", "waiting_owner", "2.5.2 derlemesi hazır", "2.5.2 iOS ve Android derlemesi için evet"],
-  ["empire-desktop", "Hauling Masaüstü", "idle", "Mağaza testleri bitti", null],
-  ["robo-works", "Dropolis", "blocked", "Android manifest kontrolü takıldı", null],
-  ["promovote-dev", "PromoVote Geliştirici", "working", "Ofis sayfasını kuruyor", null],
-  ["dovelet-dev", "Dovelet Geliştirici", "idle", "Play metinleri güncellendi", null],
-  ["mac-mini-test", "Mac mini Test", "offline", null, null],
-  ["analyst", "Analist", "working", "Haftalık oyuncu raporu", null],
-  ["poleris", "Poleris", "working", "Yeni sürüm notları", null],
-  ["salesforce-dev", "Salesforce Geliştirici", "offline", null, null],
-  ["dopazon-dev", "Dopazon Geliştirici", "offline", null, null],
-];
+// A copy of the live 52 rows (read only, 2026-11-13), with one person set to "blocked" so that state is tested too.
+const AGENTS = JSON.parse(readFileSync(join(import.meta.dirname, "fixtures/office-agents-52.json"), "utf8"))
+  .map((a) => (a[0] === "dropolis-qa" ? [a[0], a[1], "blocked", "Örnek: test cihazı takıldı", null] : a));
+const WAITING = AGENTS.filter((a) => a[2] === "waiting_owner" || a[4]).length;
 const MAIL = [
   ["11111111-1111-4111-8111-111111111111", "ceo", "promovote-dev", "Ofis v3 görevi"],
   ["22222222-2222-4222-8222-222222222222", "analyst", "hauling-dev", "Haftalık rapor"],
@@ -116,7 +107,7 @@ test("API read needs the admin token", async () => {
   const r = await get(API + "/v1/admin/office", { headers: { "X-Admin-Token": TOKEN } });
   assert.equal(r.status, 200);
   const j = await r.json();
-  assert.equal(j.agents.length, 11);
+  assert.equal(j.agents.length, AGENTS.length);
   assert.equal(j.agents[0].id, "ceo");
   assert.deepEqual(j.mail.map((x) => x.id).sort(), MAIL.map((x) => x[0]).sort());
 });
@@ -160,7 +151,7 @@ test("site read needs the admin login", async () => {
   assert.equal((await get(WEB + "/admin/office.json", { headers: { Authorization: "Basic " + Buffer.from("admin:wrong").toString("base64") } })).status, 401);
   const r = await get(WEB + "/admin/office.json", { headers: { Authorization: AUTH } });
   assert.equal(r.status, 200);
-  assert.equal((await r.json()).agents.length, 11);
+  assert.equal((await r.json()).agents.length, AGENTS.length);
 });
 
 test("page renders list, 3D office, mail walk, panel and note; screenshots", { timeout: 240000 }, async () => {
@@ -177,15 +168,15 @@ test("page renders list, 3D office, mail walk, panel and note; screenshots", { t
       const errors = [];
       page.on("pageerror", (e) => errors.push(e.message));
       await page.goto(WEB + "/admin/office", { waitUntil: "networkidle" });
-      assert.match(await page.locator("#of-ask").innerText(), /Senden beklenen: 1 evet/);
-      assert.equal(await page.locator("#of-list [data-id]").count(), 11);
+      assert.match(await page.locator("#of-ask").innerText(), new RegExp(`Senden beklenen: ${WAITING} evet`));
+      assert.equal(await page.locator("#of-list [data-id]").count(), AGENTS.length);
       await page.waitForSelector('#of-stage[data-ready="1"] canvas', { timeout: 60000 });
       const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
       assert.ok(overflow <= 0, `${name}: no horizontal scroll (${overflow}px)`);
       // Labels: every department, name bubbles for all 9, "!" for the waiting one, "takıldı" for the blocked one.
       const depts = await page.locator(".of-dept").allInnerTexts();
-      for (const d of ["HAULING EMPIRE", "DROPOLIS", "PROMOVOTE", "DOVELET", "ORTAK BİRİMLER", "GENEL MÜDÜR", "DİĞER", "SALESFORCE", "DOPAZON", "BOŞ ODA"]) assert.ok(depts.includes(d), `${name}: label ${d}`);
-      assert.equal(await page.locator(".of-name").count(), 11);
+      for (const d of ["HAULING EMPIRE", "DROPOLIS", "PROMOVOTE", "DOVELET", "ORTAK BİRİMLER", "GENEL MÜDÜR", "SALESFORCE", "DOPAZON", "MAĞAZA VE BÜYÜME", "SOSYAL MEDYA", "TEST PANELİ", "BOŞ ODA"]) assert.ok(depts.includes(d), `${name}: label ${d}`);
+      assert.equal(await page.locator(".of-name").count(), AGENTS.length);
       assert.equal(await page.locator(".of-name b").count(), 1);
       assert.equal(await page.locator(".of-name em").innerText(), "takıldı");
       await page.locator("#of-stage").scrollIntoViewIfNeeded();
@@ -199,6 +190,7 @@ test("page renders list, 3D office, mail walk, panel and note; screenshots", { t
       // Both mails play once, one after the other, then the browser remembers them.
       await page.waitForFunction(() => { try { return JSON.parse(localStorage.getItem("office-mail-shown") || "[]").length >= 2; } catch { return false; } }, null, { timeout: 30000 });
       await page.waitForTimeout(7000);
+      await page.screenshot({ path: join(SHOTS, `office-${name}.png`) });
       // No department label or name bubble covers another one (founder 2026-11-13).
       const overlaps = await page.evaluate(() => {
         const st = document.getElementById("of-stage").getBoundingClientRect();
@@ -210,14 +202,23 @@ test("page renders list, 3D office, mail walk, panel and note; screenshots", { t
           const a = boxes[i].r, b = boxes[j].r;
           if (a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom) bad.push(boxes[i].t + " / " + boxes[j].t);
         }
-        return { n: boxes.length, bad };
+        const names = els.filter((e) => e.classList.contains("of-name"));
+        return { n: boxes.length, bad, names: names.length, mini: names.filter((e) => e.classList.contains("mini")).length,
+          activeHidden: [...document.querySelectorAll("#of-tags .of-name:not(.quiet)")].filter((e) => getComputedStyle(e).display === "none" || e.classList.contains("mini")).map((e) => e.textContent) };
       });
       assert.ok(overlaps.n >= 8, `${name}: labels on screen (${overlaps.n})`);
       assert.deepEqual(overlaps.bad, [], `${name}: no overlapping labels`);
+      console.log(`# ${name}: ${overlaps.names} bubbles on screen, ${overlaps.mini} as dots, active not full: ${JSON.stringify(overlaps.activeHidden)}`);
+      if (name === "desktop") {
+        // At desktop every person in view gets a bubble (a name, or at least a status dot), none is dropped for space.
+        assert.equal(await page.locator("#of-tags .of-name.nospot").count(), 0, "desktop: no bubble dropped for lack of space");
+        assert.ok(overlaps.names >= AGENTS.length - 2, `desktop: bubbles on screen (${overlaps.names})`);
+      }
       await page.screenshot({ path: join(SHOTS, `office-${name}.png`) });
       await page.locator('#of-list [data-id="hauling-dev"]').click();
-      assert.equal(await page.locator("#of-p-title").innerText(), "Hauling Geliştirici");
-      assert.match(await page.locator("#of-p-body").innerText(), /HAULING EMPIRE[\s\S]*Senden evet bekliyor[\s\S]*New York/);
+      assert.match(await page.locator("#of-p-title").innerText(), /^Hauling Lider Geliştirici\s*Opus$/);
+      assert.equal(await page.locator("#of-p-title .of-model").innerText(), "Opus");
+      assert.match(await page.locator("#of-p-body").innerText(), /HAULING EMPIRE[\s\S]*Çalışıyor[\s\S]*EKIP-PLANI[\s\S]*New York/);
       await page.locator("#of-stage").scrollIntoViewIfNeeded();
       await page.screenshot({ path: join(SHOTS, `office-${name}-panel.png`) });
       if (name === "desktop") {

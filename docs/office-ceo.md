@@ -12,11 +12,14 @@ The office page promovote.com/admin/office reads two tables in the Cloudflare D1
 
 ## Version 3 (2026-11-13): departments, notes and mail
 
-Desks by `office_agents.id`: `ceo` = GENEL MÜDÜR (own glass room next to the lounge); `hauling-dev`, `empire-desktop` =
-HAULING EMPIRE; `robo-works` = DROPOLIS; `promovote-dev` = PROMOVOTE; `dovelet-dev` = DOVELET; `mac-mini-test`,
-`analyst` = ORTAK BİRİMLER; `salesforce-dev` = SALESFORCE (teal); `dopazon-dev` = DOPAZON (coral). Any other id gets
-a desk in DİĞER (then in the empty room). One BOŞ ODA waits for a future department (YouTube, Unity); adding one is a
-code change in `web/landing/public/admin-office.js`.
+Departments come from the id PREFIX (founder 2026-11-13, 52 person team), so a new row needs no code change:
+`ceo` = GENEL MÜDÜR; `hauling-*`, `empire-desktop` = HAULING EMPIRE; `dropolis-*`, `robo-works` = DROPOLIS;
+`dovelet-*` = DOVELET; `promovote-*` = PROMOVOTE; `dopazon-*` = DOPAZON; `salesforce-*` = SALESFORCE;
+`store-*` = MAĞAZA VE BÜYÜME; `social-*` = SOSYAL MEDYA; `panel-*` = TEST PANELİ; `ortak-*`, `analyst`,
+`mac-mini-test` = ORTAK BİRİMLER; anything else = DİĞER (the room opens when the first such id arrives). Rooms size
+themselves by member count (one spare desk, at most 9 desks; a tenth member sits in DİĞER). One BOŞ ODA always stays.
+Put the model in brackets at the end of `role`, for example `Hauling QA (Haiku)`: the side panel shows it as a tag,
+bubbles show the name without it. The API returns up to 200 rows.
 
 **Notes from the founder.** The bottom bar "CEO'ya not bırak" writes a row to `office_notes` with status `new` (admin
 login only, 1 to 1000 characters; the only write endpoint, `POST /v1/admin/office/notes` on promovote-api). Read them:

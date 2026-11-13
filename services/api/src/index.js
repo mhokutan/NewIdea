@@ -1091,7 +1091,7 @@ app.get("/v1/admin/office", async (c) => {
   if (!adminOk(c)) return fail(c, 401, "admin_only", "Not allowed.");
   if (!c.env.OFFICE_DB) return fail(c, 503, "office_not_ready", "office-db is not connected yet.");
   const { results } = await c.env.OFFICE_DB.prepare(
-    "select id, role, status, last_action, needs_owner, updated_at from office_agents order by case id when 'ceo' then 0 else 1 end, id limit 40",
+    "select id, role, status, last_action, needs_owner, updated_at from office_agents order by case id when 'ceo' then 0 else 1 end, id limit 200",
   ).all();
   let mail = [];
   try {

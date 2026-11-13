@@ -20,26 +20,73 @@ const STATUS = {
 };
 const st = (s) => STATUS[s] || STATUS.idle;
 
-// Departments (founder 2026-11-13). Rooms in world meters: x to the right, z toward the viewer. door: "s" = the
-// front glass wall, "n" = the back glass wall; every door opens onto a corridor.
-const W = 36.5, D = 25.5, WALL_H = 2.7, GLASS_H = 1.15;
-const ROOMS = [
-  { key: "hauling", name: "HAULING EMPIRE", color: "#f97316", x: 1, z: 1, w: 10, d: 7, door: "s", desks: 4 },
-  { key: "dropolis", name: "DROPOLIS", color: "#3b82f6", x: 12.5, z: 1, w: 7, d: 7, door: "s", desks: 2 },
-  { key: "promovote", name: "PROMOVOTE", color: "#8b5cf6", x: 21, z: 1, w: 7, d: 7, door: "s", desks: 2 },
-  { key: "ceo", name: "GENEL MÜDÜR", color: "#facc15", x: 29.5, z: 1, w: 6, d: 7, door: "s", desks: 1, ceo: true },
-  { key: "dovelet", name: "DOVELET", color: "#ec4899", x: 1, z: 10, w: 7, d: 6.5, door: "n", desks: 2 },
-  { key: "ortak", name: "ORTAK BİRİMLER", color: "#22c55e", x: 9.5, z: 10, w: 10, d: 6.5, door: "n", desks: 4 },
-  { key: "diger", name: "DİĞER", color: "#64748b", x: 21, z: 10, w: 7, d: 6.5, door: "n", desks: 4, spare: true },
-  { key: "salesforce", name: "SALESFORCE", color: "#14b8c4", x: 1, z: 18.5, w: 8, d: 6, door: "n", desks: 2 },
-  { key: "dopazon", name: "DOPAZON", color: "#f05a4f", x: 10.5, z: 18.5, w: 8, d: 6, door: "n", desks: 2 },
-  { key: "bos3", name: "BOŞ ODA", color: "#a8a29e", x: 21, z: 18.5, w: 7, d: 6, door: "n", desks: 2, spare: true },
+// Departments (founder 2026-11-13, 52 person team): an agent's department comes from its id PREFIX, so new rows need
+// no code change. Rooms are made from the member count (one spare desk, at most 9 desks) and packed in rows; each row
+// has a corridor in front of it and every door opens onto that corridor. The right column holds the CEO room, the
+// lounge and shelves; a vertical corridor joins all rows. World meters: x to the right, z toward the viewer.
+const WALL_H = 2.7, GLASS_H = 1.15;
+const DEPTS = [
+  { key: "hauling", name: "HAULING EMPIRE", color: "#f97316", match: (id) => /^hauling-/.test(id) || id === "empire-desktop" },
+  { key: "dropolis", name: "DROPOLIS", color: "#3b82f6", match: (id) => /^dropolis-/.test(id) || id === "robo-works" },
+  { key: "dovelet", name: "DOVELET", color: "#ec4899", match: (id) => /^dovelet-/.test(id) },
+  { key: "promovote", name: "PROMOVOTE", color: "#8b5cf6", match: (id) => /^promovote-/.test(id) },
+  { key: "salesforce", name: "SALESFORCE", color: "#14b8c4", match: (id) => /^salesforce-/.test(id) },
+  { key: "store", name: "MAĞAZA VE BÜYÜME", color: "#f59e0b", match: (id) => /^store-/.test(id) },
+  { key: "social", name: "SOSYAL MEDYA", color: "#e11d74", match: (id) => /^social-/.test(id) },
+  { key: "panel", name: "TEST PANELİ", color: "#6366f1", match: (id) => /^panel-/.test(id) },
+  { key: "ortak", name: "ORTAK BİRİMLER", color: "#22c55e", match: (id) => /^ortak-/.test(id) || id === "analyst" || id === "mac-mini-test" },
+  { key: "dopazon", name: "DOPAZON", color: "#f05a4f", match: (id) => /^dopazon-/.test(id) },
+  { key: "diger", name: "DİĞER", color: "#64748b", match: () => true },
 ];
-const DEPT_OF = {
-  ceo: "ceo", "hauling-dev": "hauling", "empire-desktop": "hauling", "robo-works": "dropolis", "promovote-dev": "promovote",
-  "dovelet-dev": "dovelet", "mac-mini-test": "ortak", analyst: "ortak", "salesforce-dev": "salesforce", "dopazon-dev": "dopazon",
-};
-const CROSS_X = 20.25; // the corridor between the two room rows' right columns, used to change corridors
+const CEO_DEPT = { key: "ceo", name: "GENEL MÜDÜR", color: "#facc15" };
+const deptOf = (id) => (id === "ceo" ? "ceo" : DEPTS.find((d) => d.match(id)).key);
+// Role text holds the model in brackets, for example "QA (Haiku)" (founder 2026-11-13).
+const MODEL_RE = /\s*\((Opus|Sonnet|Haiku)\)\s*$/i;
+const modelOf = (role) => (String(role || "").match(MODEL_RE)?.[1] || "").replace(/^./, (c) => c.toUpperCase());
+const shortName = (role) => String(role || "").replace(MODEL_RE, "");
+
+let W = 40, D = 30, ROOMS = [], CROSS_X = 30, RIGHT_X = 31, layoutKey = "";
+const ROW_W = 44; // width of the room area before the vertical corridor (4 big rooms per row)
+function layout() {
+  const count = {};
+  for (const a of agents) { const k = deptOf(a.id); count[k] = (count[k] || 0) + 1; }
+  const rooms = [];
+  for (const d of DEPTS) {
+    const n = count[d.key] || 0;
+    if (d.key === "diger" && !n) continue; // DİĞER opens when an unknown id arrives
+    const desks = Math.min(9, Math.max(2, n + (n < 9 ? 1 : 0)));
+    const cols = desks <= 2 ? 2 : desks === 4 ? 2 : 3;
+    const rowsN = Math.ceil(desks / cols);
+    rooms.push({ ...d, desks, cols, w: cols * 2.4 + 1.6, d: rowsN * 2.6 + 0.6, door: "s" });
+  }
+  rooms.push({ key: "bos", name: "BOŞ ODA", color: "#a8a29e", desks: 2, cols: 2, w: 6.4, d: 5.8, door: "s", spare: true });
+  // Pack into rows.
+  const rows = [];
+  let cur = [], x = 1;
+  for (const r of rooms) {
+    if (cur.length && x + r.w > ROW_W) { rows.push(cur); cur = []; x = 1; }
+    r.x = x; x += r.w + 1.4; cur.push(r);
+  }
+  if (cur.length) rows.push(cur);
+  let z = 1;
+  const corridorsZ = [];
+  for (const row of rows) {
+    const rd = Math.max(...row.map((r) => r.d));
+    for (const r of row) { r.z = z; r.d = rd; }
+    z += rd;
+    corridorsZ.push(z);
+    z += 2;
+  }
+  CROSS_X = Math.max(...rooms.map((r) => r.x + r.w)) + 0.9;
+  RIGHT_X = CROSS_X + 0.9;
+  const ceo = { ...CEO_DEPT, ceo: true, desks: 1, cols: 1, x: RIGHT_X, z: 1, w: 7.5, d: rows[0] ? Math.max(...rows[0].map((r) => r.d)) : 7, door: "s" };
+  rooms.push(ceo);
+  W = RIGHT_X + ceo.w + 1;
+  D = Math.max(z, 1 + ceo.d + 2 + 11) + 0.5;
+  ROOMS = rooms;
+  return { rows, corridorsZ };
+}
+let plan = { rows: [], corridorsZ: [] };
 
 const ny = (iso) => {
   const d = new Date(iso || "");
@@ -65,12 +112,12 @@ let selected = null; // agent id
 
 // ---------- desk plan: which agent sits where ----------
 function deskSlots(r) {
-  const cols = Math.max(1, Math.min(r.desks, Math.floor((r.w - 2.2) / 2.4)));
+  const cols = r.cols || 1;
   const rows = Math.ceil(r.desks / cols);
   const out = [];
   for (let i = 0; i < r.desks; i++) {
     const c = i % cols, row = Math.floor(i / cols);
-    const x = r.ceo ? r.x + r.w - 1.9 : r.x + 2.6 + c * 2.4;
+    const x = r.ceo ? r.x + r.w - 1.9 : r.x + 2.0 + c * 2.4;
     const z = r.door === "s" ? r.z + 1.7 + row * 2.6 : r.z + r.d - 1.9 - (rows - 1 - row) * 2.6;
     out.push({ room: r, x, z, agent: null });
   }
@@ -78,17 +125,18 @@ function deskSlots(r) {
 }
 let slots = [];
 function makePlan() {
+  plan = layout();
+  layoutKey = ROOMS.map((r) => r.key + r.desks).join(",");
   slots = ROOMS.flatMap(deskSlots);
   const free = (key) => slots.find((s) => s.room.key === key && !s.agent);
   for (const a of agents) {
-    // Known ids go to their department; unknown ids open desks in DİĞER, then in the empty rooms.
-    const s = free(DEPT_OF[a.id] || "diger") || free("diger") || free("bos3");
+    // A tenth member of a full room sits in DİĞER, then in the empty room.
+    const s = free(deptOf(a.id)) || free("diger") || free("bos");
     if (s) s.agent = a;
   }
 }
 const slotOf = (id) => slots.find((s) => s.agent?.id === id) || null;
-// A spare room shows "DİĞER" once an unknown session sits there, "BOŞ ODA" while it waits for a future department.
-const roomLabel = (r) => (r.spare ? (slots.some((s) => s.room === r && s.agent) ? "DİĞER" : "BOŞ ODA") : r.name);
+const roomLabel = (r) => (r.spare && slots.some((s) => s.room === r && s.agent) ? "DİĞER" : r.name);
 
 // ---------- plain list and side panel (work with or without 3D) ----------
 const listEl = document.getElementById("of-list");
@@ -103,7 +151,7 @@ function renderList() {
   listEl.replaceChildren(...agents.map((a) => {
     const s = st(a.status);
     return el("li", { class: "of-item" + (a.id === selected ? " sel" : ""), "data-id": a.id, tabindex: "0", role: "button", "aria-label": `${a.role}: ${s.label}` },
-      el("div", { class: "st-head", style: "margin:0 0 6px" }, el("b", {}, a.role), el("span", { class: "chip " + s.css }, s.label)),
+      el("div", { class: "st-head", style: "margin:0 0 6px" }, el("b", {}, shortName(a.role), modelOf(a.role) ? el("span", { class: "of-model" }, modelOf(a.role)) : null), el("span", { class: "chip " + s.css }, s.label)),
       a.last_action ? el("p", { style: "margin:0 0 6px" }, a.last_action) : null,
       a.needs_owner ? el("p", { class: "of-need" }, el("b", {}, "Senden beklenen:"), " " + a.needs_owner) : null,
       el("p", { class: "dim", style: "margin:0;font-size:13px" }, ny(a.updated_at)));
@@ -114,7 +162,7 @@ function openPanel(id) {
   if (!a || !panel) return;
   selected = id;
   const s = slotOf(id);
-  pTitle.textContent = a.role;
+  pTitle.replaceChildren(shortName(a.role), modelOf(a.role) ? el("span", { class: "of-model" }, modelOf(a.role)) : "");
   const row = (k, v) => [el("dt", {}, k), el("dd", {}, v || "-")];
   pBody.replaceChildren(...row("Birim", s ? roomLabel(s.room) : "-"), ...row("Durum", st(a.status).label), ...row("Son iş", a.last_action),
     ...row("Senden beklenen", a.needs_owner), ...row("Güncelleme", ny(a.updated_at)));
@@ -249,8 +297,8 @@ function outerWalls(g) {
     if (alongX) { box(g, ww, wh, 0.04, 0, x, y, 0.02, { mat: glass, shadow: false }); box(g, ww + 0.12, 0.08, 0.08, 0, x, y - wh / 2, 0.04, { mat: frame }); box(g, 0.06, wh, 0.06, 0, x, y, 0.05, { mat: frame }); }
     else { box(g, 0.04, wh, ww, 0, 0.02, y, z, { mat: glass, shadow: false }); box(g, 0.08, 0.08, ww + 0.12, 0, 0.04, y - wh / 2, z, { mat: frame }); box(g, 0.06, wh, 0.06, 0, 0.05, y, z, { mat: frame }); }
   };
-  for (const x of [3.5, 8.5, 15, 24.5]) win(x, 0, true);
-  for (const z of [4.5, 13.5, 21.5]) win(0, z, false);
+  for (let x = 4; x < W - 2; x += 6.5) win(x, 0, true);
+  for (let z = 4.5; z < D - 2; z += 8) win(0, z, false);
   // Wall sign over the CEO room and lounge.
   const sign = canvasTex(1024, 256, (ctx) => {
     ctx.fillStyle = "#18181b"; ctx.beginPath(); ctx.roundRect(8, 8, 1008, 240, 40); ctx.fill();
@@ -258,7 +306,7 @@ function outerWalls(g) {
     ctx.fillStyle = "#ffffff"; ctx.font = "800 120px system-ui, sans-serif"; ctx.textBaseline = "middle"; ctx.fillText("Mevlüt HQ", 210, 134);
   });
   const board = new THREE.Mesh(new THREE.PlaneGeometry(4.4, 1.1), new THREE.MeshBasicMaterial({ map: sign, transparent: true }));
-  board.position.set(32.4, 1.95, 0.03);
+  board.position.set(RIGHT_X + 3.75, 1.95, 0.03);
   g.add(board);
 }
 
@@ -267,8 +315,9 @@ function corridors(g) {
   const band = 0xe7ddcc, line = 0xffffff;
   const hz = (z0, z1, x0 = 0, x1 = W) => { const zc = (z0 + z1) / 2, w = x1 - x0, xc = (x0 + x1) / 2; flat(g, w, z1 - z0 - 0.3, band, xc, zc, 0.006); flat(g, w, 0.07, line, xc, z0 + 0.25, 0.008); flat(g, w, 0.07, line, xc, z1 - 0.25, 0.008); };
   const vt = (x0, x1, z0, z1) => { const xc = (x0 + x1) / 2, d = z1 - z0, zc = (z0 + z1) / 2; flat(g, x1 - x0 - 0.3, d, band, xc, zc, 0.005); flat(g, 0.07, d, line, x0 + 0.25, zc, 0.007); flat(g, 0.07, d, line, x1 - 0.25, zc, 0.007); };
-  hz(8, 10); hz(16.5, 18.5, 0, 29.5);
-  vt(19.5, 21, 10, 16.5); vt(28, 29.5, 1, 8);
+  for (const z of plan.corridorsZ) hz(z, z + 2);
+  const last = plan.corridorsZ.at(-1) ?? 8;
+  vt(CROSS_X - 0.75, CROSS_X + 0.75, 1, last);
 }
 
 // Glass room: thin dark frame, clear half height glass, a door gap, a colored rug under the desks.
@@ -332,8 +381,9 @@ function buildRoom(g, r) {
 }
 
 function lounge(g) {
-  // Open lounge under the sign, next to the CEO room: round rug, two sofas, coffee table, lamp, plants.
-  const cx = 32.5, cz = 13.6;
+  // Open lounge under the CEO room in the right column: round rug, two sofas, coffee table, lamp, plants and shelves.
+  const ceo = ROOMS.find((r) => r.ceo);
+  const cx = RIGHT_X + 3.9, cz = ceo.z + ceo.d + 2 + 4.2;
   flat(g, 4.6, 4.6, 0xd9cfe8, cx, cz, 0.014, { circle: true });
   flat(g, 3.6, 3.6, 0xc6b9dd, cx, cz, 0.016, { circle: true });
   prop(g, "couch_medium1", { w: 2.4 }, cx, cz - 1.7, 0);
@@ -341,16 +391,12 @@ function lounge(g) {
   prop(g, "table_roundlarge", { w: 1.15 }, cx, cz, 0);
   prop(g, "light_floor1", { h: 1.7 }, cx + 1.8, cz - 1.8);
   prop(g, "houseplant_6", { h: 1.3 }, cx + 2.2, cz + 2.0);
-  prop(g, "houseplant_3", { h: 1.1 }, 29.9, 10.5);
-  // Shelves and plants along the walls and the corridors.
-  prop(g, "bookshelf", { h: 1.9 }, 33.8, 19.4, -Math.PI / 2);
-  prop(g, "bookcasebooks", { h: 1.9 }, 33.8, 21.8, -Math.PI / 2);
-  prop(g, "houseplant_1", { h: 1.2 }, 30.5, 23.8);
-  prop(g, "houseplant_6", { h: 1.2 }, 0.6, 9.0);
-  prop(g, "houseplant_3", { h: 1.0 }, 11.8, 0.5);
-  prop(g, "houseplant_1", { h: 1.0 }, 20.25, 0.5);
-  prop(g, "shelf_large", { h: 1.2 }, 0.4, 17.5, Math.PI / 2);
-  prop(g, "trashcan_small1", { h: 0.4 }, 28.7, 9.0);
+  prop(g, "houseplant_3", { h: 1.1 }, RIGHT_X + 0.4, cz - 2.6);
+  prop(g, "bookshelf", { h: 1.9 }, W - 0.7, cz + 4.4, -Math.PI / 2);
+  prop(g, "bookcasebooks", { h: 1.9 }, W - 0.7, cz + 6.8, -Math.PI / 2);
+  prop(g, "houseplant_1", { h: 1.2 }, RIGHT_X + 0.5, Math.min(D - 0.8, cz + 9));
+  prop(g, "trashcan_small1", { h: 0.4 }, RIGHT_X + 0.3, ceo.z + ceo.d + 0.3);
+  for (const z of plan.corridorsZ) prop(g, "houseplant_6", { h: 1.2 }, 0.6, z + 1.0);
 }
 
 // ---------- people, bubbles and labels ----------
@@ -398,8 +444,11 @@ function buildPeople() {
       }
       actor.userData.agentId = a.id;
       peopleGroup.add(actor);
-      if (reduce) mixer.update(0.5);
-      rec = { ...rec, actor, mixer };
+      // Performance with 52 people (founder 2026-11-13): only working, waiting and blocked people keep a running
+      // animation; idle and offline ones are posed once and then cost nothing per frame.
+      const moving = !reduce && (a.status === "working" || a.status === "waiting_owner" || a.status === "blocked");
+      mixer.update(0.5);
+      rec = { ...rec, actor, mixer: moving ? mixer : null };
       if (a.status === "blocked") {
         const bulb = new THREE.Mesh(new THREE.SphereGeometry(0.09, 12, 8), new THREE.MeshBasicMaterial({ color: 0xff3b3b }));
         bulb.position.set(s.x - 0.55, 0.85, s.z); peopleGroup.add(bulb);
@@ -411,13 +460,15 @@ function buildPeople() {
     hit.position.set(s.x, 0.7, s.z + 0.3); hit.userData.agentId = a.id;
     peopleGroup.add(hit);
     const ss = st(a.status);
-    const bubble = el("div", { class: "of-name" + (a.status === "offline" ? " off" : ""), style: `--c:${ss.dot}`, title: `${a.role}: ${ss.label}` },
-      el("i"), el("span", {}, a.role),
+    const quiet = a.status === "idle" || a.status === "offline";
+    const bubble = el("div", { class: "of-name" + (a.status === "offline" ? " off" : "") + (quiet ? " quiet" : ""), style: `--c:${ss.dot}`, title: `${a.role}: ${ss.label}` },
+      el("i"), el("span", {}, shortName(a.role)),
       a.status === "blocked" ? el("em", {}, "takıldı") : null,
       a.status === "waiting_owner" ? el("b", {}, "!") : null);
     bubble.addEventListener("click", () => openPanel(a.id));
     tagsEl.append(bubble);
     rec.bubble = bubble;
+    rec.rank = quiet ? (a.status === "offline" ? 2 : 1) : 0;
     people.push(rec);
   }
   // Department labels: rebuilt with the people, because DİĞER and the empty rooms change names.
@@ -428,6 +479,7 @@ function buildPeople() {
     return { el: e, pos: new THREE.Vector3(r.x + 0.2, GLASS_H + 0.1, r.z + r.d) };
   });
   syncBubbles();
+  tagsKey = "";
 }
 function syncBubbles() { for (const p of people) p.bubble.classList.toggle("sel", p.agent.id === selected); }
 
@@ -443,36 +495,61 @@ function place(elm, v) {
   elm.style.display = out ? "none" : "";
   elm.style.left = x.toFixed(1) + "px"; elm.style.top = y.toFixed(1) + "px";
 }
-// Labels and name bubbles never cover each other (founder 2026-11-13): every frame each one takes the first free spot
-// from a short list of screen offsets around its anchor. Department labels go first, then bubbles from front to back.
+// Labels and name bubbles never cover each other (founder 2026-11-13): each one takes the first free spot from a short
+// list of screen offsets around its anchor. Department labels go first, then working, waiting and blocked people, then
+// idle, then offline. A bubble with no free spot shrinks to its status dot, and only if even that has no room is it
+// left out until the view changes (the person stays in the list). Runs only when the view changes, not every frame.
 const GAP = 3;
 const hits = (a, b) => a.l < b.r + GAP && b.l < a.r + GAP && a.t < b.b + GAP && b.t < a.b + GAP;
+function sizeOf(elm) {
+  const k = elm.classList.contains("mini") ? "m" : "f";
+  if (!elm._size || elm._size.k !== k || elm._size.vw !== stage.clientWidth) elm._size = { k, vw: stage.clientWidth, w: elm.offsetWidth, h: elm.offsetHeight };
+  return elm._size;
+}
+function trySpot(it, taken) {
+  const { elm, x, y, kind } = it;
+  const { w, h } = sizeOf(elm);
+  const bang = kind === "name" && elm.querySelector("b") ? (stage.clientWidth < 600 ? 24 : 28) : 0;
+  const rect = (dx, dy) => kind === "dept"
+    ? { l: x + dx - w / 2, r: x + dx + w / 2, t: y + dy - h / 2, b: y + dy + h / 2 }
+    : { l: x + dx - w / 2, r: x + dx + w / 2, t: y + dy - h - 5 - bang, b: y + dy };
+  const sy = h + GAP + 2, sx = w / 2 + GAP + 2;
+  const tries = kind === "dept"
+    ? [[0, 0], [0, sy], [0, -sy], [sx, 0], [-sx, 0], [0, 2 * sy], [sx, sy], [-sx, sy], [0, -2 * sy]]
+    : [[0, 0], [0, -sy], [sx, 0], [-sx, 0], [sx, -sy], [-sx, -sy], [0, -2 * sy], [0, sy], [sx, -2 * sy], [-sx, -2 * sy], [0, -3 * sy]];
+  // Idle and offline names only take a spot right next to the person; otherwise they become a dot, so no name
+  // floats far from its owner.
+  if (kind === "name" && elm.classList.contains("quiet") && !elm.classList.contains("mini")) tries.splice(4);
+  if (kind === "name" && elm.classList.contains("mini")) {
+    // A status dot may move a little further: a ring of spots around the person.
+    for (let k = 1, kMax = stage.clientWidth < 600 ? 3 : 7; k <= kMax; k++) for (let i = 0; i < 12; i++) { const an = (i / 12) * Math.PI * 2 - Math.PI / 2; tries.push([Math.cos(an) * k * (w + GAP + 1), Math.sin(an) * k * (h + GAP + 1)]); }
+  }
+  for (const [dx, dy] of tries) {
+    const c = rect(dx, dy);
+    if (!taken.some((o) => hits(c, o))) return { dx, dy, r: c };
+  }
+  return null;
+}
 function settle(items, taken) {
   for (const it of items) {
-    const { elm, x, y, kind } = it;
-    const w = elm.offsetWidth, h = elm.offsetHeight;
-    // Rectangle for a given offset; the "!" over a waiting person counts as part of the bubble.
-    const bang = kind === "name" && elm.querySelector("b") ? (stage.clientWidth < 600 ? 24 : 28) : 0;
-    const rect = (dx, dy) => kind === "dept"
-      ? { l: x + dx - w / 2, r: x + dx + w / 2, t: y + dy - h / 2, b: y + dy + h / 2 }
-      : { l: x + dx - w / 2, r: x + dx + w / 2, t: y + dy - h - 5 - bang, b: y + dy };
-    const sy = h + GAP + 2, sx = w / 2 + GAP + 2;
-    const tries = kind === "dept"
-      ? [[0, 0], [0, sy], [0, -sy], [sx, 0], [-sx, 0], [0, 2 * sy], [sx, sy], [-sx, sy], [0, -2 * sy]]
-      : [[0, 0], [0, -sy], [sx, 0], [-sx, 0], [sx, -sy], [-sx, -sy], [0, -2 * sy], [0, sy], [sx, -2 * sy], [-sx, -2 * sy], [0, -3 * sy]];
-    let pick = tries[0], r = rect(0, 0);
-    for (const [dx, dy] of tries) {
-      const c = rect(dx, dy);
-      if (!taken.some((o) => hits(c, o))) { pick = [dx, dy]; r = c; break; }
-    }
-    taken.push(r);
-    elm.style.left = (x + pick[0]).toFixed(1) + "px";
-    elm.style.top = (y + pick[1]).toFixed(1) + "px";
+    const { elm } = it;
+    elm.classList.remove("mini", "nospot");
+    let spot = trySpot(it, taken);
+    if (!spot && it.kind === "name") { elm.classList.add("mini"); spot = trySpot(it, taken); }
+    if (!spot) { elm.classList.add("nospot"); elm.style.display = "none"; continue; }
+    elm.style.display = "";
+    taken.push(spot.r);
+    elm.style.left = (it.x + spot.dx).toFixed(1) + "px";
+    elm.style.top = (it.y + spot.dy).toFixed(1) + "px";
   }
 }
+let tagsKey = "";
 const head = new THREE.Vector3();
 function placeTags() {
   const W0 = stage.clientWidth, H0 = stage.clientHeight;
+  const key = [W0, H0, camera.zoom, ...camera.position.toArray().map((v) => v.toFixed(3)), ...people.map((p) => (p.walking ? 1 : 0)), selected].join("|");
+  if (key === tagsKey) return;
+  tagsKey = key;
   const visible = ([x, y]) => x > -60 && x < W0 + 60 && y > -40 && y < H0 + 40;
   const depts = [], names = [];
   for (const t of deptTags) {
@@ -486,9 +563,9 @@ function placeTags() {
     head.set(base.x, p.agent.status === "waiting_owner" ? 1.6 : 1.45, base.z);
     const xy = project(head);
     p.bubble.style.display = visible(xy) ? "" : "none";
-    if (visible(xy)) names.push({ elm: p.bubble, x: xy[0], y: xy[1], kind: "name" });
+    if (visible(xy)) names.push({ elm: p.bubble, x: xy[0], y: xy[1], kind: "name", rank: p.agent.id === selected ? -1 : p.rank });
   }
-  names.sort((a, b) => b.y - a.y);
+  names.sort((a, b) => a.rank - b.rank || b.y - a.y);
   const taken = [];
   settle(depts, taken);
   settle(names, taken);
@@ -613,17 +690,18 @@ function stepMail(dt) {
     if (c.fromRec?.actor) c.fromRec.actor.visible = true;
     if (c.fromRec) c.fromRec.walking = false;
     current = null;
-    if (pendingRebuild) { pendingRebuild = false; buildPeople(); }
+    if (pendingRebuild) { const fn = pendingRebuild; pendingRebuild = false; fn(); }
     startNextMail();
   }
 }
 
 // ---------- camera ----------
 const VIEW_DIR = new THREE.Vector3(1, 1.05, 1.15).normalize();
-const center = new THREE.Vector3(W / 2, 0, D / 2);
+const center = new THREE.Vector3();
 function frame() {
   const w = stage.clientWidth, h = stage.clientHeight;
   if (!w || !h) return;
+  center.set(W / 2, 0, D / 2);
   const aspect = w / h;
   camera.position.copy(center).addScaledVector(VIEW_DIR, 60);
   camera.up.set(0, 1, 0);
@@ -632,7 +710,11 @@ function frame() {
   const pts = [];
   // On a phone frame the department rooms only (the empty rooms at the front stay a pan away).
   const small = w < 600;
-  for (const x of [0, W]) for (const z of [0, small ? 17 : D]) for (const y of [0, WALL_H]) pts.push(new THREE.Vector3(x, y, z).applyMatrix4(camera.matrixWorldInverse));
+  // On a phone frame the first two room rows on the left (pan and pinch for the rest).
+  // A phone starts on the first two rooms of the front row (Hauling, Dropolis) and pans to the rest.
+  const firstRow = plan.rows[0] || [];
+  const phoneX = firstRow[1] ? firstRow[1].x + firstRow[1].w + 0.5 : W;
+  for (const x of [0, small ? phoneX : W]) for (const z of [0, small ? (plan.corridorsZ[0] ?? D) + 2 : D]) for (const y of [0, WALL_H + 1.2]) pts.push(new THREE.Vector3(x, y, z).applyMatrix4(camera.matrixWorldInverse));
   const xs = pts.map((p) => p.x), ys = pts.map((p) => p.y);
   const cx = (Math.min(...xs) + Math.max(...xs)) / 2, cy = (Math.min(...ys) + Math.max(...ys)) / 2;
   const hw = (Math.max(...xs) - Math.min(...xs)) / 2, hh = (Math.max(...ys) - Math.min(...ys)) / 2;
@@ -642,9 +724,9 @@ function frame() {
   const target = center.clone().add(shift);
   camera.position.copy(target).addScaledVector(VIEW_DIR, 60);
   camera.lookAt(target);
-  const half = Math.max(hh, hw / aspect) * 1.04;
+  const half = Math.max(hh, hw / aspect) * 1.08; // room for the bubbles over the back row
   camera.left = -half * aspect; camera.right = half * aspect; camera.top = half; camera.bottom = -half;
-  camera.zoom = small ? 1.45 : 1;
+  camera.zoom = 1;
   camera.updateProjectionMatrix();
   if (controls) { controls.target.copy(target); controls.update(); }
 }
@@ -678,6 +760,37 @@ function animate() {
   placeTags();
 }
 
+// Static office (floor, walls, corridors, lounge, rooms). Built again when the room plan changes.
+let officeGroup = null, sunLight = null;
+function buildOffice() {
+  if (officeGroup) {
+    scene.remove(officeGroup);
+    officeGroup.traverse((o) => { if (o.isMesh && !o.userData.shared) { o.geometry?.dispose?.(); } });
+  }
+  const office = new THREE.Group();
+  officeGroup = office;
+  scene.add(office);
+  const tex = woodTexture(); tex.repeat.set(W / 3, D / 3);
+  const floor = new THREE.Mesh(new THREE.PlaneGeometry(W, D), new THREE.MeshStandardMaterial({ map: tex, roughness: 0.85 }));
+  floor.rotation.x = -Math.PI / 2; floor.position.set(W / 2, 0, D / 2); floor.receiveShadow = true;
+  office.add(floor);
+  // A thin base under the floor so the plan reads as a model.
+  box(office, W + 0.25, 0.3, D + 0.25, 0xcbbfae, W / 2 - 0.125, -0.151, D / 2 - 0.125 + 0.125, { shadow: false });
+  outerWalls(office);
+  corridors(office);
+  lounge(office);
+  for (const r of ROOMS) buildRoom(office, r);
+
+  if (sunLight) {
+    sunLight.position.set(W / 2 + 14, 30, D / 2 + 10);
+    sunLight.target.position.set(W / 2, 0, D / 2);
+    const r = Math.max(W, D) * 0.75;
+    Object.assign(sunLight.shadow.camera, { left: -r, right: r, top: r, bottom: -r, near: 1, far: 120 });
+    sunLight.shadow.camera.updateProjectionMatrix();
+  }
+  if (stage.clientWidth) frame();
+}
+
 async function start() {
   stage.classList.add("on");
   stage.prepend(renderer.domElement);
@@ -692,11 +805,10 @@ async function start() {
   scene.background = new THREE.Color(0xe9e4dc);
   scene.add(new THREE.HemisphereLight(0xffffff, 0xd9c7a8, 1.5));
   const sun = new THREE.DirectionalLight(0xffffff, 1.5);
-  sun.position.set(W / 2 + 12, 26, D / 2 + 8);
-  sun.target.position.copy(center); scene.add(sun.target);
+  scene.add(sun.target);
   sun.castShadow = !small;
   sun.shadow.mapSize.set(2048, 2048);
-  Object.assign(sun.shadow.camera, { left: -26, right: 26, top: 26, bottom: -26, near: 1, far: 80 });
+  sunLight = sun;
   sun.shadow.bias = -0.0005;
   scene.add(sun);
 
@@ -704,19 +816,8 @@ async function start() {
   await Promise.all(MODEL_FILES.map((n) => loader.loadAsync(`/office/models/${n}.glb`).then((g) => { M[n] = g; }).catch(() => { /* a missing model only drops that item */ })));
   if (!M.table || !PEOPLE.some((p) => M[p])) throw new Error("models");
 
-  const office = new THREE.Group();
-  scene.add(office);
-  const tex = woodTexture(); tex.repeat.set(W / 3, D / 3);
-  const floor = new THREE.Mesh(new THREE.PlaneGeometry(W, D), new THREE.MeshStandardMaterial({ map: tex, roughness: 0.85 }));
-  floor.rotation.x = -Math.PI / 2; floor.position.set(W / 2, 0, D / 2); floor.receiveShadow = true;
-  office.add(floor);
-  // A thin base under the floor so the plan reads as a model.
-  box(office, W + 0.25, 0.3, D + 0.25, 0xcbbfae, W / 2 - 0.125, -0.151, D / 2 - 0.125 + 0.125, { shadow: false });
-  outerWalls(office);
-  corridors(office);
-  lounge(office);
   makePlan();
-  for (const r of ROOMS) buildRoom(office, r);
+  buildOffice();
   buildPeople();
 
   controls = new OrbitControls(camera, renderer.domElement);
@@ -741,6 +842,7 @@ async function start() {
   startNextMail();
 }
 
+plan = layout();
 makePlan();
 renderList();
 if (renderer && stage) {
@@ -763,8 +865,12 @@ async function refresh() {
     const same = JSON.stringify(j.agents) === JSON.stringify(agents);
     agents = j.agents;
     if (!same) {
+      const before = layoutKey;
       makePlan();
-      if (renderer && peopleGroup) { if (current) pendingRebuild = true; else buildPeople(); }
+      if (renderer && peopleGroup) {
+        const rebuild = () => { if (layoutKey !== before) buildOffice(); buildPeople(); };
+        if (current) pendingRebuild = rebuild; else rebuild();
+      }
     }
     renderList();
     if (selected) { if (agents.some((x) => x.id === selected)) openPanel(selected); else closePanel(); }
