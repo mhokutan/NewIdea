@@ -210,11 +210,11 @@ function woodTexture() {
   const c = document.createElement("canvas");
   c.width = 512; c.height = 512;
   const ctx = c.getContext("2d");
-  const tones = ["#e9d2ac", "#e4caa0", "#eed9b6", "#e1c599", "#ebd4ae"];
+  const tones = ["#d9a45f", "#d39b55", "#dfad6b", "#cf9650", "#dca866"]; // honey oak
   for (let i = 0; i < 8; i++) {
     ctx.fillStyle = tones[i % tones.length];
     ctx.fillRect(0, i * 64, 512, 64);
-    ctx.fillStyle = "rgba(130,90,50,.14)";
+    ctx.fillStyle = "rgba(255,236,200,.35)"; // light plank lines
     ctx.fillRect(0, i * 64, 512, 2);
     const off = (i * 137) % 512;
     ctx.fillRect(off, i * 64, 2, 64);
@@ -272,8 +272,8 @@ function corridors(g) {
 }
 
 // Glass room: thin dark frame, clear half height glass, a door gap, a colored rug under the desks.
-const glassMat = new THREE.MeshStandardMaterial({ color: 0xcfe9f7, roughness: 0.05, metalness: 0.1, transparent: true, opacity: 0.3, depthWrite: false });
-const frameMat = new THREE.MeshStandardMaterial({ color: 0x55575e, roughness: 0.6 });
+const glassMat = new THREE.MeshStandardMaterial({ color: 0xe3f2fc, emissive: 0xcfe8f8, emissiveIntensity: 0.25, roughness: 0.05, metalness: 0.1, transparent: true, opacity: 0.3, depthWrite: false });
+const frameMat = new THREE.MeshStandardMaterial({ color: 0xf1f3f5, roughness: 0.5 }); // white frame posts and rails
 function glassWall(g, x1, z1, x2, z2, door) {
   const len = Math.hypot(x2 - x1, z2 - z1);
   const alongX = Math.abs(z2 - z1) < 1e-6;
@@ -286,10 +286,14 @@ function glassWall(g, x1, z1, x2, z2, door) {
     pane.position.set(px, GLASS_H / 2, pz); pane.renderOrder = 2;
     g.add(pane);
     // Top rail and bottom rail.
-    box(g, alongX ? L : 0.035, 0.035, alongX ? 0.035 : L, 0, px, GLASS_H, pz, { mat: frameMat, shadow: false });
+    box(g, alongX ? L : 0.045, 0.04, alongX ? 0.045 : L, 0, px, GLASS_H, pz, { mat: frameMat, shadow: false });
     box(g, alongX ? L : 0.04, 0.04, alongX ? 0.04 : L, 0, px, 0.02, pz, { mat: frameMat, shadow: false });
-    // Thin posts at the ends of each glass run only.
-    for (const t of [a, b]) box(g, 0.04, GLASS_H, 0.04, 0, alongX ? x1 + t : x1, GLASS_H / 2, alongX ? z1 : z1 + t, { mat: frameMat, shadow: false });
+    // White posts at the corners, at the door and between every glass panel (about 1.2 m wide).
+    const n = Math.max(1, Math.round(L / 1.2));
+    for (let i = 0; i <= n; i++) {
+      const t = a + (L * i) / n;
+      box(g, 0.05, GLASS_H, 0.05, 0, alongX ? x1 + t : x1, GLASS_H / 2, alongX ? z1 : z1 + t, { mat: frameMat, shadow: false });
+    }
   }
 }
 const doorX = (r) => r.x + 1.1;
@@ -428,23 +432,66 @@ function buildPeople() {
 function syncBubbles() { for (const p of people) p.bubble.classList.toggle("sel", p.agent.id === selected); }
 
 const tmp = new THREE.Vector3();
-function place(elm, v) {
+function project(v) {
   tmp.copy(v).project(camera);
+  return [(tmp.x * 0.5 + 0.5) * stage.clientWidth, (-tmp.y * 0.5 + 0.5) * stage.clientHeight];
+}
+function place(elm, v) {
+  const [x, y] = project(v);
   const w = stage.clientWidth, h = stage.clientHeight;
-  const x = (tmp.x * 0.5 + 0.5) * w, y = (-tmp.y * 0.5 + 0.5) * h;
   const out = x < -60 || x > w + 60 || y < -40 || y > h + 40;
   elm.style.display = out ? "none" : "";
   elm.style.left = x.toFixed(1) + "px"; elm.style.top = y.toFixed(1) + "px";
 }
+// Labels and name bubbles never cover each other (founder 2026-11-13): every frame each one takes the first free spot
+// from a short list of screen offsets around its anchor. Department labels go first, then bubbles from front to back.
+const GAP = 3;
+const hits = (a, b) => a.l < b.r + GAP && b.l < a.r + GAP && a.t < b.b + GAP && b.t < a.b + GAP;
+function settle(items, taken) {
+  for (const it of items) {
+    const { elm, x, y, kind } = it;
+    const w = elm.offsetWidth, h = elm.offsetHeight;
+    // Rectangle for a given offset; the "!" over a waiting person counts as part of the bubble.
+    const bang = kind === "name" && elm.querySelector("b") ? (stage.clientWidth < 600 ? 24 : 28) : 0;
+    const rect = (dx, dy) => kind === "dept"
+      ? { l: x + dx - w / 2, r: x + dx + w / 2, t: y + dy - h / 2, b: y + dy + h / 2 }
+      : { l: x + dx - w / 2, r: x + dx + w / 2, t: y + dy - h - 5 - bang, b: y + dy };
+    const sy = h + GAP + 2, sx = w / 2 + GAP + 2;
+    const tries = kind === "dept"
+      ? [[0, 0], [0, sy], [0, -sy], [sx, 0], [-sx, 0], [0, 2 * sy], [sx, sy], [-sx, sy], [0, -2 * sy]]
+      : [[0, 0], [0, -sy], [sx, 0], [-sx, 0], [sx, -sy], [-sx, -sy], [0, -2 * sy], [0, sy], [sx, -2 * sy], [-sx, -2 * sy], [0, -3 * sy]];
+    let pick = tries[0], r = rect(0, 0);
+    for (const [dx, dy] of tries) {
+      const c = rect(dx, dy);
+      if (!taken.some((o) => hits(c, o))) { pick = [dx, dy]; r = c; break; }
+    }
+    taken.push(r);
+    elm.style.left = (x + pick[0]).toFixed(1) + "px";
+    elm.style.top = (y + pick[1]).toFixed(1) + "px";
+  }
+}
 const head = new THREE.Vector3();
 function placeTags() {
-  for (const t of deptTags) place(t.el, t.pos);
+  const W0 = stage.clientWidth, H0 = stage.clientHeight;
+  const visible = ([x, y]) => x > -60 && x < W0 + 60 && y > -40 && y < H0 + 40;
+  const depts = [], names = [];
+  for (const t of deptTags) {
+    const xy = project(t.pos);
+    t.el.style.display = visible(xy) ? "" : "none";
+    if (visible(xy)) depts.push({ elm: t.el, x: xy[0], y: xy[1], kind: "dept" });
+  }
   for (const p of people) {
     if (p.walking) { p.bubble.style.display = "none"; continue; }
     const base = p.actor ? p.actor.position : new THREE.Vector3(p.slot.x, 0, p.slot.z + 0.72);
     head.set(base.x, p.agent.status === "waiting_owner" ? 1.6 : 1.45, base.z);
-    place(p.bubble, head);
+    const xy = project(head);
+    p.bubble.style.display = visible(xy) ? "" : "none";
+    if (visible(xy)) names.push({ elm: p.bubble, x: xy[0], y: xy[1], kind: "name" });
   }
+  names.sort((a, b) => b.y - a.y);
+  const taken = [];
+  settle(depts, taken);
+  settle(names, taken);
 }
 
 // ---------- mail: walk with an envelope from one desk to another ----------

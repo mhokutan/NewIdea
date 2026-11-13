@@ -1173,7 +1173,7 @@ ${a.last_action ? `<p style="margin:0 0 6px">${esc(a.last_action)}</p>` : ""}${a
 .of-name span{overflow:hidden;text-overflow:ellipsis}
 .of-name::after{content:"";position:absolute;left:50%;bottom:-5px;margin-left:-5px;border:5px solid transparent;border-bottom:0;border-top-color:#fff}
 .of-name i{flex:none;width:8px;height:8px;border-radius:50%;background:var(--c)}
-.of-name.off{opacity:.5}.of-name.sel{outline:2px solid #ffd60a}
+.of-name.off{background:#f1f1f3}.of-name.off span{color:#52525b}.of-name.sel{outline:2px solid #ffd60a}
 .of-name b{position:absolute;left:50%;top:-26px;margin-left:-11px;width:22px;height:22px;border-radius:50%;background:#ffd60a;color:#111;font:900 15px/22px system-ui;text-align:center;animation:of-bounce 1s ease-in-out infinite}
 .of-name em{font-style:normal;background:#ef4444;color:#fff;border-radius:6px;padding:1px 5px;font-size:10px}
 .of-pop{position:absolute;transform:translate(-50%,-100%);padding:5px 9px;border-radius:10px;background:#18181b;color:#fff;font:700 11px/1.2 system-ui;white-space:nowrap;max-width:180px;overflow:hidden;text-overflow:ellipsis;animation:of-pop 2.4s ease-out forwards}

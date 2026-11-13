@@ -197,6 +197,21 @@ test("page renders list, 3D office, mail walk, panel and note; screenshots", { t
       // Both mails play once, one after the other, then the browser remembers them.
       await page.waitForFunction(() => { try { return JSON.parse(localStorage.getItem("office-mail-shown") || "[]").length >= 2; } catch { return false; } }, null, { timeout: 30000 });
       await page.waitForTimeout(7000);
+      // No department label or name bubble covers another one (founder 2026-11-13).
+      const overlaps = await page.evaluate(() => {
+        const st = document.getElementById("of-stage").getBoundingClientRect();
+        const els = [...document.querySelectorAll("#of-tags .of-dept, #of-tags .of-name")].filter((e) => getComputedStyle(e).display !== "none");
+        const boxes = els.map((e) => ({ t: e.textContent, r: e.getBoundingClientRect() }))
+          .filter(({ r }) => r.right > st.left && r.left < st.right && r.bottom > st.top && r.top < st.bottom);
+        const bad = [];
+        for (let i = 0; i < boxes.length; i++) for (let j = i + 1; j < boxes.length; j++) {
+          const a = boxes[i].r, b = boxes[j].r;
+          if (a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom) bad.push(boxes[i].t + " / " + boxes[j].t);
+        }
+        return { n: boxes.length, bad };
+      });
+      assert.ok(overlaps.n >= 8, `${name}: labels on screen (${overlaps.n})`);
+      assert.deepEqual(overlaps.bad, [], `${name}: no overlapping labels`);
       await page.screenshot({ path: join(SHOTS, `office-${name}.png`) });
       await page.locator('#of-list [data-id="hauling-dev"]').click();
       assert.equal(await page.locator("#of-p-title").innerText(), "Hauling Geliştirici");
