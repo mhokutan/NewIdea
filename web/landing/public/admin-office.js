@@ -111,12 +111,15 @@ const el = (tag, attrs = {}, ...kids) => {
 const waitingCount = (list) => list.filter((a) => a.status === "waiting_owner" || a.needs_owner).length;
 const hash = (s) => { let h = 0; for (const c of String(s)) h = (h * 31 + c.charCodeAt(0)) >>> 0; return h; };
 
-let agents = [], mail = [];
+let agents = [], mail = [], tasks = null; // tasks: null until the office_tasks table exists
 try {
   const j = JSON.parse(document.getElementById("of-data").textContent || "{}");
   agents = Array.isArray(j) ? j : j.agents || [];
   mail = Array.isArray(j.mail) ? j.mail : [];
+  tasks = Array.isArray(j.tasks) ? j.tasks : null;
 } catch { agents = []; }
+// "Senden beklenen" counts task cards that wait for the owner's answer; before the board exists, the agents' asks.
+const ownerCount = () => (tasks ? tasks.filter((t) => t.status === "waiting_owner" && !t.owner_answer).length : waitingCount(agents));
 let selected = null; // agent id
 
 // ---------- desk plan: which agent sits where ----------
@@ -155,7 +158,7 @@ const pTitle = document.getElementById("of-p-title");
 const pBody = document.getElementById("of-p-body");
 
 function renderList() {
-  askEl.replaceChildren("Senden beklenen: ", el("b", {}, String(waitingCount(agents))), " evet");
+  askEl.replaceChildren("Senden beklenen: ", el("b", {}, String(ownerCount())), " evet");
   if (!agents.length) return;
   listEl.replaceChildren(...agents.map((a) => {
     const s = st(a.status);
@@ -170,6 +173,7 @@ function openPanel(id) {
   const a = agents.find((x) => x.id === id);
   if (!a || !panel) return;
   selected = id;
+  if (tasks) { boardFilter = id; renderBoard(); } // a click on a person filters the board to that person's cards
   const s = slotOf(id);
   pTitle.replaceChildren(shortName(a.role), modelOf(a.role) ? el("span", { class: "of-model" }, modelOf(a.role)) : "");
   const row = (k, v) => [el("dt", {}, k), el("dd", {}, v || "-")];
@@ -188,6 +192,108 @@ listEl.addEventListener("keydown", (e) => {
   const li = e.target.closest?.("[data-id]");
   if (li) { e.preventDefault(); openPanel(li.getAttribute("data-id")); }
 });
+
+// ---------- task board ("Görevler", founder 2026-11-13) ----------
+// Columns of cards from office_tasks. The CEO session writes the cards; the owner reads them here and answers the
+// cards that wait for a yes. Every text goes in through textContent.
+const COLS = [
+  ["waiting_owner", "Senden bekleyen", "wait"], ["doing", "Yapılıyor", "doing"], ["done", "Bitti", "done"], ["blocked", "Takıldı", "blocked"],
+];
+const KIND = { yes: "Evet istiyor", info: "Bilgi", question: "Soru" };
+const TASK_STATUS = { waiting_owner: "Senden bekleyen", doing: "Yapılıyor", done: "Bitti", blocked: "Takıldı" };
+const colsEl = document.getElementById("of-b-cols");
+const filterEl = document.getElementById("of-b-filter");
+const drawer = document.getElementById("of-drawer");
+const tabCount = document.getElementById("of-tab-count");
+let boardFilter = null, openTaskId = null;
+const projectOf = (key) => (key === "ceo" ? CEO_DEPT : DEPTS.find((d) => d.key === key)) || { name: String(key || "-").toLocaleUpperCase("tr"), color: "#94a3b8" };
+const agentName = (id) => { const a = agents.find((x) => x.id === id); return a ? shortName(a.role) : id || "-"; };
+const byPriority = (x, y) => (x.priority ?? 3) - (y.priority ?? 3) || String(x.created_at).localeCompare(String(y.created_at));
+function renderBoard() {
+  if (!colsEl) return;
+  if (tabCount) tabCount.textContent = tasks ? `(${ownerCount()})` : "";
+  renderList();
+  if (!tasks) { colsEl.replaceChildren(el("p", { class: "dim" }, "Görev tablosu henüz yok.")); return; }
+  filterEl.hidden = !boardFilter;
+  if (boardFilter) {
+    const clear = el("button", { type: "button" }, "× Filtreyi kaldır");
+    clear.addEventListener("click", () => { boardFilter = null; renderBoard(); });
+    filterEl.replaceChildren("Sadece: ", el("b", {}, agentName(boardFilter)), " ", clear);
+  }
+  const shown = tasks.filter((t) => !boardFilter || t.assignee_id === boardFilter);
+  colsEl.replaceChildren(...COLS.map(([status, label, cls]) => {
+    const cards = shown.filter((t) => t.status === status).sort(byPriority);
+    const ul = el("ul", { class: "of-cards" }, ...cards.map((t) => {
+      const p = projectOf(t.project);
+      const b = el("button", { type: "button", class: "of-card", "data-task": t.id },
+        el("span", { class: "of-card-t" }, t.title),
+        el("span", { class: "of-card-m" }, el("i", { style: `--c:${p.color}` }), p.name, " · ", agentName(t.assignee_id),
+          (t.priority ?? 3) === 1 ? el("span", { class: "of-pri" }, "Öncelikli") : null,
+          t.owner_answer ? el("span", { class: "of-ans" }, t.owner_answer === "yes" ? "Cevabın: Evet" : "Cevabın: Hayır") : null));
+      b.addEventListener("click", () => openTask(t.id));
+      return el("li", {}, b);
+    }));
+    return el("section", { class: "of-col " + cls, "data-col": status }, el("h3", {}, label, el("b", {}, String(cards.length))),
+      cards.length ? ul : el("p", { class: "dim", style: "margin:0;font-size:13px" }, "Kart yok."));
+  }));
+}
+function openTask(id, keepNote) {
+  const t = tasks?.find((x) => x.id === id);
+  if (!t || !drawer) { closeTask(); return; }
+  openTaskId = id;
+  const p = projectOf(t.project);
+  document.getElementById("of-d-title").textContent = t.title;
+  const row = (k, v) => [el("dt", {}, k), el("dd", {}, v || "-")];
+  document.getElementById("of-d-meta").replaceChildren(...row("Proje", p.name), ...row("Kimde", agentName(t.assignee_id)),
+    ...row("Durum", TASK_STATUS[t.status] || t.status), ...row("Tür", KIND[t.kind] || t.kind), ...row("Öncelik", String(t.priority ?? 3)),
+    ...row("Açıldı", ny(t.created_at)), ...(t.owner_answer ? row("Cevabın", (t.owner_answer === "yes" ? "Evet" : "Hayır") + (t.owner_note ? ": " + t.owner_note : "") + " (" + ny(t.answered_at) + ")") : []));
+  document.getElementById("of-d-detail").textContent = t.detail || "";
+  const box = document.getElementById("of-d-answer");
+  const oldNote = keepNote ? document.getElementById("of-d-note")?.value : null;
+  if (t.status === "waiting_owner") {
+    const note = el("textarea", { id: "of-d-note", maxlength: "1000", rows: "3", placeholder: "Not (isteğe bağlı)", "aria-label": "Not" });
+    note.value = oldNote ?? "";
+    const yes = el("button", { type: "button", class: "of-yes" }, "Evet"), no = el("button", { type: "button", class: "of-no" }, "Hayır");
+    const msg = el("p", { class: "of-d-small", "aria-live": "polite", id: "of-d-msg" });
+    const send = async (answer) => {
+      const text = note.value.trim();
+      if (text.length > 1000) { msg.textContent = "Not en fazla 1000 karakter olabilir."; return; }
+      yes.disabled = no.disabled = true;
+      msg.textContent = "Gönderiliyor...";
+      try {
+        const r = await fetch(`/admin/office/task/${encodeURIComponent(t.id)}/answer`, { method: "POST", credentials: "same-origin", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ answer, note: text }) });
+        if (r.ok) {
+          Object.assign(t, { owner_answer: answer, owner_note: text || null, answered_at: new Date().toISOString() });
+          renderBoard(); openTask(t.id);
+          document.getElementById("of-d-msg").textContent = answer === "yes" ? "Evet kaydedildi. CEO görecek." : "Hayır kaydedildi. CEO görecek.";
+          return;
+        }
+        msg.textContent = r.status === 409 ? "Bu kart artık cevap beklemiyor." : "Cevap kaydedilemedi. Biraz sonra tekrar dene.";
+      } catch { msg.textContent = "Cevap kaydedilemedi. Bağlantını kontrol et."; }
+      yes.disabled = no.disabled = false;
+    };
+    yes.addEventListener("click", () => send("yes"));
+    no.addEventListener("click", () => send("no"));
+    box.replaceChildren(...[
+      t.owner_answer ? el("p", { class: "of-d-small" }, "Cevabını değiştirebilirsin, CEO kartı taşıyana kadar.") : null,
+      note, el("div", { class: "of-d-btns" }, yes, no), msg,
+      el("p", { class: "of-d-small" }, "Mağaza, yayın, bütçe ve canlı veri işlerinde CEO sohbette bir kez daha teyit ister."),
+    ].filter(Boolean));
+  } else box.replaceChildren();
+  drawer.hidden = false;
+}
+function closeTask() { openTaskId = null; if (drawer) drawer.hidden = true; }
+document.getElementById("of-d-back")?.addEventListener("click", closeTask);
+// Phone and narrow screens: the board is a tab next to the office.
+const mainEl = document.getElementById("of-main");
+for (const [id, board] of [["of-tab-office", false], ["of-tab-board", true]]) {
+  document.getElementById(id)?.addEventListener("click", () => {
+    mainEl.classList.toggle("board", board);
+    document.getElementById("of-tab-office").setAttribute("aria-selected", String(!board));
+    document.getElementById("of-tab-board").setAttribute("aria-selected", String(board));
+  });
+}
+renderBoard();
 
 // ---------- note to the CEO (the page's only write) ----------
 const noteForm = document.getElementById("of-note");
@@ -873,6 +979,7 @@ async function refresh() {
     if (!j || !Array.isArray(j.agents)) return;
     const same = JSON.stringify(j.agents) === JSON.stringify(agents);
     agents = j.agents;
+    if (Array.isArray(j.tasks) || j.tasks === null) { tasks = j.tasks; renderBoard(); if (openTaskId) openTask(openTaskId, true); }
     if (!same) {
       const before = layoutKey;
       makePlan();

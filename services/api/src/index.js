@@ -1099,7 +1099,37 @@ app.get("/v1/admin/office", async (c) => {
       "select id, from_id, to_id, label, created_at from office_mail where created_at >= strftime('%Y-%m-%dT%H:%M:%fZ', 'now', '-10 minutes') order by created_at, id limit 30",
     ).all()).results;
   } catch { mail = []; } // table not there yet
-  return c.json({ agents: results, mail });
+  // Task board (migration 0003): open cards plus cards finished in the last 7 days. null = table not there yet.
+  let tasks = null;
+  try {
+    tasks = (await c.env.OFFICE_DB.prepare(
+      `select id, title, detail, project, assignee_id, status, kind, priority, owner_answer, owner_note, answered_at, created_at, updated_at
+       from office_tasks where status != 'done' or updated_at >= strftime('%Y-%m-%dT%H:%M:%fZ', 'now', '-7 days')
+       order by priority, created_at limit 300`,
+    ).all()).results;
+  } catch { tasks = null; }
+  return c.json({ agents: results, mail, tasks });
+});
+// The owner's answer on one task card (founder 2026-11-13). Only owner_answer, owner_note and answered_at change, and
+// only on a card that waits for the owner. Everything else on the card belongs to the CEO session (D1 tool).
+app.post("/v1/admin/office/tasks/:id/answer", async (c) => {
+  if (!adminOk(c)) return fail(c, 401, "admin_only", "Not allowed.");
+  if (!c.env.OFFICE_DB) return fail(c, 503, "office_not_ready", "office-db is not connected yet.");
+  const id = c.req.param("id");
+  if (!/^[A-Za-z0-9_-]{8,64}$/.test(id)) return fail(c, 404, "not_found", "No such task.");
+  const body = await c.req.json().catch(() => null);
+  const answer = body?.answer === "yes" || body?.answer === "no" ? body.answer : null;
+  if (!answer) return fail(c, 400, "bad_answer", "Answer must be yes or no.");
+  if (body.note != null && typeof body.note !== "string") return fail(c, 400, "bad_note", "Note must be text.");
+  const note = typeof body.note === "string" ? body.note.trim() : "";
+  if (note.length > 1000) return fail(c, 400, "bad_note", "Note must be at most 1000 characters.");
+  const row = await c.env.OFFICE_DB.prepare("select status from office_tasks where id = ?").bind(id).first();
+  if (!row) return fail(c, 404, "not_found", "No such task.");
+  if (row.status !== "waiting_owner") return fail(c, 409, "not_waiting", "This task does not wait for an answer.");
+  await c.env.OFFICE_DB.prepare(
+    "update office_tasks set owner_answer = ?, owner_note = ?, answered_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now'), updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now') where id = ? and status = 'waiting_owner'",
+  ).bind(answer, note || null, id).run();
+  return c.json({ ok: true });
 });
 app.post("/v1/admin/office/notes", async (c) => {
   if (!adminOk(c)) return fail(c, 401, "admin_only", "Not allowed.");

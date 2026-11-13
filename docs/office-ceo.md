@@ -35,3 +35,29 @@ INSERT INTO office_mail (id, from_id, to_id, label)
 VALUES (lower(hex(randomblob(4))) || '-' || lower(hex(randomblob(2))) || '-4' || substr(lower(hex(randomblob(2))), 2) || '-a' || substr(lower(hex(randomblob(2))), 2) || '-' || lower(hex(randomblob(6))),
         'ceo', 'hauling-dev', '2.5.2 derleme görevi');
 ```
+
+## Task board ("Görevler", 2026-11-13)
+
+New table `office_tasks` (migration `services/api/office-migrations/0003_office_tasks.sql`, apply only after the
+founder's yes). The board next to the 3D office has four columns: Senden bekleyen (`waiting_owner`), Yapılıyor
+(`doing`), Bitti (`done`), Takıldı (`blocked`). "Senden beklenen: N evet" counts `waiting_owner` cards with no answer.
+
+The CEO session creates and moves cards with the D1 tool. The page can set ONLY `owner_answer` (yes/no), `owner_note`
+and `answered_at` on a `waiting_owner` card (`POST /v1/admin/office/tasks/:id/answer`). Read the owner's answers:
+
+```sql
+SELECT id, title, owner_answer, owner_note, answered_at FROM office_tasks WHERE owner_answer IS NOT NULL ORDER BY answered_at DESC;
+```
+
+Create a card (project is a department key: hauling, dropolis, dovelet, promovote, salesforce, store, social, panel,
+ortak, dopazon, ceo). priority 1 is high. kind is yes, info or question:
+
+```sql
+INSERT INTO office_tasks (id, title, detail, project, assignee_id, status, kind, priority)
+VALUES (lower(hex(randomblob(4))) || '-' || lower(hex(randomblob(2))) || '-4' || substr(lower(hex(randomblob(2))), 2) || '-a' || substr(lower(hex(randomblob(2))), 2) || '-' || lower(hex(randomblob(6))),
+        'Hauling 2.5.2 iOS ve Android derlemesi', 'Derlemeler hazir. Magazaya yuklemek icin evet gerekiyor.',
+        'hauling', 'hauling-dev', 'waiting_owner', 'yes', 1);
+```
+
+After the founder answers, move the card: `UPDATE office_tasks SET status = 'doing', updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id = '...';`
+Store, publish, budget and live data work still needs the founder's yes in the CEO chat; the card's answer is the first step.

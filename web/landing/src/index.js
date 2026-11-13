@@ -1131,20 +1131,38 @@ const OFFICE_STATUS = {
 async function officeAgents(env) {
   // Read through promovote-api (founder 2026-11-12): the API answers only with ADMIN_API_TOKEN, held by this admin site.
   const r = await reviewApi(env, "GET", "/v1/admin/office");
-  return r.ok ? { ok: true, agents: r.data.agents || [], mail: r.data.mail || [] } : { ok: false, agents: [], mail: [], reason: r.reason };
+  return r.ok ? { ok: true, agents: r.data.agents || [], mail: r.data.mail || [], tasks: Array.isArray(r.data.tasks) ? r.data.tasks : null } : { ok: false, agents: [], mail: [], tasks: null, reason: r.reason };
+}
+// Writes from the office page (founder 2026-11-12 and 2026-11-13): a note to the CEO, and the owner's yes or no on one
+// task card. Basic auth is sent by the browser on cross site posts too, so only same origin JSON requests may write.
+const officeJson = (o, status = 200) => new Response(JSON.stringify(o), { status, headers: { "Content-Type": "application/json; charset=utf-8", ...ADMIN_HEADERS } });
+async function officeBody(request, url) {
+  if (request.headers.get("Origin") !== url.origin) return { res: officeJson({ ok: false, error: "forbidden" }, 403) };
+  if (!(request.headers.get("Content-Type") || "").startsWith("application/json")) return { res: officeJson({ ok: false, error: "bad_type" }, 415) };
+  const raw = await request.text();
+  if (raw.length > 8000) return { res: officeJson({ ok: false, error: "too_long" }, 413) };
+  try { return { body: JSON.parse(raw) }; } catch { return { body: null }; }
 }
 async function officeNote(request, env, url) {
-  const json = (o, status = 200) => new Response(JSON.stringify(o), { status, headers: { "Content-Type": "application/json; charset=utf-8", ...ADMIN_HEADERS } });
-  // Basic auth is sent by the browser on cross site posts too, so only same origin JSON requests may write.
-  if (request.headers.get("Origin") !== url.origin) return json({ ok: false, error: "forbidden" }, 403);
-  if (!(request.headers.get("Content-Type") || "").startsWith("application/json")) return json({ ok: false, error: "bad_type" }, 415);
-  const raw = await request.text();
-  if (raw.length > 8000) return json({ ok: false, error: "too_long" }, 413);
-  let text = "";
-  try { const b = JSON.parse(raw); text = typeof b?.text === "string" ? b.text.trim() : ""; } catch { /* bad json */ }
-  if (!text || text.length > 1000) return json({ ok: false, error: "bad_text" }, 400);
+  const { res, body } = await officeBody(request, url);
+  if (res) return res;
+  const text = typeof body?.text === "string" ? body.text.trim() : "";
+  if (!text || text.length > 1000) return officeJson({ ok: false, error: "bad_text" }, 400);
   const r = await reviewApi(env, "POST", "/v1/admin/office/notes", { text });
-  return r.ok ? json({ ok: true }) : json({ ok: false, error: r.reason }, 502);
+  return r.ok ? officeJson({ ok: true }) : officeJson({ ok: false, error: r.reason }, 502);
+}
+async function officeTaskAnswer(request, env, url, id) {
+  const { res, body } = await officeBody(request, url);
+  if (res) return res;
+  if (!/^[A-Za-z0-9_-]{8,64}$/.test(id)) return officeJson({ ok: false, error: "not_found" }, 404);
+  const answer = body?.answer === "yes" || body?.answer === "no" ? body.answer : null;
+  if (!answer) return officeJson({ ok: false, error: "bad_answer" }, 400);
+  const note = typeof body?.note === "string" ? body.note.trim() : "";
+  if (note.length > 1000) return officeJson({ ok: false, error: "bad_note" }, 400);
+  const r = await reviewApi(env, "POST", `/v1/admin/office/tasks/${id}/answer`, { answer, note });
+  if (r.ok) return officeJson({ ok: true });
+  const code = { not_found: 404, not_waiting: 409, bad_answer: 400, bad_note: 400 }[r.reason] || 502;
+  return officeJson({ ok: false, error: r.reason }, code);
 }
 const nyTime = (iso) => {
   const d = new Date(iso || "");
@@ -1153,7 +1171,8 @@ const nyTime = (iso) => {
 };
 async function officePage(env) {
   const r = await officeAgents(env);
-  const waiting = r.agents.filter((a) => a.status === "waiting_owner" || a.needs_owner).length;
+  // With the task board, "Senden beklenen" counts the cards that wait for the owner's answer.
+  const waiting = r.tasks ? r.tasks.filter((t) => t.status === "waiting_owner" && !t.owner_answer).length : r.agents.filter((a) => a.status === "waiting_owner" || a.needs_owner).length;
   const chipCls = { g: "chip-g", y: "chip-y", r: "chip-r", n: "chip-n" };
   const list = r.agents.map((a) => {
     const [label, lv] = OFFICE_STATUS[a.status] || [a.status, "n"];
@@ -1193,17 +1212,48 @@ ${a.last_action ? `<p style="margin:0 0 6px">${esc(a.last_action)}</p>` : ""}${a
 .of-item{padding:14px 16px;border-radius:14px;background:var(--surface);border:1px solid var(--line);overflow-wrap:anywhere}.of-item.sel{border-color:var(--lime)}
 .of-need{margin:0 0 6px;padding:8px 10px;border-radius:10px;background:rgba(255,214,10,.1);color:#ffe066}
 .chip-n{background:var(--surface-2);color:var(--muted)}
+.of-main{display:grid;gap:12px;grid-template-columns:minmax(0,1fr)}
+@media (min-width:1000px){.of-main{grid-template-columns:minmax(0,1fr) 380px}.of-tabs{display:none}}
+.of-tabs{display:flex;gap:8px;margin:0 0 10px}.of-tabs button{min-height:40px;padding:0 16px;border-radius:999px;border:1px solid var(--line);background:var(--surface);color:var(--muted);font-weight:700;font-size:15px;cursor:pointer}.of-tabs button[aria-selected="true"]{background:var(--lime);color:#111;border-color:transparent}
+@media (max-width:999px){.of-main.board .of-stage{display:none!important}.of-main:not(.board) .of-board{display:none}}
+.of-board{position:relative;min-width:0;max-height:min(74vh,720px);overflow:auto;padding:14px;border-radius:18px;background:var(--surface);border:1px solid var(--line)}
+.of-b-head{display:flex;gap:8px;align-items:center;justify-content:space-between;flex-wrap:wrap;margin:0 0 10px}.of-b-head h2{margin:0;font-size:18px}
+.of-b-filter{margin:0;font-size:13px}.of-b-filter button{min-height:32px;padding:0 10px;border-radius:999px;border:1px solid var(--line);background:var(--surface-2);color:inherit;cursor:pointer}
+.of-col{margin:0 0 12px}.of-col h3{display:flex;gap:8px;align-items:center;margin:0 0 8px;font-size:13px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted)}.of-col h3 b{min-width:22px;padding:1px 7px;border-radius:999px;background:var(--surface-2);color:inherit;text-align:center}
+.of-col.wait h3 b{background:var(--lime);color:#111}
+.of-cards{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+.of-card{display:block;width:100%;text-align:left;padding:10px 12px;border-radius:12px;border:1px solid var(--line);background:var(--bg,#111);color:inherit;font:inherit;cursor:pointer}
+.of-card:hover,.of-card:focus-visible{border-color:var(--lime)}
+.of-card-t{display:block;font-weight:700;line-height:1.3;overflow-wrap:anywhere}
+.of-card-m{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-top:6px;font-size:12px;color:var(--muted)}
+.of-card-m i{width:8px;height:8px;border-radius:50%;background:var(--c)}
+.of-pri{padding:0 6px;border-radius:6px;background:rgba(239,68,68,.18);color:#fca5a5;font-weight:700}
+.of-ans{padding:0 6px;border-radius:6px;background:var(--surface-2);color:inherit;font-weight:700}
+.of-col.done .of-card{opacity:.7}
+.of-drawer{position:absolute;inset:0;padding:14px;background:var(--surface);overflow:auto}
+.of-d-back{min-height:40px;padding:0 12px;border-radius:10px;border:1px solid var(--line);background:var(--surface-2);color:inherit;font-weight:700;cursor:pointer;margin:0 0 10px}
+.of-drawer h3{margin:0 0 8px;font-size:18px;overflow-wrap:anywhere}.of-drawer dl{display:grid;grid-template-columns:auto 1fr;gap:4px 10px;margin:0 0 10px;font-size:14px}.of-drawer dt{color:var(--muted)}.of-drawer dd{margin:0;overflow-wrap:anywhere}
+.of-d-detail{white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.5;margin:0 0 12px}
+.of-d-btns{display:flex;gap:8px;margin:8px 0}.of-d-btns button{flex:1;min-height:44px;border-radius:12px;border:0;font-weight:800;font-size:15px;cursor:pointer}.of-yes{background:var(--lime);color:#111}.of-no{background:var(--surface-2);color:inherit;border:1px solid var(--line)!important}
+.of-d-btns button[disabled]{opacity:.5;cursor:default}
+.of-drawer textarea{width:100%;min-height:72px;padding:10px 12px;border-radius:12px;border:1px solid var(--line);background:var(--bg,#111);color:inherit;font:inherit;font-size:15px;box-sizing:border-box}
+.of-d-small{margin:6px 0 0;font-size:12px;color:var(--muted)}
 .of-legend{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0 0;font-size:13px;color:var(--muted)}.of-legend span::before{content:"";display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px;background:var(--c)}
 @media (max-width:600px){.of-stage{height:min(58vh,105vw);min-height:300px}.of-panel{top:auto;bottom:10px;right:10px;left:10px;width:auto;max-height:55%}.of-dept{font-size:8px;padding:3px 6px;gap:4px}.of-dept i{width:6px;height:6px}.of-name.quiet{padding:3px;gap:0;background:none;box-shadow:none;border-radius:50%}.of-name.quiet::after{display:none}.of-name.quiet i{width:10px;height:10px;box-shadow:0 0 0 1px rgba(24,24,27,.35)}.of-name.quiet.off i{opacity:.5}.of-name.quiet span{display:none}.of-name em{font-size:8px}.of-name b{width:18px;height:18px;line-height:18px;font-size:12px;margin-left:-9px;top:-22px}}
 </style>
 <div class="top"><h1>Ofis</h1></div>
 <div class="of-top"><p class="of-ask" id="of-ask" aria-live="polite">Senden beklenen: <b>${waiting}</b> evet</p><p class="dim" style="margin:0;font-size:13px">30 saniyede bir yenilenir. Karaktere dokun.</p></div>
+<div class="of-tabs" role="tablist" aria-label="Görünüm"><button type="button" role="tab" id="of-tab-office" aria-selected="true" aria-controls="of-stage">Ofis</button><button type="button" role="tab" id="of-tab-board" aria-selected="false" aria-controls="of-board">Görevler <span id="of-tab-count"></span></button></div>
+<div class="of-main" id="of-main">
 <div class="of-stage" id="of-stage" aria-label="Claude oturumları ofisi, 3D görünüm"><div class="of-tags" id="of-tags" aria-hidden="true"></div><div class="of-panel" id="of-panel" role="dialog" aria-modal="false" aria-labelledby="of-p-title"><button type="button" class="of-close" id="of-close" aria-label="Kapat">×</button><h2 id="of-p-title"></h2><dl id="of-p-body"></dl></div></div>
+<section class="of-board" id="of-board" aria-label="Görevler"><div class="of-b-head"><h2>Görevler</h2><p class="of-b-filter" id="of-b-filter" hidden></p></div><div id="of-b-cols"><p class="dim">Görev tablosu henüz yok.</p></div>
+<div class="of-drawer" id="of-drawer" role="dialog" aria-modal="false" aria-labelledby="of-d-title" hidden><button type="button" class="of-d-back" id="of-d-back">‹ Görevler</button><h3 id="of-d-title"></h3><dl id="of-d-meta"></dl><p class="of-d-detail" id="of-d-detail"></p><div id="of-d-answer"></div></div></section>
+</div>
 <form class="of-note" id="of-note"><label for="of-note-text">CEO'ya not bırak</label><textarea id="of-note-text" name="text" maxlength="1000" rows="1" placeholder="CEO'ya not bırak" required></textarea><button type="submit">Gönder</button></form>
 <p class="of-note-msg dim" id="of-note-msg" aria-live="polite"></p>
 <div class="of-legend" aria-hidden="true"><span style="--c:#22c55e">Çalışıyor</span><span style="--c:#9ca3af">Boşta</span><span style="--c:#facc15">Senden evet bekliyor</span><span style="--c:#ef4444">Takıldı</span><span style="--c:#d4d4d8">Kapalı</span></div>
 <ul class="of-list" id="of-list">${list || `<li class="of-item dim">${esc(empty)}</li>`}</ul>
-<script type="application/json" id="of-data">${JSON.stringify({ agents: r.agents, mail: r.mail }).replace(/</g, "\\u003c")}</script>
+<script type="application/json" id="of-data">${JSON.stringify({ agents: r.agents, mail: r.mail, tasks: r.tasks }).replace(/</g, "\\u003c")}</script>
 <script type="module" src="/admin-office.js?v=3"></script>`;
 }
 
@@ -1493,6 +1543,10 @@ ${tilesHtml([["Paylaşılan", sum.posted?.n || 0], ["Sırada", sum.queued?.n || 
     return adminPage(path, "Unity Ads", lp.html ?? lp.note + (await unityPage(env, path, range)));
   }
 
+  if (path.startsWith("/admin/office/task/") && path.endsWith("/answer")) {
+    if (request.method !== "POST") return new Response("Method not allowed", { status: 405, headers: ADMIN_HEADERS });
+    return officeTaskAnswer(request, env, url, path.slice("/admin/office/task/".length, -"/answer".length));
+  }
   if (path === "/admin/office/note") return request.method === "POST" ? officeNote(request, env, url) : new Response("Method not allowed", { status: 405, headers: ADMIN_HEADERS });
   if (path === "/admin/office") return adminPage(path, "Ofis", await officePage(env));
   if (path === "/admin/office.json") {
