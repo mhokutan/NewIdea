@@ -17,7 +17,7 @@ const ROOT = resolve(import.meta.dirname, "../../..");
 const API_DIR = join(ROOT, "services/api");
 const WEB_DIR = join(ROOT, "web/landing");
 const STATE = mkdtempSync(join(tmpdir(), "office-d1-"));
-const SHOTS = process.env.OFFICE_SHOTS || join(ROOT, "docs/review/office");
+const SHOTS = process.env.OFFICE_SHOTS || join(ROOT, "docs/office-screenshots");
 const TOKEN = randomBytes(24).toString("hex"); // test only, never a real secret
 const PASS = "test-only-admin-pass";
 const API = "http://127.0.0.1:8791", WEB = "http://127.0.0.1:8792";
@@ -49,13 +49,17 @@ const q = (s) => (s === null ? "null" : `'${String(s).replace(/'/g, "''")}'`);
 const AGENTS = [
   ["ceo", "CEO", "working", "Haftalık planı güncelliyor", null],
   ["hauling-dev", "Hauling Geliştirici", "waiting_owner", "2.5.2 derlemesi hazır", "2.5.2 iOS ve Android derlemesi için evet"],
-  ["hauling-desktop", "Hauling Masaüstü", "idle", "Mağaza testleri bitti", null],
-  ["dropolis", "Dropolis", "blocked", "Android manifest kontrolü takıldı", null],
+  ["empire-desktop", "Hauling Masaüstü", "idle", "Mağaza testleri bitti", null],
+  ["robo-works", "Dropolis", "blocked", "Android manifest kontrolü takıldı", null],
   ["promovote-dev", "PromoVote Geliştirici", "working", "Ofis sayfasını kuruyor", null],
   ["dovelet-dev", "Dovelet Geliştirici", "idle", "Play metinleri güncellendi", null],
-  ["macmini-test", "Mac mini Test", "offline", null, null],
+  ["mac-mini-test", "Mac mini Test", "offline", null, null],
   ["analyst", "Analist", "working", "Haftalık oyuncu raporu", null],
   ["poleris", "Poleris", "working", "Yeni sürüm notları", null],
+];
+const MAIL = [
+  ["11111111-1111-4111-8111-111111111111", "ceo", "promovote-dev", "Ofis v3 görevi"],
+  ["22222222-2222-4222-8222-222222222222", "analyst", "hauling-dev", "Haftalık rapor"],
 ];
 
 before(async () => {
@@ -67,6 +71,8 @@ before(async () => {
   // The CEO session writes like this (direct SQL through the D1 tool).
   const r = sql("insert into office_agents (id, role, status, last_action, needs_owner) values " + AGENTS.map((a) => `(${a.map(q).join(", ")})`).join(", "));
   assert.equal(r.status, 0, r.stderr);
+  const m = sql("insert into office_mail (id, from_id, to_id, label) values " + MAIL.map((x) => `(${x.map(q).join(", ")})`).join(", "));
+  assert.equal(m.status, 0, m.stderr);
   await Promise.all([
     startWorker(API_DIR, 8791, { ADMIN_API_TOKEN: TOKEN }, TEST_CFG),
     startWorker(WEB_DIR, 8792, { ADMIN_PASSWORD: PASS, ADMIN_API_TOKEN: TOKEN, API_BASE_URL: API }),
@@ -83,7 +89,7 @@ test("promovote-db has nothing of the office", () => {
   assert.equal(r.status, 0, r.stderr);
   assert.deepEqual(JSON.parse(r.stdout)[0].results, []);
   const m = d1("office-db", "select name from sqlite_master where type = 'table' and name like 'office%' order by name");
-  assert.deepEqual(JSON.parse(m.stdout)[0].results.map((x) => x.name), ["office_agents", "office_notes"]);
+  assert.deepEqual(JSON.parse(m.stdout)[0].results.map((x) => x.name), ["office_agents", "office_mail", "office_notes"]);
 });
 
 test("no write endpoint: anon cannot write through the API", async () => {
@@ -94,6 +100,8 @@ test("no write endpoint: anon cannot write through the API", async () => {
 });
 
 test("table rules refuse bad rows", () => {
+  assert.notEqual(sql("insert into office_mail (id, from_id, to_id, label) values ('33333333-3333-4333-8333-333333333333', 'ceo', 'analyst', '')").status, 0);
+  assert.notEqual(sql(`insert into office_mail (id, from_id, to_id, label) values ('44444444-4444-4444-8444-444444444444', 'ceo', 'analyst', '${"a".repeat(61)}')`).status, 0);
   assert.notEqual(sql("insert into office_agents (id, role, status) values ('bad-status', 'X', 'sleeping')").status, 0);
   assert.notEqual(sql("insert into office_agents (id, role, status) values ('Bad Id', 'X', 'idle')").status, 0);
   assert.notEqual(sql(`insert into office_agents (id, role, status, last_action) values ('too-long', 'X', 'idle', '${"a".repeat(161)}')`).status, 0);
@@ -108,6 +116,41 @@ test("API read needs the admin token", async () => {
   const j = await r.json();
   assert.equal(j.agents.length, 9);
   assert.equal(j.agents[0].id, "ceo");
+  assert.deepEqual(j.mail.map((x) => x.id).sort(), MAIL.map((x) => x[0]).sort());
+});
+
+test("mail older than 10 minutes is not read", async () => {
+  assert.equal(sql("insert into office_mail (id, from_id, to_id, label, created_at) values ('55555555-5555-4555-8555-555555555555', 'ceo', 'analyst', 'Eski', strftime('%Y-%m-%dT%H:%M:%fZ', 'now', '-11 minutes'))").status, 0);
+  const j = await (await get(API + "/v1/admin/office", { headers: { "X-Admin-Token": TOKEN } })).json();
+  assert.ok(!j.mail.some((x) => x.id.startsWith("5555")));
+});
+
+test("note to the CEO: API needs the token and checks the length", async () => {
+  const post = (body, token) => get(API + "/v1/admin/office/notes", { method: "POST", headers: { "Content-Type": "application/json", ...(token ? { "X-Admin-Token": token } : {}) }, body: JSON.stringify(body) });
+  assert.equal((await post({ text: "merhaba" })).status, 401);
+  assert.equal((await post({ text: "merhaba" }, "y".repeat(TOKEN.length))).status, 401);
+  assert.equal((await post({ text: "" }, TOKEN)).status, 400);
+  assert.equal((await post({ text: "a".repeat(1001) }, TOKEN)).status, 400);
+  assert.equal((await post({ text: 5 }, TOKEN)).status, 400);
+  const ok = await post({ text: "API notu" }, TOKEN);
+  assert.equal(ok.status, 201);
+  const row = JSON.parse(sql("select text, status from office_notes where text = 'API notu'").stdout)[0].results;
+  assert.deepEqual(row, [{ text: "API notu", status: "new" }]);
+});
+
+test("note to the CEO: site needs the login and the same origin", async () => {
+  const post = (headers, body = JSON.stringify({ text: "Site notu" })) => get(WEB + "/admin/office/note", { method: "POST", headers: { "Content-Type": "application/json", ...headers }, body });
+  assert.equal((await post({ Origin: WEB })).status, 401);
+  assert.equal((await post({ Origin: WEB, Authorization: "Basic " + Buffer.from("admin:wrong").toString("base64") })).status, 401);
+  assert.equal((await post({ Origin: "https://evil.example", Authorization: AUTH })).status, 403);
+  assert.equal((await post({ Authorization: AUTH })).status, 403);
+  assert.equal((await post({ Origin: WEB, Authorization: AUTH, "Content-Type": "text/plain" })).status, 415);
+  assert.equal((await post({ Origin: WEB, Authorization: AUTH }, JSON.stringify({ text: "b".repeat(1001) }))).status, 400);
+  assert.equal((await get(WEB + "/admin/office/note", { headers: { Authorization: AUTH } })).status, 405);
+  const ok = await post({ Origin: WEB, Authorization: AUTH });
+  assert.equal(ok.status, 200);
+  const row = JSON.parse(sql("select status from office_notes where text = 'Site notu'").stdout)[0].results;
+  assert.deepEqual(row, [{ status: "new" }]);
 });
 
 test("site read needs the admin login", async () => {
@@ -118,7 +161,7 @@ test("site read needs the admin login", async () => {
   assert.equal((await r.json()).agents.length, 9);
 });
 
-test("page renders list, 3D canvas and panel; screenshots", async () => {
+test("page renders list, 3D office, mail walk, panel and note; screenshots", { timeout: 240000 }, async () => {
   const req = createRequire(import.meta.url);
   let pw;
   try { pw = req("playwright"); } catch { pw = req(join(execFileSync("npm", ["root", "-g"]).toString().trim(), "playwright")); }
@@ -126,7 +169,7 @@ test("page renders list, 3D canvas and panel; screenshots", async () => {
   mkdirSync(SHOTS, { recursive: true });
   const browser = await chromium.launch({ args: ["--use-gl=angle", "--use-angle=swiftshader", "--enable-unsafe-swiftshader"] });
   try {
-    for (const [name, opts] of [["desktop", { viewport: { width: 1280, height: 860 }, deviceScaleFactor: 2 }], ["phone", { ...devices["iPhone 13"], viewport: { width: 320, height: 640 } }]]) {
+    for (const [name, opts] of [["desktop", { viewport: { width: 1280, height: 900 }, deviceScaleFactor: 2 }], ["phone", { ...devices["iPhone 13"], viewport: { width: 320, height: 640 } }]]) {
       const ctx = await browser.newContext({ ...opts, httpCredentials: { username: "admin", password: PASS } });
       const page = await ctx.newPage();
       const errors = [];
@@ -134,16 +177,39 @@ test("page renders list, 3D canvas and panel; screenshots", async () => {
       await page.goto(WEB + "/admin/office", { waitUntil: "networkidle" });
       assert.match(await page.locator("#of-ask").innerText(), /Senden beklenen: 1 evet/);
       assert.equal(await page.locator("#of-list [data-id]").count(), 9);
-      await page.waitForSelector('#of-stage[data-ready="1"] canvas', { timeout: 30000 });
-      await page.waitForTimeout(1500);
+      await page.waitForSelector('#of-stage[data-ready="1"] canvas', { timeout: 60000 });
       const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
       assert.ok(overflow <= 0, `${name}: no horizontal scroll (${overflow}px)`);
+      // Labels: every department, name bubbles for all 9, "!" for the waiting one, "takıldı" for the blocked one.
+      const depts = await page.locator(".of-dept").allInnerTexts();
+      for (const d of ["HAULING EMPIRE", "DROPOLIS", "PROMOVOTE", "DOVELET", "ORTAK BİRİMLER", "GENEL MÜDÜR", "DİĞER", "BOŞ ODA"]) assert.ok(depts.includes(d), `${name}: label ${d}`);
+      assert.equal(await page.locator(".of-name").count(), 9);
+      assert.equal(await page.locator(".of-name b").count(), 1);
+      assert.equal(await page.locator(".of-name em").innerText(), "takıldı");
       await page.locator("#of-stage").scrollIntoViewIfNeeded();
+      if (name === "desktop") {
+        // The first mail is walking now.
+        await page.waitForTimeout(1200);
+        await page.screenshot({ path: join(SHOTS, `office-${name}-mail.png`) });
+        await page.waitForSelector(".of-pop", { timeout: 15000 });
+        assert.match(await page.locator(".of-pop").first().innerText(), /Yeni posta: /);
+      }
+      // Both mails play once, one after the other, then the browser remembers them.
+      await page.waitForFunction(() => { try { return JSON.parse(localStorage.getItem("office-mail-shown") || "[]").length >= 2; } catch { return false; } }, null, { timeout: 30000 });
+      await page.waitForTimeout(7000);
       await page.screenshot({ path: join(SHOTS, `office-${name}.png`) });
       await page.locator('#of-list [data-id="hauling-dev"]').click();
       assert.equal(await page.locator("#of-p-title").innerText(), "Hauling Geliştirici");
+      assert.match(await page.locator("#of-p-body").innerText(), /HAULING EMPIRE[\s\S]*Senden evet bekliyor[\s\S]*New York/);
       await page.locator("#of-stage").scrollIntoViewIfNeeded();
       await page.screenshot({ path: join(SHOTS, `office-${name}-panel.png`) });
+      if (name === "desktop") {
+        await page.fill("#of-note-text", "Tarayıcıdan not");
+        await page.click("#of-note button");
+        await page.waitForFunction(() => /bırakıldı/.test(document.getElementById("of-note-msg").textContent), null, { timeout: 10000 });
+        const row = JSON.parse(sql("select status from office_notes where text = 'Tarayıcıdan not'").stdout)[0].results;
+        assert.deepEqual(row, [{ status: "new" }]);
+      }
       assert.deepEqual(errors, [], `${name}: no page errors`);
       await ctx.close();
     }

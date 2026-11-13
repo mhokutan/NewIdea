@@ -14,3 +14,6 @@ Code: three.js 0.160.0 (MIT, `public/vendor/three-LICENSE.txt`) with its GLTFLoa
 SkeletonUtils and OrbitControls from the same release (imports pointed at the vendored file).
 
 Total model size: about 0.95 MB (limit 5 MB).
+
+Version 3 of the office (2026-11-13) uses the same files only; no new model was added. Walls, glass, rugs, corridor
+stripes, windows, the envelope and the "Mevlüt HQ" sign are drawn in code (three.js boxes and canvas textures).

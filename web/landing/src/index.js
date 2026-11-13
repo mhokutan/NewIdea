@@ -1120,17 +1120,31 @@ function splitStoreNote(raw) {
 }
 const quietLine = (ids) => ids.length ? `Google Play: ${ids.map((k) => STORE_NAMES[k] || k).join(" ve ")} için henüz indirme yok. Google ilk indirmeden sonra rapor yapar, sayılar o zaman gelir.` : "";
 
-// Office (founder request 2026-11-12): the founder's Claude sessions as characters in a small 3D office. Read only:
-// rows in promovote-db office_agents are written by the CEO session with the D1 tool, read here through promovote-api
-// (GET /v1/admin/office with ADMIN_API_TOKEN). The 3D view is
-// public/admin-office.js (three.js vendored in public/vendor, CSP allows only 'self'); this list is the fallback.
+// Office (founder request 2026-11-12, version 3 on 2026-11-13): the founder's Claude sessions as small characters in
+// an isometric open plan office with glass rooms per department. Data comes from office-db through promovote-api
+// (GET /v1/admin/office with ADMIN_API_TOKEN): agents plus the mail of the last 10 minutes. The one write is a note
+// to the CEO (POST /admin/office/note, admin login, same origin, 1 to 1000 characters). The 3D view is
+// public/admin-office.js (three.js vendored in public/vendor, CSP allows only 'self'); the list is the fallback.
 const OFFICE_STATUS = {
   working: ["Çalışıyor", "g"], idle: ["Boşta", "n"], waiting_owner: ["Senden evet bekliyor", "y"], blocked: ["Takıldı", "r"], offline: ["Kapalı", "n"],
 };
 async function officeAgents(env) {
   // Read through promovote-api (founder 2026-11-12): the API answers only with ADMIN_API_TOKEN, held by this admin site.
   const r = await reviewApi(env, "GET", "/v1/admin/office");
-  return r.ok ? { ok: true, agents: r.data.agents || [] } : { ok: false, agents: [], reason: r.reason };
+  return r.ok ? { ok: true, agents: r.data.agents || [], mail: r.data.mail || [] } : { ok: false, agents: [], mail: [], reason: r.reason };
+}
+async function officeNote(request, env, url) {
+  const json = (o, status = 200) => new Response(JSON.stringify(o), { status, headers: { "Content-Type": "application/json; charset=utf-8", ...ADMIN_HEADERS } });
+  // Basic auth is sent by the browser on cross site posts too, so only same origin JSON requests may write.
+  if (request.headers.get("Origin") !== url.origin) return json({ ok: false, error: "forbidden" }, 403);
+  if (!(request.headers.get("Content-Type") || "").startsWith("application/json")) return json({ ok: false, error: "bad_type" }, 415);
+  const raw = await request.text();
+  if (raw.length > 8000) return json({ ok: false, error: "too_long" }, 413);
+  let text = "";
+  try { const b = JSON.parse(raw); text = typeof b?.text === "string" ? b.text.trim() : ""; } catch { /* bad json */ }
+  if (!text || text.length > 1000) return json({ ok: false, error: "bad_text" }, 400);
+  const r = await reviewApi(env, "POST", "/v1/admin/office/notes", { text });
+  return r.ok ? json({ ok: true }) : json({ ok: false, error: r.reason }, 502);
 }
 const nyTime = (iso) => {
   const d = new Date(iso || "");
@@ -1149,26 +1163,48 @@ ${a.last_action ? `<p style="margin:0 0 6px">${esc(a.last_action)}</p>` : ""}${a
   const empty = !r.ok ? "Ofis verisi okunamadı (office-db bağlı değil ya da API cevap vermedi)." : "Henüz kimse yok. CEO oturumu ilk durumu yazınca karakterler burada görünür.";
   return `<style>
 .of-top{display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap;margin:-8px 0 14px}
-.of-ask{font-size:17px;font-weight:700}.of-ask b{color:var(--lime)}
-.of-stage{position:relative;height:min(72vh,680px);min-height:320px;border-radius:18px;overflow:hidden;background:#f3efe8;border:1px solid var(--line);display:none}
+.of-ask{font-size:17px;font-weight:700;margin:0}.of-ask b{color:var(--lime)}
+.of-stage{position:relative;height:min(74vh,720px);min-height:340px;border-radius:18px;overflow:hidden;background:#e9e4dc;border:1px solid var(--line);display:none;contain:paint}
 .of-stage.on{display:block}.of-stage canvas{display:block;width:100%;height:100%;touch-action:manipulation}
-.of-panel{position:absolute;top:12px;right:12px;width:min(320px,calc(100% - 24px));max-height:calc(100% - 24px);overflow:auto;padding:14px 16px;border-radius:14px;background:rgba(16,16,20,.94);border:1px solid var(--line);display:none}
-.of-panel.on{display:block}.of-panel h2{font-size:18px;margin:0 0 8px}.of-panel dl{margin:0;display:grid;gap:8px}.of-panel dt{color:var(--muted);font-size:13px}.of-panel dd{margin:0;overflow-wrap:anywhere}
-.of-close{position:absolute;top:8px;right:8px;width:44px;height:44px;border:0;background:none;color:var(--muted);font-size:22px;cursor:pointer}
+.of-tags{position:absolute;inset:0;pointer-events:none;overflow:hidden}
+.of-dept{position:absolute;transform:translate(-50%,-50%);padding:5px 10px;border-radius:999px;background:rgba(24,24,28,.9);color:#fff;font:800 11px/1.1 system-ui,sans-serif;letter-spacing:.06em;white-space:nowrap;display:flex;gap:6px;align-items:center;box-shadow:0 2px 6px rgba(0,0,0,.25)}
+.of-dept i{width:8px;height:8px;border-radius:50%;background:var(--c)}
+.of-name{position:absolute;transform:translate(-50%,-100%);padding:4px 8px 4px 7px;border-radius:10px;background:#fff;color:#18181b;font:700 11px/1.15 system-ui,sans-serif;white-space:nowrap;display:flex;gap:5px;align-items:center;box-shadow:0 2px 8px rgba(0,0,0,.22);pointer-events:auto;cursor:pointer;max-width:150px}
+.of-name span{overflow:hidden;text-overflow:ellipsis}
+.of-name::after{content:"";position:absolute;left:50%;bottom:-5px;margin-left:-5px;border:5px solid transparent;border-bottom:0;border-top-color:#fff}
+.of-name i{flex:none;width:8px;height:8px;border-radius:50%;background:var(--c)}
+.of-name.off{opacity:.5}.of-name.sel{outline:2px solid #ffd60a}
+.of-name b{position:absolute;left:50%;top:-26px;margin-left:-11px;width:22px;height:22px;border-radius:50%;background:#ffd60a;color:#111;font:900 15px/22px system-ui;text-align:center;animation:of-bounce 1s ease-in-out infinite}
+.of-name em{font-style:normal;background:#ef4444;color:#fff;border-radius:6px;padding:1px 5px;font-size:10px}
+.of-pop{position:absolute;transform:translate(-50%,-100%);padding:5px 9px;border-radius:10px;background:#18181b;color:#fff;font:700 11px/1.2 system-ui;white-space:nowrap;max-width:180px;overflow:hidden;text-overflow:ellipsis;animation:of-pop 2.4s ease-out forwards}
+@keyframes of-bounce{0%,100%{transform:translateY(0)}50%{transform:translateY(-5px)}}
+@keyframes of-pop{0%{opacity:0;margin-top:6px}12%{opacity:1;margin-top:0}80%{opacity:1}100%{opacity:0}}
+@media (prefers-reduced-motion:reduce){.of-name b{animation:none}}
+.of-panel{position:absolute;top:12px;right:12px;width:min(320px,calc(100% - 24px));max-height:calc(100% - 24px);overflow:auto;padding:14px 16px;border-radius:14px;background:rgba(16,16,20,.95);border:1px solid var(--line);display:none;z-index:3}
+.of-panel.on{display:block}.of-panel h2{font-size:18px;margin:0 44px 8px 0}.of-panel dl{margin:0;display:grid;gap:8px}.of-panel dt{color:var(--muted);font-size:13px}.of-panel dd{margin:0;overflow-wrap:anywhere}
+.of-close{position:absolute;top:6px;right:6px;width:44px;height:44px;border:0;background:none;color:var(--muted);font-size:22px;cursor:pointer}
+.of-note{display:flex;gap:8px;margin:12px 0 0;align-items:stretch}
+.of-note label{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+.of-note textarea{flex:1;min-width:0;min-height:44px;max-height:160px;resize:vertical;padding:11px 14px;border-radius:12px;border:1px solid var(--line);background:var(--surface);color:inherit;font:inherit;font-size:15px}
+.of-note button{flex:none;min-height:44px;padding:0 18px;border-radius:12px;border:0;background:var(--lime);color:#111;font-weight:800;font-size:15px;cursor:pointer}
+.of-note button[disabled]{opacity:.5;cursor:default}
+.of-note-msg{margin:6px 0 0;font-size:13px;min-height:18px}
 .of-list{list-style:none;margin:16px 0 0;padding:0;display:grid;gap:10px;grid-template-columns:repeat(auto-fill,minmax(min(100%,280px),1fr))}
 .of-item{padding:14px 16px;border-radius:14px;background:var(--surface);border:1px solid var(--line);overflow-wrap:anywhere}.of-item.sel{border-color:var(--lime)}
 .of-need{margin:0 0 6px;padding:8px 10px;border-radius:10px;background:rgba(255,214,10,.1);color:#ffe066}
 .chip-n{background:var(--surface-2);color:var(--muted)}
-.of-legend{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0 0;font-size:13px;color:var(--muted)}.of-legend span::before{content:"";display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:6px;background:var(--c)}
-@media (max-width:600px){.of-stage{height:62vh}.of-panel{top:auto;bottom:10px;right:10px;left:10px;width:auto;max-height:55%}}
+.of-legend{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0 0;font-size:13px;color:var(--muted)}.of-legend span::before{content:"";display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px;background:var(--c)}
+@media (max-width:600px){.of-stage{height:min(58vh,105vw);min-height:300px}.of-panel{top:auto;bottom:10px;right:10px;left:10px;width:auto;max-height:55%}.of-dept{font-size:8px;padding:3px 6px;gap:4px}.of-dept i{width:6px;height:6px}.of-name{padding:4px;gap:3px;min-width:16px;min-height:16px;justify-content:center}.of-name span{display:none}.of-name em{font-size:8px}.of-name b{width:18px;height:18px;line-height:18px;font-size:12px;margin-left:-9px;top:-22px}}
 </style>
 <div class="top"><h1>Ofis</h1></div>
 <div class="of-top"><p class="of-ask" id="of-ask" aria-live="polite">Senden beklenen: <b>${waiting}</b> evet</p><p class="dim" style="margin:0;font-size:13px">30 saniyede bir yenilenir. Karaktere dokun.</p></div>
-<div class="of-stage" id="of-stage" aria-label="Claude oturumları ofisi, 3D görünüm"><div class="of-panel" id="of-panel" role="dialog" aria-modal="false" aria-labelledby="of-p-title"><button type="button" class="of-close" id="of-close" aria-label="Kapat">×</button><h2 id="of-p-title"></h2><dl id="of-p-body"></dl></div></div>
-<div class="of-legend" aria-hidden="true"><span style="--c:#4ade80">Çalışıyor</span><span style="--c:#8e8e93">Boşta</span><span style="--c:#ffd60a">Senden evet bekliyor</span><span style="--c:#f87171">Takıldı</span><span style="--c:#3a3a40">Kapalı</span></div>
+<div class="of-stage" id="of-stage" aria-label="Claude oturumları ofisi, 3D görünüm"><div class="of-tags" id="of-tags" aria-hidden="true"></div><div class="of-panel" id="of-panel" role="dialog" aria-modal="false" aria-labelledby="of-p-title"><button type="button" class="of-close" id="of-close" aria-label="Kapat">×</button><h2 id="of-p-title"></h2><dl id="of-p-body"></dl></div></div>
+<form class="of-note" id="of-note"><label for="of-note-text">CEO'ya not bırak</label><textarea id="of-note-text" name="text" maxlength="1000" rows="1" placeholder="CEO'ya not bırak" required></textarea><button type="submit">Gönder</button></form>
+<p class="of-note-msg dim" id="of-note-msg" aria-live="polite"></p>
+<div class="of-legend" aria-hidden="true"><span style="--c:#22c55e">Çalışıyor</span><span style="--c:#9ca3af">Boşta</span><span style="--c:#facc15">Senden evet bekliyor</span><span style="--c:#ef4444">Takıldı</span><span style="--c:#d4d4d8">Kapalı</span></div>
 <ul class="of-list" id="of-list">${list || `<li class="of-item dim">${esc(empty)}</li>`}</ul>
-<script type="application/json" id="of-data">${JSON.stringify(r.agents).replace(/</g, "\\u003c")}</script>
-<script type="module" src="/admin-office.js?v=2"></script>`;
+<script type="application/json" id="of-data">${JSON.stringify({ agents: r.agents, mail: r.mail }).replace(/</g, "\\u003c")}</script>
+<script type="module" src="/admin-office.js?v=3"></script>`;
 }
 
 async function statusPage(env) {
@@ -1457,6 +1493,7 @@ ${tilesHtml([["Paylaşılan", sum.posted?.n || 0], ["Sırada", sum.queued?.n || 
     return adminPage(path, "Unity Ads", lp.html ?? lp.note + (await unityPage(env, path, range)));
   }
 
+  if (path === "/admin/office/note") return request.method === "POST" ? officeNote(request, env, url) : new Response("Method not allowed", { status: 405, headers: ADMIN_HEADERS });
   if (path === "/admin/office") return adminPage(path, "Ofis", await officePage(env));
   if (path === "/admin/office.json") {
     const r = await officeAgents(env);

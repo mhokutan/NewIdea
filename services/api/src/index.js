@@ -1082,16 +1082,34 @@ function adminOk(c) {
   for (let i = 0; i < t.length; i++) d |= t.charCodeAt(i) ^ want.charCodeAt(i);
   return d === 0;
 }
-// Office (promovote.com/admin/office, founder request 2026-11-12): read only, for the admin site with ADMIN_API_TOKEN.
-// The tables live in their own D1 database office-db (binding OFFICE_DB), never in promovote-db. This Worker only
-// runs a SELECT there; there is no write endpoint on purpose: the CEO Claude session writes with the D1 tool.
+// Office (promovote.com/admin/office, founder request 2026-11-12): for the admin site with ADMIN_API_TOKEN only.
+// The tables live in their own D1 database office-db (binding OFFICE_DB), never in promovote-db. Reads: agents and the
+// mail of the last 10 minutes (office_mail, migration 0002; an empty list until that migration is applied). The ONLY
+// write (founder 2026-11-13) is a note from the founder to the CEO (office_notes, status 'new'); the CEO Claude session
+// writes everything else with the D1 tool.
 app.get("/v1/admin/office", async (c) => {
   if (!adminOk(c)) return fail(c, 401, "admin_only", "Not allowed.");
   if (!c.env.OFFICE_DB) return fail(c, 503, "office_not_ready", "office-db is not connected yet.");
   const { results } = await c.env.OFFICE_DB.prepare(
     "select id, role, status, last_action, needs_owner, updated_at from office_agents order by case id when 'ceo' then 0 else 1 end, id limit 40",
   ).all();
-  return c.json({ agents: results });
+  let mail = [];
+  try {
+    mail = (await c.env.OFFICE_DB.prepare(
+      "select id, from_id, to_id, label, created_at from office_mail where created_at >= strftime('%Y-%m-%dT%H:%M:%fZ', 'now', '-10 minutes') order by created_at, id limit 30",
+    ).all()).results;
+  } catch { mail = []; } // table not there yet
+  return c.json({ agents: results, mail });
+});
+app.post("/v1/admin/office/notes", async (c) => {
+  if (!adminOk(c)) return fail(c, 401, "admin_only", "Not allowed.");
+  if (!c.env.OFFICE_DB) return fail(c, 503, "office_not_ready", "office-db is not connected yet.");
+  const body = await c.req.json().catch(() => null);
+  const text = typeof body?.text === "string" ? body.text.trim() : "";
+  if (!text || text.length > 1000) return fail(c, 400, "bad_text", "Note must be 1 to 1000 characters.");
+  const id = uuid();
+  await c.env.OFFICE_DB.prepare("insert into office_notes (id, text, status) values (?, ?, 'new')").bind(id, text).run();
+  return c.json({ ok: true, id }, 201);
 });
 app.get("/v1/admin/review", async (c) => {
   if (!adminOk(c)) return fail(c, 401, "admin_only", "Not allowed.");
