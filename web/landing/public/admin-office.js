@@ -44,6 +44,15 @@ const deptOf = (id) => (id === "ceo" ? "ceo" : DEPTS.find((d) => d.match(id)).ke
 const MODEL_RE = /\s*\((Opus|Sonnet|Haiku)\)\s*$/i;
 const modelOf = (role) => (String(role || "").match(MODEL_RE)?.[1] || "").replace(/^./, (c) => c.toUpperCase());
 const shortName = (role) => String(role || "").replace(MODEL_RE, "");
+// Inside its own room a bubble drops the project word (founder 2026-11-13): "Hauling Lider Geliştirici" in the
+// HAULING EMPIRE room reads "Lider Geliştirici". The side panel and the list keep the full role.
+const ROOM_WORD = { hauling: "hauling", dropolis: "dropolis", dovelet: "dovelet", promovote: "promovote", dopazon: "dopazon", salesforce: "salesforce" };
+function bubbleName(role, deptKey) {
+  const name = shortName(role), word = ROOM_WORD[deptKey];
+  if (!word) return name;
+  const m = name.match(/^(\S+)\s+(.+)$/);
+  return m && m[1].toLocaleLowerCase("tr") === word ? m[2] : name;
+}
 
 let W = 40, D = 30, ROOMS = [], CROSS_X = 30, RIGHT_X = 31, layoutKey = "";
 const ROW_W = 44; // width of the room area before the vertical corridor (4 big rooms per row)
@@ -462,7 +471,7 @@ function buildPeople() {
     const ss = st(a.status);
     const quiet = a.status === "idle" || a.status === "offline";
     const bubble = el("div", { class: "of-name" + (a.status === "offline" ? " off" : "") + (quiet ? " quiet" : ""), style: `--c:${ss.dot}`, title: `${a.role}: ${ss.label}` },
-      el("i"), el("span", {}, shortName(a.role)),
+      el("i"), el("span", {}, bubbleName(a.role, s.room.key)),
       a.status === "blocked" ? el("em", {}, "takıldı") : null,
       a.status === "waiting_owner" ? el("b", {}, "!") : null);
     bubble.addEventListener("click", () => openPanel(a.id));
