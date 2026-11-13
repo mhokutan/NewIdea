@@ -287,7 +287,7 @@ async function dropolisPage(env) {
     + sec("En sık olaylar (7 gün)") + evTable;
 }
 
-function adminPage(path, title, body) {
+function adminPage(path, title, body, opts = {}) {
   const group = ADMIN_GROUPS.find(([, , items]) => items.some(([h]) => h === path));
   const page = group?.[2].find(([h]) => h === path);
   const groupsHtml = ADMIN_GROUPS.map(([name, sub, items]) => {
@@ -331,8 +331,8 @@ td a{color:#b394ff}.dim{color:var(--dim)}.center{text-align:center}.role{padding
 .rv-reject label{display:grid;gap:6px;font-size:14px;color:var(--muted)}.rv-reject select,.rv-reject textarea{padding:10px 12px;border-radius:10px;border:1px solid var(--line);background:var(--surface-2);color:#fff;font:inherit}
 .rv-reject .rv-check{display:flex;align-items:center;gap:8px}@media (max-width:700px){.rv-grid{grid-template-columns:1fr}.rv-video{max-height:70dvh}}
 .empty{padding:28px;border:1px dashed var(--line);border-radius:16px;color:var(--muted);line-height:1.6}
-</style></head><body><main class="wrap admin">
-${nav}
+</style></head><body${opts.bare ? ' class="of-bare"' : ""}><main class="${opts.bare ? "of-fullpage" : "wrap admin"}">
+${opts.bare ? "" : nav}
 ${body}
 </main><script src="/v-ignore.js"></script><script src="/admin-table.js?v=2" defer></script></body></html>`;
   return new Response(html, { headers: { "Content-Type": "text/html; charset=utf-8", ...ADMIN_HEADERS } });
@@ -1169,7 +1169,7 @@ const nyTime = (iso) => {
   if (isNaN(d)) return "-";
   return new Intl.DateTimeFormat("tr-TR", { timeZone: "America/New_York", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }).format(d) + " (New York)";
 };
-async function officePage(env) {
+async function officePage(env, full = false) {
   const r = await officeAgents(env);
   // With the task board, "Senden beklenen" counts the cards that wait for the owner's answer.
   const waiting = r.tasks ? r.tasks.filter((t) => t.status === "waiting_owner" && !t.owner_answer).length : r.agents.filter((a) => a.status === "waiting_owner" || a.needs_owner).length;
@@ -1213,6 +1213,19 @@ ${a.last_action ? `<p style="margin:0 0 6px">${esc(a.last_action)}</p>` : ""}${a
 .of-need{margin:0 0 6px;padding:8px 10px;border-radius:10px;background:rgba(255,214,10,.1);color:#ffe066}
 .chip-n{background:var(--surface-2);color:var(--muted)}
 .of-main{display:grid;gap:12px;grid-template-columns:minmax(0,1fr)}
+.of-tools{position:absolute;top:10px;left:10px;z-index:4;display:flex;gap:6px;flex-wrap:wrap}
+.of-tool{display:inline-flex;align-items:center;min-height:36px;padding:0 12px;border-radius:999px;border:1px solid rgba(0,0,0,.12);background:rgba(255,255,255,.92);color:#18181b;font:700 13px system-ui,sans-serif;text-decoration:none;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.15)}
+.of-tool:hover,.of-tool:focus-visible{background:#fff;outline:2px solid #ffd60a}.of-tool[hidden]{display:none}
+.of-stage.of-max{position:fixed!important;inset:0;z-index:60;height:100dvh!important;min-height:0;border-radius:0;border:0}
+.of-stage:fullscreen{height:100%!important;border-radius:0;border:0}
+body.of-bare{margin:0;overflow:hidden}.of-fullpage{padding:0;margin:0;max-width:none}
+.of-fullpage>.top,.of-fullpage>.of-tabs,.of-fullpage>.of-note,.of-fullpage>.of-note-msg,.of-fullpage>.of-legend,.of-fullpage>.of-list{display:none!important}
+.of-fullpage>.of-top{position:fixed;top:10px;left:50%;transform:translateX(-50%);z-index:5;margin:0;padding:6px 14px;border-radius:999px;background:rgba(16,16,20,.9);border:1px solid var(--line)}.of-fullpage>.of-top .dim{display:none}
+.of-main.full{position:fixed;inset:0;gap:0;grid-template-columns:minmax(0,1fr) 380px}
+.of-main.full.closed{grid-template-columns:minmax(0,1fr) 0}.of-main.full.closed .of-board{display:none}
+.of-main.full .of-stage{height:100dvh;max-height:none;border-radius:0;border:0}
+.of-main.full .of-board{max-height:100dvh;height:100dvh;border-radius:0;border-width:0 0 0 1px}
+@media (max-width:999px){.of-main.full{grid-template-columns:minmax(0,1fr)}.of-main.full .of-board{position:fixed;top:0;right:0;bottom:0;width:min(380px,100%);z-index:6}.of-main.full .of-stage{display:block!important}.of-main.full:not(.board) .of-board{display:block}.of-main.full.closed .of-board{display:none}}
 @media (min-width:1000px){.of-main{grid-template-columns:minmax(0,1fr) 380px}.of-tabs{display:none}}
 .of-tabs{display:flex;gap:8px;margin:0 0 10px}.of-tabs button{min-height:40px;padding:0 16px;border-radius:999px;border:1px solid var(--line);background:var(--surface);color:var(--muted);font-weight:700;font-size:15px;cursor:pointer}.of-tabs button[aria-selected="true"]{background:var(--lime);color:#111;border-color:transparent}
 @media (max-width:999px){.of-main.board .of-stage{display:none!important}.of-main:not(.board) .of-board{display:none}}
@@ -1244,8 +1257,10 @@ ${a.last_action ? `<p style="margin:0 0 6px">${esc(a.last_action)}</p>` : ""}${a
 <div class="top"><h1>Ofis</h1></div>
 <div class="of-top"><p class="of-ask" id="of-ask" aria-live="polite">Senden beklenen: <b>${waiting}</b> evet</p><p class="dim" style="margin:0;font-size:13px">30 saniyede bir yenilenir. Karaktere dokun.</p></div>
 <div class="of-tabs" role="tablist" aria-label="Görünüm"><button type="button" role="tab" id="of-tab-office" aria-selected="true" aria-controls="of-stage">Ofis</button><button type="button" role="tab" id="of-tab-board" aria-selected="false" aria-controls="of-board">Görevler <span id="of-tab-count"></span></button></div>
-<div class="of-main" id="of-main">
-<div class="of-stage" id="of-stage" aria-label="Claude oturumları ofisi, 3D görünüm"><div class="of-tags" id="of-tags" aria-hidden="true"></div><div class="of-panel" id="of-panel" role="dialog" aria-modal="false" aria-labelledby="of-p-title"><button type="button" class="of-close" id="of-close" aria-label="Kapat">×</button><h2 id="of-p-title"></h2><dl id="of-p-body"></dl></div></div>
+<div class="of-main${full ? " full" : ""}" id="of-main">
+<div class="of-stage" id="of-stage" aria-label="Claude oturumları ofisi, 3D görünüm"><div class="of-tags" id="of-tags" aria-hidden="true"></div><div class="of-tools">${full
+    ? '<a class="of-tool" href="/admin/office">‹ Panele dön</a><button type="button" class="of-tool" id="of-board-toggle" aria-controls="of-board" aria-expanded="true">Görevler</button>'
+    : '<button type="button" class="of-tool" id="of-full-btn">Tam ekran</button><a class="of-tool" href="/admin/office/full" target="_blank" rel="noopener">Yeni sekmede aç</a>'}<button type="button" class="of-tool of-tool-x" id="of-full-x" hidden>Kapat ×</button></div><div class="of-panel" id="of-panel" role="dialog" aria-modal="false" aria-labelledby="of-p-title"><button type="button" class="of-close" id="of-close" aria-label="Kapat">×</button><h2 id="of-p-title"></h2><dl id="of-p-body"></dl></div></div>
 <section class="of-board" id="of-board" aria-label="Görevler"><div class="of-b-head"><h2>Görevler</h2><p class="of-b-filter" id="of-b-filter" hidden></p></div><div id="of-b-cols"><p class="dim">Görev tablosu henüz yok.</p></div>
 <div class="of-drawer" id="of-drawer" role="dialog" aria-modal="false" aria-labelledby="of-d-title" hidden><button type="button" class="of-d-back" id="of-d-back">‹ Görevler</button><h3 id="of-d-title"></h3><dl id="of-d-meta"></dl><p class="of-d-detail" id="of-d-detail"></p><div id="of-d-answer"></div></div></section>
 </div>
@@ -1549,6 +1564,8 @@ ${tilesHtml([["Paylaşılan", sum.posted?.n || 0], ["Sırada", sum.queued?.n || 
   }
   if (path === "/admin/office/note") return request.method === "POST" ? officeNote(request, env, url) : new Response("Method not allowed", { status: 405, headers: ADMIN_HEADERS });
   if (path === "/admin/office") return adminPage(path, "Ofis", await officePage(env));
+  // Big view (founder 2026-11-13): only the 3D office and the task board, filling the whole window.
+  if (path === "/admin/office/full") return adminPage(path, "Ofis tam ekran", await officePage(env, true), { bare: true });
   if (path === "/admin/office.json") {
     const r = await officeAgents(env);
     return new Response(JSON.stringify(r), { headers: { "Content-Type": "application/json; charset=utf-8", ...ADMIN_HEADERS } });

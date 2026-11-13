@@ -634,7 +634,9 @@ function trySpot(it, taken) {
     : [[0, 0], [0, -sy], [sx, 0], [-sx, 0], [sx, -sy], [-sx, -sy], [0, -2 * sy], [0, sy], [sx, -2 * sy], [-sx, -2 * sy], [0, -3 * sy]];
   // Idle and offline names only take a spot right next to the person; otherwise they become a dot, so no name
   // floats far from its owner.
-  if (kind === "name" && elm.classList.contains("quiet") && !elm.classList.contains("mini")) tries.splice(4);
+  // On a big stage (full screen, the full page) idle and offline people may take any free spot, so names show for
+  // everyone when there is room.
+  if (kind === "name" && elm.classList.contains("quiet") && !elm.classList.contains("mini") && stage.clientWidth < 1400) tries.splice(4);
   if (kind === "name" && elm.classList.contains("mini")) {
     // A status dot may move a little further: a ring of spots around the person.
     for (let k = 1, kMax = stage.clientWidth < 600 ? 3 : 7; k <= kMax; k++) for (let i = 0; i < 12; i++) { const an = (i / 12) * Math.PI * 2 - Math.PI / 2; tries.push([Math.cos(an) * k * (w + GAP + 1), Math.sin(an) * k * (h + GAP + 1)]); }
@@ -944,6 +946,10 @@ async function start() {
   controls.maxAzimuthAngle = THREE.MathUtils.degToRad(75);
   controls.minZoom = 0.8; controls.maxZoom = 4;
   controls.screenSpacePanning = true;
+  // Map style (founder 2026-11-13): drag pans, the wheel and a pinch zoom toward the pointer, right drag turns.
+  controls.mouseButtons = { LEFT: THREE.MOUSE.PAN, MIDDLE: THREE.MOUSE.DOLLY, RIGHT: THREE.MOUSE.ROTATE };
+  controls.touches = { ONE: THREE.TOUCH.PAN, TWO: THREE.TOUCH.DOLLY_PAN };
+  controls.zoomToCursor = true;
   new ResizeObserver(resize).observe(stage);
   resize();
   renderer.domElement.addEventListener("pointerdown", (e) => { down = [e.clientX, e.clientY]; });
@@ -966,6 +972,44 @@ if (renderer && stage) {
     stage.classList.remove("on");
     renderer.domElement.remove();
     renderer = null;
+  });
+}
+
+// ---------- big view: full screen button and the full page (founder 2026-11-13) ----------
+// "Tam ekran" uses the Fullscreen API on the stage; where that is not allowed (iOS Safari) the stage covers the
+// window instead. Esc or "Kapat" leaves both. On /admin/office/full the board is a side panel that opens and closes.
+const fullBtn = document.getElementById("of-full-btn");
+const fullX = document.getElementById("of-full-x");
+const isMax = () => document.fullscreenElement === stage || stage?.classList.contains("of-max");
+function syncFull() {
+  const on = isMax();
+  if (fullX) fullX.hidden = !on;
+  if (fullBtn) fullBtn.hidden = on;
+  document.documentElement.style.overflow = stage?.classList.contains("of-max") ? "hidden" : "";
+}
+async function enterFull() {
+  if (!stage) return;
+  try {
+    if (stage.requestFullscreen && document.fullscreenEnabled !== false) await stage.requestFullscreen();
+    else throw new Error("no fullscreen");
+  } catch { stage.classList.add("of-max"); }
+  syncFull();
+}
+async function exitFull() {
+  if (document.fullscreenElement) { try { await document.exitFullscreen(); } catch { /* already out */ } }
+  stage?.classList.remove("of-max");
+  syncFull();
+}
+fullBtn?.addEventListener("click", enterFull);
+fullX?.addEventListener("click", exitFull);
+document.addEventListener("fullscreenchange", syncFull);
+document.addEventListener("keydown", (e) => { if (e.key === "Escape" && stage?.classList.contains("of-max")) exitFull(); });
+const boardToggle = document.getElementById("of-board-toggle");
+if (boardToggle && mainEl) {
+  if (innerWidth < 1000) { mainEl.classList.add("closed"); boardToggle.setAttribute("aria-expanded", "false"); }
+  boardToggle.addEventListener("click", () => {
+    const closed = mainEl.classList.toggle("closed");
+    boardToggle.setAttribute("aria-expanded", String(!closed));
   });
 }
 

@@ -255,6 +255,15 @@ test("page renders list, 3D office, mail walk, panel and note; screenshots", { t
       assert.equal(await page.locator(".of-name b").count(), 1);
       assert.equal(await page.locator(".of-name em").innerText(), "takıldı");
       await page.locator("#of-stage").scrollIntoViewIfNeeded();
+      // Big view: "Tam ekran" puts the stage in full screen (or covers the window where full screen is refused), the
+      // close button leaves it, and "Yeni sekmede aç" points at the full page.
+      assert.equal(await page.locator('#of-stage a.of-tool[href="/admin/office/full"]').getAttribute("target"), "_blank");
+      assert.equal(await page.locator("#of-full-x").isVisible(), false, `${name}: no close button at rest`);
+      await page.click("#of-full-btn");
+      await page.waitForFunction(() => document.fullscreenElement?.id === "of-stage" || document.getElementById("of-stage").classList.contains("of-max"), null, { timeout: 5000 });
+      assert.ok(await page.locator("#of-full-x").isVisible(), `${name}: close button in big view`);
+      await page.click("#of-full-x");
+      await page.waitForFunction(() => !document.fullscreenElement && !document.getElementById("of-stage").classList.contains("of-max"), null, { timeout: 5000 });
       if (name === "desktop") {
         // The first mail is walking now.
         await page.waitForTimeout(1200);
@@ -348,5 +357,54 @@ test("page renders list, 3D office, mail walk, panel and note; screenshots", { t
       await ctx.close();
       await new Promise((r) => setTimeout(r, 4000)); // let the shared local stack cool down before the next viewport
     }
+  } finally { await browser.close(); }
+});
+
+test("full page: only the office and the board, whole window; screenshot at 1920x1080", { timeout: 240000 }, async () => {
+  assert.equal((await get(WEB + "/admin/office/full")).status, 401);
+  const req = createRequire(import.meta.url);
+  let pw;
+  try { pw = req("playwright"); } catch { pw = req(join(execFileSync("npm", ["root", "-g"]).toString().trim(), "playwright")); }
+  const browser = await pw.chromium.launch({ args: ["--use-gl=angle", "--use-angle=swiftshader", "--enable-unsafe-swiftshader"] });
+  try {
+    await new Promise((r) => setTimeout(r, 4000)); // the shared local stack cools down after the page test
+    const ctx = await browser.newContext({ viewport: { width: 1920, height: 1080 }, deviceScaleFactor: 1, httpCredentials: { username: "admin", password: PASS } });
+    const page = await ctx.newPage();
+    const errors = [];
+    page.on("pageerror", (e) => errors.push(e.message));
+    let n = 0;
+    for (let i = 0; i < 15; i++) {
+      await page.goto(WEB + "/admin/office/full", { waitUntil: "domcontentloaded" }).catch(() => {});
+      n = await page.evaluate(() => { try { return (JSON.parse(document.getElementById("of-data").textContent).agents || []).length; } catch { return 0; } }).catch(() => 0);
+      if (n === AGENTS.length) break;
+      await page.waitForTimeout(3000);
+    }
+    assert.equal(n, AGENTS.length, "full page rendered all agents (local stack busy)");
+    assert.equal(await page.locator(".grps").count(), 0, "no site navigation on the full page");
+    await page.waitForSelector('#of-stage[data-ready="1"] canvas', { timeout: 60000 });
+    const box = await page.locator("#of-stage").boundingBox();
+    assert.ok(box.height >= 1070 && box.width >= 1500, `stage fills the window (${Math.round(box.width)}x${Math.round(box.height)})`);
+    assert.ok(await page.locator("#of-board").isVisible(), "board open beside the office");
+    assert.equal(await page.locator("#of-full-x").isVisible(), false, "no close button on the full page at rest");
+    const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+    assert.ok(overflow <= 0, `no horizontal scroll (${overflow}px)`);
+    await page.waitForTimeout(9000); // mail walks finish
+    const bad = await page.evaluate(() => {
+      const els = [...document.querySelectorAll("#of-tags .of-dept, #of-tags .of-name")].filter((e) => getComputedStyle(e).display !== "none");
+      const r = els.map((e) => e.getBoundingClientRect()), out = [];
+      for (let i = 0; i < r.length; i++) for (let j = i + 1; j < r.length; j++) if (r[i].left < r[j].right && r[j].left < r[i].right && r[i].top < r[j].bottom && r[j].top < r[i].bottom) out.push(els[i].textContent + " / " + els[j].textContent);
+      return out;
+    });
+    assert.deepEqual(bad, [], "no overlapping labels on the full page");
+    const names = await page.locator("#of-tags .of-name:not(.mini)").count();
+    console.log(`# full page: ${names} names of ${AGENTS.length}`);
+    await page.screenshot({ path: join(SHOTS, "office-full-1920.png") });
+    // The board closes and opens again.
+    await page.click("#of-board-toggle");
+    assert.equal(await page.locator("#of-board").isVisible(), false);
+    await page.click("#of-board-toggle");
+    assert.ok(await page.locator("#of-board").isVisible());
+    assert.deepEqual(errors, [], "no page errors");
+    await ctx.close();
   } finally { await browser.close(); }
 });
