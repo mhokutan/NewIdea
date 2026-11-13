@@ -111,12 +111,13 @@ const el = (tag, attrs = {}, ...kids) => {
 const waitingCount = (list) => list.filter((a) => a.status === "waiting_owner" || a.needs_owner).length;
 const hash = (s) => { let h = 0; for (const c of String(s)) h = (h * 31 + c.charCodeAt(0)) >>> 0; return h; };
 
-let agents = [], mail = [], tasks = null; // tasks: null until the office_tasks table exists
+let agents = [], mail = [], tasks = null, notes = []; // tasks: null until the office_tasks table exists
 try {
   const j = JSON.parse(document.getElementById("of-data").textContent || "{}");
   agents = Array.isArray(j) ? j : j.agents || [];
   mail = Array.isArray(j.mail) ? j.mail : [];
   tasks = Array.isArray(j.tasks) ? j.tasks : null;
+  notes = Array.isArray(j.notes) ? j.notes : [];
 } catch { agents = []; }
 // "Senden beklenen" counts task cards that wait for the owner's answer; before the board exists, the agents' asks.
 // Asks written on a session itself (office_agents.status waiting_owner or needs_owner) also show on the board, as
@@ -325,6 +326,22 @@ for (const [id, board] of [["of-tab-office", false], ["of-tab-board", true]]) {
 }
 renderBoard();
 
+// ---------- "Notların": the founder's notes, their status and the CEO's answer (read only, 2026-11-13) ----------
+const NOTE_STATUS = { new: ["Yeni", "chip-y"], read: ["Okundu", "chip-n"], answered: ["Cevaplandı", "chip-g"] };
+const notesEl = document.getElementById("of-notes-list");
+function renderNotes() {
+  if (!notesEl) return;
+  if (!notes.length) { notesEl.replaceChildren(el("li", { class: "dim" }, "Henüz not yok.")); return; }
+  notesEl.replaceChildren(...notes.map((n) => {
+    const [label, css] = NOTE_STATUS[n.status] || [n.status, "chip-n"];
+    return el("li", { class: "of-note-item", "data-note": n.id },
+      el("div", { class: "of-note-head" }, el("span", {}, ny(n.created_at)), el("span", { class: "chip " + css }, label)),
+      el("p", {}, n.text),
+      n.answer ? el("p", { class: "of-note-ans" }, el("b", {}, "CEO: "), n.answer) : null);
+  }));
+}
+renderNotes();
+
 // ---------- note to the CEO (the page's only write) ----------
 const noteForm = document.getElementById("of-note");
 const noteMsg = document.getElementById("of-note-msg");
@@ -338,7 +355,7 @@ noteForm?.addEventListener("submit", async (e) => {
   noteMsg.textContent = "Gönderiliyor...";
   try {
     const r = await fetch("/admin/office/note", { method: "POST", credentials: "same-origin", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text }) });
-    if (r.ok) { ta.value = ""; noteMsg.textContent = "Not CEO'ya bırakıldı."; } else noteMsg.textContent = "Not gönderilemedi. Biraz sonra tekrar dene.";
+    if (r.ok) { ta.value = ""; noteMsg.textContent = "Not CEO'ya bırakıldı. Durumunu aşağıda görürsün."; refresh(); } else noteMsg.textContent = "Not gönderilemedi. Biraz sonra tekrar dene.";
   } catch { noteMsg.textContent = "Not gönderilemedi. Bağlantını kontrol et."; }
   btn.disabled = false;
 });
@@ -1053,6 +1070,7 @@ async function refresh() {
     if (!j || !Array.isArray(j.agents)) return;
     const same = JSON.stringify(j.agents) === JSON.stringify(agents);
     agents = j.agents;
+    if (Array.isArray(j.notes)) { notes = j.notes; renderNotes(); }
     if (Array.isArray(j.tasks) || j.tasks === null) { tasks = j.tasks; renderBoard(); if (openTaskId) openTask(openTaskId, true); }
     if (!same) {
       const before = layoutKey;

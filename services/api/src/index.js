@@ -1108,7 +1108,12 @@ app.get("/v1/admin/office", async (c) => {
        order by priority, created_at limit 300`,
     ).all()).results;
   } catch { tasks = null; }
-  return c.json({ agents: results, mail, tasks });
+  // The founder's own notes with their status and the CEO's answer (founder 2026-11-13), newest first, read only.
+  let notes = [];
+  try {
+    notes = (await c.env.OFFICE_DB.prepare("select id, created_at, text, status, answer from office_notes order by created_at desc limit 30").all()).results;
+  } catch { notes = []; }
+  return c.json({ agents: results, mail, tasks, notes });
 });
 // The owner's answer on one task card (founder 2026-11-13). Only owner_answer, owner_note and answered_at change, and
 // only on a card that waits for the owner. Everything else on the card belongs to the CEO session (D1 tool).

@@ -80,6 +80,9 @@ before(async () => {
   assert.equal(r.status, 0, r.stderr);
   const tk = sql("insert into office_tasks (id, title, detail, project, assignee_id, status, kind, priority) values " + TASKS.map((x) => `(${x.map((v) => (typeof v === "number" ? v : q(v))).join(", ")})`).join(", "));
   assert.equal(tk.status, 0, tk.stderr);
+  // A note the CEO already answered, to check the "Notların" list.
+  const nt = sql("insert into office_notes (id, text, status, answer) values ('n-seed-answered', 'Hauling derlemesi ne durumda?', 'answered', 'Kart açtım, Hauling Lider bakıyor.')");
+  assert.equal(nt.status, 0, nt.stderr);
   const m = sql("insert into office_mail (id, from_id, to_id, label) values " + MAIL.map((x) => `(${x.map(q).join(", ")})`).join(", "));
   assert.equal(m.status, 0, m.stderr);
   await Promise.all([
@@ -367,6 +370,12 @@ test("page renders list, 3D office, mail walk, panel and note; screenshots", { t
         await page.fill("#of-note-text", "Tarayıcıdan not");
         await page.click("#of-note button");
         await page.waitForFunction(() => /bırakıldı/.test(document.getElementById("of-note-msg").textContent), null, { timeout: 10000 });
+        // "Notların": the answered note shows its status and the CEO's answer; the new note appears as "Yeni".
+        const seeded = page.locator('#of-notes-list [data-note="n-seed-answered"]');
+        assert.match(await seeded.innerText(), /Cevaplandı[\s\S]*Hauling derlemesi ne durumda\?[\s\S]*CEO: Kart açtım/);
+        await page.waitForFunction(() => [...document.querySelectorAll("#of-notes-list .of-note-item")].some((li) => /Tarayıcıdan not/.test(li.textContent) && /Yeni/.test(li.textContent)), null, { timeout: 15000 });
+        await page.locator("#of-notes-list").scrollIntoViewIfNeeded();
+        await page.screenshot({ path: join(SHOTS, "office-desktop-notes.png") });
         const row = JSON.parse(sql("select status from office_notes where text = 'Tarayıcıdan not'").stdout)[0].results;
         assert.deepEqual(row, [{ status: "new" }]);
       }

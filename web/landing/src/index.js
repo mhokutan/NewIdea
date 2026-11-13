@@ -1131,7 +1131,7 @@ const OFFICE_STATUS = {
 async function officeAgents(env) {
   // Read through promovote-api (founder 2026-11-12): the API answers only with ADMIN_API_TOKEN, held by this admin site.
   const r = await reviewApi(env, "GET", "/v1/admin/office");
-  return r.ok ? { ok: true, agents: r.data.agents || [], mail: r.data.mail || [], tasks: Array.isArray(r.data.tasks) ? r.data.tasks : null } : { ok: false, agents: [], mail: [], tasks: null, reason: r.reason };
+  return r.ok ? { ok: true, agents: r.data.agents || [], mail: r.data.mail || [], tasks: Array.isArray(r.data.tasks) ? r.data.tasks : null, notes: r.data.notes || [] } : { ok: false, agents: [], mail: [], tasks: null, notes: [], reason: r.reason };
 }
 // Writes from the office page (founder 2026-11-12 and 2026-11-13): a note to the CEO, and the owner's yes or no on one
 // task card. Basic auth is sent by the browser on cross site posts too, so only same origin JSON requests may write.
@@ -1223,7 +1223,7 @@ ${a.last_action ? `<p style="margin:0 0 6px">${esc(a.last_action)}</p>` : ""}${a
 .of-stage.of-max{position:fixed!important;inset:0;z-index:60;height:100dvh!important;min-height:0;border-radius:0;border:0}
 .of-stage:fullscreen{height:100%!important;border-radius:0;border:0}
 body.of-bare{margin:0;overflow:hidden}.of-fullpage{padding:0;margin:0;max-width:none}
-.of-fullpage>.top,.of-fullpage>.of-tabs,.of-fullpage>.of-note,.of-fullpage>.of-note-msg,.of-fullpage>.of-legend,.of-fullpage>.of-list{display:none!important}
+.of-fullpage>.top,.of-fullpage>.of-tabs,.of-fullpage>.of-note,.of-fullpage>.of-note-msg,.of-fullpage>.of-notes,.of-fullpage>.of-legend,.of-fullpage>.of-list{display:none!important}
 .of-fullpage>.of-top{position:fixed;top:10px;left:50%;transform:translateX(-50%);z-index:5;margin:0;padding:6px 14px;border-radius:999px;background:rgba(16,16,20,.9);border:1px solid var(--line)}.of-fullpage>.of-top .dim{display:none}
 .of-main.full{position:fixed;inset:0;gap:0;grid-template-columns:minmax(0,1fr) 380px}
 .of-main.full.closed{grid-template-columns:minmax(0,1fr) 0}.of-main.full.closed .of-board{display:none}
@@ -1255,6 +1255,12 @@ body.of-bare{margin:0;overflow:hidden}.of-fullpage{padding:0;margin:0;max-width:
 .of-d-btns button[disabled]{opacity:.5;cursor:default}
 .of-drawer textarea{width:100%;min-height:72px;padding:10px 12px;border-radius:12px;border:1px solid var(--line);background:var(--bg,#111);color:inherit;font:inherit;font-size:15px;box-sizing:border-box}
 .of-d-small{margin:6px 0 0;font-size:12px;color:var(--muted)}
+.of-notes{margin:14px 0 0}.of-notes h2{font-size:16px;margin:0 0 8px}
+.of-notes-list{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+.of-note-item{padding:10px 12px;border-radius:12px;background:var(--surface);border:1px solid var(--line);overflow-wrap:anywhere}
+.of-note-item p{margin:0;white-space:pre-wrap;line-height:1.45}
+.of-note-head{display:flex;gap:8px;align-items:center;justify-content:space-between;flex-wrap:wrap;margin:0 0 6px;font-size:13px;color:var(--muted)}
+.of-note-ans{margin:8px 0 0!important;padding:8px 10px;border-left:3px solid var(--lime);border-radius:0 8px 8px 0;background:var(--surface-2)}
 .of-legend{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0 0;font-size:13px;color:var(--muted)}.of-legend span::before{content:"";display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px;background:var(--c)}
 @media (max-width:600px){.of-stage{height:min(58vh,105vw);min-height:300px}.of-panel{top:auto;bottom:10px;right:10px;left:10px;width:auto;max-height:55%}.of-dept{font-size:8px;padding:3px 6px;gap:4px}.of-dept i{width:6px;height:6px}.of-name.quiet{padding:3px;gap:0;background:none;box-shadow:none;border-radius:50%}.of-name.quiet::after{display:none}.of-name.quiet i{width:10px;height:10px;box-shadow:0 0 0 1px rgba(24,24,27,.35)}.of-name.quiet.off i{opacity:.5}.of-name.quiet span{display:none}.of-name em{font-size:8px}.of-name b{width:18px;height:18px;line-height:18px;font-size:12px;margin-left:-9px;top:-22px}}
 </style>
@@ -1270,9 +1276,10 @@ body.of-bare{margin:0;overflow:hidden}.of-fullpage{padding:0;margin:0;max-width:
 </div>
 <form class="of-note" id="of-note"><label for="of-note-text">CEO'ya not bırak</label><textarea id="of-note-text" name="text" maxlength="1000" rows="1" placeholder="CEO'ya not bırak" required></textarea><button type="submit">Gönder</button></form>
 <p class="of-note-msg dim" id="of-note-msg" aria-live="polite"></p>
+<section class="of-notes" aria-labelledby="of-notes-h"><h2 id="of-notes-h">Notların</h2><ul class="of-notes-list" id="of-notes-list"><li class="dim">Henüz not yok.</li></ul></section>
 <div class="of-legend" aria-hidden="true"><span style="--c:#22c55e">Çalışıyor</span><span style="--c:#9ca3af">Boşta</span><span style="--c:#facc15">Senden evet bekliyor</span><span style="--c:#ef4444">Takıldı</span><span style="--c:#d4d4d8">Kapalı</span></div>
 <ul class="of-list" id="of-list">${list || `<li class="of-item dim">${esc(empty)}</li>`}</ul>
-<script type="application/json" id="of-data">${JSON.stringify({ agents: r.agents, mail: r.mail, tasks: r.tasks }).replace(/</g, "\\u003c")}</script>
+<script type="application/json" id="of-data">${JSON.stringify({ agents: r.agents, mail: r.mail, tasks: r.tasks, notes: r.notes }).replace(/</g, "\\u003c")}</script>
 <script type="module" src="/admin-office.js?v=3"></script>`;
 }
 
