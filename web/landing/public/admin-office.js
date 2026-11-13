@@ -31,13 +31,13 @@ const ROOMS = [
   { key: "dovelet", name: "DOVELET", color: "#ec4899", x: 1, z: 10, w: 7, d: 6.5, door: "n", desks: 2 },
   { key: "ortak", name: "ORTAK BİRİMLER", color: "#22c55e", x: 9.5, z: 10, w: 10, d: 6.5, door: "n", desks: 4 },
   { key: "diger", name: "DİĞER", color: "#64748b", x: 21, z: 10, w: 7, d: 6.5, door: "n", desks: 4, spare: true },
-  { key: "bos1", name: "BOŞ ODA", color: "#a8a29e", x: 1, z: 18.5, w: 8, d: 6, door: "n", desks: 2, spare: true },
-  { key: "bos2", name: "BOŞ ODA", color: "#a8a29e", x: 10.5, z: 18.5, w: 8, d: 6, door: "n", desks: 2, spare: true },
+  { key: "salesforce", name: "SALESFORCE", color: "#14b8c4", x: 1, z: 18.5, w: 8, d: 6, door: "n", desks: 2 },
+  { key: "dopazon", name: "DOPAZON", color: "#f05a4f", x: 10.5, z: 18.5, w: 8, d: 6, door: "n", desks: 2 },
   { key: "bos3", name: "BOŞ ODA", color: "#a8a29e", x: 21, z: 18.5, w: 7, d: 6, door: "n", desks: 2, spare: true },
 ];
 const DEPT_OF = {
   ceo: "ceo", "hauling-dev": "hauling", "empire-desktop": "hauling", "robo-works": "dropolis", "promovote-dev": "promovote",
-  "dovelet-dev": "dovelet", "mac-mini-test": "ortak", analyst: "ortak",
+  "dovelet-dev": "dovelet", "mac-mini-test": "ortak", analyst: "ortak", "salesforce-dev": "salesforce", "dopazon-dev": "dopazon",
 };
 const CROSS_X = 20.25; // the corridor between the two room rows' right columns, used to change corridors
 
@@ -82,7 +82,7 @@ function makePlan() {
   const free = (key) => slots.find((s) => s.room.key === key && !s.agent);
   for (const a of agents) {
     // Known ids go to their department; unknown ids open desks in DİĞER, then in the empty rooms.
-    const s = free(DEPT_OF[a.id] || "diger") || free("diger") || free("bos1") || free("bos2") || free("bos3");
+    const s = free(DEPT_OF[a.id] || "diger") || free("diger") || free("bos3");
     if (s) s.agent = a;
   }
 }

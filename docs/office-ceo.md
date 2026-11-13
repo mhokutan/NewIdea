@@ -14,8 +14,9 @@ The office page promovote.com/admin/office reads two tables in the Cloudflare D1
 
 Desks by `office_agents.id`: `ceo` = GENEL MÜDÜR (own glass room next to the lounge); `hauling-dev`, `empire-desktop` =
 HAULING EMPIRE; `robo-works` = DROPOLIS; `promovote-dev` = PROMOVOTE; `dovelet-dev` = DOVELET; `mac-mini-test`,
-`analyst` = ORTAK BİRİMLER. Any other id gets a desk in DİĞER (then in the empty rooms). The empty rooms wait for future
-departments (Salesforce, Dopazon, YouTube, Unity); adding one is a code change in `web/landing/public/admin-office.js`.
+`analyst` = ORTAK BİRİMLER; `salesforce-dev` = SALESFORCE (teal); `dopazon-dev` = DOPAZON (coral). Any other id gets
+a desk in DİĞER (then in the empty room). One BOŞ ODA waits for a future department (YouTube, Unity); adding one is a
+code change in `web/landing/public/admin-office.js`.
 
 **Notes from the founder.** The bottom bar "CEO'ya not bırak" writes a row to `office_notes` with status `new` (admin
 login only, 1 to 1000 characters; the only write endpoint, `POST /v1/admin/office/notes` on promovote-api). Read them:

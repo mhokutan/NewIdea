@@ -56,6 +56,8 @@ const AGENTS = [
   ["mac-mini-test", "Mac mini Test", "offline", null, null],
   ["analyst", "Analist", "working", "Haftalık oyuncu raporu", null],
   ["poleris", "Poleris", "working", "Yeni sürüm notları", null],
+  ["salesforce-dev", "Salesforce Geliştirici", "offline", null, null],
+  ["dopazon-dev", "Dopazon Geliştirici", "offline", null, null],
 ];
 const MAIL = [
   ["11111111-1111-4111-8111-111111111111", "ceo", "promovote-dev", "Ofis v3 görevi"],
@@ -114,7 +116,7 @@ test("API read needs the admin token", async () => {
   const r = await get(API + "/v1/admin/office", { headers: { "X-Admin-Token": TOKEN } });
   assert.equal(r.status, 200);
   const j = await r.json();
-  assert.equal(j.agents.length, 9);
+  assert.equal(j.agents.length, 11);
   assert.equal(j.agents[0].id, "ceo");
   assert.deepEqual(j.mail.map((x) => x.id).sort(), MAIL.map((x) => x[0]).sort());
 });
@@ -158,7 +160,7 @@ test("site read needs the admin login", async () => {
   assert.equal((await get(WEB + "/admin/office.json", { headers: { Authorization: "Basic " + Buffer.from("admin:wrong").toString("base64") } })).status, 401);
   const r = await get(WEB + "/admin/office.json", { headers: { Authorization: AUTH } });
   assert.equal(r.status, 200);
-  assert.equal((await r.json()).agents.length, 9);
+  assert.equal((await r.json()).agents.length, 11);
 });
 
 test("page renders list, 3D office, mail walk, panel and note; screenshots", { timeout: 240000 }, async () => {
@@ -176,14 +178,14 @@ test("page renders list, 3D office, mail walk, panel and note; screenshots", { t
       page.on("pageerror", (e) => errors.push(e.message));
       await page.goto(WEB + "/admin/office", { waitUntil: "networkidle" });
       assert.match(await page.locator("#of-ask").innerText(), /Senden beklenen: 1 evet/);
-      assert.equal(await page.locator("#of-list [data-id]").count(), 9);
+      assert.equal(await page.locator("#of-list [data-id]").count(), 11);
       await page.waitForSelector('#of-stage[data-ready="1"] canvas', { timeout: 60000 });
       const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
       assert.ok(overflow <= 0, `${name}: no horizontal scroll (${overflow}px)`);
       // Labels: every department, name bubbles for all 9, "!" for the waiting one, "takıldı" for the blocked one.
       const depts = await page.locator(".of-dept").allInnerTexts();
-      for (const d of ["HAULING EMPIRE", "DROPOLIS", "PROMOVOTE", "DOVELET", "ORTAK BİRİMLER", "GENEL MÜDÜR", "DİĞER", "BOŞ ODA"]) assert.ok(depts.includes(d), `${name}: label ${d}`);
-      assert.equal(await page.locator(".of-name").count(), 9);
+      for (const d of ["HAULING EMPIRE", "DROPOLIS", "PROMOVOTE", "DOVELET", "ORTAK BİRİMLER", "GENEL MÜDÜR", "DİĞER", "SALESFORCE", "DOPAZON", "BOŞ ODA"]) assert.ok(depts.includes(d), `${name}: label ${d}`);
+      assert.equal(await page.locator(".of-name").count(), 11);
       assert.equal(await page.locator(".of-name b").count(), 1);
       assert.equal(await page.locator(".of-name em").innerText(), "takıldı");
       await page.locator("#of-stage").scrollIntoViewIfNeeded();
