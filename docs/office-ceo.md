@@ -61,3 +61,9 @@ VALUES (lower(hex(randomblob(4))) || '-' || lower(hex(randomblob(2))) || '-4' ||
 
 After the founder answers, move the card: `UPDATE office_tasks SET status = 'doing', updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id = '...';`
 Store, publish, budget and live data work still needs the founder's yes in the CEO chat; the card's answer is the first step.
+
+**Asks on a session row (2026-11-13).** A session with `status = 'waiting_owner'` or a `needs_owner` text and no
+unanswered waiting card also appears on the board ("Oturumdan" tag). The founder's Evet / Hayır on it arrives as an
+`office_notes` row like `EVET (empire-desktop, Hauling Masaüstü Derleme): Masaüstü oturumunda gönderim için bir kez evet`.
+After acting on it, clear the ask: `UPDATE office_agents SET needs_owner = NULL, status = 'working' WHERE id = '...';`
+Better: open a real card in `office_tasks` for each ask, then the answer lands on the card itself.

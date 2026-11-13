@@ -1172,7 +1172,11 @@ const nyTime = (iso) => {
 async function officePage(env, full = false) {
   const r = await officeAgents(env);
   // With the task board, "Senden beklenen" counts the cards that wait for the owner's answer.
-  const waiting = r.tasks ? r.tasks.filter((t) => t.status === "waiting_owner" && !t.owner_answer).length : r.agents.filter((a) => a.status === "waiting_owner" || a.needs_owner).length;
+  // Same rule as the page script: unanswered waiting task cards, plus sessions asking on their own row that have no such
+  // card yet. (Asks answered as a note are only known in the browser, which corrects the number after loading.)
+  const openTasks = (r.tasks || []).filter((t) => t.status === "waiting_owner" && !t.owner_answer);
+  const covered = new Set(openTasks.map((t) => t.assignee_id));
+  const waiting = openTasks.length + r.agents.filter((a) => (a.status === "waiting_owner" || a.needs_owner) && !covered.has(a.id)).length;
   const chipCls = { g: "chip-g", y: "chip-y", r: "chip-r", n: "chip-n" };
   const list = r.agents.map((a) => {
     const [label, lv] = OFFICE_STATUS[a.status] || [a.status, "n"];

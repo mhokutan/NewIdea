@@ -49,7 +49,9 @@ const q = (s) => (s === null ? "null" : `'${String(s).replace(/'/g, "''")}'`);
 
 // A copy of the live 52 rows (read only, 2026-11-13), with one person set to "blocked" so that state is tested too.
 const AGENTS = JSON.parse(readFileSync(join(import.meta.dirname, "fixtures/office-agents-52.json"), "utf8"))
-  .map((a) => (a[0] === "dropolis-qa" ? [a[0], a[1], "blocked", "Örnek: test cihazı takıldı", null] : a));
+  .map((a) => (a[0] === "dropolis-qa" ? [a[0], a[1], "blocked", "Örnek: test cihazı takıldı", null]
+    // A session that asks on its own row and has no task card (the live bug of 2026-11-13).
+    : a[0] === "mac-mini-test" ? [a[0], a[1], "waiting_owner", "iOS derlemesi hazır", "Mac mini testine başlamak için evet"] : a));
 // Task board cards (migration 0003): id, title, detail, project, assignee, status, kind, priority.
 const TASKS = [
   ["t-hauling-252", "Hauling 2.5.2 iOS ve Android derlemesi", "Derlemeler hazır. Mağazaya yüklemek için evet gerekiyor.\nSürüm notları EKIP-PLANI.md içinde.", "hauling", "hauling-dev", "waiting_owner", "yes", 1],
@@ -252,7 +254,7 @@ test("page renders list, 3D office, mail walk, panel and note; screenshots", { t
       const depts = await page.locator(".of-dept").allInnerTexts();
       for (const d of ["HAULING EMPIRE", "DROPOLIS", "PROMOVOTE", "DOVELET", "ORTAK BİRİMLER", "GENEL MÜDÜR", "SALESFORCE", "DOPAZON", "MAĞAZA VE BÜYÜME", "SOSYAL MEDYA", "TEST PANELİ", "BOŞ ODA"]) assert.ok(depts.includes(d), `${name}: label ${d}`);
       assert.equal(await page.locator(".of-name").count(), AGENTS.length);
-      assert.equal(await page.locator(".of-name b").count(), 1);
+      assert.equal(await page.locator(".of-name b").count(), AGENTS.filter((a) => a[2] === "waiting_owner").length);
       assert.equal(await page.locator(".of-name em").innerText(), "takıldı");
       await page.locator("#of-stage").scrollIntoViewIfNeeded();
       // Big view: "Tam ekran" puts the stage in full screen (or covers the window where full screen is refused), the
@@ -330,6 +332,21 @@ test("page renders list, 3D office, mail walk, panel and note; screenshots", { t
         assert.deepEqual(row, { owner_answer: "yes", owner_note: "Önce iOS", status: "waiting_owner" });
         const t2 = (await page.locator("#of-ask").evaluate((e) => e.textContent)).trim();
         assert.match(t2, /^Senden beklenen: \d+ evet$/);
+        await page.click("#of-d-back");
+        // A session's own ask (no task card) shows in "Senden bekleyen" and its Evet goes to the CEO as a note.
+        if (await page.locator("#of-b-filter").isVisible()) await page.click("#of-b-filter button"); // the person filter from the panel step
+        const ask = page.locator('#of-board [data-col="waiting_owner"] [data-task="ask:mac-mini-test"]');
+        assert.equal(await ask.count(), 1, "session ask shows on the board");
+        assert.match(await ask.innerText(), /Mac mini testine başlamak için evet[\s\S]*Oturumdan/);
+        await ask.click();
+        await page.waitForSelector("#of-drawer:not([hidden])");
+        assert.match(await page.locator("#of-d-answer").innerText(), /CEO'ya not olarak gider/);
+        await page.click("#of-d-answer .of-yes");
+        await page.waitForFunction(() => /Evet kaydedildi/.test(document.getElementById("of-d-msg")?.textContent || ""), null, { timeout: 10000 });
+        const noteRow = JSON.parse(sql("select text, status from office_notes where text like 'EVET (mac-mini-test%'").stdout)[0].results;
+        assert.equal(noteRow.length, 1, "the answer reached office_notes");
+        assert.equal(noteRow[0].status, "new");
+        assert.match(noteRow[0].text, /Mac mini testine başlamak için evet/);
         await page.click("#of-d-back");
         // Clicking a person in the list filters the board to that person; the filter line appears and clearing it
         // restores at least as many cards.

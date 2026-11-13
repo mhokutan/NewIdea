@@ -119,7 +119,27 @@ try {
   tasks = Array.isArray(j.tasks) ? j.tasks : null;
 } catch { agents = []; }
 // "Senden beklenen" counts task cards that wait for the owner's answer; before the board exists, the agents' asks.
-const ownerCount = () => (tasks ? tasks.filter((t) => t.status === "waiting_owner" && !t.owner_answer).length : waitingCount(agents));
+// Asks written on a session itself (office_agents.status waiting_owner or needs_owner) also show on the board, as
+// "Senden bekleyen" cards, so the board and the list below never disagree (founder 2026-11-13). Such a card is not a
+// row in office_tasks: its Evet / Hayır goes to the CEO as a note (office_notes), and this browser remembers it.
+// A session that already has an unanswered waiting task card shows only that card.
+const ASKED_KEY = "office-asks-answered";
+let answeredAsks = {};
+try { answeredAsks = JSON.parse(localStorage.getItem(ASKED_KEY) || "{}") || {}; } catch { answeredAsks = {}; }
+const askKey = (a) => a.id + "|" + (a.needs_owner || "");
+function agentAsks() {
+  const covered = new Set((tasks || []).filter((t) => t.status === "waiting_owner" && !t.owner_answer).map((t) => t.assignee_id));
+  return agents.filter((a) => (a.status === "waiting_owner" || a.needs_owner) && !covered.has(a.id)).map((a) => {
+    const done = answeredAsks[askKey(a)];
+    return {
+      id: "ask:" + a.id, fromAgent: true, agent: a, title: a.needs_owner || "Senden evet bekliyor", detail: a.last_action || "",
+      project: deptOf(a.id), assignee_id: a.id, status: "waiting_owner", kind: "yes", priority: 2, created_at: a.updated_at,
+      owner_answer: done?.answer || null, owner_note: done?.note || null, answered_at: done?.at || null,
+    };
+  });
+}
+const boardItems = () => [...(tasks || []), ...agentAsks()];
+const ownerCount = () => boardItems().filter((t) => t.status === "waiting_owner" && !t.owner_answer).length;
 let selected = null; // agent id
 
 // ---------- desk plan: which agent sits where ----------
@@ -213,14 +233,14 @@ function renderBoard() {
   if (!colsEl) return;
   if (tabCount) tabCount.textContent = tasks ? `(${ownerCount()})` : "";
   renderList();
-  if (!tasks) { colsEl.replaceChildren(el("p", { class: "dim" }, "Görev tablosu henüz yok.")); return; }
+
   filterEl.hidden = !boardFilter;
   if (boardFilter) {
     const clear = el("button", { type: "button" }, "× Filtreyi kaldır");
     clear.addEventListener("click", () => { boardFilter = null; renderBoard(); });
     filterEl.replaceChildren("Sadece: ", el("b", {}, agentName(boardFilter)), " ", clear);
   }
-  const shown = tasks.filter((t) => !boardFilter || t.assignee_id === boardFilter);
+  const shown = boardItems().filter((t) => !boardFilter || t.assignee_id === boardFilter);
   colsEl.replaceChildren(...COLS.map(([status, label, cls]) => {
     const cards = shown.filter((t) => t.status === status).sort(byPriority);
     const ul = el("ul", { class: "of-cards" }, ...cards.map((t) => {
@@ -229,6 +249,7 @@ function renderBoard() {
         el("span", { class: "of-card-t" }, t.title),
         el("span", { class: "of-card-m" }, el("i", { style: `--c:${p.color}` }), p.name, " · ", agentName(t.assignee_id),
           (t.priority ?? 3) === 1 ? el("span", { class: "of-pri" }, "Öncelikli") : null,
+          t.fromAgent ? el("span", { class: "of-ans" }, "Oturumdan") : null,
           t.owner_answer ? el("span", { class: "of-ans" }, t.owner_answer === "yes" ? "Cevabın: Evet" : "Cevabın: Hayır") : null));
       b.addEventListener("click", () => openTask(t.id));
       return el("li", {}, b);
@@ -238,7 +259,7 @@ function renderBoard() {
   }));
 }
 function openTask(id, keepNote) {
-  const t = tasks?.find((x) => x.id === id);
+  const t = boardItems().find((x) => x.id === id);
   if (!t || !drawer) { closeTask(); return; }
   openTaskId = id;
   const p = projectOf(t.project);
@@ -261,9 +282,17 @@ function openTask(id, keepNote) {
       yes.disabled = no.disabled = true;
       msg.textContent = "Gönderiliyor...";
       try {
-        const r = await fetch(`/admin/office/task/${encodeURIComponent(t.id)}/answer`, { method: "POST", credentials: "same-origin", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ answer, note: text }) });
+        // A session's own ask has no task row: the answer goes to the CEO as a note instead.
+        const r = t.fromAgent
+          ? await fetch("/admin/office/note", { method: "POST", credentials: "same-origin", headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ text: `${answer === "yes" ? "EVET" : "HAYIR"} (${t.agent.id}, ${shortName(t.agent.role)}): ${t.title}${text ? "\nNot: " + text : ""}`.slice(0, 1000) }) })
+          : await fetch(`/admin/office/task/${encodeURIComponent(t.id)}/answer`, { method: "POST", credentials: "same-origin", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ answer, note: text }) });
         if (r.ok) {
-          Object.assign(t, { owner_answer: answer, owner_note: text || null, answered_at: new Date().toISOString() });
+          const at = new Date().toISOString();
+          if (t.fromAgent) {
+            answeredAsks[askKey(t.agent)] = { answer, note: text || null, at };
+            try { localStorage.setItem(ASKED_KEY, JSON.stringify(answeredAsks)); } catch { /* private mode */ }
+          } else Object.assign(t, { owner_answer: answer, owner_note: text || null, answered_at: at });
           renderBoard(); openTask(t.id);
           document.getElementById("of-d-msg").textContent = answer === "yes" ? "Evet kaydedildi. CEO görecek." : "Hayır kaydedildi. CEO görecek.";
           return;
@@ -275,7 +304,8 @@ function openTask(id, keepNote) {
     yes.addEventListener("click", () => send("yes"));
     no.addEventListener("click", () => send("no"));
     box.replaceChildren(...[
-      t.owner_answer ? el("p", { class: "of-d-small" }, "Cevabını değiştirebilirsin, CEO kartı taşıyana kadar.") : null,
+      t.fromAgent ? el("p", { class: "of-d-small" }, "Bu istek oturumun kendi durumundan geliyor. Cevabın CEO'ya not olarak gider; CEO oturuma iletir ve isteği kapatır.") : null,
+      t.owner_answer ? el("p", { class: "of-d-small" }, t.fromAgent ? "Cevabını gönderdin. İstersen yeniden gönderebilirsin." : "Cevabını değiştirebilirsin, CEO kartı taşıyana kadar.") : null,
       note, el("div", { class: "of-d-btns" }, yes, no), msg,
       el("p", { class: "of-d-small" }, "Mağaza, yayın, bütçe ve canlı veri işlerinde CEO sohbette bir kez daha teyit ister."),
     ].filter(Boolean));
