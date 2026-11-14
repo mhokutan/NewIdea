@@ -111,14 +111,19 @@ const el = (tag, attrs = {}, ...kids) => {
 const waitingCount = (list) => list.filter((a) => a.status === "waiting_owner" || a.needs_owner).length;
 const hash = (s) => { let h = 0; for (const c of String(s)) h = (h * 31 + c.charCodeAt(0)) >>> 0; return h; };
 
-let agents = [], mail = [], tasks = null, notes = []; // tasks: null until the office_tasks table exists
+let agents = [], mail = [], tasks = null, notes = [], skillUse = []; // tasks: null until the office_tasks table exists
 try {
   const j = JSON.parse(document.getElementById("of-data").textContent || "{}");
   agents = Array.isArray(j) ? j : j.agents || [];
   mail = Array.isArray(j.mail) ? j.mail : [];
   tasks = Array.isArray(j.tasks) ? j.tasks : null;
   notes = Array.isArray(j.notes) ? j.notes : [];
+  skillUse = Array.isArray(j.skill_use) ? j.skill_use : [];
 } catch { agents = []; }
+// Skills and models (founder 2026-11-14): comma separated skill names on a session, a card and a timeline line.
+const splitSkills = (str) => [...new Set(String(str || "").split(",").map((x) => x.trim()).filter(Boolean))];
+const agentModel = (a) => a?.model || modelOf(a?.role) || "";
+const chips = (list, model) => (list.length || model ? el("span", { class: "of-chips" }, ...(model ? [el("span", { class: "of-chip m" }, model)] : []), ...list.map((k) => el("span", { class: "of-chip" }, k))) : null);
 // "Senden beklenen" counts task cards that wait for the owner's answer; before the board exists, the agents' asks.
 // Asks written on a session itself (office_agents.status waiting_owner or needs_owner) also show on the board, as
 // "Senden bekleyen" cards, so the board and the list below never disagree (founder 2026-11-13). Such a card is not a
@@ -196,12 +201,31 @@ function openPanel(id) {
   selected = id;
   if (tasks) { boardFilter = id; renderBoard(); } // a click on a person filters the board to that person's cards
   const s = slotOf(id);
-  pTitle.replaceChildren(shortName(a.role), modelOf(a.role) ? el("span", { class: "of-model" }, modelOf(a.role)) : "");
+  pTitle.replaceChildren(shortName(a.role), agentModel(a) ? el("span", { class: "of-model" }, agentModel(a)) : "");
   const row = (k, v) => [el("dt", {}, k), el("dd", {}, v || "-")];
-  pBody.replaceChildren(...row("Birim", s ? roomLabel(s.room) : "-"), ...row("Durum", st(a.status).label), ...row("Son iş", a.last_action),
+  pBody.replaceChildren(...row("Birim", s ? roomLabel(s.room) : "-"), ...row("Durum", st(a.status).label),
+    ...row("Model", agentModel(a) ? chips([], agentModel(a)) : null), ...row("Beceriler", chips(splitSkills(a.skills))),
+    ...row("Son iş", a.last_action),
     ...row("Senden beklenen", a.needs_owner), ...row("Güncelleme", ny(a.updated_at)));
   panel.classList.add("on");
   renderList();
+  syncBubbles();
+}
+// A department label opens the same side panel with the department's people and its main skills.
+function deptSkills(key) {
+  const count = new Map();
+  for (const a of agents) if ((key === "ceo" ? a.id === "ceo" : deptOf(a.id) === key && a.id !== "ceo")) for (const k of splitSkills(a.skills)) count.set(k, (count.get(k) || 0) + 1);
+  return [...count.entries()].sort((x, y) => y[1] - x[1] || x[0].localeCompare(y[0])).map(([k]) => k);
+}
+function openDeptPanel(room) {
+  if (!panel) return;
+  selected = null;
+  const people = slots.filter((x) => x.room === room && x.agent).map((x) => x.agent);
+  const row = (k, v) => [el("dt", {}, k), el("dd", {}, v || "-")];
+  pTitle.replaceChildren(roomLabel(room));
+  pBody.replaceChildren(...row("Kişi", String(people.length)), ...row("Ana beceriler", chips(deptSkills(room.key).slice(0, 8))),
+    ...row("Ekip", people.length ? el("span", { class: "of-chips" }, ...people.map((a) => el("span", { class: "of-chip" }, shortName(a.role)))) : null));
+  panel.classList.add("on");
   syncBubbles();
 }
 function closePanel() { selected = null; panel?.classList.remove("on"); renderList(); syncBubbles(); }
@@ -254,6 +278,7 @@ function renderBoard() {
       const b = el("button", { type: "button", class: "of-card", "data-task": t.id },
         el("span", { class: "of-card-t" }, t.title),
         t.stage ? el("span", { class: "of-card-s" }, t.stage + (pct(t) !== null ? ` · %${pct(t)}` : "")) : null,
+        chips(splitSkills(t.skills_used), t.model_used || ""),
         pct(t) !== null ? el("span", { class: "of-prog", role: "progressbar", "aria-valuenow": String(pct(t)), "aria-valuemin": "0", "aria-valuemax": "100", "aria-label": "İlerleme" }, el("i", { style: `width:${pct(t)}%` })) : null,
         el("span", { class: "of-card-m" }, el("i", { style: `--c:${p.color}` }), p.name, " · ", agentName(t.assignee_id),
           (t.priority ?? 3) === 1 ? el("span", { class: "of-pri" }, "Öncelikli") : null,
@@ -276,6 +301,7 @@ function openTask(id, keepNote) {
   const row = (k, v) => [el("dt", {}, k), el("dd", {}, v || "-")];
   document.getElementById("of-d-meta").replaceChildren(...row("Proje", p.name), ...row("Kimde", agentName(t.assignee_id)),
     ...row("Durum", TASK_STATUS[t.status] || t.status), ...row("Tür", KIND[t.kind] || t.kind), ...row("Öncelik", String(t.priority ?? 3)),
+    ...(t.model_used ? row("Model", chips([], t.model_used)) : []), ...(splitSkills(t.skills_used).length ? row("Beceriler", chips(splitSkills(t.skills_used))) : []),
     ...(t.stage ? row("Aşama", t.stage) : []), ...(pct(t) !== null ? row("İlerleme", "%" + pct(t)) : []),
     ...row("Son hareket", ((ms) => (ms ? ny(new Date(ms).toISOString()) : "-"))(lastTouch(t) || Date.parse(t.created_at || "") || 0) + (isStale(t) ? " (2 saattir güncelleme yok)" : "")),
     ...row("Açıldı", ny(t.created_at)), ...(t.owner_answer ? row("Cevabın", (t.owner_answer === "yes" ? "Evet" : "Hayır") + (t.owner_note ? ": " + t.owner_note : "") + " (" + ny(t.answered_at) + ")") : []));
@@ -285,7 +311,7 @@ function openTask(id, keepNote) {
   if (hist) {
     hist.hidden = !log.length;
     document.getElementById("of-d-log").replaceChildren(...[...log].sort((a, b) => String(b.at).localeCompare(String(a.at)))
-      .map((l) => el("li", {}, el("time", { datetime: l.at }, ny(l.at)), l.text)));
+      .map((l) => el("li", {}, el("time", { datetime: l.at }, ny(l.at)), l.text, l.skill ? chips([l.skill]) : null)));
   }
   const box = document.getElementById("of-d-answer");
   const oldNote = keepNote ? document.getElementById("of-d-note")?.value : null;
@@ -342,6 +368,55 @@ for (const [id, board] of [["of-tab-office", false], ["of-tab-board", true]]) {
   });
 }
 renderBoard();
+
+// ---------- "Beceriler" (founder 2026-11-14): skills x departments, and when each skill last ran on which task ----------
+const skillsEl = document.getElementById("of-skills");
+const WEEK_MS = 7 * 864e5;
+function renderSkills() {
+  if (!skillsEl) return;
+  const cols = [CEO_DEPT, ...DEPTS].filter((d) => agents.some((a) => (d.key === "ceo" ? a.id === "ceo" : a.id !== "ceo" && deptOf(a.id) === d.key)));
+  const rows = new Map(); // lower name -> { name, per: {dept: n}, total, use }
+  const keyOf = (n) => n.toLocaleLowerCase("tr");
+  for (const a of agents) {
+    const d = a.id === "ceo" ? "ceo" : deptOf(a.id);
+    for (const k of splitSkills(a.skills)) {
+      const r = rows.get(keyOf(k)) || { name: k, per: {}, total: 0, use: null };
+      r.per[d] = (r.per[d] || 0) + 1; r.total += 1;
+      rows.set(keyOf(k), r);
+    }
+  }
+  for (const u of skillUse) {
+    const r = rows.get(keyOf(u.name)) || { name: u.name, per: {}, total: 0, use: null };
+    r.use = u; rows.set(keyOf(u.name), r);
+  }
+  if (!rows.size) {
+    skillsEl.replaceChildren(el("p", { class: "dim" }, "Henüz beceri yazılmadı. CEO oturumların beceri listesini doldurunca bu tablo dolar."));
+    return;
+  }
+  const list = [...rows.values()].sort((x, y) => String(y.use?.last_at || "").localeCompare(String(x.use?.last_at || "")) || y.total - x.total || x.name.localeCompare(y.name));
+  const used = list.filter((r) => r.use && Date.now() - Date.parse(r.use.last_at) < WEEK_MS).length;
+  // Only departments where someone holds a skill get a column; the last use sits under the skill name, so the table
+  // fits the side panel.
+  const shown = cols.filter((d) => list.some((r) => r.per[d.key]));
+  const head = el("tr", {}, el("th", {}, "Beceri ve son kullanım"), ...shown.map((d) => el("th", { title: d.name }, el("i", { style: `--c:${d.color}` }), d.name.split(" ")[0])));
+  const body = list.map((r) => el("tr", { "data-skill": r.name },
+    el("td", { class: "last" }, el("b", {}, r.name), el("br"), ...(r.use
+      ? [ny(r.use.last_at), " · ", r.use.task_title || "-", ` (${r.use.uses} kez)`, Date.now() - Date.parse(r.use.last_at) >= WEEK_MS ? el("span", { class: "of-idle", style: "margin-left:6px" }, "7 gündür boşta") : null]
+      : [el("span", { class: "of-idle" }, "Kullanılmadı")])),
+    ...shown.map((d) => (r.per[d.key] ? el("td", { class: "n", title: `${d.name}: ${r.per[d.key]} kişi` }, String(r.per[d.key])) : el("td", { class: "z" }, "·")))));
+  skillsEl.replaceChildren(
+    el("p", { class: "dim", style: "margin:0 0 8px;font-size:13px" }, `${list.length} beceri, son 7 günde ${used} tanesi kullanıldı. Sayılar: o birimde bu beceriye sahip kişi.`),
+    el("div", { class: "of-skill-wrap" }, el("table", { class: "of-skill-t" }, el("thead", {}, head), el("tbody", {}, ...body))));
+}
+const segTasks = document.getElementById("of-seg-tasks"), segSkills = document.getElementById("of-seg-skills");
+function showSkills(on) {
+  segTasks?.setAttribute("aria-selected", String(!on)); segSkills?.setAttribute("aria-selected", String(on));
+  if (colsEl) colsEl.hidden = on;
+  if (skillsEl) skillsEl.hidden = !on;
+  if (on) { closeTask(); renderSkills(); }
+}
+segTasks?.addEventListener("click", () => showSkills(false));
+segSkills?.addEventListener("click", () => showSkills(true));
 
 // ---------- "Notların": the founder's notes, their status and the CEO's answer (read only, 2026-11-13) ----------
 const NOTE_STATUS = { new: ["Yeni", "chip-y"], read: ["Okundu", "chip-n"], answered: ["Cevaplandı", "chip-g"] };
@@ -653,7 +728,10 @@ function buildPeople() {
   // Department labels: rebuilt with the people, because DİĞER and the empty rooms change names.
   for (const t of deptTags) t.el.remove();
   deptTags = ROOMS.map((r) => {
-    const e = el("div", { class: "of-dept", style: `--c:${r.color}` }, el("i"), roomLabel(r));
+    const main = deptSkills(r.key).slice(0, 5);
+    const e = el("div", { class: "of-dept", style: `--c:${r.color}`, title: main.length ? "Ana beceriler: " + main.join(", ") : "Beceri yazılmamış", role: "button", tabindex: "0" }, el("i"), roomLabel(r));
+    e.addEventListener("click", () => openDeptPanel(r));
+    e.addEventListener("keydown", (ev) => { if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); openDeptPanel(r); } });
     tagsEl.prepend(e);
     return { el: e, pos: new THREE.Vector3(r.x + 0.2, GLASS_H + 0.1, r.z + r.d) };
   });
@@ -1088,6 +1166,8 @@ async function refresh() {
     const same = JSON.stringify(j.agents) === JSON.stringify(agents);
     agents = j.agents;
     if (Array.isArray(j.notes)) { notes = j.notes; renderNotes(); }
+    if (Array.isArray(j.skill_use)) skillUse = j.skill_use;
+    if (skillsEl && !skillsEl.hidden) renderSkills();
     if (Array.isArray(j.tasks) || j.tasks === null) { tasks = j.tasks; renderBoard(); if (openTaskId) openTask(openTaskId, true); }
     if (!same) {
       const before = layoutKey;

@@ -89,3 +89,25 @@ VALUES (lower(hex(randomblob(16))), '<task id>', 'Hauling QA reklam akışını 
 Read a card's timeline: `SELECT at, text FROM office_task_log WHERE task_id = '<task id>' ORDER BY at DESC LIMIT 10;`
 Stuck cards (what the "eski" tag shows): `SELECT id, title, stage, updated_at FROM office_tasks WHERE status = 'doing' AND updated_at < strftime('%Y-%m-%dT%H:%M:%fZ','now','-2 hours');`
 Log text is short work text only: no personal data, keys or player names.
+
+## Skills and models (2026-11-14)
+
+Migration `services/api/office-migrations/0005_office_skills.sql` (after 0004; apply only after the founder's yes)
+adds `office_agents.skills` (comma separated skill names, up to 300) and `office_agents.model` (Opus, Sonnet or Haiku),
+`office_tasks.skills_used` and `office_tasks.model_used`, and `office_task_log.skill` (one skill per step, up to 60).
+The page shows them as chips: a person's side panel (model and skills), a department label (its main skills on hover,
+tap opens them), each card (model and skills used) and each timeline step (the skill that ran). The "Beceriler" tab
+next to "Görevler" is a matrix: skills by department (how many people hold each), with when each skill last ran and
+on which task; a skill nobody used shows "Kullanılmadı", one idle for 7 days "7 gündür boşta". Use the same skill
+name everywhere (lower case, for example `playwright`, `unity`, `store-release`); matching ignores case.
+
+```sql
+-- Who has which skills and model
+UPDATE office_agents SET skills = 'unity, csharp, store-release', model = 'Opus' WHERE id = 'hauling-dev';
+-- What a card used
+UPDATE office_tasks SET skills_used = 'playwright, cloudflare-workers', model_used = 'Opus',
+       updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id = '<task id>';
+-- A step with the skill that ran
+INSERT INTO office_task_log (id, task_id, text, skill)
+VALUES (lower(hex(randomblob(16))), '<task id>', 'Uçtan uca testler geçti', 'playwright');
+```

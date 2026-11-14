@@ -1134,7 +1134,7 @@ const OFFICE_STATUS = {
 async function officeAgents(env) {
   // Read through promovote-api (founder 2026-11-12): the API answers only with ADMIN_API_TOKEN, held by this admin site.
   const r = await reviewApi(env, "GET", "/v1/admin/office");
-  return r.ok ? { ok: true, agents: r.data.agents || [], mail: r.data.mail || [], tasks: Array.isArray(r.data.tasks) ? r.data.tasks : null, notes: r.data.notes || [] } : { ok: false, agents: [], mail: [], tasks: null, notes: [], reason: r.reason };
+  return r.ok ? { ok: true, agents: r.data.agents || [], mail: r.data.mail || [], tasks: Array.isArray(r.data.tasks) ? r.data.tasks : null, notes: r.data.notes || [], skillUse: r.data.skill_use || [] } : { ok: false, agents: [], mail: [], tasks: null, notes: [], skillUse: [], reason: r.reason };
 }
 // Writes from the office page (founder 2026-11-12 and 2026-11-13): a note to the CEO, and the owner's yes or no on one
 // task card. Basic auth is sent by the browser on cross site posts too, so only same origin JSON requests may write.
@@ -1252,6 +1252,13 @@ body.of-bare{margin:0;overflow:hidden}.of-fullpage{padding:0;margin:0;max-width:
 .of-col.done .of-card{opacity:.7}
 .of-card-s{display:block;margin-top:5px;font-size:13px;color:var(--fg,#e4e4e7);opacity:.85;overflow-wrap:anywhere}
 .of-prog{display:block;height:4px;margin-top:6px;border-radius:99px;background:var(--surface-2);overflow:hidden}.of-prog i{display:block;height:100%;border-radius:99px;background:var(--lime)}
+.of-seg{display:inline-flex;gap:4px;padding:3px;border-radius:999px;background:var(--surface-2)}.of-seg button{min-height:34px;padding:0 14px;border-radius:999px;border:0;background:none;color:var(--muted);font-weight:700;font-size:14px;cursor:pointer}.of-seg button[aria-selected="true"]{background:var(--lime);color:#111}
+.of-chips{display:flex;gap:4px;flex-wrap:wrap;margin-top:6px}.of-chip{display:inline-block;padding:1px 7px;border-radius:999px;background:var(--surface-2);color:var(--fg,#e4e4e7);font-size:11px;font-weight:600;line-height:18px}.of-chip.m{background:rgba(255,214,10,.15);color:#fde68a}
+.of-skill-wrap{overflow-x:auto;margin:0 -2px}.of-skill-t{border-collapse:collapse;font-size:12px;min-width:100%}.of-skill-t th,.of-skill-t td{padding:6px 7px;border-bottom:1px solid var(--line);text-align:center;white-space:nowrap}.of-skill-t th:first-child,.of-skill-t td:first-child{text-align:left;position:sticky;left:0;background:var(--surface)}
+.of-skill-t thead th{font-size:10px;letter-spacing:.04em;color:var(--muted);vertical-align:bottom}.of-skill-t thead th i{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--c);margin-right:4px}
+.of-skill-t td.n{font-weight:800}.of-skill-t td.z{color:var(--dim,#555)}.of-skill-t td.last{text-align:left;white-space:normal;min-width:150px;max-width:220px;color:var(--muted);font-size:11px;line-height:1.35}.of-skill-t td.last b{color:var(--fg,#e4e4e7);font-weight:700;font-size:13px}
+.of-idle{padding:0 6px;border-radius:6px;background:var(--surface-2);color:var(--muted);font-weight:700}
+.of-dept{pointer-events:auto;cursor:help}
 .of-old{padding:0 6px;border-radius:6px;background:rgba(250,204,21,.16);color:#fde68a;font-weight:700}
 .of-d-hist{margin:14px 0 0}.of-d-hist h4{margin:0 0 6px;font-size:14px;color:var(--muted)}
 .of-d-log{list-style:none;margin:0;padding:0 0 0 12px;border-left:2px solid var(--line);display:grid;gap:8px}
@@ -1280,7 +1287,7 @@ body.of-bare{margin:0;overflow:hidden}.of-fullpage{padding:0;margin:0;max-width:
 <div class="of-stage" id="of-stage" aria-label="Claude oturumları ofisi, 3D görünüm"><div class="of-tags" id="of-tags" aria-hidden="true"></div><div class="of-tools">${full
     ? '<a class="of-tool" href="/admin/office">‹ Panele dön</a><button type="button" class="of-tool" id="of-board-toggle" aria-controls="of-board" aria-expanded="true">Görevler</button>'
     : '<button type="button" class="of-tool" id="of-full-btn">Tam ekran</button><a class="of-tool" href="/admin/office/full" target="_blank" rel="noopener">Yeni sekmede aç</a>'}<button type="button" class="of-tool of-tool-x" id="of-full-x" hidden>Kapat ×</button></div><div class="of-panel" id="of-panel" role="dialog" aria-modal="false" aria-labelledby="of-p-title"><button type="button" class="of-close" id="of-close" aria-label="Kapat">×</button><h2 id="of-p-title"></h2><dl id="of-p-body"></dl></div></div>
-<section class="of-board" id="of-board" aria-label="Görevler"><div class="of-b-head"><h2>Görevler</h2><p class="of-b-filter" id="of-b-filter" hidden></p></div><div id="of-b-cols"><p class="dim">Görev tablosu henüz yok.</p></div>
+<section class="of-board" id="of-board" aria-label="Görevler ve beceriler"><div class="of-b-head"><div class="of-seg" role="tablist" aria-label="Pano"><button type="button" role="tab" id="of-seg-tasks" aria-selected="true" aria-controls="of-b-cols">Görevler</button><button type="button" role="tab" id="of-seg-skills" aria-selected="false" aria-controls="of-skills">Beceriler</button></div><p class="of-b-filter" id="of-b-filter" hidden></p></div><div id="of-b-cols"><p class="dim">Görev tablosu henüz yok.</p></div><div id="of-skills" hidden></div>
 <div class="of-drawer" id="of-drawer" role="dialog" aria-modal="false" aria-labelledby="of-d-title" hidden><button type="button" class="of-d-back" id="of-d-back">‹ Görevler</button><h3 id="of-d-title"></h3><dl id="of-d-meta"></dl><p class="of-d-detail" id="of-d-detail"></p><div id="of-d-answer"></div><section class="of-d-hist" id="of-d-hist" hidden><h4>Geçmiş</h4><ol class="of-d-log" id="of-d-log"></ol></section></div></section>
 </div>
 <form class="of-note" id="of-note"><label for="of-note-text">CEO'ya not bırak</label><textarea id="of-note-text" name="text" maxlength="1000" rows="1" placeholder="CEO'ya not bırak" required></textarea><button type="submit">Gönder</button></form>
@@ -1288,7 +1295,7 @@ body.of-bare{margin:0;overflow:hidden}.of-fullpage{padding:0;margin:0;max-width:
 <section class="of-notes" aria-labelledby="of-notes-h"><h2 id="of-notes-h">Notların</h2><ul class="of-notes-list" id="of-notes-list"><li class="dim">Henüz not yok.</li></ul></section>
 <div class="of-legend" aria-hidden="true"><span style="--c:#22c55e">Çalışıyor</span><span style="--c:#9ca3af">Boşta</span><span style="--c:#facc15">Senden evet bekliyor</span><span style="--c:#ef4444">Takıldı</span><span style="--c:#d4d4d8">Kapalı</span></div>
 <ul class="of-list" id="of-list">${list || `<li class="of-item dim">${esc(empty)}</li>`}</ul>
-<script type="application/json" id="of-data">${JSON.stringify({ agents: r.agents, mail: r.mail, tasks: r.tasks, notes: r.notes }).replace(/</g, "\\u003c")}</script>
+<script type="application/json" id="of-data">${JSON.stringify({ agents: r.agents, mail: r.mail, tasks: r.tasks, notes: r.notes, skill_use: r.skillUse }).replace(/</g, "\\u003c")}</script>
 <script type="module" src="/admin-office.js?v=3"></script>`;
 }
 

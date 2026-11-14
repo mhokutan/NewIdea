@@ -1090,9 +1090,17 @@ function adminOk(c) {
 app.get("/v1/admin/office", async (c) => {
   if (!adminOk(c)) return fail(c, 401, "admin_only", "Not allowed.");
   if (!c.env.OFFICE_DB) return fail(c, 503, "office_not_ready", "office-db is not connected yet.");
-  const { results } = await c.env.OFFICE_DB.prepare(
-    "select id, role, status, last_action, needs_owner, updated_at from office_agents order by case id when 'ceo' then 0 else 1 end, id limit 200",
-  ).all();
+  // Newer columns come with later migrations (0004 stage, 0005 skills); each read tries the newest select first and
+  // falls back, so the page keeps working while a migration is not applied yet.
+  const firstOk = async (sqls) => {
+    for (const q of sqls) { try { return (await c.env.OFFICE_DB.prepare(q).all()).results; } catch { /* older schema */ } }
+    throw new Error("office_read_failed");
+  };
+  const agentOrder = "from office_agents order by case id when 'ceo' then 0 else 1 end, id limit 200";
+  const results = await firstOk([
+    `select id, role, status, last_action, needs_owner, updated_at, skills, model ${agentOrder}`,
+    `select id, role, status, last_action, needs_owner, updated_at ${agentOrder}`,
+  ]);
   let mail = [];
   try {
     mail = (await c.env.OFFICE_DB.prepare(
@@ -1107,30 +1115,54 @@ app.get("/v1/admin/office", async (c) => {
        order by priority, created_at limit 300`;
   const taskCols = "id, title, detail, project, assignee_id, status, kind, priority, owner_answer, owner_note, answered_at, created_at, updated_at";
   try {
-    tasks = (await c.env.OFFICE_DB.prepare(`select ${taskCols}, stage, progress ${taskWhere}`).all()).results;
-  } catch {
-    try { tasks = (await c.env.OFFICE_DB.prepare(`select ${taskCols} ${taskWhere}`).all()).results; } catch { tasks = null; }
-  }
+    tasks = await firstOk([
+      `select ${taskCols}, stage, progress, skills_used, model_used ${taskWhere}`,
+      `select ${taskCols}, stage, progress ${taskWhere}`,
+      `select ${taskCols} ${taskWhere}`,
+    ]);
+  } catch { tasks = null; }
   if (tasks && tasks.length) {
     try {
-      const logs = (await c.env.OFFICE_DB.prepare(
-        `select task_id, at, text from (
-           select l.task_id, l.at, l.text, row_number() over (partition by l.task_id order by l.at desc) as n
+      const logSql = (skill) => `select task_id, at, text${skill ? ", skill" : ""} from (
+           select l.task_id, l.at, l.text${skill ? ", l.skill" : ""}, row_number() over (partition by l.task_id order by l.at desc) as n
            from office_task_log l join office_tasks t on t.id = l.task_id
            where t.status != 'done' or t.updated_at >= strftime('%Y-%m-%dT%H:%M:%fZ', 'now', '-7 days')
-         ) where n <= 10 order by task_id, at desc`,
-      ).all()).results;
+         ) where n <= 10 order by task_id, at desc`;
+      const logs = await firstOk([logSql(true), logSql(false)]);
       const byTask = {};
-      for (const l of logs) (byTask[l.task_id] ||= []).push({ at: l.at, text: l.text });
+      for (const l of logs) (byTask[l.task_id] ||= []).push({ at: l.at, text: l.text, ...(l.skill ? { skill: l.skill } : {}) });
       for (const t of tasks) t.log = byTask[t.id] || [];
     } catch { for (const t of tasks) t.log = []; } // timeline table not there yet
   }
+  // Skill usage over all history (founder 2026-11-14, "Beceriler"): for each skill name, how often it ran and the last
+  // time, with the task. From timeline lines with a skill and from cards' skills_used. [] before migration 0005.
+  let skillUse = [];
+  try {
+    const [logRows, cardRows] = await Promise.all([
+      firstOk([`select l.skill as name, l.at as at, t.id as task_id, t.title as title from office_task_log l join office_tasks t on t.id = l.task_id
+               where l.skill is not null and l.skill != '' order by l.at desc limit 5000`]),
+      firstOk([`select skills_used, updated_at as at, id as task_id, title from office_tasks where skills_used is not null and skills_used != '' order by updated_at desc limit 2000`]),
+    ]);
+    const use = new Map();
+    const add = (raw, at, task_id, title) => {
+      const name = String(raw || "").trim();
+      if (!name) return;
+      const k = name.toLocaleLowerCase("tr");
+      const u = use.get(k) || { name, uses: 0, last_at: null, task_id: null, task_title: null };
+      u.uses += 1;
+      if (!u.last_at || String(at) > u.last_at) Object.assign(u, { last_at: at, task_id, task_title: title });
+      use.set(k, u);
+    };
+    for (const r of logRows) add(r.name, r.at, r.task_id, r.title);
+    for (const r of cardRows) for (const n of String(r.skills_used).split(",")) add(n, r.at, r.task_id, r.title);
+    skillUse = [...use.values()].sort((a, b) => String(b.last_at).localeCompare(String(a.last_at)));
+  } catch { skillUse = []; }
   // The founder's own notes with their status and the CEO's answer (founder 2026-11-13), newest first, read only.
   let notes = [];
   try {
     notes = (await c.env.OFFICE_DB.prepare("select id, created_at, text, status, answer from office_notes order by created_at desc limit 30").all()).results;
   } catch { notes = []; }
-  return c.json({ agents: results, mail, tasks, notes });
+  return c.json({ agents: results, mail, tasks, notes, skill_use: skillUse });
 });
 // The owner's answer on one task card (founder 2026-11-13). Only owner_answer, owner_note and answered_at change, and
 // only on a card that waits for the owner. Everything else on the card belongs to the CEO session (D1 tool).

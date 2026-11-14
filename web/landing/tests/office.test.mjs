@@ -88,6 +88,16 @@ before(async () => {
     update office_tasks set stage = '1/2 Plan', progress = 30, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now', '-3 hours') where id = 't-ekip-plani';
     insert into office_task_log (id, task_id, at, text) values ` + logRows.map(([id, task, ago, text]) => `('${id}', '${task}', strftime('%Y-%m-%dT%H:%M:%fZ', 'now', '${ago}'), ${q(text)})`).join(", "));
   assert.equal(st.status, 0, st.stdout + st.stderr);
+  // Skills and models (migration 0005): people, a card and two timeline lines; "unity" is held but never used.
+  const sk = sql(`update office_agents set skills = 'unity, csharp, store-release', model = 'Opus' where id = 'hauling-dev';
+    update office_agents set skills = 'unity, ui-design' where id = 'hauling-ui';
+    update office_agents set skills = 'cloudflare-workers, d1, playwright', model = 'Opus' where id = 'promovote-dev';
+    update office_agents set skills = 'playwright' where id = 'promovote-qa';
+    update office_agents set skills = 'sql, dataviz', model = 'Sonnet' where id = 'analyst';
+    update office_tasks set skills_used = 'playwright, cloudflare-workers', model_used = 'Opus' where id = 't-office-52';
+    update office_task_log set skill = 'playwright' where id = 'l-office-3';
+    update office_task_log set skill = 'cloudflare-workers' where id = 'l-office-2';`);
+  assert.equal(sk.status, 0, sk.stdout + sk.stderr);
   // A note the CEO already answered, to check the "Notların" list.
   const nt = sql("insert into office_notes (id, text, status, answer) values ('n-seed-answered', 'Hauling derlemesi ne durumda?', 'answered', 'Kart açtım, Hauling Lider bakıyor.')");
   assert.equal(nt.status, 0, nt.stderr);
@@ -120,6 +130,9 @@ test("no write endpoint: anon cannot write through the API", async () => {
 });
 
 test("table rules refuse bad rows", () => {
+  assert.notEqual(sql("update office_agents set model = 'GPT' where id = 'ceo'").status, 0);
+  assert.notEqual(sql("update office_tasks set model_used = 'Large' where id = 't-office-52'").status, 0);
+  assert.notEqual(sql(`update office_agents set skills = '${"k".repeat(301)}' where id = 'ceo'`).status, 0);
   assert.notEqual(sql("update office_tasks set progress = 101 where id = 't-office-52'").status, 0);
   assert.notEqual(sql(`update office_tasks set stage = '${"s".repeat(121)}' where id = 't-office-52'`).status, 0);
   assert.notEqual(sql("insert into office_task_log (id, task_id, text) values ('l-empty-01', 't-office-52', '')").status, 0);
@@ -154,6 +167,20 @@ test("API read needs the admin token", async () => {
   assert.equal(qa.log.length, 10);
   assert.equal(qa.log[0].text, "Deneme 12");
   assert.deepEqual(j.tasks.find((t) => t.id === "t-rapor-hafta").log, []);
+  // Skills and models.
+  const hd = j.agents.find((a) => a.id === "hauling-dev");
+  assert.equal(hd.skills, "unity, csharp, store-release");
+  assert.equal(hd.model, "Opus");
+  assert.equal(office.skills_used, "playwright, cloudflare-workers");
+  assert.equal(office.model_used, "Opus");
+  assert.equal(office.log[0].skill, "playwright");
+  assert.equal(office.log[2].skill, undefined);
+  const use = Object.fromEntries(j.skill_use.map((u) => [u.name, u]));
+  assert.equal(use.playwright.task_id, "t-office-52");
+  assert.equal(use.playwright.task_title, "Ofis: 52 kişilik yerleşim");
+  assert.equal(use.playwright.uses, 2); // one timeline line and the card
+  assert.ok(use["cloudflare-workers"]);
+  assert.equal(use.unity, undefined, "held but never used");
 });
 
 test("mail older than 10 minutes is not read", async () => {
@@ -453,11 +480,36 @@ test("full page: only the office and the board, whole window; screenshot at 1920
     assert.equal(await page.locator('#of-board [data-task="t-ekip-plani"] .of-old').innerText(), "eski");
     await officeCard.click();
     await page.waitForSelector("#of-drawer:not([hidden])");
-    assert.deepEqual((await page.locator("#of-d-log li").allInnerTexts()).map((x) => x.split("\n").pop()), ["3/3 Etiketler deneniyor", "2/3 Masalar yerleşti", "1/3 Oda planı çizildi"]);
+    assert.deepEqual((await page.locator("#of-d-log li").allInnerTexts()).map((x) => x.split("\n").map((y) => y.trim()).filter(Boolean)[1]), ["3/3 Etiketler deneniyor", "2/3 Masalar yerleşti", "1/3 Oda planı çizildi"]);
     assert.match(await page.locator("#of-d-log li time").first().innerText(), /New York/);
     assert.match(await page.locator("#of-d-meta").innerText(), /Aşama[\s\S]*3\/3 Etiketler[\s\S]*İlerleme[\s\S]*%80/);
+    // The card and the drawer show skills and model; each timeline step shows its skill.
+    assert.match(await officeCard.innerText(), /Opus[\s\S]*playwright[\s\S]*cloudflare-workers/);
+    assert.match(await page.locator("#of-d-meta").innerText(), /Model[\s\S]*Opus[\s\S]*Beceriler[\s\S]*playwright/);
+    assert.match(await page.locator("#of-d-log li").first().innerText(), /3\/3 Etiketler deneniyor[\s\S]*playwright/);
     await page.screenshot({ path: join(SHOTS, "office-full-stage.png") });
     await page.click("#of-d-back");
+    // "Beceriler": skills x departments, last use with the task, unused skills marked.
+    await page.click("#of-seg-skills");
+    assert.equal(await page.locator("#of-b-cols").isVisible(), false);
+    const pw = page.locator('#of-skills tr[data-skill="playwright"]');
+    assert.match(await pw.innerText(), /Ofis: 52 kişilik yerleşim \(2 kez\)/);
+    const unity = await page.locator('#of-skills tr[data-skill="unity"]').innerText();
+    assert.match(unity, /^unity[\s\S]*Kullanılmadı/);
+    assert.match(unity, /\b2\b/); // 2 people in Hauling hold it
+    assert.match(await page.locator("#of-skills").innerText(), /son 7 günde 2 tanesi kullanıldı/);
+    await page.locator("#of-board").screenshot({ path: join(SHOTS, "office-skills.png") });
+    await page.click("#of-seg-tasks");
+    assert.ok(await page.locator("#of-b-cols").isVisible());
+    // A person's panel shows the model and the skills; a department label shows its main skills.
+    await page.locator('#of-tags .of-name', { hasText: "Lider Geliştirici" }).first().evaluate((e) => e.click());
+    const hdRow = await page.evaluate(() => document.getElementById("of-p-body").innerText);
+    assert.match(hdRow, /Model[\s\S]*(Opus|Sonnet|Haiku)[\s\S]*Beceriler/);
+    const hauling = page.locator(".of-dept", { hasText: "HAULING EMPIRE" });
+    assert.equal(await hauling.getAttribute("title"), "Ana beceriler: unity, csharp, store-release, ui-design");
+    await hauling.evaluate((e) => e.click());
+    assert.equal(await page.locator("#of-p-title").innerText(), "HAULING EMPIRE");
+    assert.match(await page.locator("#of-p-body").innerText(), /Ana beceriler[\s\S]*unity[\s\S]*csharp/);
     await page.screenshot({ path: join(SHOTS, "office-full-1920.png") });
     // The board closes and opens again.
     await page.click("#of-board-toggle");
