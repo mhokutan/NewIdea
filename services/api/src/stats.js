@@ -8,6 +8,8 @@ export const APPS = [
   { product: "poleris", apple: "6792844860", play: "com.miapera.poleris" },
   { product: "haulingempire", apple: "6815224121", play: "com.mhokutan.haulingempire" },
   { product: "lovelet", apple: "6824002542", play: "com.mhokutan.coupleapp" },
+  // Dropolis (2026-11-14): on Google Play only; add the App Store id here once it is live there.
+  { product: "dropolis", apple: null, play: "com.promovote.dropolis" },
 ];
 const ASC_VENDOR = "94642380"; // Sales report vendor number (not a secret)
 
@@ -123,7 +125,7 @@ export async function collectStoreStats(env) {
           await new Promise((ok) => setTimeout(ok, 2000));
           try { res = await appleDay(token, date); } catch (e) { notes.push("apple: " + e.message); continue; }
         }
-        if (!res) { if (i >= 3) for (const a of APPS) rows.push([a.product, "app_store", date, "downloads", 0]); continue; }
+        if (!res) { if (i >= 3) for (const a of APPS) if (a.apple) rows.push([a.product, "app_store", date, "downloads", 0]); continue; }
         for (const [product, m] of Object.entries(res)) for (const [k, v] of Object.entries(m)) rows.push([product, "app_store", date, k, v]);
       }
     } catch (e) { notes.push("apple: " + e.message); }

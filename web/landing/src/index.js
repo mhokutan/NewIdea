@@ -207,7 +207,7 @@ const ADMIN_GROUPS = [
   ["Hauling Empire", "Oyun ve mağazalar", [["/admin/hauling-empire/oyun", "Oyun"], ["/admin/app-store?p=haulingempire", "App Store"], ["/admin/google-play?p=haulingempire", "Google Play"], ["/admin/yorumlar?p=haulingempire", "Yorumlar"], ["/admin/unity-ads", "Reklam geliri"], ["/admin/hauling-empire/rapor", "Raporlar"]]],
   ["Poleris", "Uygulama ve mağazalar", [["/admin/poleris/uygulama", "Uygulama"], ["/admin/app-store?p=poleris", "App Store"], ["/admin/google-play?p=poleris", "Google Play"], ["/admin/yorumlar?p=poleris", "Yorumlar"]]],
   ["Dovelet", "Uygulama ve mağazalar", [["/admin/lovelet/uygulama", "Uygulama"], ["/admin/app-store?p=lovelet", "App Store"], ["/admin/google-play?p=lovelet", "Google Play"], ["/admin/yorumlar?p=lovelet", "Yorumlar"]]],
-  ["Dropolis", "Oyun (yolda)", [["/admin/dropolis/oyun", "Oyun"]]],
+  ["Dropolis", "Oyun ve Google Play", [["/admin/dropolis/oyun", "Oyun"], ["/admin/google-play?p=dropolis", "Google Play"], ["/admin/yorumlar?p=dropolis", "Yorumlar"]]],
 ];
 
 // Dropolis (founder request 2026-11-02): read only from its own D1 (binding DROPOLIS_DB); online count from the
@@ -1057,7 +1057,7 @@ ${series.length ? `<h2 style="font-size:20px;margin:28px 0 10px">Günlük ${appl
 // what works and what is missing. Every source is read in parallel and a failing source only marks its own card.
 // Store reviews (founder request 2026-11-09). Rows come from promovote-db table store_reviews, filled by the API
 // Worker (services/api/src/reviews.js) about every 6 hours per app. Review text is user input: always escaped.
-const REVIEW_PRODUCTS = [["promovote", "PromoVote"], ["haulingempire", "Hauling Empire"], ["poleris", "Poleris"], ["lovelet", "Dovelet"]];
+const REVIEW_PRODUCTS = [["promovote", "PromoVote"], ["haulingempire", "Hauling Empire"], ["poleris", "Poleris"], ["lovelet", "Dovelet"], ["dropolis", "Dropolis"]];
 async function reviewsPage(env, url, prod) {
   const name = REVIEW_PRODUCTS.find(([k]) => k === prod)[1];
   const head = `<div class="top"><h1>Mağaza yorumları: ${esc(name)}</h1></div>`;
@@ -1109,7 +1109,7 @@ const APPLE_REVIEW_COUNTRIES = "ABD, Türkiye, İngiltere, Kanada, Avustralya, A
 // The store stats note (job_runs.store_stats_note) mixes real problems with "Google has no report for this app yet",
 // which only means the app has had no Google Play downloads (Google makes no file then). Split them so the second
 // shows as a calm line, not as an error (founder 2026-11-10).
-const STORE_NAMES = { promovote: "PromoVote", poleris: "Poleris", haulingempire: "Hauling Empire", lovelet: "Dovelet" };
+const STORE_NAMES = { promovote: "PromoVote", poleris: "Poleris", haulingempire: "Hauling Empire", lovelet: "Dovelet", dropolis: "Dropolis" };
 function splitStoreNote(raw) {
   const quiet = [], warn = [];
   for (const part of String(raw || "").split(" | ").map((x) => x.trim()).filter((x) => x && x !== "ok")) {
@@ -1283,6 +1283,19 @@ body.of-bare{margin:0;overflow:hidden}.of-fullpage{padding:0;margin:0;max-width:
 <script type="module" src="/admin-office.js?v=3"></script>`;
 }
 
+// Small Dropolis summary for the status page (dropolis-db through DROPOLIS_DB, online count through DROPOLIS).
+async function dropolisSummary(env) {
+  if (!env.DROPOLIS_DB) return null;
+  const today = new Date().toISOString().slice(0, 10);
+  const d7 = new Date(Date.now() - 6 * 864e5).toISOString().slice(0, 10);
+  const r = await env.DROPOLIS_DB.prepare(`select (select count(*) from users) as users, (select count(*) from users where created_at >= ?) as new7,
+    (select count(*) from daily_active where day = ?) as today, (select count(distinct user_id) from daily_active where day >= ?) as active7,
+    (select max(received_at) from event_batches) as last`).bind(d7, today, d7).first();
+  let online = null;
+  try { if (env.DROPOLIS) online = (await (await env.DROPOLIS.fetch("https://dropolis-api.promovote.com/v1/online")).json()).online; } catch { /* veri yok */ }
+  return { ...r, online };
+}
+
 async function statusPage(env) {
   const today = new Date().toISOString().slice(0, 10);
   const chip = (lv, t) => `<span class="chip chip-${lv}">${esc(t)}</span>`;
@@ -1293,12 +1306,12 @@ async function statusPage(env) {
   const uaEnd = new Date(); uaEnd.setUTCHours(0, 0, 0, 0);
   const uaIso = (d) => d.toISOString().slice(0, 19) + "Z";
   const uaNow = new Date(); uaNow.setUTCMinutes(0, 0, 0); // last 7 days including today, like the Unity Ads page
-  const [site, wl, xs, store, he, heS, pol, rq, ad, ua, lp] = await Promise.all([
+  const [site, wl, xs, store, he, heS, pol, dov, dro, rq, ad, ua, lp] = await Promise.all([
     safe(env.DB.prepare("SELECT COUNT(DISTINCT visitor) v FROM visits WHERE day = ?").bind(today).first()),
     safe(env.DB.prepare("SELECT COUNT(*) n, SUM(substr(created_at, 1, 10) = ?) t, (SELECT COUNT(*) FROM duel_picks WHERE day >= date('now', '-6 days')) dp, (SELECT COUNT(DISTINCT visitor) FROM duel_picks WHERE day >= date('now', '-6 days')) dv FROM waitlist").bind(today).first()),
     app ? safe(app.prepare("SELECT (SELECT max(posted_at) FROM social_posts WHERE status = 'posted') last, (SELECT min(scheduled_at) FROM social_posts WHERE status = 'queued') next, (SELECT max(scheduled_at) FROM social_posts WHERE status = 'queued') until, (SELECT count(*) FROM social_posts WHERE status = 'queued') queued, (SELECT count(*) FROM social_posts WHERE status = 'failed' AND scheduled_at > datetime('now', '-3 days')) failed").first()) : null,
     app ? safe(app.prepare("SELECT (SELECT ran_at FROM job_runs WHERE name = 'store_stats') ran, (SELECT ran_at FROM job_runs WHERE name = 'store_stats_note') note, (SELECT sum(value) FROM metrics_daily WHERE product_id = 'promovote' AND metric IN ('downloads', 'installs') AND date >= date('now', '-7 days')) dl").first()) : null,
-    safe(heOps(env, 7)), safe(heStats(env)), safe(productFeed(env, "poleris", "feed=ops&days=7", 300)),
+    safe(heOps(env, 7)), safe(heStats(env)), safe(productFeed(env, "poleris", "feed=ops&days=7", 300)), safe(productFeed(env, "lovelet", "feed=ops&days=7", 300)), safe(dropolisSummary(env)),
     safe(reviewApi(env, "GET", "/v1/admin/review")),
     app ? safe(app.prepare("SELECT count(*) n, count(DISTINCT viewer_key) v FROM duel_picks WHERE day >= date('now', '-6 days')").first()) : null,
     safe(unityStats(env, `fields=revenue_sum,view_count&scale=all&start=${uaIso(new Date(uaEnd.getTime() - 6 * 864e5))}&end=${uaIso(uaNow)}`)),
@@ -1367,6 +1380,33 @@ async function statusPage(env) {
       row("Son gün aktif (iOS + Android)", last ? (fnum(last.dau_ios) || 0) + (fnum(last.dau_android) || 0) : '<span class="dim">veri yok</span>'),
       row("Son gün yükleme", last && fnum(last.installs) !== null ? fnum(last.installs) : '<span class="dim">veri yok</span>'),
     ], !ops ? feedWhy(pol, "Poleris", "POLERIS_STATS_KEY") : [pol.staleMin != null ? `Canlı veri şu an gelmedi, ${pol.staleMin} dk önceki veri gösteriliyor. Neden: ${feedWhy(pol, "Poleris", "POLERIS_STATS_KEY")}` : "", missing.length ? `Poleris tarafı henüz göndermiyor: <b>${missing.map(esc).join(", ")}</b>.` : ""].filter(Boolean).join("<br>")));
+  }
+
+  // Dovelet: its own app feed (founder 2026-11-14: Dovelet and Dropolis were missing on this page).
+  {
+    const ops = dov?.ok ? dov.data : null;
+    const lv = !ops ? (dov?.reason === "no_key" ? "y" : "r") : ops.status?.ok === false && !(Array.isArray(ops.status.failed) && ops.status.failed.every((f) => f === "stale")) ? "y" : "g";
+    const last = Array.isArray(ops?.days) ? ops.days.slice().sort((a, b) => (a.date < b.date ? 1 : -1))[0] : null;
+    cards.push(card("Dovelet", "/admin/lovelet/uygulama", lv, !ops ? (dov?.reason === "no_key" ? "Bağlı değil" : "Bağlantı yok") : lv === "y" ? "Eksik veri" : "Çalışıyor", [
+      row("Uygulama verisi", ops ? chip("g", "geliyor") : chip(dov?.reason === "no_key" ? "y" : "r", "gelmiyor")),
+      row("Son güncelleme", when(ops?.generated_at)),
+      row("Son gün aktif (iOS + Android)", last ? (fnum(last.dau_ios) || 0) + (fnum(last.dau_android) || 0) : '<span class="dim">veri yok</span>'),
+      row("Son gün yeni hesap", last && fnum(last.new_accounts) !== null ? fnum(last.new_accounts) : '<span class="dim">veri yok</span>'),
+    ], !ops ? (dov?.reason === "no_key" ? "Dovelet bağlantı anahtarı (LOVELET_STATS_KEY) bu Worker'da yok. Dovelet tarafı ucu kurup anahtarı girince veriler gelir." : feedWhy(dov, "Dovelet", "LOVELET_STATS_KEY")) : dov.staleMin != null ? `Canlı veri şu an gelmedi, ${dov.staleMin} dk önceki veri gösteriliyor.` : ""));
+  }
+
+  // Dropolis: its own database (dropolis-db) and the online count from dropolis-api.
+  {
+    const d = dro;
+    const lv = !d ? "r" : "g";
+    cards.push(card("Dropolis", "/admin/dropolis/oyun", lv, !d ? "Bağlantı yok" : "Çalışıyor", [
+      row("Şu an oyunda", d?.online == null ? '<span class="dim">veri yok</span>' : fnum(d.online)),
+      row("Bugün oynayan", d ? fnum(d.today) ?? 0 : '<span class="dim">-</span>'),
+      row("Son 7 gün oynayan", d ? fnum(d.active7) ?? 0 : '<span class="dim">-</span>'),
+      row("Yeni oyuncu (7 gün)", d ? fnum(d.new7) ?? 0 : '<span class="dim">-</span>'),
+      row("Toplam oyuncu", d ? fnum(d.users) ?? 0 : '<span class="dim">-</span>'),
+      row("Son veri", when(d?.last)),
+    ], !d ? "Dropolis veritabanı okunamadı." : ""));
   }
 
   // Store reviews: one card for all apps (founder request 2026-11-09).
@@ -1650,7 +1690,7 @@ ${tilesHtml([["Paylaşılan", sum.posted?.n || 0], ["Sırada", sum.queued?.n || 
     const apple = path === "/admin/app-store";
     const platform = apple ? "ios" : "android";
     const store = apple ? "App Store" : "Google Play";
-    const PRODUCTS = [["haulingempire", "Hauling Empire"], ["poleris", "Poleris"], ["promovote", "PromoVote"], ["lovelet", "Dovelet"]];
+    const PRODUCTS = [["haulingempire", "Hauling Empire"], ["poleris", "Poleris"], ["promovote", "PromoVote"], ["lovelet", "Dovelet"], ["dropolis", "Dropolis"]];
     const prod = PRODUCTS.some(([k]) => k === url.searchParams.get("p")) ? url.searchParams.get("p") : "haulingempire";
     const range0 = rangeOf(url);
     const products = ""; // the product switch lives in the top navigation now

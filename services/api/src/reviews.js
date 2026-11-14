@@ -113,7 +113,8 @@ export async function collectReviews(env) {
   const notes = [];
   let rows = [];
   let appleDone = false;
-  if (env.ASC_STATS_KEY_P8 && env.ASC_STATS_KEY_ID && env.ASC_STATS_ISSUER_ID) {
+  if (!a.apple) appleDone = true; // not on the App Store (yet)
+  else if (env.ASC_STATS_KEY_P8 && env.ASC_STATS_KEY_ID && env.ASC_STATS_ISSUER_ID) {
     try { rows = rows.concat(await appleApiReviews(env, a)); appleDone = true; }
     catch (e) { notes.push(e.status === 403 ? "apple api: 403, the App Store Connect key cannot read reviews" : "apple api: " + e.message); }
   }
