@@ -46,6 +46,17 @@ async function body(req, max = MAX_SAVE + 4096) {
   try { return text ? JSON.parse(text) : {}; } catch { throw Object.assign(new Error("bad_json"), { status: 400 }); }
 }
 
+// ---------- test accounts (founder decision 2026-11-14: flagged, never deleted) ----------
+// A request from an automated test (header "X-Dropolis-Test: 1" or a headless Chrome) marks its player as a test
+// account. The flag only goes from 0 to 1, never back. Test players stay out of leaderboards, invite reward counts and
+// the admin numbers, but can still play normally.
+const isTestRequest = (req) => req.headers.get("X-Dropolis-Test") === "1" || /HeadlessChrome/i.test(req.headers.get("User-Agent") || "");
+async function markTest(db, req, user) {
+  if (!user || user.is_test === 1 || !isTestRequest(req)) return user;
+  await db.prepare("update users set is_test = 1 where id = ? and is_test = 0").bind(user.id).run();
+  return { ...user, is_test: 1 };
+}
+
 // ---------- sessions ----------
 async function newSession(db, userId) {
   const token = b64url(crypto.getRandomValues(new Uint8Array(32)));
@@ -55,8 +66,9 @@ async function newSession(db, userId) {
 async function currentUser(req, env) {
   const m = /^Bearer\s+(\S+)$/.exec(req.headers.get("Authorization") || "");
   if (!m) return null;
-  const row = await env.DB.prepare("select u.* from sessions s join users u on u.id = s.user_id where s.token_hash = ?").bind(await sha256(m[1])).first();
+  let row = await env.DB.prepare("select u.* from sessions s join users u on u.id = s.user_id where s.token_hash = ?").bind(await sha256(m[1])).first();
   if (!row) return null;
+  row = await markTest(env.DB, req, row);
   // One activity row and one last_seen update per player per day (DAU, MAU, retention) instead of a write per call.
   const day = today();
   if (String(row.last_seen).slice(0, 10) !== day) {
@@ -78,7 +90,7 @@ async function createUser(db, deviceId, country) {
     db.prepare("insert into users (id, device_id, name, avatar, country, created_at, last_seen) values (?, ?, null, null, ?, ?, ?)").bind(id, deviceId, country, t, t),
     db.prepare("insert or ignore into daily_active (user_id, day) values (?, ?)").bind(id, t.slice(0, 10)),
   ]);
-  return { id, device_id: deviceId, name: null, avatar: null, country, created_at: t, last_seen: t };
+  return { id, device_id: deviceId, name: null, avatar: null, country, created_at: t, last_seen: t, is_test: 0 };
 }
 
 // ---------- ID tokens (Apple, Google) ----------
@@ -133,6 +145,7 @@ async function signIn(req, env, provider) {
     await db.prepare("insert into identities (provider, subject, user_id, email, created_at) values (?, ?, ?, ?, ?)")
       .bind(provider, claims.sub, user.id, claims.email ? String(claims.email).slice(0, 200) : null, now()).run();
   }
+  user = await markTest(db, req, user);
   return json({ token, user: publicUser(user, await linkedOf(db, user.id)), switched });
 }
 
@@ -208,6 +221,7 @@ async function route(req, env, url) {
     // Reinstall on the same phone: give the old guest back if it never linked Apple / Google.
     let user = deviceId ? await db.prepare("select u.* from users u where u.device_id = ? and not exists (select 1 from identities i where i.user_id = u.id) order by u.created_at desc limit 1").bind(deviceId).first() : null;
     if (!user) user = await createUser(db, deviceId, countryOf(req));
+    user = await markTest(db, req, user);
     return json({ token: await newSession(db, user.id), user: publicUser(user, []) });
   }
   if (p === "/v1/auth/apple" && m === "POST") return signIn(req, env, "apple");
@@ -287,9 +301,10 @@ async function route(req, env, url) {
   if ((lb = /^\/v1\/leaderboard\/(city_level|deliveries|colonists)$/.exec(p)) && m === "GET") {
     const period = url.searchParams.get("period") === "week" ? weekKey() : "all";
     const limit = Math.min(100, Math.max(1, Number(url.searchParams.get("limit")) || 50));
-    const { results } = await db.prepare("select s.value, u.id, u.name, u.avatar, u.country from scores s join users u on u.id = s.user_id where s.board = ? and s.period = ? order by s.value desc, s.updated_at asc limit ?").bind(lb[1], period, limit).all();
+    // Test players are left out of the table and of everyone's rank; a test player still sees its own value.
+    const { results } = await db.prepare("select s.value, u.id, u.name, u.avatar, u.country from scores s join users u on u.id = s.user_id where s.board = ? and s.period = ? and u.is_test = 0 order by s.value desc, s.updated_at asc limit ?").bind(lb[1], period, limit).all();
     const mine = await db.prepare("select value from scores where user_id = ? and board = ? and period = ?").bind(me.id, lb[1], period).first();
-    const rank = mine ? (await db.prepare("select count(*) as n from scores where board = ? and period = ? and value > ?").bind(lb[1], period, mine.value).first()).n + 1 : null;
+    const rank = mine ? (await db.prepare("select count(*) as n from scores s join users u on u.id = s.user_id where s.board = ? and s.period = ? and s.value > ? and u.is_test = 0").bind(lb[1], period, mine.value).first()).n + 1 : null;
     return json({ board: lb[1], period: period === "all" ? "all" : "week", week: period === "all" ? null : period,
       top: results.map((r, i) => ({ rank: i + 1, value: r.value, name: r.name || "Player", avatar: r.avatar, country: r.country, me: r.id === me.id })),
       me: mine ? { rank, value: mine.value } : null });
@@ -314,7 +329,7 @@ async function route(req, env, url) {
   if (p === "/v1/referral" && m === "GET") {
     const code = await ensureCode(db, me.id);
     const [inv, pend, redeemed] = await db.batch([
-      db.prepare("select count(*) as n from referrals where inviter_id = ?").bind(me.id),
+      db.prepare("select count(*) as n from referrals r join users u on u.id = r.invitee_id where r.inviter_id = ? and u.is_test = 0").bind(me.id),
       db.prepare("select r.id, r.coins, r.gems, u.name from referral_rewards r left join users u on u.id = r.invitee_id where r.inviter_id = ? and r.claimed_at is null order by r.created_at").bind(me.id),
       db.prepare("select 1 as x from referral_ledger where user_id = ? and kind = 'redeem_bonus' limit 1").bind(me.id),
     ]);
@@ -358,8 +373,13 @@ async function route(req, env, url) {
     if (!ref) return fail(404, "not_invited", "This player was not invited.");
     if (ref.chapter1_at) return json({ created: false });
     const t = now();
-    const paid = (await db.prepare("select count(*) as n from referral_rewards where inviter_id = ?").bind(ref.inviter_id).first()).n;
+    // A test player finishing chapter 1 earns its inviter nothing, and rewards from test invitees do not use up the cap.
+    const paid = (await db.prepare("select count(*) as n from referral_rewards r left join users u on u.id = r.invitee_id where r.inviter_id = ? and coalesce(u.is_test, 0) = 0").bind(ref.inviter_id).first()).n;
     const stmts = [db.prepare("update referrals set chapter1_at = ? where invitee_id = ? and chapter1_at is null").bind(t, me.id)];
+    if (me.is_test === 1) {
+      await db.batch(stmts);
+      return json({ created: false, reason: "test_account" });
+    }
     if (paid < INVITE_CAP) stmts.push(db.prepare("insert or ignore into referral_rewards (id, inviter_id, invitee_id, milestone, coins, gems, created_at) values (?, ?, ?, 'chapter1', ?, ?, ?)").bind(crypto.randomUUID(), ref.inviter_id, me.id, INVITE_COINS, INVITE_GEMS, t));
     const res = await db.batch(stmts);
     const created = paid < INVITE_CAP && res[0].meta.changes === 1 && res[1].meta.changes === 1;

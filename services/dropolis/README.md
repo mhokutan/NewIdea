@@ -77,3 +77,16 @@ The server is the ledger: the game shows only what these endpoints return. Every
 * Limits: at most 50 invite rewards per inviter (after that `progress` answers `{ created: false, reason: "inviter_cap" }`);
   one redeem per device (stored as a SHA-256 hash, kept after account deletion).
 * Analytics: the server writes `referral_redeem` and `referral_claim` events. Admin: promovote.com/admin/dropolis/oyun, "Davetler".
+
+## Test accounts (2026-11-14)
+
+Founder decision: test accounts are flagged, never deleted. `users.is_test` (migration `0003_is_test.sql`, applied on
+the live dropolis-db on 2026-11-14) becomes 1 when `POST /v1/auth/guest`, Apple / Google sign in or any authenticated
+request carries the header `X-Dropolis-Test: 1` or a `HeadlessChrome` User-Agent. It never goes back to 0. Automated
+tests should always send `X-Dropolis-Test: 1`.
+
+Test players can play normally, but they are left out of: leaderboard tables and everyone's rank (a test player still
+sees its own value), the invite count, invite rewards (a test invitee finishing chapter 1 earns its inviter nothing,
+`{ created: false, reason: "test_account" }`, and does not use up the 50 reward cap), and every number on the admin page
+`promovote.com/admin/dropolis/oyun` and the status card. Gems and coins already given stay in the ledger totals.
+Tests: `node --test services/dropolis/test/is-test.test.mjs` (local only).

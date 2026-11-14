@@ -212,6 +212,7 @@ const ADMIN_GROUPS = [
 
 // Dropolis (founder request 2026-11-02): read only from its own D1 (binding DROPOLIS_DB); online count from the
 // dropolis-api Durable Object through the service binding. Player names are user input: always escaped.
+// Test accounts (users.is_test = 1, migration 0003, founder decision 2026-11-14) are left out of every number here.
 async function dropolisPage(env) {
   const head = `<div class="top"><h1>Dropolis: oyun</h1></div>`;
   if (!env.DROPOLIS_DB) return head + '<p class="empty">Dropolis veritabanı bağlı değil.</p>';
@@ -219,25 +220,27 @@ async function dropolisPage(env) {
   const day = (n) => new Date(Date.now() - n * 864e5).toISOString().slice(0, 10);
   const td = day(0);
   const monday = (() => { const t = new Date(); t.setUTCHours(0, 0, 0, 0); t.setUTCDate(t.getUTCDate() - ((t.getUTCDay() + 6) % 7)); return t.toISOString().slice(0, 10); })();
-  const RET = "select substr(u.created_at, 1, 10) as d, count(*) as n, sum(exists (select 1 from daily_active a where a.user_id = u.id and a.day = date(substr(u.created_at, 1, 10), '+1 day'))) as r1, sum(exists (select 1 from daily_active a where a.user_id = u.id and a.day = date(substr(u.created_at, 1, 10), '+7 day'))) as r7 from users u where u.created_at >= ? group by d order by d desc";
-  const FUN = "select json_extract(e.value, '$.props.step') as step, count(distinct b.user_id) as n from event_batches b, json_each(b.payload) e where b.day >= ? and json_extract(e.value, '$.name') = 'tutorial_step' group by step";
-  const EVN = "select json_extract(e.value, '$.name') as name, count(*) as n from event_batches b, json_each(b.payload) e where b.day >= ? group by name order by n desc limit 15";
-  const LB = "select s.board, s.period, s.value, u.name, u.country from scores s join users u on u.id = s.user_id where (s.period = 'all' or s.period = ?) and (select count(*) from scores s2 where s2.board = s.board and s2.period = s.period and s2.value > s.value) < 10 order by s.board, s.period, s.value desc";
+  const REAL = "(select id from users where is_test = 0)";
+  const RET = "select substr(u.created_at, 1, 10) as d, count(*) as n, sum(exists (select 1 from daily_active a where a.user_id = u.id and a.day = date(substr(u.created_at, 1, 10), '+1 day'))) as r1, sum(exists (select 1 from daily_active a where a.user_id = u.id and a.day = date(substr(u.created_at, 1, 10), '+7 day'))) as r7 from users u where u.created_at >= ? and u.is_test = 0 group by d order by d desc";
+  const FUN = `select json_extract(e.value, '$.props.step') as step, count(distinct b.user_id) as n from event_batches b, json_each(b.payload) e where b.day >= ? and b.user_id in ${REAL} and json_extract(e.value, '$.name') = 'tutorial_step' group by step`;
+  const EVN = `select json_extract(e.value, '$.name') as name, count(*) as n from event_batches b, json_each(b.payload) e where b.day >= ? and b.user_id in ${REAL} group by name order by n desc limit 15`;
+  const LB = "select s.board, s.period, s.value, u.name, u.country from scores s join users u on u.id = s.user_id where (s.period = 'all' or s.period = ?) and u.is_test = 0 and (select count(*) from scores s2 join users u2 on u2.id = s2.user_id where s2.board = s.board and s2.period = s.period and s2.value > s.value and u2.is_test = 0) < 10 order by s.board, s.period, s.value desc";
   let r;
   try {
     r = await db.batch([
-      db.prepare("select count(*) as n, sum(created_at >= ?) as week from users").bind(day(6)),
-      db.prepare("select count(distinct user_id) as n from identities"),
-      db.prepare("select day, count(*) as n from daily_active where day >= ? group by day order by day").bind(day(29)),
-      db.prepare("select count(distinct user_id) as n from daily_active where day >= ?").bind(day(29)),
+      db.prepare("select count(*) as n, sum(created_at >= ?) as week, (select count(*) from users where is_test = 1) as tests from users where is_test = 0").bind(day(6)),
+      db.prepare(`select count(distinct user_id) as n from identities where user_id in ${REAL}`),
+      db.prepare(`select day, count(*) as n from daily_active where day >= ? and user_id in ${REAL} group by day order by day`).bind(day(29)),
+      db.prepare(`select count(distinct user_id) as n from daily_active where day >= ? and user_id in ${REAL}`).bind(day(29)),
       db.prepare(RET).bind(day(37)),
       db.prepare(FUN).bind(day(29)),
       db.prepare(EVN).bind(day(6)),
       db.prepare(LB).bind(monday),
       db.prepare("select coalesce(sum(count), 0) as n from deletion_log where day >= ?").bind(day(29)),
       // Friend invites (2026-11-04): redeems, chapter 1 conversions, rewards, top inviters.
-      db.prepare("select (select count(*) from referral_codes) as codes, count(*) as redeems, sum(redeemed_at >= ?) as redeems30, sum(chapter1_at is not null) as converted, (select count(*) from referral_rewards where claimed_at is not null) as claimed, (select count(*) from referral_rewards where claimed_at is null) as pending, (select coalesce(sum(gems), 0) from referral_ledger) as gems, (select coalesce(sum(coins), 0) from referral_ledger) as coins from referrals").bind(day(29)),
-      db.prepare("select u.name, count(*) as invited, sum(r.chapter1_at is not null) as converted from referrals r join users u on u.id = r.inviter_id group by r.inviter_id order by invited desc limit 10"),
+      // Invite numbers count real invitees only; the ledger totals (gems and coins already given) stay as they are.
+      db.prepare(`select (select count(*) from referral_codes where user_id in ${REAL}) as codes, count(*) as redeems, sum(redeemed_at >= ?) as redeems30, sum(chapter1_at is not null) as converted, (select count(*) from referral_rewards where claimed_at is not null and coalesce(invitee_id, '') not in (select id from users where is_test = 1)) as claimed, (select count(*) from referral_rewards where claimed_at is null and coalesce(invitee_id, '') not in (select id from users where is_test = 1)) as pending, (select coalesce(sum(gems), 0) from referral_ledger) as gems, (select coalesce(sum(coins), 0) from referral_ledger) as coins from referrals where invitee_id in ${REAL}`).bind(day(29)),
+      db.prepare(`select u.name, count(*) as invited, sum(r.chapter1_at is not null) as converted from referrals r join users u on u.id = r.inviter_id where r.invitee_id in ${REAL} and u.is_test = 0 group by r.inviter_id order by invited desc limit 10`),
     ]);
   } catch (e) { console.error("dropolis_admin", e?.message); return head + '<p class="empty">Dropolis verisi okunamadı.</p>'; }
   const [tot, linked, dau, mau, ret, fun, evn, lb, del, refs, inviters] = r.map((x) => x.results);
@@ -254,7 +257,7 @@ async function dropolisPage(env) {
     ctile("Son 30 gün aktif (MAU)", mau[0]?.n ?? 0),
     ctile("Ertesi gün dönen (D1)", d1 === null ? null : `%${d1}`, "", "Son 30 günde katılanlar"),
     ctile("7. gün dönen (D7)", d7 === null ? null : `%${d7}`),
-    ctile("Toplam oyuncu", tot[0]?.n ?? 0, "", `${tot[0]?.week ?? 0} tanesi son 7 günde`),
+    ctile("Toplam oyuncu", tot[0]?.n ?? 0, "", `${tot[0]?.week ?? 0} tanesi son 7 günde${tot[0]?.tests ? `, ${tot[0].tests} test hesabı sayılmadı` : ""}`),
     ctile("Apple / Google bağlı", linked[0]?.n ?? 0),
     ctile("Silinen hesap (30 gün)", del[0]?.n ?? 0),
   ]);
@@ -269,7 +272,7 @@ async function dropolisPage(env) {
   const BOARD = { city_level: "Şehir seviyesi", deliveries: "Toplam teslimat", colonists: "Mars kolonistleri" };
   const board = (b, period) => { const rows = lb.filter((x) => x.board === b && (period === "all" ? x.period === "all" : x.period !== "all")).slice(0, 10);
     return `<div class="st-card"><div class="st-head"><h2>${BOARD[b]} · ${period === "all" ? "tüm zamanlar" : "bu hafta"}</h2></div>${rows.length ? rows.map((x, i) => `<div class="st-row"><span>${i + 1}. ${esc(x.name || "Player")}${x.country ? ` <span class="dim">${esc(x.country)}</span>` : ""}</span><span class="st-v">${x.value}</span></div>`).join("") : '<p class="dim" style="margin:0">Henüz skor yok.</p>'}</div>`; };
-  return head + `<p class="countries">Kaynak: Dropolis veritabanı (dropolis-api.promovote.com). Günler UTC. "Şu an oyunda" son 6 dakikada sinyal gönderenler.</p>`
+  return head + `<p class="countries">Kaynak: Dropolis veritabanı (dropolis-api.promovote.com). Günler UTC. "Şu an oyunda" son 6 dakikada sinyal gönderenler. Test hesapları (otomatik testler) hiçbir sayıya katılmaz.</p>`
     + tiles + sec("Günlük aktif oyuncu (30 gün)") + chart
     + sec("Tanıtım adımları (30 gün)") + `<p class="countries">Her adıma ulaşan oyuncu, parantez içi bir önceki adıma göre kayıp.</p>` + funnel
     + sec("Davetler") + (() => {
@@ -1294,9 +1297,11 @@ async function dropolisSummary(env) {
   if (!env.DROPOLIS_DB) return null;
   const today = new Date().toISOString().slice(0, 10);
   const d7 = new Date(Date.now() - 6 * 864e5).toISOString().slice(0, 10);
-  const r = await env.DROPOLIS_DB.prepare(`select (select count(*) from users) as users, (select count(*) from users where created_at >= ?) as new7,
-    (select count(*) from daily_active where day = ?) as today, (select count(distinct user_id) from daily_active where day >= ?) as active7,
-    (select max(received_at) from event_batches) as last`).bind(d7, today, d7).first();
+  // Test accounts (users.is_test = 1) are not counted.
+  const r = await env.DROPOLIS_DB.prepare(`select (select count(*) from users where is_test = 0) as users, (select count(*) from users where created_at >= ? and is_test = 0) as new7,
+    (select count(*) from daily_active where day = ? and user_id in (select id from users where is_test = 0)) as today,
+    (select count(distinct user_id) from daily_active where day >= ? and user_id in (select id from users where is_test = 0)) as active7,
+    (select max(received_at) from event_batches where user_id in (select id from users where is_test = 0)) as last`).bind(d7, today, d7).first();
   let online = null;
   try { if (env.DROPOLIS) online = (await (await env.DROPOLIS.fetch("https://dropolis-api.promovote.com/v1/online")).json()).online; } catch { /* veri yok */ }
   return { ...r, online };
