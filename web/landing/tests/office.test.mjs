@@ -80,6 +80,14 @@ before(async () => {
   assert.equal(r.status, 0, r.stderr);
   const tk = sql("insert into office_tasks (id, title, detail, project, assignee_id, status, kind, priority) values " + TASKS.map((x) => `(${x.map((v) => (typeof v === "number" ? v : q(v))).join(", ")})`).join(", "));
   assert.equal(tk.status, 0, tk.stderr);
+  // Stage, progress and timeline (migration 0004): one active card with 3 lines, one stale "doing" card, one card with
+  // 12 lines to check the API keeps only the last 10.
+  const logRows = [["l-office-1", "t-office-52", "-90 minutes", "1/3 Oda planı çizildi"], ["l-office-2", "t-office-52", "-60 minutes", "2/3 Masalar yerleşti"], ["l-office-3", "t-office-52", "-10 minutes", "3/3 Etiketler deneniyor"]];
+  for (let i = 1; i <= 12; i++) logRows.push([`l-qacheck-${String(i).padStart(2, "0")}`, "t-qa-cihaz", `-${130 - i * 10} minutes`, `Deneme ${i}`]);
+  const st = sql(`update office_tasks set stage = '3/3 Etiketler', progress = 80 where id = 't-office-52';
+    update office_tasks set stage = '1/2 Plan', progress = 30, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now', '-3 hours') where id = 't-ekip-plani';
+    insert into office_task_log (id, task_id, at, text) values ` + logRows.map(([id, task, ago, text]) => `('${id}', '${task}', strftime('%Y-%m-%dT%H:%M:%fZ', 'now', '${ago}'), ${q(text)})`).join(", "));
+  assert.equal(st.status, 0, st.stdout + st.stderr);
   // A note the CEO already answered, to check the "Notların" list.
   const nt = sql("insert into office_notes (id, text, status, answer) values ('n-seed-answered', 'Hauling derlemesi ne durumda?', 'answered', 'Kart açtım, Hauling Lider bakıyor.')");
   assert.equal(nt.status, 0, nt.stderr);
@@ -101,7 +109,7 @@ test("promovote-db has nothing of the office", () => {
   assert.equal(r.status, 0, r.stderr);
   assert.deepEqual(JSON.parse(r.stdout)[0].results, []);
   const m = d1("office-db", "select name from sqlite_master where type = 'table' and name like 'office%' order by name");
-  assert.deepEqual(JSON.parse(m.stdout)[0].results.map((x) => x.name), ["office_agents", "office_mail", "office_notes", "office_tasks"]);
+  assert.deepEqual(JSON.parse(m.stdout)[0].results.map((x) => x.name), ["office_agents", "office_mail", "office_notes", "office_task_log", "office_tasks"]);
 });
 
 test("no write endpoint: anon cannot write through the API", async () => {
@@ -112,6 +120,10 @@ test("no write endpoint: anon cannot write through the API", async () => {
 });
 
 test("table rules refuse bad rows", () => {
+  assert.notEqual(sql("update office_tasks set progress = 101 where id = 't-office-52'").status, 0);
+  assert.notEqual(sql(`update office_tasks set stage = '${"s".repeat(121)}' where id = 't-office-52'`).status, 0);
+  assert.notEqual(sql("insert into office_task_log (id, task_id, text) values ('l-empty-01', 't-office-52', '')").status, 0);
+  assert.notEqual(sql(`insert into office_task_log (id, task_id, text) values ('l-long-001', 't-office-52', '${"t".repeat(301)}')`).status, 0);
   assert.notEqual(sql("insert into office_tasks (id, title, status) values ('t-bad-status', 'X', 'later')").status, 0);
   assert.notEqual(sql("insert into office_tasks (id, title, kind) values ('t-bad-kind1', 'X', 'order')").status, 0);
   assert.notEqual(sql("insert into office_tasks (id, title, owner_answer) values ('t-bad-answer', 'X', 'maybe')").status, 0);
@@ -133,6 +145,15 @@ test("API read needs the admin token", async () => {
   assert.equal(j.agents.length, AGENTS.length);
   assert.equal(j.agents[0].id, "ceo");
   assert.deepEqual(j.mail.map((x) => x.id).sort(), MAIL.map((x) => x[0]).sort());
+  // Stage, progress and the last 10 timeline lines per card, newest first.
+  const office = j.tasks.find((t) => t.id === "t-office-52");
+  assert.equal(office.stage, "3/3 Etiketler");
+  assert.equal(office.progress, 80);
+  assert.deepEqual(office.log.map((l) => l.text), ["3/3 Etiketler deneniyor", "2/3 Masalar yerleşti", "1/3 Oda planı çizildi"]);
+  const qa = j.tasks.find((t) => t.id === "t-qa-cihaz");
+  assert.equal(qa.log.length, 10);
+  assert.equal(qa.log[0].text, "Deneme 12");
+  assert.deepEqual(j.tasks.find((t) => t.id === "t-rapor-hafta").log, []);
 });
 
 test("mail older than 10 minutes is not read", async () => {
@@ -424,6 +445,19 @@ test("full page: only the office and the board, whole window; screenshot at 1920
     assert.deepEqual(bad, [], "no overlapping labels on the full page");
     const names = await page.locator("#of-tags .of-name:not(.mini)").count();
     console.log(`# full page: ${names} names of ${AGENTS.length}`);
+    // Stage line, progress bar, the "eski" tag on a "doing" card untouched for 2 hours, and the timeline in the drawer.
+    const officeCard = page.locator('#of-board [data-task="t-office-52"]');
+    assert.match(await officeCard.innerText(), /3\/3 Etiketler · %80/);
+    assert.equal(await officeCard.locator(".of-prog i").getAttribute("style"), "width:80%");
+    assert.equal(await officeCard.locator(".of-old").count(), 0, "fresh card is not old");
+    assert.equal(await page.locator('#of-board [data-task="t-ekip-plani"] .of-old').innerText(), "eski");
+    await officeCard.click();
+    await page.waitForSelector("#of-drawer:not([hidden])");
+    assert.deepEqual((await page.locator("#of-d-log li").allInnerTexts()).map((x) => x.split("\n").pop()), ["3/3 Etiketler deneniyor", "2/3 Masalar yerleşti", "1/3 Oda planı çizildi"]);
+    assert.match(await page.locator("#of-d-log li time").first().innerText(), /New York/);
+    assert.match(await page.locator("#of-d-meta").innerText(), /Aşama[\s\S]*3\/3 Etiketler[\s\S]*İlerleme[\s\S]*%80/);
+    await page.screenshot({ path: join(SHOTS, "office-full-stage.png") });
+    await page.click("#of-d-back");
     await page.screenshot({ path: join(SHOTS, "office-full-1920.png") });
     // The board closes and opens again.
     await page.click("#of-board-toggle");

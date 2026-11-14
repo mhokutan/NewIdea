@@ -229,6 +229,11 @@ const tabCount = document.getElementById("of-tab-count");
 let boardFilter = null, openTaskId = null;
 const projectOf = (key) => (key === "ceo" ? CEO_DEPT : DEPTS.find((d) => d.key === key)) || { name: String(key || "-").toLocaleUpperCase("tr"), color: "#94a3b8" };
 const agentName = (id) => { const a = agents.find((x) => x.id === id); return a ? shortName(a.role) : id || "-"; };
+// Stage and timeline (founder 2026-11-14). A card in "Yapılıyor" untouched for 2 hours gets an "eski" tag.
+const STALE_MS = 2 * 60 * 60 * 1000;
+const lastTouch = (t) => Math.max(Date.parse(t.updated_at || "") || 0, ...(t.log || []).map((l) => Date.parse(l.at || "") || 0));
+const isStale = (t) => t.status === "doing" && lastTouch(t) > 0 && Date.now() - lastTouch(t) > STALE_MS;
+const pct = (t) => (Number.isFinite(Number(t.progress)) && t.progress !== null && t.progress !== "" ? Math.max(0, Math.min(100, Math.round(Number(t.progress)))) : null);
 const byPriority = (x, y) => (x.priority ?? 3) - (y.priority ?? 3) || String(x.created_at).localeCompare(String(y.created_at));
 function renderBoard() {
   if (!colsEl) return;
@@ -248,9 +253,12 @@ function renderBoard() {
       const p = projectOf(t.project);
       const b = el("button", { type: "button", class: "of-card", "data-task": t.id },
         el("span", { class: "of-card-t" }, t.title),
+        t.stage ? el("span", { class: "of-card-s" }, t.stage + (pct(t) !== null ? ` · %${pct(t)}` : "")) : null,
+        pct(t) !== null ? el("span", { class: "of-prog", role: "progressbar", "aria-valuenow": String(pct(t)), "aria-valuemin": "0", "aria-valuemax": "100", "aria-label": "İlerleme" }, el("i", { style: `width:${pct(t)}%` })) : null,
         el("span", { class: "of-card-m" }, el("i", { style: `--c:${p.color}` }), p.name, " · ", agentName(t.assignee_id),
           (t.priority ?? 3) === 1 ? el("span", { class: "of-pri" }, "Öncelikli") : null,
           t.fromAgent ? el("span", { class: "of-ans" }, "Oturumdan") : null,
+          isStale(t) ? el("span", { class: "of-old", title: "2 saattir güncelleme yok" }, "eski") : null,
           t.owner_answer ? el("span", { class: "of-ans" }, t.owner_answer === "yes" ? "Cevabın: Evet" : "Cevabın: Hayır") : null));
       b.addEventListener("click", () => openTask(t.id));
       return el("li", {}, b);
@@ -268,8 +276,17 @@ function openTask(id, keepNote) {
   const row = (k, v) => [el("dt", {}, k), el("dd", {}, v || "-")];
   document.getElementById("of-d-meta").replaceChildren(...row("Proje", p.name), ...row("Kimde", agentName(t.assignee_id)),
     ...row("Durum", TASK_STATUS[t.status] || t.status), ...row("Tür", KIND[t.kind] || t.kind), ...row("Öncelik", String(t.priority ?? 3)),
+    ...(t.stage ? row("Aşama", t.stage) : []), ...(pct(t) !== null ? row("İlerleme", "%" + pct(t)) : []),
+    ...row("Son hareket", ((ms) => (ms ? ny(new Date(ms).toISOString()) : "-"))(lastTouch(t) || Date.parse(t.created_at || "") || 0) + (isStale(t) ? " (2 saattir güncelleme yok)" : "")),
     ...row("Açıldı", ny(t.created_at)), ...(t.owner_answer ? row("Cevabın", (t.owner_answer === "yes" ? "Evet" : "Hayır") + (t.owner_note ? ": " + t.owner_note : "") + " (" + ny(t.answered_at) + ")") : []));
   document.getElementById("of-d-detail").textContent = t.detail || "";
+  // Timeline, newest first, New York time.
+  const hist = document.getElementById("of-d-hist"), log = t.log || [];
+  if (hist) {
+    hist.hidden = !log.length;
+    document.getElementById("of-d-log").replaceChildren(...[...log].sort((a, b) => String(b.at).localeCompare(String(a.at)))
+      .map((l) => el("li", {}, el("time", { datetime: l.at }, ny(l.at)), l.text)));
+  }
   const box = document.getElementById("of-d-answer");
   const oldNote = keepNote ? document.getElementById("of-d-note")?.value : null;
   if (t.status === "waiting_owner") {

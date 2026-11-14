@@ -1100,14 +1100,31 @@ app.get("/v1/admin/office", async (c) => {
     ).all()).results;
   } catch { mail = []; } // table not there yet
   // Task board (migration 0003): open cards plus cards finished in the last 7 days. null = table not there yet.
+  // Stage, progress and the last 10 timeline lines per card come with migration 0004 (founder 2026-11-14); before it
+  // is applied the older select still works and the cards simply have no stage or timeline.
   let tasks = null;
+  const taskWhere = `from office_tasks where status != 'done' or updated_at >= strftime('%Y-%m-%dT%H:%M:%fZ', 'now', '-7 days')
+       order by priority, created_at limit 300`;
+  const taskCols = "id, title, detail, project, assignee_id, status, kind, priority, owner_answer, owner_note, answered_at, created_at, updated_at";
   try {
-    tasks = (await c.env.OFFICE_DB.prepare(
-      `select id, title, detail, project, assignee_id, status, kind, priority, owner_answer, owner_note, answered_at, created_at, updated_at
-       from office_tasks where status != 'done' or updated_at >= strftime('%Y-%m-%dT%H:%M:%fZ', 'now', '-7 days')
-       order by priority, created_at limit 300`,
-    ).all()).results;
-  } catch { tasks = null; }
+    tasks = (await c.env.OFFICE_DB.prepare(`select ${taskCols}, stage, progress ${taskWhere}`).all()).results;
+  } catch {
+    try { tasks = (await c.env.OFFICE_DB.prepare(`select ${taskCols} ${taskWhere}`).all()).results; } catch { tasks = null; }
+  }
+  if (tasks && tasks.length) {
+    try {
+      const logs = (await c.env.OFFICE_DB.prepare(
+        `select task_id, at, text from (
+           select l.task_id, l.at, l.text, row_number() over (partition by l.task_id order by l.at desc) as n
+           from office_task_log l join office_tasks t on t.id = l.task_id
+           where t.status != 'done' or t.updated_at >= strftime('%Y-%m-%dT%H:%M:%fZ', 'now', '-7 days')
+         ) where n <= 10 order by task_id, at desc`,
+      ).all()).results;
+      const byTask = {};
+      for (const l of logs) (byTask[l.task_id] ||= []).push({ at: l.at, text: l.text });
+      for (const t of tasks) t.log = byTask[t.id] || [];
+    } catch { for (const t of tasks) t.log = []; } // timeline table not there yet
+  }
   // The founder's own notes with their status and the CEO's answer (founder 2026-11-13), newest first, read only.
   let notes = [];
   try {

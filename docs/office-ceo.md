@@ -67,3 +67,25 @@ unanswered waiting card also appears on the board ("Oturumdan" tag). The founder
 `office_notes` row like `EVET (empire-desktop, Hauling Masaüstü Derleme): Masaüstü oturumunda gönderim için bir kez evet`.
 After acting on it, clear the ask: `UPDATE office_agents SET needs_owner = NULL, status = 'working' WHERE id = '...';`
 Better: open a real card in `office_tasks` for each ask, then the answer lands on the card itself.
+
+## Stage, progress and timeline (2026-11-14)
+
+Migration `services/api/office-migrations/0004_office_task_stage.sql` (apply only after the founder's yes) adds
+`office_tasks.stage` (text up to 120, for example `2/5 Reklam düzeltmesi`), `office_tasks.progress` (0 to 100) and
+the table `office_task_log` (id, task_id, at, text up to 300). The board shows the stage line and a thin progress bar
+on each card; the card's drawer shows the timeline, newest first, in New York time (the API sends the last 10 lines
+per card). A card in "Yapılıyor" with no change for 2 hours (neither `updated_at` nor a new log line) gets an "eski"
+tag, so keep `updated_at` fresh whenever you move a card.
+
+Move a card to its next stage and log it (two statements, run together):
+
+```sql
+UPDATE office_tasks SET stage = '2/5 Reklam düzeltmesi', progress = 40, status = 'doing',
+       updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id = '<task id>';
+INSERT INTO office_task_log (id, task_id, text)
+VALUES (lower(hex(randomblob(16))), '<task id>', 'Hauling QA reklam akışını düzeltti, test oyuncusuna verildi');
+```
+
+Read a card's timeline: `SELECT at, text FROM office_task_log WHERE task_id = '<task id>' ORDER BY at DESC LIMIT 10;`
+Stuck cards (what the "eski" tag shows): `SELECT id, title, stage, updated_at FROM office_tasks WHERE status = 'doing' AND updated_at < strftime('%Y-%m-%dT%H:%M:%fZ','now','-2 hours');`
+Log text is short work text only: no personal data, keys or player names.

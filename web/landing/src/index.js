@@ -1247,6 +1247,12 @@ body.of-bare{margin:0;overflow:hidden}.of-fullpage{padding:0;margin:0;max-width:
 .of-pri{padding:0 6px;border-radius:6px;background:rgba(239,68,68,.18);color:#fca5a5;font-weight:700}
 .of-ans{padding:0 6px;border-radius:6px;background:var(--surface-2);color:inherit;font-weight:700}
 .of-col.done .of-card{opacity:.7}
+.of-card-s{display:block;margin-top:5px;font-size:13px;color:var(--fg,#e4e4e7);opacity:.85;overflow-wrap:anywhere}
+.of-prog{display:block;height:4px;margin-top:6px;border-radius:99px;background:var(--surface-2);overflow:hidden}.of-prog i{display:block;height:100%;border-radius:99px;background:var(--lime)}
+.of-old{padding:0 6px;border-radius:6px;background:rgba(250,204,21,.16);color:#fde68a;font-weight:700}
+.of-d-hist{margin:14px 0 0}.of-d-hist h4{margin:0 0 6px;font-size:14px;color:var(--muted)}
+.of-d-log{list-style:none;margin:0;padding:0 0 0 12px;border-left:2px solid var(--line);display:grid;gap:8px}
+.of-d-log li{font-size:14px;line-height:1.4;overflow-wrap:anywhere}.of-d-log time{display:block;font-size:12px;color:var(--muted)}
 .of-drawer{position:absolute;inset:0;padding:14px;background:var(--surface);overflow:auto}
 .of-d-back{min-height:40px;padding:0 12px;border-radius:10px;border:1px solid var(--line);background:var(--surface-2);color:inherit;font-weight:700;cursor:pointer;margin:0 0 10px}
 .of-drawer h3{margin:0 0 8px;font-size:18px;overflow-wrap:anywhere}.of-drawer dl{display:grid;grid-template-columns:auto 1fr;gap:4px 10px;margin:0 0 10px;font-size:14px}.of-drawer dt{color:var(--muted)}.of-drawer dd{margin:0;overflow-wrap:anywhere}
@@ -1272,7 +1278,7 @@ body.of-bare{margin:0;overflow:hidden}.of-fullpage{padding:0;margin:0;max-width:
     ? '<a class="of-tool" href="/admin/office">‹ Panele dön</a><button type="button" class="of-tool" id="of-board-toggle" aria-controls="of-board" aria-expanded="true">Görevler</button>'
     : '<button type="button" class="of-tool" id="of-full-btn">Tam ekran</button><a class="of-tool" href="/admin/office/full" target="_blank" rel="noopener">Yeni sekmede aç</a>'}<button type="button" class="of-tool of-tool-x" id="of-full-x" hidden>Kapat ×</button></div><div class="of-panel" id="of-panel" role="dialog" aria-modal="false" aria-labelledby="of-p-title"><button type="button" class="of-close" id="of-close" aria-label="Kapat">×</button><h2 id="of-p-title"></h2><dl id="of-p-body"></dl></div></div>
 <section class="of-board" id="of-board" aria-label="Görevler"><div class="of-b-head"><h2>Görevler</h2><p class="of-b-filter" id="of-b-filter" hidden></p></div><div id="of-b-cols"><p class="dim">Görev tablosu henüz yok.</p></div>
-<div class="of-drawer" id="of-drawer" role="dialog" aria-modal="false" aria-labelledby="of-d-title" hidden><button type="button" class="of-d-back" id="of-d-back">‹ Görevler</button><h3 id="of-d-title"></h3><dl id="of-d-meta"></dl><p class="of-d-detail" id="of-d-detail"></p><div id="of-d-answer"></div></div></section>
+<div class="of-drawer" id="of-drawer" role="dialog" aria-modal="false" aria-labelledby="of-d-title" hidden><button type="button" class="of-d-back" id="of-d-back">‹ Görevler</button><h3 id="of-d-title"></h3><dl id="of-d-meta"></dl><p class="of-d-detail" id="of-d-detail"></p><div id="of-d-answer"></div><section class="of-d-hist" id="of-d-hist" hidden><h4>Geçmiş</h4><ol class="of-d-log" id="of-d-log"></ol></section></div></section>
 </div>
 <form class="of-note" id="of-note"><label for="of-note-text">CEO'ya not bırak</label><textarea id="of-note-text" name="text" maxlength="1000" rows="1" placeholder="CEO'ya not bırak" required></textarea><button type="submit">Gönder</button></form>
 <p class="of-note-msg dim" id="of-note-msg" aria-live="polite"></p>
