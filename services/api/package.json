@@ -4,6 +4,7 @@
   "description": "PromoVote API on Cloudflare Workers + D1",
   "scripts": {
     "dev": "wrangler dev",
+    "test": "node --test test/admin.test.mjs",
     "deploy": "wrangler deploy",
     "db:migrate": "wrangler d1 migrations apply promovote-db --remote",
     "db:migrate:local": "wrangler d1 migrations apply promovote-db --local",

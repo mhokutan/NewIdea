@@ -10,6 +10,8 @@
   "d1_databases": [
     { "binding": "DB", "database_name": "promovote-db", "database_id": "b6a6a86f-5e7e-48fe-9ad1-2a29b1222a31", "migrations_dir": "migrations" }
   ],
+  // R2 bucket for uploaded promo videos. Create it first: npx wrangler r2 bucket create promovote-media
+  "r2_buckets": [{ "binding": "MEDIA", "bucket_name": "promovote-media" }],
   "triggers": { "crons": ["17 4 * * *"] },
   "vars": {
     "API_URL": "https://api.promovote.com",
@@ -17,7 +19,7 @@
     // Google OAuth client ids (iOS, Android, web), comma separated. Filled in when the founder creates them.
     "GOOGLE_CLIENT_IDS": ""
   },
-  // Secrets (set with `npx wrangler secret put NAME`, never commit): BETTER_AUTH_SECRET, REVENUECAT_WEBHOOK_AUTH
+  // Secrets (set with `npx wrangler secret put NAME`, never commit): BETTER_AUTH_SECRET, REVENUECAT_WEBHOOK_AUTH, ADMIN_PASSWORD (same value as the landing admin)
   // Email sending binding is added once Email Sending is enabled for promovote.com:
   // "send_email": [{ "name": "EMAIL" }]
   "observability": { "enabled": true }

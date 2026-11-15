@@ -4,6 +4,7 @@
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { createAuth } from "./auth.js";
+import { admin } from "./admin.js";
 
 const app = new Hono();
 const LANGS = ["en", "es", "tr"];
@@ -572,6 +573,9 @@ app.post("/v1/boosts", async (c) => {
   ]);
   return c.json({ ok: true, endsAt: end.toISOString() }, 201);
 });
+
+// Founder upload tools and R2 media delivery (see admin.js).
+app.route("/", admin);
 
 app.notFound((c) => fail(c, 404, "not_found", "Not found."));
 app.onError((e, c) => {
