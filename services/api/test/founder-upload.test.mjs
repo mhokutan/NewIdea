@@ -38,12 +38,15 @@ test("creates a draft, stores both files, cleans tags", async () => {
   assert.ok(j.video.startsWith("https://api.test/media/promos/"));
   assert.deepEqual(e.DB.log.filter((s) => s.sql.includes("promo_hashtags")).map((s) => s.args[1]), ["truckgame", "tycoon"]);
 });
+test("60 second videos are allowed for founder accounts", async () => {
+  assert.equal((await call(post({ ...good, durationMs: 60000 }), env())).status, 201);
+});
 test("publish true makes it live", async () => {
   const e = env();
   assert.equal((await (await call(post({ ...good, publish: true }), e)).json()).status, "live");
 });
 test("rejects bad input", async () => {
-  for (const [m, o] of [[{ ...good, title: "ab" }, {}], [{ ...good, durationMs: 1000 }, {}], [{ ...good, tags: ["a b"] }, {}],
+  for (const [m, o] of [[{ ...good, title: "ab" }, {}], [{ ...good, durationMs: 1000 }, {}], [{ ...good, durationMs: 61000 }, {}], [{ ...good, tags: ["a b"] }, {}],
     [good, { video: new Uint8Array(30) }], [good, { poster: new Uint8Array(30) }]]) {
     assert.equal((await call(post(m, o), env())).status, 400);
   }

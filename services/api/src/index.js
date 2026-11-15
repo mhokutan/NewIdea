@@ -1244,7 +1244,8 @@ app.post("/v1/admin/promos", async (c) => {
   const description = b.description == null ? null : String(b.description).trim().slice(0, 280) || null;
   if (title.length < 3 || title.length > 60) return fail(c, 400, "bad_title", "Title must be 3 to 60 characters.");
   const durationMs = Math.round(+b.durationMs || 0);
-  if (durationMs < UPLOAD_MIN_MS || durationMs > UPLOAD_MAX_MS) return fail(c, 400, "bad_duration", "Videos must be 10 to 30 seconds.");
+  // Founder videos may run up to 60 s (the free creator limit of 30 s does not apply to the founder's own accounts).
+  if (durationMs < UPLOAD_MIN_MS || durationMs > 60500) return fail(c, 400, "bad_duration", "Videos must be 10 to 60 seconds.");
   const tags = [...new Set((Array.isArray(b.tags) ? b.tags : []).map((t) => String(t).toLowerCase().replace(/^#/, "")))];
   if (tags.length > 5 || tags.some((t) => !/^[\p{L}\p{N}_]{2,30}$/u.test(t))) return fail(c, 400, "bad_tags", "Up to 5 tags, letters, digits or underscore.");
   const db = c.env.DB;
