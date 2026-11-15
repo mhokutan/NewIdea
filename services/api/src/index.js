@@ -1224,6 +1224,65 @@ app.post("/v1/admin/review/:id", async (c) => {
   return fail(c, 400, "bad_action", "Use approve or reject.");
 });
 
+// Founder upload (2026-11-15): the founder's own creators (haulingempire, nicheable, poleris...) are placeholder accounts
+// that cannot sign in, so Claude posts for them with ADMIN_API_TOKEN. One multipart request: meta JSON + video + poster.
+// Same checks and the same R2 key scheme as the creator upload above. Status is 'draft' unless meta.publish is true.
+app.post("/v1/admin/promos", async (c) => {
+  if (!adminOk(c)) return fail(c, 401, "admin_only", "Not allowed.");
+  if (!c.env.MEDIA) return fail(c, 503, "media_unavailable", "Video upload is not available yet.");
+  const form = await c.req.formData().catch(() => null);
+  let b; try { b = JSON.parse(String(form?.get("meta") || "")); } catch { b = null; }
+  const video = form?.get("video"), poster = form?.get("poster");
+  if (!b || !video || typeof video === "string" || !poster || typeof poster === "string") return fail(c, 400, "bad_request", "Send meta, video and poster.");
+  if (video.size > UPLOAD_MAX_BYTES) return fail(c, 413, "too_large", "That video is too large (50 MB max).");
+  if (poster.size > POSTER_MAX_BYTES) return fail(c, 413, "too_large", "Use a JPEG image under 1 MB.");
+  const vb = await video.arrayBuffer(), pb = await poster.arrayBuffer();
+  if (String.fromCharCode(...new Uint8Array(vb.slice(4, 8))) !== "ftyp") return fail(c, 400, "bad_type", "Use an MP4 or MOV video.");
+  const h = new Uint8Array(pb.slice(0, 3));
+  if (!(h[0] === 0xff && h[1] === 0xd8 && h[2] === 0xff)) return fail(c, 400, "bad_type", "Use a JPEG image under 1 MB.");
+  const title = String(b.title || "").trim().replace(/\s+/g, " ");
+  const description = b.description == null ? null : String(b.description).trim().slice(0, 280) || null;
+  if (title.length < 3 || title.length > 60) return fail(c, 400, "bad_title", "Title must be 3 to 60 characters.");
+  const durationMs = Math.round(+b.durationMs || 0);
+  if (durationMs < UPLOAD_MIN_MS || durationMs > UPLOAD_MAX_MS) return fail(c, 400, "bad_duration", "Videos must be 10 to 30 seconds.");
+  const tags = [...new Set((Array.isArray(b.tags) ? b.tags : []).map((t) => String(t).toLowerCase().replace(/^#/, "")))];
+  if (tags.length > 5 || tags.some((t) => !/^[\p{L}\p{N}_]{2,30}$/u.test(t))) return fail(c, 400, "bad_tags", "Up to 5 tags, letters, digits or underscore.");
+  const db = c.env.DB;
+  const prof = await db.prepare("select p.id from profiles p join creator_details d on d.profile_id = p.id where p.handle = ? and p.type = 'creator' and p.status = 'active' and d.founder_owned = 1").bind(String(b.handle || "")).first();
+  if (!prof) return fail(c, 404, "creator_not_found", "No active founder creator with that handle.");
+  const lang = LANGS.includes(b.lang) ? b.lang : "en";
+  const id = uuid();
+  const vKey = `promos/${prof.id}/${id}/${uuid()}.mp4`, pKey = `promos/${prof.id}/${id}/${uuid()}.jpg`;
+  const cache = { cacheControl: "public, max-age=31536000, immutable" };
+  await c.env.MEDIA.put(vKey, vb, { httpMetadata: { contentType: "video/mp4", ...cache } });
+  await c.env.MEDIA.put(pKey, pb, { httpMetadata: { contentType: "image/jpeg", ...cache } });
+  const live = b.publish === true, t = now();
+  const stmts = [
+    db.prepare("insert into promos (id, creator_profile_id, slug, lang, title, description, status, cta_kind, cta_url, cta_safety_status, rights_confirmed_at, ai_generated, submitted_at, approved_at, live_at) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
+      .bind(id, prof.id, `${slugify(title)}-${id.slice(0, 6)}`, lang, title, description, live ? "live" : "draft", b.ctaKind || null, /^https:\/\//.test(b.ctaUrl || "") ? b.ctaUrl : null, b.ctaUrl ? "safe" : "pending", t, b.aiGenerated === true ? 1 : 0, t, live ? t : null, live ? t : null),
+    db.prepare("insert into promo_videos (id, promo_id, label, mp4_url, poster_url, duration_ms, width, height) values (?, ?, 'A', ?, ?, ?, ?, ?)").bind(uuid(), id, mediaBase(c) + vKey, mediaBase(c) + pKey, durationMs, Math.round(+b.width || 720), Math.round(+b.height || 1280)),
+  ];
+  tags.forEach((tag, i) => {
+    stmts.push(db.prepare("insert into hashtags (tag, use_count) values (?, 1) on conflict(tag) do update set use_count = use_count + 1").bind(tag));
+    stmts.push(db.prepare("insert into promo_hashtags (promo_id, tag, position) values (?, ?, ?)").bind(id, tag, i));
+  });
+  try { await db.batch(stmts); } catch (e) { console.error(e); await c.env.MEDIA.delete([vKey, pKey]).catch(() => {}); return fail(c, 500, "server_error", "Could not save the promo."); }
+  return c.json({ ok: true, id, status: live ? "live" : "draft", video: mediaBase(c) + vKey, poster: mediaBase(c) + pKey }, 201);
+});
+
+// Moves a founder draft live (after the founder approved the video), or pauses a live promo.
+app.post("/v1/admin/promos/:id/publish", async (c) => {
+  if (!adminOk(c)) return fail(c, 401, "admin_only", "Not allowed.");
+  const b = await c.req.json().catch(() => ({}));
+  const t = now();
+  const q = b.live === true
+    ? c.env.DB.prepare("update promos set status = 'live', approved_at = coalesce(approved_at, ?), live_at = coalesce(live_at, ?), updated_at = ? where id = ? and status in ('draft', 'paused') and creator_profile_id in (select profile_id from creator_details where founder_owned = 1)").bind(t, t, t, c.req.param("id"))
+    : c.env.DB.prepare("update promos set status = 'paused', paused_at = ?, updated_at = ? where id = ? and status = 'live' and creator_profile_id in (select profile_id from creator_details where founder_owned = 1)").bind(t, t, c.req.param("id"));
+  const r = await q.run();
+  if (!r.meta?.changes) return fail(c, 404, "not_found", "No founder promo in a state that can change.");
+  return c.json({ ok: true });
+});
+
 app.get("/v1/me/activity", async (c) => {
   const [v, err] = await requireProfile(c);
   if (err) return err;
