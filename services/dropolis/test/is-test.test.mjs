@@ -148,3 +148,13 @@ test("admin page numbers leave test players out", async () => {
   // Invites: one real redeem, one conversion.
   assert.match(html, /<b>1<\/b><span>Kodla gelen oyuncu<\/span>/);
 });
+
+test("CORS: preflight allows X-Device-Id and the Date header is exposed", async () => {
+  const pre = await fetch(GAME + "/v1/auth/guest", { method: "OPTIONS", headers: { Origin: "https://example.com", "Access-Control-Request-Method": "POST", "Access-Control-Request-Headers": "content-type, x-device-id" } });
+  assert.equal(pre.status, 204);
+  assert.match(pre.headers.get("access-control-allow-headers"), /\bX-Device-Id\b/);
+  assert.match(pre.headers.get("access-control-allow-headers"), /\bAuthorization\b/);
+  assert.equal(pre.headers.get("access-control-expose-headers"), "Date");
+  const r = await fetch(GAME + "/health");
+  assert.equal(r.headers.get("access-control-expose-headers"), "Date");
+});
