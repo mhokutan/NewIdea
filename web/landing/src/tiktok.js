@@ -121,6 +121,7 @@ function notice(url) {
   const ok = url.searchParams.get("ok");
   const err = url.searchParams.get("err");
   const OK = { connected: "TikTok hesabı bağlandı.", disconnected: "Bağlantı kesildi.", inbox: "Video TikTok gelen kutuna gönderildi. TikTok uygulamasında bildirimi açıp paylaşabilirsin.", direct: "Video TikTok'a gönderildi. Birkaç dakika içinde durum aşağıda güncellenir." };
+  if (ok === "bulk") return `<p class="warnbar" style="background:rgba(74,222,128,.12);border-color:rgba(74,222,128,.5);color:#bbf7d0">${Number(url.searchParams.get("n")) || 0} video TikTok gelen kutuna gönderildi. TikTok uygulamasında bildirimlerden her birini açıp "Paylaş"a bas.</p>`;
   if (ok && OK[ok]) return `<p class="warnbar" style="background:rgba(74,222,128,.12);border-color:rgba(74,222,128,.5);color:#bbf7d0">${OK[ok]}</p>`;
   if (err) return `<p class="warnbar" style="background:rgba(248,113,113,.12);border-color:rgba(248,113,113,.5);color:#fecaca">Olmadı: ${escText(err.slice(0, 300))}</p>`;
   return "";
@@ -152,6 +153,11 @@ async function mainPage(env, url) {
     <form method="post" action="/admin/tiktok/disconnect" style="margin-top:14px"><button class="tab" type="submit">Bağlantıyı kes</button></form>`);
 
   if (s.token) {
+    const batch = await weekBatch(env);
+    out += card(`<div class="st-head"><h2>Bu haftanın videoları</h2><span class="dim">${batch.length} video hazır</span></div>
+      ${batch.length ? `<ul style="margin:0 0 14px;padding-left:18px">${batch.map((b) => `<li style="margin:4px 0">${esc(b.caption.slice(0, 90))}…</li>`).join("")}</ul>
+      <form method="post" action="/admin/tiktok/bulk"><button class="tab on" type="submit" style="font-size:16px;padding:12px 20px">Hepsini TikTok'a gönder (taslak)</button></form>
+      <p class="dim" style="margin:12px 0 0;font-size:13px">Videolar TikTok uygulamanın gelen kutusuna düşer. Her birini açıp "Paylaş"a basman yeterli.</p>` : '<p class="empty">Bu hafta gönderilmemiş video yok.</p>'}`);
     let info = null;
     let infoErr = "";
     try { info = await apiCall("/v2/post/publish/creator_info/query/", s.token, {}); } catch (e) { infoErr = e.message; }
@@ -298,14 +304,67 @@ async function post(request, env) {
   return Response.redirect(`${ORIGIN}/admin/tiktok?ok=${kind}`, 303);
 }
 
+// One press sends the newest founder promos of the last 8 days that were not sent yet, as drafts to the TikTok
+// inbox (video.upload). The owner still publishes each one in the TikTok app, so a person posts every video.
+async function sendOne(env, token, path, caption) {
+  const file = await env.ASSETS.fetch(new Request(`${ORIGIN}${path}`));
+  if (!file.ok) throw new Error("video dosyası okunamadı");
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  if (!bytes.length || bytes.length > MAX_BYTES) throw new Error("video boyutu uygun değil");
+  const init = await apiCall("/v2/post/publish/inbox/video/init/", token, { source_info: { source: "FILE_UPLOAD", video_size: bytes.length, chunk_size: bytes.length, total_chunk_count: 1 } });
+  const up = await fetch(init.upload_url, { method: "PUT", headers: { "Content-Type": "video/mp4", "Content-Range": `bytes 0-${bytes.length - 1}/${bytes.length}` }, body: bytes });
+  if (!up.ok) throw new Error(`yükleme ${up.status}`);
+  return init.publish_id || null;
+}
+
+async function weekBatch(env) {
+  if (!env.APPDB) return [];
+  const { results } = await env.APPDB.prepare(`SELECT pr.title, pr.description, v.mp4_url,
+      (SELECT group_concat(tag, ' ') FROM (SELECT tag FROM promo_hashtags h WHERE h.promo_id = pr.id ORDER BY position)) AS tags
+      FROM promos pr JOIN promo_videos v ON v.promo_id = pr.id AND v.label = 'A' JOIN creator_details d ON d.profile_id = pr.creator_profile_id
+      WHERE pr.status = 'live' AND d.founder_owned = 1 AND pr.live_at >= datetime('now', '-8 days') ORDER BY pr.live_at DESC LIMIT 5`).all();
+  const sent = new Set((await env.DB.prepare("SELECT video_path FROM tiktok_posts WHERE status IS NOT 'FAILED'").all()).results.map((r) => r.video_path));
+  return results
+    .map((r) => ({ path: String(r.mp4_url || "").startsWith(`${ORIGIN}/media/`) ? r.mp4_url.slice(ORIGIN.length) : null, caption: captionOf(r) }))
+    .filter((r) => r.path && /^\/media\/[a-z0-9-]+\.mp4$/.test(r.path) && !sent.has(r.path));
+}
+export function captionOf(r) {
+  const tags = String(r.tags || "").split(" ").filter(Boolean).slice(0, 4).map((t) => `#${t}`).join(" ");
+  const title = String(r.title || "").replace(/[.!?]?$/, ".");
+  return `${title} ${String(r.description || "")} ${tags}`.replace(/\s+/g, " ").trim().slice(0, 2200);
+}
+
+async function bulk(env) {
+  await ensureTables(env);
+  const s = await session(env);
+  if (!s?.token) return Response.redirect(`${ORIGIN}/admin/tiktok?err=${encodeURIComponent(s?.error || "TikTok hesabı bağlı değil.")}`, 303);
+  const list = await weekBatch(env);
+  if (!list.length) return Response.redirect(`${ORIGIN}/admin/tiktok?err=${encodeURIComponent("Gönderilecek yeni video yok.")}`, 303);
+  let ok = 0;
+  const errs = [];
+  for (const v of list) {
+    try {
+      const id = await sendOne(env, s.token, v.path, v.caption);
+      await env.DB.prepare("INSERT INTO tiktok_posts (kind, video_path, caption, publish_id, status) VALUES ('inbox', ?1, ?2, ?3, 'PROCESSING_UPLOAD')").bind(v.path, v.caption, id).run();
+      ok++;
+    } catch (e) {
+      errs.push(e.message);
+      await env.DB.prepare("INSERT INTO tiktok_posts (kind, video_path, caption, status, error) VALUES ('inbox', ?1, ?2, 'FAILED', ?3)").bind(v.path, v.caption, e.message.slice(0, 300)).run();
+    }
+  }
+  if (!ok) return Response.redirect(`${ORIGIN}/admin/tiktok?err=${encodeURIComponent(errs[0] || "Gönderilemedi.")}`, 303);
+  return Response.redirect(`${ORIGIN}/admin/tiktok?ok=bulk&n=${ok}`, 303);
+}
+
 // Entry from handleAdmin (admin login already checked). Returns null for paths it does not own.
 export async function handleTiktok(request, env, url, path, { adminPage, ADMIN_HEADERS }) {
   if (path === "/admin/tiktok") return adminPage(path, "TikTok", await mainPage(env, url));
   if (path === "/admin/tiktok/connect" && request.method === "GET") return connect(env, url);
   if (path === "/admin/tiktok/callback" && request.method === "GET") return callback(request, env, url);
-  if (path === "/admin/tiktok/disconnect" || path === "/admin/tiktok/post") {
+  if (path === "/admin/tiktok/disconnect" || path === "/admin/tiktok/post" || path === "/admin/tiktok/bulk") {
     if (request.method !== "POST") return new Response("Method not allowed", { status: 405, headers: ADMIN_HEADERS });
     if (request.headers.get("Origin") !== ORIGIN) return new Response("Forbidden", { status: 403, headers: ADMIN_HEADERS });
+    if (path === "/admin/tiktok/bulk") return bulk(env);
     return path === "/admin/tiktok/post" ? post(request, env) : disconnect(env);
   }
   return null;

@@ -15,11 +15,11 @@ function fakeD1(db) {
 }
 function appdb() {
   const db = new DatabaseSync(":memory:");
-  db.exec(`CREATE TABLE promos (id TEXT, slug TEXT, title TEXT, creator_profile_id TEXT, status TEXT, live_at TEXT);
+  db.exec(`CREATE TABLE promos (id TEXT, slug TEXT, title TEXT, description TEXT, creator_profile_id TEXT, status TEXT, live_at TEXT); CREATE TABLE promo_hashtags (promo_id TEXT, tag TEXT, position INTEGER);
     CREATE TABLE promo_videos (promo_id TEXT, label TEXT, mp4_url TEXT, duration_ms INTEGER);
     CREATE TABLE profiles (id TEXT, handle TEXT); CREATE TABLE creator_details (profile_id TEXT, founder_owned INTEGER);
     INSERT INTO profiles VALUES ('p1','haulingempire'); INSERT INTO creator_details VALUES ('p1',1);
-    INSERT INTO promos VALUES ('x1','hauling-empire-run-the-company','You run the company','p1','live','2026-11-16');
+    INSERT INTO promos VALUES ('x1','hauling-empire-run-the-company','You run the company','Start with one van.','p1','live',strftime('%Y-%m-%dT%H:%M:%fZ','now')); INSERT INTO promo_hashtags VALUES ('x1','tycoon',0);
     INSERT INTO promo_videos VALUES ('x1','A','https://promovote.com/media/hauling-empire-run-the-company.mp4',22400);`);
   return fakeD1(db);
 }
@@ -112,6 +112,18 @@ test("direct post without privacy is refused, inbox draft uploads the file", asy
   assert.equal(p.status, "PROCESSING_UPLOAD");
   await go("/admin/tiktok");
   assert.equal((await env.DB.prepare("SELECT status FROM tiktok_posts WHERE publish_id = 'pub1'").first()).status, "SEND_TO_USER_INBOX");
+});
+
+test("bulk button sends this week's unsent videos once", async () => {
+  await env.DB.prepare("DELETE FROM tiktok_posts").run();
+  const html = await (await go("/admin/tiktok")).text();
+  assert.match(html, /Hepsini TikTok'a gönder/);
+  assert.match(html, /You run the company\. Start with one van\. #tycoon/);
+  const r = await go("/admin/tiktok/bulk", { method: "POST", headers: { Origin: "https://promovote.com" } });
+  assert.match(r.headers.get("Location"), /ok=bulk&n=1/);
+  const again = await go("/admin/tiktok/bulk", { method: "POST", headers: { Origin: "https://promovote.com" } });
+  assert.match(again.headers.get("Location"), /err=/);
+  assert.equal((await env.DB.prepare("SELECT caption FROM tiktok_posts").first()).caption, "You run the company. Start with one van. #tycoon");
 });
 
 test("unknown video is refused", async () => {
