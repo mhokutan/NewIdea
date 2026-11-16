@@ -1,0 +1,167 @@
+{
+  "week": "2026-w47",
+  "creators": {
+    "dropolis": {
+      "name": "Dropolis",
+      "category": "games",
+      "avatar": {
+        "img": "/media/dropolis-icon.jpg"
+      },
+      "kind": {
+        "en": "Indie game",
+        "es": "Juego indie",
+        "tr": "Bağımsız oyun"
+      },
+      "banner": "dropolis-poster.jpg",
+      "bio": {
+        "en": "A delivery city builder. Pack online orders, send couriers to every door, build your own streets and grow a tiny town into a city, then a colony on Mars.",
+        "es": "Un juego de construir ciudades a base de repartos. Prepara pedidos, envía repartidores a cada puerta, traza tus calles y convierte un pueblo en una ciudad y luego en una colonia en Marte.",
+        "tr": "Teslimatla büyüyen bir şehir kurma oyunu. Siparişleri paketle, kuryeleri her kapıya gönder, sokaklarını kendin çiz ve küçük bir kasabayı şehre, sonra Mars'ta bir koloniye dönüştür."
+      },
+      "cta": {
+        "android": "https://play.google.com/store/apps/details?id=com.promovote.dropolis"
+      },
+      "disclosure": "founder_made"
+    },
+    "dovelet": {
+      "name": "Dovelet",
+      "category": "apps",
+      "avatar": {
+        "img": "/media/dovelet-icon.jpg"
+      },
+      "kind": {
+        "en": "Couples app",
+        "es": "App para parejas",
+        "tr": "Çiftler için uygulama"
+      },
+      "banner": "dovelet-poster.jpg",
+      "bio": {
+        "en": "A couple widget for long distance and close relationships. Their latest note on your home screen, a touch that buzzes their phone, shared photos and a heart flower you grow together. No location tracking.",
+        "es": "Un widget para parejas, a distancia o cerca. Su última nota en tu pantalla de inicio, un toque que hace vibrar su teléfono, fotos compartidas y una flor que crecen juntos. Sin rastreo de ubicación.",
+        "tr": "Uzak ya da yakın çiftler için bir widget. Sevgilinin son notu ana ekranında, telefonunu titreten bir dokunuş, ortak fotoğraflar ve birlikte büyüttüğünüz bir kalp çiçeği. Konum takibi yok."
+      },
+      "cta": {
+        "android": "https://play.google.com/store/apps/details?id=com.mhokutan.coupleapp"
+      },
+      "disclosure": "founder_made"
+    }
+  },
+  "promos": [
+    {
+      "id": "hauling-empire-run-the-company",
+      "creator": "haulingempire",
+      "lang": "en",
+      "video": "hauling-empire-run-the-company",
+      "dur": 22,
+      "tags": [
+        "truckgame",
+        "tycoon",
+        "mobilegame"
+      ],
+      "link": "https://apps.apple.com/us/app/hauling-empire-truck-tycoon/id6815224121",
+      "linkKind": "appstore",
+      "title": {
+        "en": "You don't drive. You run the company.",
+        "es": "No conduces. Diriges la empresa.",
+        "tr": "Direksiyonda sen yoksun. Şirketi sen yönetiyorsun."
+      },
+      "desc": {
+        "en": "Start with one van, plan routes on land and sea and hire your team. No gems, no energy bars.",
+        "es": "Empieza con una furgoneta, planifica rutas por tierra y mar y contrata a tu equipo. Sin gemas ni barras de energía.",
+        "tr": "Tek bir kamyonetle başla, karada ve denizde rota planla, ekibini kur. Elmas yok, enerji barı yok."
+      }
+    },
+    {
+      "id": "dropolis-parcel-to-mars",
+      "creator": "dropolis",
+      "lang": "en",
+      "video": "dropolis-parcel-to-mars",
+      "dur": 22,
+      "tags": [
+        "citybuilder",
+        "mobilegame",
+        "tycoon"
+      ],
+      "title": {
+        "en": "One parcel shop. One day, Mars.",
+        "es": "Una tienda de paquetes. Algún día, Marte.",
+        "tr": "Tek bir kargo dükkanı. Bir gün, Mars."
+      },
+      "desc": {
+        "en": "Pack orders, send couriers to every door, build your own streets and launch a colony on Mars.",
+        "es": "Prepara pedidos, envía repartidores a cada puerta, traza tus calles y lanza una colonia en Marte.",
+        "tr": "Siparişleri paketle, kuryeleri her kapıya gönder, sokaklarını kur ve Mars'ta koloni kur."
+      }
+    },
+    {
+      "id": "dovelet-home-screen",
+      "creator": "dovelet",
+      "lang": "en",
+      "video": "dovelet-home-screen",
+      "dur": 22,
+      "tags": [
+        "couples",
+        "longdistance",
+        "widget"
+      ],
+      "title": {
+        "en": "Their note on your home screen",
+        "es": "Su nota en tu pantalla de inicio",
+        "tr": "Onun notu ana ekranında"
+      },
+      "desc": {
+        "en": "A couple widget: their latest note, one touch that buzzes their phone and shared photos on both widgets. No location tracking.",
+        "es": "Un widget para parejas: su última nota, un toque que hace vibrar su teléfono y fotos compartidas en los dos widgets. Sin rastreo de ubicación.",
+        "tr": "Çiftler için widget: son notu, telefonunu titreten tek dokunuş ve iki widget'ta ortak fotoğraflar. Konum takibi yok."
+      }
+    },
+    {
+      "id": "poleris-two-minutes",
+      "creator": "poleris",
+      "lang": "en",
+      "video": "poleris-two-minutes",
+      "dur": 22,
+      "tags": [
+        "manifestation",
+        "meditation",
+        "selfcare"
+      ],
+      "link": "https://apps.apple.com/us/app/poleris-manifest-rituals/id6792844860",
+      "linkKind": "appstore",
+      "title": {
+        "en": "Two minutes a day for your intention",
+        "es": "Dos minutos al día para tu intención",
+        "tr": "Niyetin için günde iki dakika"
+      },
+      "desc": {
+        "en": "Write one intention, then read it, give thanks and see it. A 21 day journey, box breathing and guided meditation.",
+        "es": "Escribe una intención, léela, agradece y visualízala. Un viaje de 21 días, respiración cuadrada y meditación guiada.",
+        "tr": "Bir niyet yaz, sonra oku, şükret ve gör. 21 günlük yolculuk, kutu nefesi ve rehberli meditasyon."
+      }
+    },
+    {
+      "id": "nicheable-plan-track",
+      "creator": "nicheable",
+      "lang": "en",
+      "video": "nicheable-plan-track",
+      "dur": 22,
+      "tags": [
+        "planner",
+        "productivity",
+        "digitalplanner"
+      ],
+      "link": "https://nicheable.etsy.com",
+      "linkKind": "shop",
+      "title": {
+        "en": "Plan it. Track it. Done.",
+        "es": "Planéalo. Contrólalo. Listo.",
+        "tr": "Planla. Takip et. Bitti."
+      },
+      "desc": {
+        "en": "Digital planners and trackers: E-Ink planners, a college grade tracker and a rental tax tracker.",
+        "es": "Planificadores y controles digitales: planificadores E-Ink, control de notas universitarias y control de impuestos de alquiler.",
+        "tr": "Dijital planlayıcılar ve takip tabloları: E-Ink planlayıcılar, üniversite not takibi ve kiralama vergi takibi."
+      }
+    }
+  ]
+}
