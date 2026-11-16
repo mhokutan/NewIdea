@@ -27,7 +27,8 @@ which ran it until now. Repo `mhokutan/NewIdea`, branch `claude/gracious-pasteur
 * English, short, one idea per post, at most 2 hashtags (#indiedev, #gamedev, #mobilegames, #appstore...).
 * Mix: product posts for every product in turn, questions to indie devs (they bring replies), small "how we built it"
   notes, PromoVote game posts (Today's Drop, Duel, "call it before everyone else").
-* The X credit was about $13.70 on 2026-11-07. If it runs low, drop to 2 to 4 posts a day and tell the founder.
+* X credit: $11.40 left on 2026-11-16, it expires on 2027-01-07 (52 days). A plain post costs $0.015, so 10 a day until
+  then is about $8; the credit is enough with room to spare. If it runs low, drop to 2 to 4 posts a day and tell the founder.
 
 ## 3. Filling the queue (D1 tool on promovote-db, touch only `social_posts`)
 Write a week at a time. Use a unique readable id, for example `2026-11-17-1100-he`.
