@@ -1,0 +1,5 @@
+PromoVote (promovote.com) is a short video app. We use TikTok only to post our own promo videos to our own TikTok account. No other users connect.
+
+Login Kit, user.info.basic: the PromoVote owner signs in once on our private admin page (promovote.com/admin/tiktok, team login only) and taps Connect TikTok. We show the connected account name and avatar. Tokens are stored encrypted on our server and refreshed; the owner can disconnect at any time.
+
+Content Posting API, video.upload and video.publish: each week our team makes vertical promo videos for apps and games we built. On the admin page the owner picks a video, writes the caption, chooses the privacy level from the options TikTok returns and confirms. The video is then sent as a draft to the TikTok inbox (video.upload) or posted directly (video.publish). Nothing is posted without the owner's confirmation. We do not read or store data of other TikTok users.
