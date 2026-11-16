@@ -33,3 +33,10 @@ CREATE TABLE IF NOT EXISTS duel_picks (
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 CREATE UNIQUE INDEX IF NOT EXISTS idx_duel_once ON duel_picks(day, visitor, a, b);
+
+-- TikTok (founder request 2026-11-16): the founder's own TikTok account, created on first use by src/tiktok.js.
+CREATE TABLE IF NOT EXISTS tiktok_auth (id TEXT PRIMARY KEY, mode TEXT NOT NULL, open_id TEXT, display_name TEXT, scope TEXT,
+  access_enc TEXT NOT NULL, access_expires_at INTEGER NOT NULL, refresh_enc TEXT NOT NULL, refresh_expires_at INTEGER NOT NULL,
+  connected_at TEXT NOT NULL DEFAULT (datetime('now')), updated_at TEXT NOT NULL DEFAULT (datetime('now')));
+CREATE TABLE IF NOT EXISTS tiktok_posts (id INTEGER PRIMARY KEY AUTOINCREMENT, created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  kind TEXT NOT NULL, video_path TEXT NOT NULL, caption TEXT, privacy TEXT, publish_id TEXT, status TEXT, error TEXT);

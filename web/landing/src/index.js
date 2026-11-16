@@ -1,3 +1,4 @@
+import { handleTiktok } from "./tiktok.js";
 const ROLES = new Set(["creator", "developer", "brand", "viewer", "api"]);
 
 // Creator perks are only revealed after a verified waitlist signup (never in page source).
@@ -203,7 +204,7 @@ const ROLE_LABELS = { creator: "Creator / Streamer", developer: "Game developer"
 // Admin navigation: one row of product groups, then the pages of the chosen group (founder: flat tabs were confusing).
 const ADMIN_GROUPS = [
   ["Durum", "Hepsi tek bakışta", [["/admin", "Genel durum"], ["/admin/office", "Ofis"]]],
-  ["PromoVote", "Site, X, mağazalar", [["/admin/onay", "Onay kuyruğu"], ["/admin/bekleme", "Bekleme listesi"], ["/admin/visitors", "Ziyaretçiler"], ["/admin/x", "X"], ["/admin/app-store?p=promovote", "App Store"], ["/admin/google-play?p=promovote", "Google Play"], ["/admin/yorumlar?p=promovote", "Yorumlar"]]],
+  ["PromoVote", "Site, X, mağazalar", [["/admin/onay", "Onay kuyruğu"], ["/admin/bekleme", "Bekleme listesi"], ["/admin/visitors", "Ziyaretçiler"], ["/admin/x", "X"], ["/admin/tiktok", "TikTok"], ["/admin/app-store?p=promovote", "App Store"], ["/admin/google-play?p=promovote", "Google Play"], ["/admin/yorumlar?p=promovote", "Yorumlar"]]],
   ["Hauling Empire", "Oyun ve mağazalar", [["/admin/hauling-empire/oyun", "Oyun"], ["/admin/app-store?p=haulingempire", "App Store"], ["/admin/google-play?p=haulingempire", "Google Play"], ["/admin/yorumlar?p=haulingempire", "Yorumlar"], ["/admin/unity-ads", "Reklam geliri"], ["/admin/hauling-empire/rapor", "Raporlar"]]],
   ["Poleris", "Uygulama ve mağazalar", [["/admin/poleris/uygulama", "Uygulama"], ["/admin/app-store?p=poleris", "App Store"], ["/admin/google-play?p=poleris", "Google Play"], ["/admin/yorumlar?p=poleris", "Yorumlar"]]],
   ["Dovelet", "Uygulama ve mağazalar", [["/admin/lovelet/uygulama", "Uygulama"], ["/admin/app-store?p=lovelet", "App Store"], ["/admin/google-play?p=lovelet", "Google Play"], ["/admin/yorumlar?p=lovelet", "Yorumlar"]]],
@@ -1524,6 +1525,11 @@ async function handleAdmin(request, env, url) {
     if (!action) return new Response("Bad request", { status: 400 });
     const r = await reviewApi(env, "POST", `/v1/admin/review/${id}`, action === "approve" ? { action } : { action, code: String(f.get("code") || "guidelines"), note: String(f.get("note") || ""), fixAllowed: f.get("fix") === "1" });
     return Response.redirect(`https://promovote.com/admin/onay?${r.ok ? `ok=${action}` : `err=${encodeURIComponent(r.reason)}`}`, 303);
+  }
+
+  if (path === "/admin/tiktok" || path.startsWith("/admin/tiktok/")) {
+    const r = await handleTiktok(request, env, url, path, { adminPage, ADMIN_HEADERS });
+    if (r) return r;
   }
 
   if (path === "/admin") return adminPage(path, "Genel durum", await statusPage(env));
