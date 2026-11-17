@@ -111,3 +111,12 @@ UPDATE office_tasks SET skills_used = 'playwright, cloudflare-workers', model_us
 INSERT INTO office_task_log (id, task_id, text, skill)
 VALUES (lower(hex(randomblob(16))), '<task id>', 'Uçtan uca testler geçti', 'playwright');
 ```
+
+## Yaşayan ofis (2026-11-17)
+
+Veri değişmedi; ofis `office_agents.status` ile yaşar:
+* `working`: masasında yazar, ekranında kod, grafik ya da tasarım akar (rol metninden: tasarım/UI, analiz/mağaza/reklam, diğerleri kod).
+* `idle`: arkasına yaslanır, arada kahveye, su sebiline, kanepeye, langırta, konsola gider ya da bir arkadaşının masasına sohbete gider (aynı anda en fazla 8 kişi).
+* `waiting_owner`: masanın yanında ayakta, ekran sarı. `blocked`: kırmızı ışık, ekran kırmızı. `offline`: masa boş, ekran kapalı.
+* Model (`model` ya da roldeki parantez): göğüste renkli taş ve isim balonunda O/S/H harfi.
+* Işık New York saatine göre (gündüz, akşam, gece). Kişiye tıklayınca panelde "Şu an" satırı var.
