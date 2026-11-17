@@ -120,6 +120,6 @@ The same 1080p files can also go to X (video posts) and, later, TikTok.
 * A separate video session pushes 5 videos a day to branch `videos/daily` (format: `docs/prompts/daily-video-format.md`).
 * Every day at 20:00 UTC run `python3 scripts/daily_ingest.py <YYYY-MM-DD>` from the repo root: checks, uploads to R2
   `promovote-media/daily/<date>/` through `PUT https://api.promovote.com/v1/admin/ingest` (Worker secret INGEST_TOKEN set
-  to a fresh random value before the run and again after it), adds the 4 product promos to promovote-db, queues all 5 for
+  to a fresh random value before the run and again after it; founder allowed this on 2026-11-17), adds the 4 product promos to promovote-db, queues all 5 for
   TikTok (`tiktok_queue`, sent by promovote-landing at 21:17 UTC) and one X video post at 22:00 UTC. Safe to run twice.
 * Media URLs: `https://api.promovote.com/media/daily/<date>/<app>.mp4` (1080), `<app>-720.mp4` (app feed), `<app>-poster.jpg`.
