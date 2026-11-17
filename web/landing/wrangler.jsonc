@@ -29,6 +29,7 @@
   "services": [{ "binding": "DROPOLIS", "service": "dropolis-api" }],
   // Keep variables added in the Cloudflare dashboard on deploy (an ADMIN_PASSWORD saved as plain text was lost on a
   // wrangler deploy, 2026-10). ADMIN_PASSWORD should be a Secret anyway; secrets always survive deploys.
+  "triggers": { "crons": ["17 15 * * *"] },
   "keep_vars": true,
   "vars": {
     "TURNSTILE_SITE_KEY": "0x4AAAAAAFMH6xbA0dPcxH_-"

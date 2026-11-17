@@ -356,6 +356,52 @@ async function bulk(env) {
   return Response.redirect(`${ORIGIN}/admin/tiktok?ok=bulk&n=${ok}`, 303);
 }
 
+// Daily job (founder 2026-11-17: "herkesin paylaşımını yapmaya başla"): sends up to 2 founder promos that were never
+// sent (English, newest first, any age) as drafts to the TikTok inbox, and refreshes the status of open ones. TikTok
+// allows only a few pending inbox shares per day, so it never sends while 4 or more drafts from the last 24 h exist.
+// Drafts only: the owner publishes each video in the TikTok app.
+export async function tiktokCron(env) {
+  if (!env.DB) return;
+  await ensureTables(env);
+  const s = await session(env);
+  if (!s?.token) { console.log("tiktok_cron: not connected", s?.error || ""); return; }
+  const { results: open } = await env.DB.prepare("SELECT id, publish_id, status FROM tiktok_posts WHERE publish_id IS NOT NULL AND status IN ('PROCESSING_UPLOAD','PROCESSING_DOWNLOAD') ORDER BY id DESC LIMIT 10").all();
+  for (const p of open) {
+    try {
+      const st = await apiCall("/v2/post/publish/status/fetch/", s.token, { publish_id: p.publish_id });
+      if (st.status && st.status !== p.status) await env.DB.prepare("UPDATE tiktok_posts SET status = ?1, error = ?2 WHERE id = ?3").bind(st.status, st.fail_reason || null, p.id).run();
+    } catch (e) { console.error("tiktok_cron_status", e.message); }
+  }
+  const recent = (await env.DB.prepare("SELECT COUNT(*) AS n FROM tiktok_posts WHERE kind = 'inbox' AND status IS NOT 'FAILED' AND created_at >= datetime('now', '-1 day')").first())?.n || 0;
+  const room = Math.min(2, 4 - recent);
+  if (room <= 0) { console.log("tiktok_cron: inbox busy", recent); return; }
+  const list = (await catalog(env)).slice(0, room);
+  for (const v of list) {
+    try {
+      const id = await sendOne(env, s.token, v.path, v.caption);
+      await env.DB.prepare("INSERT INTO tiktok_posts (kind, video_path, caption, publish_id, status) VALUES ('inbox', ?1, ?2, ?3, 'PROCESSING_UPLOAD')").bind(v.path, v.caption, id).run();
+    } catch (e) {
+      console.error("tiktok_cron_send", v.path, e.message);
+      await env.DB.prepare("INSERT INTO tiktok_posts (kind, video_path, caption, status, error) VALUES ('inbox', ?1, ?2, 'FAILED', ?3)").bind(v.path, v.caption, e.message.slice(0, 300)).run();
+      break;
+    }
+  }
+}
+
+// Every live English founder promo of 8 s or more that was never sent (a failed send can be retried by the bulk button).
+async function catalog(env) {
+  if (!env.APPDB) return [];
+  const { results } = await env.APPDB.prepare(`SELECT pr.title, pr.description, v.mp4_url,
+      (SELECT group_concat(tag, ' ') FROM (SELECT tag FROM promo_hashtags h WHERE h.promo_id = pr.id ORDER BY position)) AS tags
+      FROM promos pr JOIN promo_videos v ON v.promo_id = pr.id AND v.label = 'A' JOIN creator_details d ON d.profile_id = pr.creator_profile_id
+      WHERE pr.status = 'live' AND d.founder_owned = 1 AND pr.lang = 'en' AND coalesce(v.duration_ms, 0) >= 8000
+      ORDER BY pr.live_at DESC LIMIT 100`).all();
+  const sent = new Set((await env.DB.prepare("SELECT video_path FROM tiktok_posts").all()).results.map((r) => r.video_path));
+  return results
+    .map((r) => ({ path: String(r.mp4_url || "").startsWith(`${ORIGIN}/media/`) ? r.mp4_url.slice(ORIGIN.length) : null, caption: captionOf(r) }))
+    .filter((r) => r.path && /^\/media\/[a-z0-9-]+\.mp4$/.test(r.path) && !sent.has(r.path));
+}
+
 // Entry from handleAdmin (admin login already checked). Returns null for paths it does not own.
 export async function handleTiktok(request, env, url, path, { adminPage, ADMIN_HEADERS }) {
   if (path === "/admin/tiktok") return adminPage(path, "TikTok", await mainPage(env, url));

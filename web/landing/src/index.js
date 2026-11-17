@@ -1,4 +1,4 @@
-import { handleTiktok } from "./tiktok.js";
+import { handleTiktok, tiktokCron } from "./tiktok.js";
 const ROLES = new Set(["creator", "developer", "brand", "viewer", "api"]);
 
 // Creator perks are only revealed after a verified waitlist signup (never in page source).
@@ -1800,6 +1800,10 @@ function withCounter(res) {
 }
 
 export default {
+  // Daily TikTok drafts (founder 2026-11-17), see src/tiktok.js tiktokCron.
+  async scheduled(event, env, ctx) {
+    ctx.waitUntil(tiktokCron(env).catch((e) => console.error("tiktok_cron", e?.message)));
+  },
   async fetch(request, env) {
     const url = new URL(request.url);
 

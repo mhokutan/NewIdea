@@ -2,7 +2,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { DatabaseSync } from "node:sqlite";
-import { handleTiktok, seal, unseal } from "../src/tiktok.js";
+import { handleTiktok, seal, unseal, tiktokCron } from "../src/tiktok.js";
 
 function fakeD1(db) {
   const stmt = (sql, args = []) => ({
@@ -15,11 +15,13 @@ function fakeD1(db) {
 }
 function appdb() {
   const db = new DatabaseSync(":memory:");
-  db.exec(`CREATE TABLE promos (id TEXT, slug TEXT, title TEXT, description TEXT, creator_profile_id TEXT, status TEXT, live_at TEXT); CREATE TABLE promo_hashtags (promo_id TEXT, tag TEXT, position INTEGER);
+  db.exec(`CREATE TABLE promos (id TEXT, slug TEXT, title TEXT, description TEXT, creator_profile_id TEXT, status TEXT, live_at TEXT, lang TEXT DEFAULT 'en'); CREATE TABLE promo_hashtags (promo_id TEXT, tag TEXT, position INTEGER);
     CREATE TABLE promo_videos (promo_id TEXT, label TEXT, mp4_url TEXT, duration_ms INTEGER);
     CREATE TABLE profiles (id TEXT, handle TEXT); CREATE TABLE creator_details (profile_id TEXT, founder_owned INTEGER);
     INSERT INTO profiles VALUES ('p1','haulingempire'); INSERT INTO creator_details VALUES ('p1',1);
-    INSERT INTO promos VALUES ('x1','hauling-empire-run-the-company','You run the company','Start with one van.','p1','live',strftime('%Y-%m-%dT%H:%M:%fZ','now')); INSERT INTO promo_hashtags VALUES ('x1','tycoon',0);
+    INSERT INTO promos VALUES ('x1','hauling-empire-run-the-company','You run the company','Start with one van.','p1','live',strftime('%Y-%m-%dT%H:%M:%fZ','now'),'en'); INSERT INTO promo_hashtags VALUES ('x1','tycoon',0);
+    INSERT INTO promos (id,slug,title,description,creator_profile_id,status,live_at) VALUES ('x2','hauling-empire-first-truck','First truck','Get the keys.','p1','live','2026-10-02T12:00:00.000Z');
+    INSERT INTO promo_videos VALUES ('x2','A','https://promovote.com/media/hauling-empire-first-truck.mp4',12000);
     INSERT INTO promo_videos VALUES ('x1','A','https://promovote.com/media/hauling-empire-run-the-company.mp4',22400);`);
   return fakeD1(db);
 }
@@ -49,7 +51,7 @@ globalThis.fetch = async (input, init = {}) => {
 const env = {
   TIKTOK_SANDBOX_CLIENT_KEY: "sand-key", TIKTOK_SANDBOX_CLIENT_SECRET: "sand-secret",
   DB: fakeD1(new DatabaseSync(":memory:")), APPDB: appdb(),
-  ASSETS: { fetch: async (req) => { assert.equal(new URL(req.url).pathname, "/media/hauling-empire-run-the-company.mp4"); return new Response(new Uint8Array(10)); } },
+  ASSETS: { fetch: async (req) => { assert.match(new URL(req.url).pathname, /^\/media\/hauling-empire-(run-the-company|first-truck)\.mp4$/); return new Response(new Uint8Array(10)); } },
 };
 const deps = { adminPage: (path, title, body) => new Response(body, { headers: { "Content-Type": "text/html" } }), ADMIN_HEADERS: {} };
 const go = (path, init = {}) => { const url = new URL("https://promovote.com" + path); return handleTiktok(new Request(url, init), env, url, url.pathname, deps); };
@@ -139,6 +141,15 @@ test("expired access token is refreshed", async () => {
   assert.equal(t.length, before + 1);
   assert.equal(new URLSearchParams(t.at(-1).init.body).get("grant_type"), "refresh_token");
   assert.ok((await env.DB.prepare("SELECT access_expires_at FROM tiktok_auth").first()).access_expires_at > Date.now());
+});
+
+test("daily job sends unsent older promos as drafts, once", async () => {
+  await tiktokCron(env);
+  const rows = (await env.DB.prepare("SELECT video_path FROM tiktok_posts WHERE status IS NOT 'FAILED'").all()).results.map((r) => r.video_path);
+  assert.ok(rows.includes("/media/hauling-empire-first-truck.mp4"));
+  const n = rows.length;
+  await tiktokCron(env);
+  assert.equal((await env.DB.prepare("SELECT COUNT(*) AS n FROM tiktok_posts WHERE status IS NOT 'FAILED'").first()).n, n);
 });
 
 test("disconnect revokes and deletes", async () => {
