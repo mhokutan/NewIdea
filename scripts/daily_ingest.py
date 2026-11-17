@@ -25,10 +25,12 @@ NS = uuid.UUID("6f1c2b0e-5d1a-4c7e-9a43-70726f6d6f76")
 APPS = {
     "haulingempire": ("app_store", "https://apps.apple.com/us/app/hauling-empire-truck-tycoon/id6815224121"),
     "poleris": ("app_store", "https://apps.apple.com/us/app/poleris-manifest-rituals/id6792844860"),
-    "dovelet": ("google_play", "https://play.google.com/store/apps/details?id=com.mhokutan.coupleapp"),
+    "dovelet": ("app_store", "https://apps.apple.com/us/app/dovelet-for-couples/id6824002542"),  # Android gets Google Play from the profile link
     "dropolis": ("google_play", "https://play.google.com/store/apps/details?id=com.promovote.dropolis"),
     "promovote": None,  # TikTok and X only
 }
+ALIASES = {"hauling-empire": "haulingempire"}  # file names the video session uses
+GOOGLE_ONLY = {"dropolis"}  # not on the App Store (Dovelet is since 2026-11-16)
 X_ROTATION = ["haulingempire", "dropolis", "poleris", "dovelet", "promovote"]
 q = lambda v: "null" if v is None else "'" + str(v).replace("'", "''") + "'"
 LINK = re.compile(r"https?://|www\.|\.com\b|\.app\b", re.I)
@@ -56,16 +58,35 @@ def probe(path):
     return v, float(j["format"]["duration"]), any(s["codec_type"] == "audio" for s in j["streams"])
 
 
+def normalize(meta):
+    """Accepts {title, description} or the video session's {caption}; hashtags with or without #."""
+    m = dict(meta)
+    cap = str(m.get("caption") or "").strip()
+    if not m.get("description") and cap:
+        m["description"] = cap
+    if not m.get("title") and cap:
+        first = re.split(r"(?<=[.?!])\s", cap, maxsplit=1)[0].strip()
+        if first.lower().startswith("did you know?") and len(cap) > len(first):
+            first = re.split(r"(?<=[.?!])\s", cap[len(first):].strip(), maxsplit=1)[0].strip()
+        if len(first) > 60:
+            head = first[:60]
+            cut = max(head.rfind(","), head.rfind(":"), head.rfind(";"))
+            first = head[:cut].strip() if cut >= 15 else head[:59].rsplit(" ", 1)[0].rstrip(",;:") + "…"
+        m["title"] = first
+    m["hashtags"] = [str(t).lstrip("#") for t in (m.get("hashtags") or [])]
+    return m
+
+
 def check(app, meta, mp4):
     errs = []
-    if meta.get("app") not in (None, app):
+    if ALIASES.get(meta.get("app"), meta.get("app")) not in (None, app):
         errs.append("app name mismatch")
     t, d, tags = str(meta.get("title", "")).strip(), str(meta.get("description", "")).strip(), meta.get("hashtags") or []
     if not t or len(t) > 60: errs.append("title length")
     if not d or len(d) > 280: errs.append("description length")
     if len(tags) > 2 or any(not re.fullmatch(r"[A-Za-z0-9_]{2,30}", str(x).lstrip("#")) for x in tags): errs.append("hashtags")
     if LINK.search(t + " " + d): errs.append("link in text")
-    if app in ("dropolis", "dovelet") and re.search(r"app store|iphone|ios", t + " " + d, re.I): errs.append("App Store claim for a Google Play only app")
+    if app in GOOGLE_ONLY and re.search(r"app store|iphone|ios", t + " " + d, re.I): errs.append("App Store claim for a Google Play only app")
     v, dur, audio = probe(mp4)
     if not v or v["codec_name"] != "h264": errs.append("not H.264")
     elif abs(v["width"] / v["height"] - 9 / 16) > 0.02: errs.append(f"not 9:16 ({v['width']}x{v['height']})")
@@ -100,7 +121,9 @@ def main():
     assert re.fullmatch(r"\d{4}-\d{2}-\d{2}", day)
     sh(["git", "fetch", "-q", "origin", "videos/daily"], cwd=ROOT)
     names = sh(["git", "ls-tree", "--name-only", "FETCH_HEAD", f"videos/daily/out/{day}/"], cwd=ROOT).split()
-    apps = sorted({Path(n).stem for n in names if n.endswith(".mp4")} & {Path(n).stem for n in names if n.endswith(".json")} & set(APPS))
+    stems = {Path(n).stem for n in names if n.endswith(".mp4")} & {Path(n).stem for n in names if n.endswith(".json")}
+    src = {ALIASES.get(x, x): x for x in stems if ALIASES.get(x, x) in APPS}  # app id -> file stem
+    apps = sorted(src)
     print(f"{day}: found {apps or 'nothing'}")
     if not apps:
         return 0
@@ -116,8 +139,8 @@ def main():
             report.append(f"{app}: already added, skipped")
             continue
         mp4, js = work / f"{app}.mp4", work / f"{app}.json"
-        mp4.write_bytes(subprocess.run(["git", "show", f"FETCH_HEAD:videos/daily/out/{day}/{app}.mp4"], cwd=ROOT, capture_output=True, check=True).stdout)
-        meta = json.loads(subprocess.run(["git", "show", f"FETCH_HEAD:videos/daily/out/{day}/{app}.json"], cwd=ROOT, capture_output=True, check=True).stdout)
+        mp4.write_bytes(subprocess.run(["git", "show", f"FETCH_HEAD:videos/daily/out/{day}/{src[app]}.mp4"], cwd=ROOT, capture_output=True, check=True).stdout)
+        meta = normalize(json.loads(subprocess.run(["git", "show", f"FETCH_HEAD:videos/daily/out/{day}/{src[app]}.json"], cwd=ROOT, capture_output=True, check=True).stdout))
         errs, dur = check(app, meta, mp4)
         if errs:
             report.append(f"{app}: SKIPPED ({', '.join(errs)})")
@@ -176,7 +199,7 @@ def main():
         meta = next(m for a, m, _ in ok if a == pick)
         tags = " ".join(f"#{str(t).lstrip('#')}" for t in (meta.get("hashtags") or []))
         store = {"haulingempire": "Search Hauling Empire on the App Store or Google Play.", "poleris": "Search Poleris on the App Store or Google Play.",
-                 "dovelet": "Search Dovelet on Google Play.", "dropolis": "Search Dropolis on Google Play.", "promovote": "Search PromoVote on the App Store or Google Play."}[pick]
+                 "dovelet": "Search Dovelet on the App Store or Google Play.", "dropolis": "Search Dropolis on Google Play.", "promovote": "Search PromoVote on the App Store or Google Play."}[pick]
         body = f"{meta['title'].strip().rstrip('.!?')}. {meta['description'].strip()}"
         tail = f" {store} {tags}".rstrip()
         body = (body[: 280 - len(tail) - 1].rsplit(" ", 1)[0] + "…" if len(body) + len(tail) > 280 else body) + tail

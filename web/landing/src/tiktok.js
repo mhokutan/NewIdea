@@ -369,21 +369,23 @@ async function bulk(env) {
 // Daily job (founder 2026-11-17: "herkesin paylaşımını yapmaya başla"), cron 21:17 UTC: sends up to 4 videos as TikTok
 // drafts: first the daily videos in tiktok_queue (oldest first, from R2), then founder promos that were never sent
 // (English, newest first, any age); it also refreshes the status of open ones. TikTok
-// allows only a few pending inbox shares per day, so it never sends while 4 or more drafts from the last 24 h exist.
+// allows only a few pending inbox shares per day, so it never sends while 4 or more unposted drafts from the last 24 h exist.
 // Drafts only: the owner publishes each video in the TikTok app.
 export async function tiktokCron(env) {
   if (!env.DB) return;
   await ensureTables(env);
   const s = await session(env);
   if (!s?.token) { console.log("tiktok_cron: not connected", s?.error || ""); return; }
-  const { results: open } = await env.DB.prepare("SELECT id, publish_id, status FROM tiktok_posts WHERE publish_id IS NOT NULL AND status IN ('PROCESSING_UPLOAD','PROCESSING_DOWNLOAD') ORDER BY id DESC LIMIT 10").all();
+  // Drafts left in the inbox stay SEND_TO_USER_INBOX until the owner posts them; refresh those too, so a posted draft
+  // frees a place for the next one.
+  const { results: open } = await env.DB.prepare("SELECT id, publish_id, status FROM tiktok_posts WHERE publish_id IS NOT NULL AND status IN ('PROCESSING_UPLOAD','PROCESSING_DOWNLOAD','SEND_TO_USER_INBOX') AND created_at >= datetime('now', '-3 days') ORDER BY id DESC LIMIT 20").all();
   for (const p of open) {
     try {
       const st = await apiCall("/v2/post/publish/status/fetch/", s.token, { publish_id: p.publish_id });
       if (st.status && st.status !== p.status) await env.DB.prepare("UPDATE tiktok_posts SET status = ?1, error = ?2 WHERE id = ?3").bind(st.status, st.fail_reason || null, p.id).run();
     } catch (e) { console.error("tiktok_cron_status", e.message); }
   }
-  const recent = (await env.DB.prepare("SELECT COUNT(*) AS n FROM tiktok_posts WHERE kind = 'inbox' AND status IS NOT 'FAILED' AND created_at >= datetime('now', '-1 day')").first())?.n || 0;
+  const recent = (await env.DB.prepare("SELECT COUNT(*) AS n FROM tiktok_posts WHERE kind = 'inbox' AND status IN ('PROCESSING_UPLOAD','PROCESSING_DOWNLOAD','SEND_TO_USER_INBOX') AND created_at >= datetime('now', '-1 day')").first())?.n || 0;
   const room = Math.min(4, 4 - recent);
   if (room <= 0) { console.log("tiktok_cron: inbox busy", recent); return; }
   const { results: queued } = await env.DB.prepare("SELECT id, r2_key, caption FROM tiktok_queue WHERE sent_at IS NULL ORDER BY id LIMIT ?1").bind(room).all();
