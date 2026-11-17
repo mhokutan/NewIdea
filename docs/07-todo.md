@@ -46,3 +46,11 @@ Fikir: reklam parasını doğrudan uygulama indirme reklamına değil promovote.
 - [ ] v1.1: PromoVote Pro, Story'ler (sadece takipçilere, yeşil halka), creator koleksiyonları.
 - [ ] Yorum yerine oylama bitince görünen "neden böyle tahmin ettim" notu.
 - [ ] "Calm" promosunun adı (kurucu), Apple token revoke key (kurucu).
+
+## Next PromoVote release (2026-11-17)
+* Contents: calls without sign in, pt/de/fr, Android install source, finished view fix; API deploy with it (guest and install events, 6 languages).
+* Before the build: Mac test (`docs/prompts/mac-test-next-build.md`, report in `docs/review/2026-11-17-mac-test/`), then the founder's own "build".
+* Store: new English screenshots checked by the CEO on branch `store/aso-2026-11` (563f448),
+  `store/screenshots/aso-2026-11/iphone-6.9-1320x2868/` and `play-phone-1080x1920/` (01-call, 02-duel, 03-drop) go in as the
+  first 3 images, the rest stay. No iPad. Store texts in en + new languages from `mhokutan/nakliye-patronu` branch
+  `claude/aso-yeni-metinler`, `docs/aso/promovote/<lang>.md`. Staged release on both stores.
