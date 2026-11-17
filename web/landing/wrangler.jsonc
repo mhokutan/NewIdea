@@ -27,9 +27,10 @@
   ],
   // Dropolis API (online count): a Worker fetching another Worker on the same zone by URL can be refused.
   "services": [{ "binding": "DROPOLIS", "service": "dropolis-api" }],
+  "r2_buckets": [{ "binding": "MEDIA", "bucket_name": "promovote-media" }],
   // Keep variables added in the Cloudflare dashboard on deploy (an ADMIN_PASSWORD saved as plain text was lost on a
   // wrangler deploy, 2026-10). ADMIN_PASSWORD should be a Secret anyway; secrets always survive deploys.
-  "triggers": { "crons": ["17 15 * * *"] },
+  "triggers": { "crons": ["17 21 * * *"] },
   "keep_vars": true,
   "vars": {
     "TURNSTILE_SITE_KEY": "0x4AAAAAAFMH6xbA0dPcxH_-"

@@ -152,6 +152,18 @@ test("daily job sends unsent older promos as drafts, once", async () => {
   assert.equal((await env.DB.prepare("SELECT COUNT(*) AS n FROM tiktok_posts WHERE status IS NOT 'FAILED'").first()).n, n);
 });
 
+test("daily job sends queued R2 videos first and marks them sent", async () => {
+  env.MEDIA = { get: async (k) => (k === "daily/2026-11-17/promovote.mp4" ? { arrayBuffer: async () => new Uint8Array(10).buffer } : null) };
+  await env.DB.prepare("DELETE FROM tiktok_posts").run();
+  await env.DB.prepare("INSERT INTO tiktok_queue (r2_key, caption) VALUES ('daily/2026-11-17/promovote.mp4', 'Call it first. #promovote')").run();
+  await tiktokCron(env);
+  const q = await env.DB.prepare("SELECT sent_at FROM tiktok_queue").first();
+  assert.ok(q.sent_at);
+  const p = await env.DB.prepare("SELECT video_path, caption FROM tiktok_posts ORDER BY id LIMIT 1").first();
+  assert.equal(p.video_path, "r2:daily/2026-11-17/promovote.mp4");
+  assert.equal(p.caption, "Call it first. #promovote");
+});
+
 test("disconnect revokes and deletes", async () => {
   const r = await go("/admin/tiktok/disconnect", { method: "POST", headers: { Origin: "https://promovote.com" } });
   assert.match(r.headers.get("Location"), /ok=disconnected/);

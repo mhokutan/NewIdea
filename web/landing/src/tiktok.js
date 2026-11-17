@@ -29,6 +29,9 @@ async function ensureTables(env) {
       connected_at TEXT NOT NULL DEFAULT (datetime('now')), updated_at TEXT NOT NULL DEFAULT (datetime('now')))`),
     env.DB.prepare(`CREATE TABLE IF NOT EXISTS tiktok_posts (id INTEGER PRIMARY KEY AUTOINCREMENT, created_at TEXT NOT NULL DEFAULT (datetime('now')),
       kind TEXT NOT NULL, video_path TEXT NOT NULL, caption TEXT, privacy TEXT, publish_id TEXT, status TEXT, error TEXT)`),
+    // Daily videos (2026-11-17) waiting for TikTok, filled by scripts/daily_ingest.py; r2_key in bucket promovote-media.
+    env.DB.prepare(`CREATE TABLE IF NOT EXISTS tiktok_queue (id INTEGER PRIMARY KEY AUTOINCREMENT, r2_key TEXT NOT NULL UNIQUE, caption TEXT NOT NULL,
+      created_at TEXT NOT NULL DEFAULT (datetime('now')), sent_at TEXT)`),
   ]);
 }
 
@@ -307,9 +310,16 @@ async function post(request, env) {
 // One press sends the newest founder promos of the last 8 days that were not sent yet, as drafts to the TikTok
 // inbox (video.upload). The owner still publishes each one in the TikTok app, so a person posts every video.
 async function sendOne(env, token, path, caption) {
-  const file = await env.ASSETS.fetch(new Request(`${ORIGIN}${path}`));
-  if (!file.ok) throw new Error("video dosyası okunamadı");
-  const bytes = new Uint8Array(await file.arrayBuffer());
+  let bytes;
+  if (path.startsWith("r2:")) {
+    const obj = await env.MEDIA?.get(path.slice(3));
+    if (!obj) throw new Error("video dosyası depoda yok");
+    bytes = new Uint8Array(await obj.arrayBuffer());
+  } else {
+    const file = await env.ASSETS.fetch(new Request(`${ORIGIN}${path}`));
+    if (!file.ok) throw new Error("video dosyası okunamadı");
+    bytes = new Uint8Array(await file.arrayBuffer());
+  }
   if (!bytes.length || bytes.length > MAX_BYTES) throw new Error("video boyutu uygun değil");
   const init = await apiCall("/v2/post/publish/inbox/video/init/", token, { source_info: { source: "FILE_UPLOAD", video_size: bytes.length, chunk_size: bytes.length, total_chunk_count: 1 } });
   const up = await fetch(init.upload_url, { method: "PUT", headers: { "Content-Type": "video/mp4", "Content-Range": `bytes 0-${bytes.length - 1}/${bytes.length}` }, body: bytes });
@@ -356,8 +366,9 @@ async function bulk(env) {
   return Response.redirect(`${ORIGIN}/admin/tiktok?ok=bulk&n=${ok}`, 303);
 }
 
-// Daily job (founder 2026-11-17: "herkesin paylaşımını yapmaya başla"): sends up to 2 founder promos that were never
-// sent (English, newest first, any age) as drafts to the TikTok inbox, and refreshes the status of open ones. TikTok
+// Daily job (founder 2026-11-17: "herkesin paylaşımını yapmaya başla"), cron 21:17 UTC: sends up to 4 videos as TikTok
+// drafts: first the daily videos in tiktok_queue (oldest first, from R2), then founder promos that were never sent
+// (English, newest first, any age); it also refreshes the status of open ones. TikTok
 // allows only a few pending inbox shares per day, so it never sends while 4 or more drafts from the last 24 h exist.
 // Drafts only: the owner publishes each video in the TikTok app.
 export async function tiktokCron(env) {
@@ -373,15 +384,19 @@ export async function tiktokCron(env) {
     } catch (e) { console.error("tiktok_cron_status", e.message); }
   }
   const recent = (await env.DB.prepare("SELECT COUNT(*) AS n FROM tiktok_posts WHERE kind = 'inbox' AND status IS NOT 'FAILED' AND created_at >= datetime('now', '-1 day')").first())?.n || 0;
-  const room = Math.min(2, 4 - recent);
+  const room = Math.min(4, 4 - recent);
   if (room <= 0) { console.log("tiktok_cron: inbox busy", recent); return; }
-  const list = (await catalog(env)).slice(0, room);
+  const { results: queued } = await env.DB.prepare("SELECT id, r2_key, caption FROM tiktok_queue WHERE sent_at IS NULL ORDER BY id LIMIT ?1").bind(room).all();
+  const list = queued.map((q) => ({ path: `r2:${q.r2_key}`, caption: q.caption, qid: q.id }));
+  if (list.length < room) list.push(...(await catalog(env)).slice(0, room - list.length));
   for (const v of list) {
     try {
       const id = await sendOne(env, s.token, v.path, v.caption);
       await env.DB.prepare("INSERT INTO tiktok_posts (kind, video_path, caption, publish_id, status) VALUES ('inbox', ?1, ?2, ?3, 'PROCESSING_UPLOAD')").bind(v.path, v.caption, id).run();
+      if (v.qid) await env.DB.prepare("UPDATE tiktok_queue SET sent_at = datetime('now') WHERE id = ?1").bind(v.qid).run();
     } catch (e) {
       console.error("tiktok_cron_send", v.path, e.message);
+      if (v.qid) await env.DB.prepare("UPDATE tiktok_queue SET sent_at = datetime('now') WHERE id = ?1").bind(v.qid).run();
       await env.DB.prepare("INSERT INTO tiktok_posts (kind, video_path, caption, status, error) VALUES ('inbox', ?1, ?2, 'FAILED', ?3)").bind(v.path, v.caption, e.message.slice(0, 300)).run();
       break;
     }

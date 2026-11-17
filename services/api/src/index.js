@@ -49,7 +49,7 @@ app.post("/v1/webhooks/apple", (c) => c.body(null, 200));
 app.use("/v1/*", async (c, next) => {
   if (c.req.method === "GET" || c.req.method === "OPTIONS") return next();
   // Photo, video and poster uploads check their own (larger) limits in the route.
-  if (c.req.path !== "/v1/me/media" && !/^\/v1\/me\/promos\/[^/]+\/(video|poster)$/.test(c.req.path)) {
+  if (c.req.path !== "/v1/me/media" && c.req.path !== "/v1/admin/ingest" && !/^\/v1\/me\/promos\/[^/]+\/(video|poster)$/.test(c.req.path)) {
     // A chunked body has no Content-Length and could skip the size check, so it is refused.
     // Requests without a body (taps like save or claim) still pass.
     if (/chunked/i.test(c.req.header("Transfer-Encoding") || "")) return c.json({ error: { code: "length_required", message: "Content-Length required." } }, 411);
@@ -705,12 +705,36 @@ app.post("/v1/me/media", async (c) => {
   if (old?.u && old.u.startsWith(prefix)) await c.env.MEDIA.delete(old.u.slice(prefix.length)).catch(() => {});
   return c.json({ ok: true, url }, 201);
 });
+// Daily founder videos go to R2 under daily/<date>/<name>.(mp4|jpg). Writer: scripts/daily_ingest.py, which sets a fresh
+// random Worker secret INGEST_TOKEN before each run and a new random one after it (the cloud token has no R2 access).
+const DAILY_KEY = /^daily\/\d{4}-\d{2}-\d{2}\/[a-z0-9-]{1,60}\.(mp4|jpg)$/;
+app.put("/v1/admin/ingest", async (c) => {
+  const tok = c.env.INGEST_TOKEN || "";
+  const got = c.req.header("X-Ingest-Token") || "";
+  if (tok.length < 32 || !timingSafeEqualStr(got, tok)) return c.json({ error: { code: "unauthorized" } }, 401);
+  if (!c.env.MEDIA) return c.json({ error: { code: "no_storage" } }, 503);
+  const key = c.req.query("key") || "";
+  if (!DAILY_KEY.test(key)) return c.json({ error: { code: "bad_key" } }, 400);
+  const len = +(c.req.header("Content-Length") || 0);
+  if (!len || len > 80 * 1024 * 1024) return c.json({ error: { code: "bad_size" } }, 413);
+  const type = key.endsWith(".mp4") ? "video/mp4" : "image/jpeg";
+  await c.env.MEDIA.put(key, c.req.raw.body, { httpMetadata: { contentType: type } });
+  return c.json({ ok: true, url: `https://api.promovote.com/media/${key}` }, 201);
+});
+function timingSafeEqualStr(a, b) {
+  if (a.length !== b.length) return false;
+  let d = 0;
+  for (let i = 0; i < a.length; i++) d |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  return d === 0;
+}
 app.get("/media/*", async (c) => {
   if (!c.env.MEDIA) return c.notFound();
   const key = c.req.path.slice("/media/".length);
   const isProfile = /^profiles\/[a-f0-9-]{36}\/(avatar|banner)-[a-f0-9-]{36}\.(jpg|png|webp)$/.test(key);
   const isPromo = /^promos\/[a-f0-9-]{36}\/[a-f0-9-]{36}\/[a-f0-9-]{36}\.(mp4|jpg)$/.test(key);
-  if (!isProfile && !isPromo) return c.notFound();
+  // Daily founder videos (2026-11-17): public promo clips made by our own video session, see scripts/daily_ingest.py.
+  const isDaily = DAILY_KEY.test(key);
+  if (!isProfile && !isPromo && !isDaily) return c.notFound();
   let cache = "public, max-age=31536000, immutable";
   if (isPromo) {
     const promoId = key.split("/")[2];
@@ -1871,9 +1895,16 @@ async function xCall(env, method, url, { query = {}, json, form } = {}) {
 
 // Chunked v2 media upload for a video (or image) at a public https URL on our own domain; returns the media id.
 async function xUploadMedia(env, mediaUrl) {
-  if (!/^https:\/\/promovote\.com\//.test(mediaUrl)) throw new Error("media_url must be on https://promovote.com/");
-  // Through the service binding when present: a Worker fetching another Worker on the same zone by URL can be refused.
-  const res = env.LANDING ? await env.LANDING.fetch(new Request(mediaUrl)) : await fetch(mediaUrl);
+  const daily = mediaUrl.startsWith("https://api.promovote.com/media/") ? mediaUrl.slice("https://api.promovote.com/media/".length) : null;
+  if (daily !== null && !DAILY_KEY.test(daily)) throw new Error("media_url: unknown api.promovote.com media");
+  if (daily === null && !/^https:\/\/promovote\.com\//.test(mediaUrl)) throw new Error("media_url must be on https://promovote.com/");
+  // Daily videos are read straight from R2; site media through the service binding when present (a Worker fetching
+  // another Worker on the same zone by URL can be refused).
+  let res;
+  if (daily !== null) {
+    const obj = await env.MEDIA?.get(daily);
+    res = obj ? new Response(obj.body, { headers: { "content-type": obj.httpMetadata?.contentType || "video/mp4" } }) : new Response(null, { status: 404 });
+  } else res = env.LANDING ? await env.LANDING.fetch(new Request(mediaUrl)) : await fetch(mediaUrl);
   if (!res.ok) throw new Error(`media fetch ${res.status}`);
   const type = (res.headers.get("content-type") || "video/mp4").split(";")[0];
   const blob = await res.blob();
