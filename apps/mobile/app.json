@@ -51,7 +51,7 @@
       ],
       "expo-video",
       "expo-secure-store",
-      "expo-localization",
+      ["expo-localization", { "supportedLocales": ["en", "es", "tr", "pt", "de", "fr"] }],
       "expo-apple-authentication",
       [
         "expo-image-picker",

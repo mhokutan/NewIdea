@@ -18,7 +18,7 @@ import { C, F, themed } from '@/lib/theme';
 import { Button, Pill } from '@/ui/Pill';
 
 const MIN_MS = 10000, MAX_MS = 30500, MAX_BYTES = 50 * 1024 * 1024;
-const LANGS = [['en', 'English'], ['es', 'Español'], ['tr', 'Türkçe']] as const;
+const LANGS = [['en', 'English'], ['es', 'Español'], ['tr', 'Türkçe'], ['pt', 'Português'], ['de', 'Deutsch'], ['fr', 'Français']] as const;
 // Which profile link platforms can back each main button (same table as the API's CTA_PLATFORMS).
 const CTA_FROM: Record<string, string[]> = {
   app_store: ['app_store'], google_play: ['google_play'], steam: ['steam'], itch: ['itch'], etsy: ['etsy'],

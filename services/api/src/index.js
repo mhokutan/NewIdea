@@ -8,7 +8,7 @@ import { cors } from "hono/cors";
 import { createAuth } from "./auth.js";
 
 const app = new Hono();
-const LANGS = ["en", "es", "tr"];
+const LANGS = ["en", "es", "tr", "pt", "de", "fr"];
 // Creator categories (expert review 2026-10-07). Local opens in Explore once there are 20 local creators.
 const CATEGORIES = ["games", "apps", "streams", "videos", "shops", "brands", "local"];
 const KIND_BY_CATEGORY = { games: "game_dev", apps: "app_maker", streams: "streamer", videos: "short_video", shops: "shop", brands: "brand", local: "local_business" };
