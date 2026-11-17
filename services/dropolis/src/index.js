@@ -20,7 +20,10 @@ const APPSTORE_URL = "https://apps.apple.com/app/id6829947695";
 const CORS = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "GET, POST, PUT, PATCH, DELETE, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type, Authorization",
+  // X-Device-Id: the iOS app sends it (2026-11-16). Date is exposed so the app can
+  // read the server time.
+  "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Device-Id",
+  "Access-Control-Expose-Headers": "Date",
   "Access-Control-Max-Age": "86400",
 };
 const json = (data, status = 200) => new Response(JSON.stringify(data), { status, headers: { "Content-Type": "application/json", "Cache-Control": "no-store", ...CORS } });
