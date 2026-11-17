@@ -99,7 +99,19 @@ The same 1080p files can also go to X (video posts) and, later, TikTok.
 5. Live: apply the migration (`npx wrangler d1 migrations apply promovote-db --remote`, or the D1 tool plus a manual
    `d1_migrations` row) and deploy promovote-landing **from a worktree at the live commit** with only the new media,
    `content/`, `public/index.html`, `public/creators/*`, `public/explore.html`, `public/duel.html` and `public/i18n.js`
-   changes. Never deploy unfinished branch work. Both steps need the founder's yes (a standing yes, if given, is noted
-   here with its date).
+   changes. Never deploy unfinished branch work.
+   **Standing yes (founder 2026-11-17: "bundan sonra promovote tiktok hesabından paylaşım ve promovote'da ayrı ayrı
+   hesaplardan bizim uygulamalar için olan iş kısmı sende")**: the weekly promos go live without asking each week
+   (migration + media deploy), then tell the founder after. Before any landing deploy run `npx wrangler deployments list`:
+   other sessions deploy promovote-landing too (2026-11-17 a deploy from an old base removed their office work for
+   15 minutes). Merge the remote branch first and deploy from a base that contains everything already live.
 6. Check: `https://promovote.com/media/<slug>.mp4` answers 200, `https://api.promovote.com/v1/creators/<handle>` lists the
    promo, then tell the founder in short Turkish.
+
+## 8. TikTok (account "promovote", connected 2026-11-17, sandbox until TikTok approves the app)
+* promovote-landing runs `tiktokCron` every day at 15:17 UTC (`src/tiktok.js`): it sends up to 2 founder promos that were
+  never sent (English, 8 s or more, newest first) as drafts to the TikTok inbox, never more than 4 drafts in 24 h.
+  New weekly promos are picked up by themselves once they are live in promovote-db.
+* The founder publishes each draft in the TikTok app (TikTok rule; unaudited apps also post private only).
+* Check: `npx wrangler d1 execute promovote-waitlist --remote --command "SELECT created_at, video_path, status, error FROM tiktok_posts ORDER BY id DESC LIMIT 10"`.
+* Before submitting the app for review, replace `docs/tiktok/flow-preview.mp4` with a real sandbox screen recording.
