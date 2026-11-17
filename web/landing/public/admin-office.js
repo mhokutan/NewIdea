@@ -91,7 +91,8 @@ function layout() {
   const ceo = { ...CEO_DEPT, ceo: true, desks: 1, cols: 1, x: RIGHT_X, z: 1, w: 7.5, d: rows[0] ? Math.max(...rows[0].map((r) => r.d)) : 7, door: "s" };
   rooms.push(ceo);
   W = RIGHT_X + ceo.w + 1;
-  D = Math.max(z, 1 + ceo.d + 2 + 11) + 0.5;
+  // The right column under the CEO room is the open break area (founder 2026-11-17): coffee bar, sofas, game corner.
+  D = Math.max(z, 1 + ceo.d + 2 + 16) + 0.5;
   ROOMS = rooms;
   return { rows, corridorsZ };
 }
@@ -205,7 +206,7 @@ function openPanel(id) {
   const row = (k, v) => [el("dt", {}, k), el("dd", {}, v || "-")];
   pBody.replaceChildren(...row("Birim", s ? roomLabel(s.room) : "-"), ...row("Durum", st(a.status).label),
     ...row("Model", agentModel(a) ? chips([], agentModel(a)) : null), ...row("Beceriler", chips(splitSkills(a.skills))),
-    ...row("Son iş", a.last_action),
+    ...row("Şu an", doingText(people.find((p) => p.agent.id === id))), ...row("Son iş", a.last_action),
     ...row("Senden beklenen", a.needs_owner), ...row("Güncelleme", ny(a.updated_at)));
   panel.classList.add("on");
   renderList();
@@ -538,10 +539,11 @@ function canvasTex(w, h, draw) {
   return tex;
 }
 
+const windowMat = new THREE.MeshStandardMaterial({ color: 0xbfe1f2, roughness: 0.15, metalness: 0.1, emissive: 0x9fd0ea, emissiveIntensity: 0.25 });
 // Outer walls: white, with windows, only on the back (z = 0) and the left (x = 0), so the camera sees in.
 function outerWalls(g) {
   const white = new THREE.MeshStandardMaterial({ color: 0xf7f6f2, roughness: 0.95 });
-  const glass = new THREE.MeshStandardMaterial({ color: 0xbfe1f2, roughness: 0.15, metalness: 0.1, emissive: 0x9fd0ea, emissiveIntensity: 0.25 });
+  const glass = windowMat;
   const frame = new THREE.MeshStandardMaterial({ color: 0xe5e3dc, roughness: 0.8 });
   box(g, W + 0.25, WALL_H, 0.25, 0, W / 2 - 0.125, WALL_H / 2, -0.125, { mat: white });
   box(g, 0.25, WALL_H, D, 0, -0.125, WALL_H / 2, D / 2, { mat: white });
@@ -569,7 +571,9 @@ function corridors(g) {
   const band = 0xe7ddcc, line = 0xffffff;
   const hz = (z0, z1, x0 = 0, x1 = W) => { const zc = (z0 + z1) / 2, w = x1 - x0, xc = (x0 + x1) / 2; flat(g, w, z1 - z0 - 0.3, band, xc, zc, 0.006); flat(g, w, 0.07, line, xc, z0 + 0.25, 0.008); flat(g, w, 0.07, line, xc, z1 - 0.25, 0.008); };
   const vt = (x0, x1, z0, z1) => { const xc = (x0 + x1) / 2, d = z1 - z0, zc = (z0 + z1) / 2; flat(g, x1 - x0 - 0.3, d, band, xc, zc, 0.005); flat(g, 0.07, d, line, x0 + 0.25, zc, 0.007); flat(g, 0.07, d, line, x1 - 0.25, zc, 0.007); };
-  for (const z of plan.corridorsZ) hz(z, z + 2);
+  // Only the first corridor runs across the right column (it leads to the CEO room and the break area); the others end
+  // at the vertical corridor, so the break area stays open floor.
+  plan.corridorsZ.forEach((z, i) => hz(z, z + 2, 0, i === 0 ? W : CROSS_X + 0.75));
   const last = plan.corridorsZ.at(-1) ?? 8;
   vt(CROSS_X - 0.75, CROSS_X + 0.75, 1, last);
 }
@@ -616,13 +620,14 @@ function buildRoom(g, r) {
   glassWall(g, r.x, back, r.x, front, null);
   glassWall(g, r.x + r.w, back, r.x + r.w, front, null);
   // Desks.
+  // The person sits on the viewer's side of the desk, back to the camera, facing the screen. The monitor, keyboard,
+  // mug, papers and plants on the desks are instanced in deskKits (2026-11-17).
   for (const s of filled) {
     prop(g, "table", { w: 1.5 }, s.x, s.z, 0);
-    // The person sits on the viewer's side of the desk, back to the camera, facing the screen.
-    prop(g, "computer", { h: 0.5 }, s.x, s.z - 0.1, Math.PI, 0.74);
-    prop(g, "chaircushioned", { h: 0.95 }, s.x, s.z + 0.75, 0);
-    if (hash(r.key + s.x) % 2) prop(g, "light_desk", { h: 0.38 }, s.x + 0.55, s.z - 0.1, 0, 0.74);
+    s.chair = prop(g, "chaircushioned", { h: 0.95 }, s.x, s.z + 0.75, 0);
+    s.lamp = hash(r.key + s.x + ":" + s.z) % 2 ? prop(g, "light_desk", { h: 0.38 }, s.x + 0.6, s.z - 0.26, 0, DESK_Y) : null;
   }
+  roomKit(g, r);
   // Room furniture: a plant in a corner and a shelf or cabinet against the side glass.
   prop(g, ["houseplant_1", "houseplant_3", "houseplant_6"][hash(r.key) % 3], { h: 1.0 }, r.x + r.w - 0.55, r.door === "s" ? r.z + 0.55 : r.z + r.d - 0.55);
   if (r.ceo) {
@@ -634,35 +639,641 @@ function buildRoom(g, r) {
   }
 }
 
+// ---------- a living office (founder 2026-11-17): things on the desks, room kits, the break area, day and night ----------
+// Everything here is drawn in code (boxes, cylinders and canvas textures), so nothing new is downloaded.
+let DESK_Y = 0.74; // desk top height, measured from the table model in start()
+const rng = (seed) => () => { seed = (seed + 0x6d2b79f5) >>> 0; let t = seed; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+const std = (color, extra = {}) => new THREE.MeshStandardMaterial({ color, roughness: 0.7, ...extra });
+const MAT = {
+  dark: std(0x1f2937, { roughness: 0.5 }), black: std(0x111318, { roughness: 0.45 }), white: std(0xf8fafc), paper: std(0xffffff, { roughness: 1 }),
+  steel: std(0x9ca3af, { roughness: 0.35, metalness: 0.5 }), wood: std(0xb7793f), pot: std(0xc2410c), leaf: std(0x3f9b4a, { roughness: 0.9 }),
+  green: std(0x15803d, { roughness: 0.9 }), led: new THREE.MeshBasicMaterial({ color: 0x4ade80 }), led2: new THREE.MeshBasicMaterial({ color: 0x38bdf8 }),
+  red: new THREE.MeshBasicMaterial({ color: 0xff4d4d }), glow: new THREE.MeshBasicMaterial({ color: 0xffd36b, transparent: true, opacity: 0.55, depthWrite: false }),
+  bulb: new THREE.MeshBasicMaterial({ color: 0xfff1b8 }), ring: new THREE.MeshBasicMaterial({ color: 0xfffbeb }),
+};
+const MUGS = [0xffffff, 0xffd60a, 0xef4444, 0x3b82f6, 0x22c55e, 0xf97316, 0x8b5cf6, 0x111827];
+
+// Screens: a shared material per kind. "code", "chart" and "design" scroll while their owner works.
+const SCREEN = {};
+function makeScreens() {
+  if (SCREEN.code) return;
+  const tex = (w, h, seed, draw, rep) => {
+    const r = rng(seed);
+    const t = canvasTex(w, h, (ctx) => draw(ctx, r));
+    if (rep) { t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(rep[0], rep[1]); }
+    return t;
+  };
+  const basic = (map) => new THREE.MeshBasicMaterial({ map, toneMapped: false });
+  SCREEN.code = basic(tex(256, 512, 11, (ctx, r) => {
+    ctx.fillStyle = "#0f172a"; ctx.fillRect(0, 0, 256, 512);
+    const cols = ["#7dd3fc", "#c4b5fd", "#86efac", "#fcd34d", "#f9a8d4", "#e2e8f0", "#e2e8f0"];
+    for (let y = 8; y < 512; y += 16) {
+      let x = 10 + Math.floor(r() * 4) * 16;
+      for (let k = 0, n = 1 + Math.floor(r() * 4); k < n && x < 236; k++) { const w = 14 + r() * 60; ctx.fillStyle = cols[Math.floor(r() * cols.length)]; ctx.fillRect(x, y, Math.min(w, 246 - x), 7); x += w + 9; }
+    }
+  }, [1, 0.5]));
+  SCREEN.chart = basic(tex(512, 256, 23, (ctx, r) => {
+    ctx.fillStyle = "#0b1220"; ctx.fillRect(0, 0, 512, 256);
+    ctx.strokeStyle = "rgba(148,163,184,.25)"; ctx.lineWidth = 2;
+    for (let y = 40; y < 256; y += 48) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(512, y); ctx.stroke(); }
+    for (let x = 6; x < 512; x += 32) { const h = 30 + r() * 150; ctx.fillStyle = x % 64 < 32 ? "#38bdf8" : "#a78bfa"; ctx.fillRect(x, 236 - h, 20, h); }
+    ctx.strokeStyle = "#facc15"; ctx.lineWidth = 6; ctx.beginPath();
+    for (let x = 0, y = 150; x <= 512; x += 32) { y = Math.max(40, Math.min(200, y + (r() - 0.55) * 60)); x ? ctx.lineTo(x, y) : ctx.moveTo(x, y); }
+    ctx.stroke();
+  }, [0.5, 1]));
+  SCREEN.design = basic(tex(256, 512, 37, (ctx, r) => {
+    ctx.fillStyle = "#f8fafc"; ctx.fillRect(0, 0, 256, 512);
+    const cols = ["#fde68a", "#fbcfe8", "#bfdbfe", "#bbf7d0", "#ddd6fe", "#fed7aa"];
+    for (let y = 10; y < 512; y += 64) {
+      ctx.fillStyle = "#18181b"; ctx.fillRect(14, y, 90 + r() * 80, 10);
+      ctx.fillStyle = cols[Math.floor(r() * cols.length)]; ctx.beginPath(); ctx.roundRect(14, y + 18, 110, 36, 8); ctx.fill();
+      ctx.fillStyle = cols[Math.floor(r() * cols.length)]; ctx.beginPath(); ctx.roundRect(132, y + 18, 110, 36, 8); ctx.fill();
+    }
+  }, [1, 0.5]));
+  SCREEN.idle = basic(canvasTex(128, 64, (ctx) => {
+    const g = ctx.createLinearGradient(0, 0, 128, 64); g.addColorStop(0, "#1e293b"); g.addColorStop(1, "#312e81");
+    ctx.fillStyle = g; ctx.fillRect(0, 0, 128, 64);
+    ctx.strokeStyle = "#ffd60a"; ctx.lineWidth = 5; ctx.lineJoin = "miter";
+    for (const dx of [0, 14]) { ctx.beginPath(); ctx.moveTo(48 + dx, 18); ctx.lineTo(62 + dx, 32); ctx.lineTo(48 + dx, 46); ctx.stroke(); }
+  }));
+  SCREEN.wait = basic(canvasTex(128, 64, (ctx) => {
+    ctx.fillStyle = "#facc15"; ctx.fillRect(0, 0, 128, 64);
+    ctx.fillStyle = "#18181b"; ctx.font = "900 40px system-ui, sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText("?", 64, 34);
+  }));
+  SCREEN.err = basic(canvasTex(128, 64, (ctx) => {
+    ctx.fillStyle = "#7f1d1d"; ctx.fillRect(0, 0, 128, 64);
+    ctx.fillStyle = "#fecaca"; ctx.font = "900 40px system-ui, sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText("!", 64, 34);
+  }));
+  SCREEN.off = new THREE.MeshStandardMaterial({ color: 0x0b0d12, roughness: 0.25, metalness: 0.2 });
+  SCREEN.game = basic(tex(256, 128, 51, (ctx, r) => {
+    const g = ctx.createLinearGradient(0, 0, 0, 128); g.addColorStop(0, "#38bdf8"); g.addColorStop(1, "#a7f3d0");
+    ctx.fillStyle = g; ctx.fillRect(0, 0, 256, 128);
+    ctx.fillStyle = "#16a34a"; ctx.fillRect(0, 100, 256, 28);
+    for (let x = 0; x < 256; x += 40) { ctx.fillStyle = "#a16207"; ctx.fillRect(x + r() * 20, 70 + r() * 20, 24, 30); }
+    ctx.fillStyle = "#ef4444"; ctx.fillRect(60, 78, 16, 22);
+  }, [0.5, 1]));
+}
+// What a working person has on the screen, from the role text.
+function workKind(a) {
+  const r = String(a.role || "").toLocaleLowerCase("tr");
+  if (/tasar|ui |ui$|design|ikon|görsel/.test(r)) return "design";
+  if (/analist|aso|rakip|reklam|mağaza|store|rapor|ads|büyüme/.test(r)) return "chart";
+  return "code";
+}
+const SCREEN_GEO = new THREE.PlaneGeometry(0.58, 0.34);
+
+// Instanced parts: one draw call per part for all desks.
+const dummy = new THREE.Object3D();
+function inst(g, geo, mat, list) {
+  if (!list.length) return null;
+  const m = new THREE.InstancedMesh(geo, mat, list.length);
+  list.forEach(([x, y, z, ry = 0, color], i) => {
+    dummy.position.set(x, y, z); dummy.rotation.set(0, ry, 0); dummy.updateMatrix();
+    m.setMatrixAt(i, dummy.matrix);
+    if (color !== undefined) m.setColorAt(i, new THREE.Color(color));
+  });
+  m.castShadow = true; m.receiveShadow = true;
+  g.add(m);
+  return m;
+}
+let nightGlow = null; // desk lamp bulbs and glow discs, shown in the evening and at night
+function deskKits(g) {
+  makeScreens();
+  const P = { frame: [], stand: [], base: [], kb: [], mouse: [], mug: [], paper: [], pot: [], leaf: [], bulb: [], disc: [] };
+  const y = DESK_Y;
+  for (const s of slots) {
+    const h = hash(s.room.key + ":" + s.x.toFixed(2) + ":" + s.z.toFixed(2));
+    P.base.push([s.x, y + 0.01, s.z - 0.2]); P.stand.push([s.x, y + 0.12, s.z - 0.21]); P.frame.push([s.x, y + 0.42, s.z - 0.19]);
+    P.kb.push([s.x, y + 0.012, s.z + 0.12]); P.mouse.push([s.x + 0.33, y + 0.015, s.z + 0.14]);
+    P.mug.push([s.x - 0.46 + (h % 3) * 0.05, y + 0.055, s.z + 0.08, 0, MUGS[h % MUGS.length]]);
+    if (h % 2) { P.paper.push([s.x + 0.5, y + 0.006, s.z + 0.06, ((h >> 2) % 7 - 3) * 0.1]); P.paper.push([s.x + 0.52, y + 0.013, s.z + 0.05, ((h >> 4) % 5 - 2) * 0.18]); }
+    if (h % 3 === 0) { P.pot.push([s.x - 0.6, y + 0.06, s.z - 0.24]); P.leaf.push([s.x - 0.6, y + 0.2, s.z - 0.24]); }
+    const scr = new THREE.Mesh(SCREEN_GEO, SCREEN.off);
+    scr.position.set(s.x, y + 0.42, s.z - 0.171);
+    g.add(scr);
+    s.screen = scr;
+    if (s.lamp) { P.bulb.push([s.x + 0.6, y + 0.3, s.z - 0.2]); P.disc.push([s.x + 0.45, y + 0.005, s.z - 0.05]); }
+  }
+  inst(g, new THREE.BoxGeometry(0.64, 0.4, 0.035), MAT.dark, P.frame);
+  inst(g, new THREE.BoxGeometry(0.05, 0.22, 0.05), MAT.dark, P.stand);
+  inst(g, new THREE.BoxGeometry(0.26, 0.02, 0.16), MAT.dark, P.base);
+  inst(g, new THREE.BoxGeometry(0.42, 0.022, 0.13), MAT.black, P.kb);
+  inst(g, new THREE.BoxGeometry(0.05, 0.025, 0.08), MAT.black, P.mouse);
+  inst(g, new THREE.CylinderGeometry(0.045, 0.04, 0.1, 10), std(0xffffff), P.mug);
+  inst(g, new THREE.BoxGeometry(0.21, 0.008, 0.29), MAT.paper, P.paper);
+  inst(g, new THREE.CylinderGeometry(0.06, 0.045, 0.12, 8), MAT.pot, P.pot);
+  inst(g, new THREE.IcosahedronGeometry(0.12, 0), MAT.leaf, P.leaf);
+  nightGlow = new THREE.Group();
+  const bulbs = inst(nightGlow, new THREE.SphereGeometry(0.05, 8, 6), MAT.bulb, P.bulb);
+  const discs = inst(nightGlow, new THREE.CircleGeometry(0.42, 20).rotateX(-Math.PI / 2), MAT.glow, P.disc);
+  for (const m of [bulbs, discs]) if (m) { m.castShadow = false; m.receiveShadow = false; }
+  g.add(nightGlow);
+}
+
+// Room kits: a whiteboard in every department room, and things that fit the team.
+function whiteboardTex(seed, title) {
+  return canvasTex(256, 160, (ctx) => {
+    const r = rng(seed);
+    ctx.fillStyle = "#ffffff"; ctx.fillRect(0, 0, 256, 160);
+    ctx.strokeStyle = "#cbd5e1"; ctx.lineWidth = 6; ctx.strokeRect(3, 3, 250, 154);
+    ctx.fillStyle = "#1e3a8a"; ctx.font = "700 18px system-ui, sans-serif"; ctx.fillText(title.slice(0, 18), 14, 28);
+    const notes = ["#fde047", "#f9a8d4", "#86efac", "#93c5fd", "#fdba74"];
+    for (let i = 0; i < 6; i++) { ctx.fillStyle = notes[Math.floor(r() * notes.length)]; ctx.fillRect(14 + (i % 3) * 52, 44 + Math.floor(i / 3) * 50, 40, 38); }
+    ctx.strokeStyle = "#ef4444"; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(180, 120);
+    for (let x = 180; x < 244; x += 8) ctx.lineTo(x, 120 - r() * 60);
+    ctx.stroke();
+  });
+}
+let blinkers = []; // LED materials that blink
+function roomKit(g, r) {
+  if (r.ceo) return;
+  const front = r.z + r.d;
+  // Whiteboard on a stand against the left glass, facing the room.
+  const wb = new THREE.Group();
+  const board = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.78, 1.25), [MAT.white, MAT.white, MAT.white, MAT.white, MAT.white, MAT.white]);
+  board.position.set(0, 1.12, 0);
+  const face = new THREE.Mesh(new THREE.PlaneGeometry(1.18, 0.72), new THREE.MeshBasicMaterial({ map: whiteboardTex(hash(r.key), r.spare ? "" : r.name), toneMapped: false }));
+  face.rotation.y = Math.PI / 2; face.position.set(0.025, 1.12, 0);
+  wb.add(board, face);
+  for (const dz of [-0.55, 0.55]) { const leg = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.75, 0.04), MAT.steel); leg.position.set(0, 0.37, dz); wb.add(leg); }
+  wb.position.set(r.x + 0.3, 0, r.z + 1.55);
+  g.add(wb);
+  if (r.spare) return;
+  // Team corners.
+  if (r.key === "ortak" || r.key === "dropolis") {
+    // A server rack with blinking lights in the back corner.
+    const rack = new THREE.Group();
+    const body = new THREE.Mesh(new THREE.BoxGeometry(0.6, 1.7, 0.6), MAT.black);
+    body.position.y = 0.85; body.castShadow = true; rack.add(body);
+    const leds = [MAT.led, MAT.led2];
+    for (let i = 0; i < 7; i++) for (let k = 0; k < 3; k++) {
+      const l = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.03, 0.01), leds[(i + k) % 2]);
+      l.position.set(-0.18 + k * 0.08, 0.3 + i * 0.2, 0.305); rack.add(l);
+    }
+    rack.position.set(r.x + r.w - 0.55, 0, front - 0.55);
+    rack.rotation.y = 0;
+    g.add(rack);
+  }
+  if (r.key === "panel" || /qa|test/.test(r.key)) {
+    // A small table with test phones on stands.
+    prop(g, "drawer_1", { h: 0.75 }, r.x + r.w - 0.6, front - 0.6, -Math.PI / 2);
+    for (let i = 0; i < 4; i++) {
+      const ph = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.15, 0.012), [MAT.black, MAT.black, MAT.black, MAT.black, SCREEN.idle, MAT.black]);
+      ph.position.set(r.x + r.w - 0.85 + (i % 2) * 0.22, 0.85, front - 0.75 + Math.floor(i / 2) * 0.25); ph.rotation.x = -0.35;
+      g.add(ph);
+    }
+  }
+  if (r.key === "social") {
+    // A ring light and a camera on a tripod.
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(0.28, 0.035, 8, 28), MAT.ring);
+    ring.position.set(r.x + r.w - 0.7, 1.45, front - 0.7); ring.rotation.y = -Math.PI / 4;
+    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 1.2, 6), MAT.dark); pole.position.set(r.x + r.w - 0.7, 0.6, front - 0.7);
+    const cam = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.12, 0.1), MAT.black); cam.position.set(r.x + r.w - 1.4, 1.1, front - 0.55);
+    const tri = new THREE.Mesh(new THREE.ConeGeometry(0.2, 1.05, 3, 1, true), MAT.dark); tri.position.set(r.x + r.w - 1.4, 0.52, front - 0.55);
+    g.add(ring, pole, cam, tri);
+  }
+  if (r.key === "store" || r.key === "promovote") {
+    // A big screen with live numbers on the front right corner.
+    const tv = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.7, 0.05), [MAT.black, MAT.black, MAT.black, MAT.black, SCREEN.chart, MAT.black]);
+    tv.position.set(r.x + r.w - 0.9, 1.25, front - 0.45); tv.rotation.y = Math.PI / 5;
+    const st2 = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.95, 0.06), MAT.dark); st2.position.set(r.x + r.w - 0.9, 0.47, front - 0.45);
+    g.add(tv, st2);
+  }
+}
+
+// The break area in the right column: coffee bar, sofas and a game corner. Spots are places people go to.
+let SPOTS = [];
 function lounge(g) {
-  // Open lounge under the CEO room in the right column: round rug, two sofas, coffee table, lamp, plants and shelves.
   const ceo = ROOMS.find((r) => r.ceo);
-  const cx = RIGHT_X + 3.9, cz = ceo.z + ceo.d + 2 + 4.2;
+  const top = ceo.z + ceo.d + 2; // just under the first corridor
+  const x0 = RIGHT_X + 0.3, x1 = W - 0.3;
+  SPOTS = [];
+  const spot = (kind, x, z, rot, via, extra = {}) => SPOTS.push({ kind, x, z, rot, via, used: null, ...extra });
+  // Floor tiles under the coffee bar and the game corner.
+  flat(g, x1 - x0, 2.2, 0xe5e7eb, (x0 + x1) / 2, top + 1.0, 0.012);
+  // Coffee bar: a counter with a coffee machine, cups and a water cooler.
+  const cbz = top + 0.45;
+  box(g, 3.4, 0.92, 0.6, 0, x0 + 1.9, 0.46, cbz, { mat: MAT.wood });
+  box(g, 3.5, 0.05, 0.66, 0, x0 + 1.9, 0.945, cbz, { mat: MAT.white });
+  box(g, 0.42, 0.5, 0.36, 0, x0 + 0.9, 1.22, cbz - 0.05, { mat: MAT.black });
+  box(g, 0.05, 0.05, 0.02, 0, x0 + 0.78, 1.36, cbz + 0.14, { mat: MAT.red, shadow: false });
+  box(g, 0.36, 0.42, 0.32, 0, x0 + 1.5, 1.18, cbz - 0.05, { mat: MAT.steel });
+  for (let i = 0; i < 5; i++) { const c = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.04, 0.1, 10), std(MUGS[i])); c.position.set(x0 + 2.2 + i * 0.13, 1.02, cbz + 0.05); c.castShadow = true; g.add(c); }
+  const bowl = new THREE.Mesh(new THREE.SphereGeometry(0.16, 12, 8, 0, Math.PI * 2, Math.PI / 2, Math.PI / 2), MAT.white);
+  bowl.position.set(x0 + 3.2, 1.12, cbz); bowl.rotation.x = Math.PI; g.add(bowl);
+  for (let i = 0; i < 4; i++) { const f = new THREE.Mesh(new THREE.SphereGeometry(0.06, 8, 6), std([0xef4444, 0xfacc15, 0x22c55e, 0xf97316][i])); f.position.set(x0 + 3.15 + (i % 2) * 0.1, 1.08, cbz - 0.04 + Math.floor(i / 2) * 0.08); g.add(f); }
+  box(g, 0.38, 0.9, 0.38, 0, x0 + 4.2, 0.45, cbz, { mat: MAT.white });
+  const bottle = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, 0.45, 14), new THREE.MeshStandardMaterial({ color: 0x7dd3fc, transparent: true, opacity: 0.75, roughness: 0.1 }));
+  bottle.position.set(x0 + 4.2, 1.13, cbz); g.add(bottle);
+  const lane1 = top + 1.75;
+  spot("coffee", x0 + 0.9, cbz + 0.75, Math.PI, [[x0 + 0.9, lane1]]);
+  spot("coffee", x0 + 1.9, cbz + 0.75, Math.PI, [[x0 + 1.9, lane1]]);
+  spot("water", x0 + 4.2, cbz + 0.75, Math.PI, [[x0 + 4.2, lane1]]);
+  // Sofas around a round rug.
+  const cx = RIGHT_X + 3.9, cz = top + 4.6;
   flat(g, 4.6, 4.6, 0xd9cfe8, cx, cz, 0.014, { circle: true });
   flat(g, 3.6, 3.6, 0xc6b9dd, cx, cz, 0.016, { circle: true });
   prop(g, "couch_medium1", { w: 2.4 }, cx, cz - 1.7, 0);
-  prop(g, "couch_medium1", { w: 2.4 }, cx - 1.75, cz + 0.3, Math.PI / 2);
-  prop(g, "table_roundlarge", { w: 1.15 }, cx, cz, 0);
-  prop(g, "light_floor1", { h: 1.7 }, cx + 1.8, cz - 1.8);
-  prop(g, "houseplant_6", { h: 1.3 }, cx + 2.2, cz + 2.0);
-  prop(g, "houseplant_3", { h: 1.1 }, RIGHT_X + 0.4, cz - 2.6);
-  prop(g, "bookshelf", { h: 1.9 }, W - 0.7, cz + 4.4, -Math.PI / 2);
-  prop(g, "bookcasebooks", { h: 1.9 }, W - 0.7, cz + 6.8, -Math.PI / 2);
-  prop(g, "houseplant_1", { h: 1.2 }, RIGHT_X + 0.5, Math.min(D - 0.8, cz + 9));
-  prop(g, "trashcan_small1", { h: 0.4 }, RIGHT_X + 0.3, ceo.z + ceo.d + 0.3);
+  prop(g, "couch_medium1", { w: 2.4 }, cx - 1.75, cz + 0.5, Math.PI / 2);
+  prop(g, "table_roundlarge", { w: 1.0 }, cx + 0.3, cz + 0.3, 0);
+  prop(g, "light_floor1", { h: 1.7 }, cx + 1.9, cz - 1.9);
+  prop(g, "houseplant_6", { h: 1.3 }, cx + 2.3, cz + 2.0);
+  const lane2 = cz - 0.85;
+  spot("sofa", cx - 0.55, cz - 1.55, 0, [[cx - 0.55, lane2]], { y: 0.12 });
+  spot("sofa", cx + 0.55, cz - 1.55, 0, [[cx + 0.55, lane2]], { y: 0.12 });
+  spot("sofa", cx - 1.6, cz + 0.05, Math.PI / 2, [[cx - 0.95, lane2], [cx - 0.95, cz + 0.05]], { y: 0.12 });
+  spot("sofa", cx - 1.6, cz + 0.95, Math.PI / 2, [[cx - 0.95, lane2], [cx - 0.95, cz + 0.95]], { y: 0.12 });
+  // Game corner: a foosball table, and a TV with a console and two bean bags.
+  const gz = cz + 5.4, fx = x0 + 2.2;
+  flat(g, x1 - x0, 4.6, 0xdbeafe, (x0 + x1) / 2, gz + 0.4, 0.012);
+  box(g, 1.3, 0.55, 0.75, 0, fx, 0.55, gz, { mat: std(0x7c3f12) });
+  box(g, 1.22, 0.02, 0.67, 0, fx, 0.835, gz, { mat: MAT.green, shadow: false });
+  for (const dx of [-0.55, 0.55]) for (const dz of [-0.3, 0.3]) box(g, 0.08, 0.3, 0.08, 0, fx + dx, 0.15, gz + dz, { mat: std(0x5b2c0a) });
+  for (let i = 0; i < 6; i++) {
+    const zz = gz - 0.25 + i * 0.1;
+    const rod = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, 1.7, 6), MAT.steel);
+    rod.rotation.z = Math.PI / 2; rod.position.set(fx, 0.95, zz); g.add(rod);
+    for (const px of [-0.3, 0, 0.3]) { const pl = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.12, 0.03), std(i % 2 ? 0xef4444 : 0x2563eb)); pl.position.set(fx + px + (i % 2 ? 0.08 : -0.08), 0.92, zz); g.add(pl); }
+  }
+  const lane3 = gz - 1.6;
+  flat(g, 0.1, 0.1, 0xffffff, fx, gz, 0.84); // the ball
+  spot("foosball", fx - 0.95, gz, Math.PI / 2, [[fx - 0.95, lane3]], { pair: 1 });
+  spot("foosball", fx + 0.95, gz, -Math.PI / 2, [[fx + 0.95, lane3]], { pair: 1 });
+  const tvx = x1 - 0.35, tvz = gz + 0.9;
+  box(g, 0.45, 0.45, 1.6, 0, tvx, 0.225, tvz, { mat: MAT.wood });
+  box(g, 0.05, 0.75, 1.3, 0, tvx, 0.9, tvz, { mat: MAT.black });
+  const game = new THREE.Mesh(new THREE.PlaneGeometry(1.2, 0.66), SCREEN.game); game.rotation.y = -Math.PI / 2; game.position.set(tvx - 0.03, 0.9, tvz); g.add(game);
+  box(g, 0.3, 0.06, 0.2, 0, tvx, 0.48, tvz - 0.5, { mat: MAT.black });
+  for (const [dz, col] of [[-0.45, 0xf97316], [0.45, 0x8b5cf6]]) {
+    const bag = new THREE.Mesh(new THREE.SphereGeometry(0.42, 14, 10), std(col, { roughness: 0.95 }));
+    bag.scale.set(1, 0.55, 1); bag.position.set(tvx - 1.7, 0.2, tvz + dz); bag.castShadow = true; g.add(bag);
+    spot("console", tvx - 1.7, tvz + dz, Math.PI / 2, [[tvx - 1.7, lane3]], { y: 0.12, pair: 2 });
+  }
+  // Plants and shelves along the edge.
+  prop(g, "houseplant_3", { h: 1.1 }, RIGHT_X + 0.4, top + 2.4);
+  prop(g, "bookshelf", { h: 1.9 }, x0 + 0.6, Math.min(D - 0.7, gz + 3.0), 0);
+  prop(g, "bookcasebooks", { h: 1.9 }, x0 + 1.9, Math.min(D - 0.7, gz + 3.0), 0);
+  prop(g, "houseplant_1", { h: 1.2 }, x1 - 0.4, Math.min(D - 0.6, gz + 3.0));
+  prop(g, "trashcan_small1", { h: 0.4 }, x0 + 4.9, cbz + 0.1);
   for (const z of plan.corridorsZ) prop(g, "houseplant_6", { h: 1.2 }, 0.6, z + 1.0);
 }
+
+// Day and night by New York time.
+let hemiLight = null;
+const nyHour = () => {
+  const parts = new Intl.DateTimeFormat("en-US", { timeZone: "America/New_York", hour: "numeric", minute: "numeric", hourCycle: "h23" }).formatToParts(new Date());
+  const get = (t) => Number(parts.find((p) => p.type === t)?.value || 0);
+  return (get("hour") % 24) + get("minute") / 60;
+};
+const NIGHT_SKY = new THREE.Color(0x8ea2e6), DAY_BG = new THREE.Color(0xe9e4dc), NIGHT_BG = new THREE.Color(0x1b2236), DUSK = new THREE.Color(0xffc48a), WHITE = new THREE.Color(0xffffff);
+let clockEl = null;
+function applyDaylight() {
+  // ?saat=13 previews another hour (for checking day and night); otherwise New York time now.
+  const q = new URLSearchParams(location.search).get("saat");
+  const h = Number(stage?.dataset.hour ?? (q !== null && q !== "" ? q : NaN));
+  const hour = Number.isFinite(h) ? h : nyHour();
+  // 1 in the day, 0 at night, with a soft morning and evening.
+  const k = hour < 5.5 ? 0 : hour < 7.5 ? (hour - 5.5) / 2 : hour < 17.5 ? 1 : hour < 20 ? 1 - (hour - 17.5) / 2.5 : 0;
+  const dusk = hour >= 16.5 && hour < 20 ? Math.min(1, Math.min(hour - 16.5, 20 - hour)) : 0;
+  if (hemiLight) { hemiLight.intensity = 0.3 + 1.2 * k; hemiLight.color.copy(NIGHT_SKY).lerp(WHITE, k); }
+  if (sunLight) { sunLight.intensity = 0.08 + 1.42 * k; sunLight.color.copy(WHITE).lerp(DUSK, dusk * 0.8); }
+  scene.background = NIGHT_BG.clone().lerp(DAY_BG, k);
+  windowMat.emissive.set(k > 0.5 ? 0x9fd0ea : 0x1e3a5f); windowMat.emissiveIntensity = 0.25 + (1 - k) * 0.35;
+  if (nightGlow) nightGlow.visible = k < 0.6;
+  if (stage) stage.dataset.daylight = k > 0.6 ? "day" : k > 0 ? "evening" : "night";
+  if (clockEl) {
+    const hh = Math.floor(hour), mm = Math.floor((hour - hh) * 60);
+    clockEl.textContent = `New York ${String(hh).padStart(2, "0")}:${String(mm).padStart(2, "0")} · ${k > 0.6 ? "Gündüz" : k > 0 ? "Akşam" : "Gece"}`;
+  }
+}
+
+// ---------- each person looks different (founder 2026-11-17) ----------
+// The CC0 characters share one color atlas: 8 columns of swatches, a colored band (v 0.5 to 0.75) and a band of
+// neutrals and skin tones (v 0.75 to 1). Moving a vertex's UV to another column changes that part's color, so every
+// person gets their own skin, clothes and hair from a hash of their id, with no new texture.
+const MODEL_TONE = { Opus: 0xf59e0b, Sonnet: 0x3b82f6, Haiku: 0x22c55e };
+function look(a) {
+  const h = hash("look:" + a.id);
+  const shirt = (h >>> 3) % 8;
+  return {
+    h, skin: [5, 6, 7][h % 3], shirt, second: (shirt + 1 + ((h >>> 6) % 7)) % 8,
+    hair: ["keep", "brown", "blonde", "ginger", "gray", "keep"][(h >>> 9) % 6],
+    glasses: (h >>> 12) % 10 < 3 || a.id === "ceo",
+    hat: (h >>> 15) % 10 === 0,
+    phones: /qa|test|tester|panel/i.test(a.id + " " + a.role) ? "phone" : /ui|tasar|design/i.test(a.id + " " + a.role) ? "tablet" : null,
+    headphones: (h >>> 18) % 10 < 4 && /dev|geliştirici|backend|unity|derleme|desktop/i.test(a.id + " " + a.role),
+  };
+}
+function recolor(body, L) {
+  body.traverse((m) => {
+    if (!m.isMesh || !m.geometry?.attributes?.uv) return;
+    m.geometry = m.geometry.clone();
+    const uv = m.geometry.attributes.uv, pos = m.geometry.attributes.position, isHead = /head/.test(m.name);
+    // Which colored columns this mesh uses, most used first: the first is the main color, the next the second one.
+    const count = new Map();
+    for (let i = 0; i < uv.count; i++) { const v = uv.getY(i); if (v >= 0.5 && v < 0.75) { const c = Math.min(7, Math.floor(uv.getX(i) * 8)); count.set(c, (count.get(c) || 0) + 1); } }
+    const order = [...count.entries()].sort((x, y) => y[1] - x[1]).map(([c]) => c);
+    const map = new Map(order.map((c, i) => [c, i === 0 ? L.shirt : i === 1 ? L.second : (L.shirt + 3 + i) % 8]));
+    let midY = 0;
+    if (isHead) { for (let i = 0; i < pos.count; i++) midY += pos.getY(i); midY /= pos.count || 1; }
+    for (let i = 0; i < uv.count; i++) {
+      const u = uv.getX(i), v = uv.getY(i), col = Math.min(7, Math.floor(u * 8));
+      let nc = col, nv = v;
+      if (v >= 0.75 && col >= 5) nc = L.skin; // skin tones
+      else if (v >= 0.5 && v < 0.75) nc = map.get(col) ?? col; // clothes
+      else if (isHead && v >= 0.75 && col === 0 && pos.getY(i) > midY && L.hair !== "keep") {
+        // Dark hair on the top half of the head gets the person's hair color.
+        if (L.hair === "brown") { nc = L.skin === 6 ? 7 : 6; }
+        else if (L.hair === "gray") { nc = 3; }
+        else { nc = L.hair === "blonde" ? 2 : 3; nv = v - 0.25; }
+      }
+      if (nc !== col || nv !== v) { uv.setX(i, u + (nc - col) / 8); uv.setY(i, nv); }
+    }
+    uv.needsUpdate = true;
+  });
+}
+// Where the head and the right hand are, in bone space, per base model (found once from the mesh).
+const RIG = {};
+function rigOf(name, body) {
+  if (RIG[name]) return RIG[name];
+  body.updateMatrixWorld(true);
+  const headBone = body.getObjectByName("head"), armR = body.getObjectByName("arm-right"), armL = body.getObjectByName("arm-left");
+  const headMesh = body.getObjectByName("head-mesh"), bodyMesh = body.getObjectByName("body-mesh");
+  if (!headBone || !armR || !headMesh || !bodyMesh) return (RIG[name] = null);
+  const v = new THREE.Vector3();
+  const local = (mesh, bone, filter) => {
+    const out = [];
+    const inv = new THREE.Matrix4().copy(bone.matrixWorld).invert();
+    for (let i = 0; i < mesh.geometry.attributes.position.count; i++) {
+      if (filter && !filter(i)) continue;
+      mesh.getVertexPosition(i, v); v.applyMatrix4(mesh.matrixWorld).applyMatrix4(inv); out.push(v.clone());
+    }
+    return out;
+  };
+  const hb = new THREE.Box3().setFromPoints(local(headMesh, headBone));
+  const skinIdx = bodyMesh.geometry.attributes.skinIndex, skinW = bodyMesh.geometry.attributes.skinWeight;
+  const bones = bodyMesh.skeleton.bones;
+  const handOf = (arm) => {
+    const bi = bones.indexOf(arm);
+    const pts = local(bodyMesh, arm, (i) => skinIdx.getX(i) === bi && skinW.getX(i) > 0.5);
+    if (!pts.length) return new THREE.Vector3(0, -0.1, 0.02);
+    const minY = Math.min(...pts.map((p) => p.y)), maxY = Math.max(...pts.map((p) => p.y));
+    const low = pts.filter((p) => p.y < minY + (maxY - minY) * 0.25);
+    return low.reduce((s, p) => s.add(p), new THREE.Vector3()).multiplyScalar(1 / low.length);
+  };
+  return (RIG[name] = { head: hb, handR: handOf(armR), handL: armL ? handOf(armL) : null });
+}
+const ACC = { glass: std(0x111111, { roughness: 0.3 }), phone: std(0x111111), cup: std(0xffffff) };
+function accessories(body, name, L, a) {
+  const rig = rigOf(name, body);
+  if (!rig) return;
+  const headBone = body.getObjectByName("head");
+  const sz = rig.head.getSize(new THREE.Vector3()), c = rig.head.getCenter(new THREE.Vector3());
+  const add = (bone, mesh) => { bone.add(mesh); mesh.castShadow = true; return mesh; };
+  if (L.glasses) {
+    const gw = sz.x * 0.2, gh = sz.y * 0.11, z = rig.head.max.z + sz.z * 0.005, y = c.y + sz.y * 0.02;
+    for (const sx of [-1, 1]) { const lens = new THREE.Mesh(new THREE.BoxGeometry(gw, gh, sz.z * 0.03), ACC.glass); lens.position.set(sx * sz.x * 0.19, y, z); add(headBone, lens); }
+    const bridge = new THREE.Mesh(new THREE.BoxGeometry(sz.x * 0.2, gh * 0.25, sz.z * 0.02), ACC.glass); bridge.position.set(0, y + gh * 0.2, z); add(headBone, bridge);
+  }
+  if (L.headphones) {
+    const col = std([0x111827, 0xef4444, 0x2563eb, 0xffd60a][L.h % 4], { roughness: 0.4 });
+    const band = new THREE.Mesh(new THREE.TorusGeometry(sz.x * 0.54, sz.x * 0.05, 6, 18, Math.PI), col);
+    band.position.set(0, c.y + sz.y * 0.05, c.z); add(headBone, band);
+    for (const sx of [-1, 1]) { const cup = new THREE.Mesh(new THREE.CylinderGeometry(sz.y * 0.17, sz.y * 0.17, sz.x * 0.1, 12), col); cup.rotation.z = Math.PI / 2; cup.position.set(sx * sz.x * 0.54, c.y + sz.y * 0.02, c.z); add(headBone, cup); }
+  } else if (L.hat) {
+    const col = std(MUGS[(L.h >>> 4) % MUGS.length], { roughness: 0.8 });
+    const cap = new THREE.Mesh(new THREE.SphereGeometry(sz.x * 0.54, 14, 8, 0, Math.PI * 2, 0, Math.PI / 2), col);
+    cap.scale.y = 0.55; cap.position.set(0, rig.head.max.y - sz.y * 0.22, c.z); add(headBone, cap);
+    const brim = new THREE.Mesh(new THREE.BoxGeometry(sz.x * 0.7, sz.y * 0.04, sz.z * 0.4), col);
+    brim.position.set(0, rig.head.max.y - sz.y * 0.2, rig.head.max.z + sz.z * 0.1); add(headBone, brim);
+  }
+  // Model badge: a small colored gem on the chest (Opus amber, Sonnet blue, Haiku green).
+  const model = agentModel(a);
+  const torso = body.getObjectByName("torso");
+  if (model && torso && MODEL_TONE[model]) {
+    const gem = new THREE.Mesh(new THREE.OctahedronGeometry(sz.x * 0.09), new THREE.MeshBasicMaterial({ color: MODEL_TONE[model] }));
+    gem.position.set(sz.x * 0.16, -sz.y * 0.05, rig.head.max.z * 0.62); add(torso, gem);
+  }
+  // A tester holds a phone, a designer a tablet.
+  const armR = body.getObjectByName("arm-right"), armL = body.getObjectByName("arm-left");
+  if (L.phones === "phone" && armR) {
+    const ph = new THREE.Mesh(new THREE.BoxGeometry(sz.x * 0.16, sz.y * 0.3, sz.z * 0.03), [ACC.phone, ACC.phone, ACC.phone, ACC.phone, SCREEN.idle, ACC.phone]);
+    ph.position.copy(rig.handR).add(new THREE.Vector3(0, 0, sz.z * 0.12)); add(armR, ph);
+  }
+  if (L.phones === "tablet" && armL && rig.handL) {
+    const tb = new THREE.Mesh(new THREE.BoxGeometry(sz.x * 0.45, sz.y * 0.34, sz.z * 0.03), [ACC.phone, ACC.phone, ACC.phone, ACC.phone, SCREEN.design, ACC.phone]);
+    tb.position.copy(rig.handL).add(new THREE.Vector3(0, sz.y * 0.05, sz.z * 0.14)); tb.rotation.x = -0.4; add(armL, tb);
+  }
+  // A cup in the right hand, shown only at the coffee bar.
+  if (armR) {
+    const cup = new THREE.Mesh(new THREE.CylinderGeometry(sz.x * 0.09, sz.x * 0.08, sz.y * 0.2, 10), std(MUGS[L.h % MUGS.length]));
+    cup.position.copy(rig.handR).add(new THREE.Vector3(0, sz.y * 0.04, sz.z * 0.1)); cup.visible = false; cup.name = "cup"; add(armR, cup);
+  }
+}
+
+// ---------- life: idle people take breaks, chat and play (founder 2026-11-17) ----------
+// A person whose status is idle sits back at the desk and now and then walks out: to the coffee bar, a sofa, the
+// foosball table or the console, or to a colleague's desk for a short chat. Working people type, waiting people stand
+// with a "!", blocked ones have a red light, offline desks are empty with the screen off. Only a few people are out
+// at once (8 on a big screen, 3 on a phone, none with reduced motion), so the page stays smooth.
+const CHAT = [
+  ["Kahve içtin mi?", "Az önce, sağ ol!"], ["Build geçti mi?", "Yeşil, sorun yok."], ["Yeni ikona baktın mı?", "Çok iyi olmuş!"],
+  ["Testler nasıl?", "Hepsi geçti."], ["Öğlen ne yiyoruz?", "Pizza?"], ["CEO evet dedi mi?", "Bekliyoruz."],
+  ["Bir bakar mısın?", "Hemen geliyorum."], ["Mağaza notları hazır mı?", "Yarına hazır."], ["Hata çıktı mı?", "Bir tane, çözdüm."],
+  ["Bu hafta video var mı?", "İki tane, pazar."], ["Harika iş!", "Teşekkürler!"], ["Toplantı kaçta?", "Saat üçte."],
+];
+const SAY = { coffee: ["Kahve molası", "Bir kahve daha"], water: ["Su içiyorum"], sofa: ["Biraz dinleniyorum", "Mola"], foosball: ["Gol!", "Rövanş!", "Bir tane daha"], console: ["Son bölüm", "Bunu geçeceğim"] };
+const DOING = { coffee: "Kahve makinesinde", water: "Su sebilinde", sofa: "Kanepede dinleniyor", foosball: "Langırt oynuyor", console: "Oyun köşesinde", chat: "Sohbet ediyor" };
+const SPEED = 1.9; // meters per second
+const outMax = () => (reduce ? 0 : stage.clientWidth < 600 ? 3 : 8);
+const pickOne = (list) => list[Math.floor(Math.random() * list.length)];
+const outCount = () => people.filter((p) => p.life && p.life.state !== "desk" && p.life.state !== "host").length;
+function aisleZ(s) { return Math.min(s.z + 1.45, s.room.z + s.room.d - 0.35); }
+function deskExit(s) {
+  const r = s.room, a = aisleZ(s), dx = doorX(r);
+  return [[s.x, s.z + 0.72], [s.x, a], [dx, a], [dx, r.z + r.d + 0.3], [dx, corrZ(r)]];
+}
+function pathTo(s, target) {
+  const pts = deskExit(s);
+  const [, cz] = pts.at(-1);
+  if (target.slot) {
+    // To a colleague's desk: along the corridors, in at the door, to the side of the desk.
+    const t = target.slot, back = deskExit(t).reverse(); // corridor ... chair
+    const tz = corrZ(t.room);
+    if (Math.abs(cz - tz) > 0.01) pts.push([CROSS_X, cz], [CROSS_X, tz]);
+    pts.push(...back.slice(0, 3), [t.x + 0.95, aisleZ(t)], [t.x + 0.95, t.z + 0.45]);
+  } else {
+    // To the break area: the vertical corridor, then the spot's own lane.
+    const first = target.via[0];
+    pts.push([CROSS_X, cz], [CROSS_X, first[1]], ...target.via, [target.x, target.z]);
+  }
+  // Drop points that repeat.
+  const out = [];
+  for (const p of pts) { const last = out.at(-1); if (!last || Math.hypot(last[0] - p[0], last[1] - p[1]) > 0.01) out.push(p); }
+  return out.map(([x, z]) => new THREE.Vector3(x, 0, z));
+}
+function lens(path) { const segs = []; let len = 0; for (let i = 1; i < path.length; i++) { const l = path[i].distanceTo(path[i - 1]); segs.push(l); len += l; } return { segs, len }; }
+function act(p, name, ts = 1, w = 1) { p.mx.stopAllAction(); return p.play(name, w, ts); }
+function cupVisible(p, on) { const c = p.body?.getObjectByName("cup"); if (c) c.visible = on; }
+function sitAtDesk(p) {
+  const s = p.slot;
+  p.actor.position.set(s.x, 0.02, s.z + 0.72);
+  p.actor.rotation.y = Math.PI;
+  act(p, "sit");
+  p.mx.update(0.5);
+  p.body.rotation.x = -0.22;
+  p.mixer = null;
+  cupVisible(p, false);
+  p.walking = false;
+  p.life.state = "desk";
+  p.life.t = 8 + Math.random() * 35;
+  p.life.doing = null;
+}
+function startOuting(p) {
+  const options = [];
+  const free = (k) => SPOTS.filter((x) => x.kind === k && !x.used);
+  for (const k of ["coffee", "coffee", "water", "sofa", "sofa", "foosball", "console"]) if (free(k).length) options.push(k);
+  const hosts = people.filter((q) => q !== p && q.life && q.life.state === "desk" && q.actor && !q.walking);
+  if (hosts.length) options.push("chat", "chat", "chat");
+  if (!options.length) return;
+  const kind = pickOne(options);
+  let target;
+  if (kind === "chat") {
+    const near = hosts.filter((q) => q.slot.room === p.slot.room || corrZ(q.slot.room) === corrZ(p.slot.room));
+    const host = pickOne(near.length && Math.random() < 0.7 ? near : hosts);
+    target = { slot: host.slot, host };
+    host.life.state = "host";
+  } else {
+    // A game wants a partner, so prefer the spot next to someone already playing.
+    const list = free(kind);
+    target = list.find((x) => x.pair && SPOTS.some((y) => y.pair === x.pair && y.used)) || pickOne(list);
+    target.used = p.agent.id;
+  }
+  const path = pathTo(p.slot, target);
+  p.life = { ...p.life, state: "go", kind, target, path, ...lens(path), d: 0, t: 0 };
+  p.body.rotation.x = 0;
+  act(p, "walk", 1.3);
+  p.mixer = p.mx;
+  p.walking = true;
+}
+function pointOn(L, d) {
+  let rest = d;
+  for (let i = 0; i < L.segs.length; i++) {
+    if (rest <= L.segs[i] || i === L.segs.length - 1) {
+      const k = L.segs[i] ? Math.min(1, rest / L.segs[i]) : 1;
+      return { p: L.path[i].clone().lerp(L.path[i + 1], k), dir: L.path[i + 1].clone().sub(L.path[i]) };
+    }
+    rest -= L.segs[i];
+  }
+  return { p: L.path.at(-1).clone(), dir: new THREE.Vector3(0, 0, 1) };
+}
+function arrive(p) {
+  const L = p.life;
+  L.state = "do"; L.t = 0;
+  p.walking = false;
+  if (L.kind === "chat") {
+    p.actor.rotation.y = -Math.PI / 2; // face the colleague
+    act(p, "idle");
+    L.dur = 7 + Math.random() * 3;
+    const lines = pickOne(CHAT);
+    L.lines = [[p, lines[0], 0.3], [L.target.host, lines[1], 2.6], [p, pickOne(["Tamam!", "Süper.", "Görüşürüz."]), 5]];
+    const host = L.target.host;
+    if (host.actor) host.actor.rotation.y = Math.PI - 0.7; // the colleague turns a little
+  } else {
+    const t = L.target;
+    p.actor.position.set(t.x, t.y || 0, t.z);
+    p.actor.rotation.y = t.rot;
+    if (t.kind === "sofa") { act(p, "sit"); L.dur = 12 + Math.random() * 10; }
+    else if (t.kind === "console") { act(p, "sit"); p.play("holding-both", 0.7); L.dur = 12 + Math.random() * 8; }
+    else if (t.kind === "foosball") { act(p, "interact-right", 1.6); p.play("interact-left", 0.6, 1.3); L.dur = 10 + Math.random() * 8; }
+    else { act(p, "interact-right", 0.9); L.dur = 6 + Math.random() * 3; L.cupAt = 1.8; }
+    L.lines = Math.random() < 0.6 ? [[p, pickOne(SAY[t.kind] || ["Mola"]), 1 + Math.random() * 2]] : [];
+  }
+}
+function leave(p) {
+  const L = p.life;
+  if (L.kind === "chat") { const host = L.target.host; if (host.life?.state === "host") { host.life.state = "desk"; host.life.t = 10 + Math.random() * 30; if (host.actor) host.actor.rotation.y = Math.PI; } }
+  else L.target.used = null;
+  L.path = [...L.path].reverse();
+  Object.assign(L, lens(L.path), { state: "back", d: 0, lines: [] });
+  p.body.rotation.x = 0;
+  act(p, "walk", 1.3);
+  if (L.kind === "coffee") { cupVisible(p, true); p.play("holding-right", 0.8); }
+  p.walking = true;
+}
+const sayEls = new Set();
+function say(p, text) {
+  if (!p.actor || !tagsEl) return;
+  const e = el("div", { class: "of-say" }, text);
+  tagsEl.append(e);
+  const rec = { e, p, until: performance.now() + 2300 };
+  sayEls.add(rec);
+}
+const sayHead = new THREE.Vector3();
+function placeSay() {
+  const now = performance.now();
+  for (const r of sayEls) {
+    if (now > r.until || !r.p.actor) { r.e.remove(); sayEls.delete(r); continue; }
+    sayHead.set(r.p.actor.position.x, r.p.actor.position.y + 1.75, r.p.actor.position.z);
+    place(r.e, sayHead);
+  }
+}
+function stepLife(dt) {
+  if (reduce || !peopleGroup) return;
+  let out = outCount();
+  for (const p of people) {
+    const L = p.life;
+    if (!L || !p.actor) continue;
+    if (L.state === "desk") {
+      L.t -= dt;
+      if (L.t <= 0) { L.t = 6 + Math.random() * 20; if (out < outMax() && current?.fromRec !== p) { startOuting(p); if (p.life.state === "go") out++; } }
+      continue;
+    }
+    if (L.state === "host") continue;
+    if (L.state === "go" || L.state === "back") {
+      L.d += SPEED * dt;
+      const { p: at, dir } = pointOn(L, Math.min(L.d, L.len));
+      p.actor.position.copy(at);
+      if (dir.lengthSq() > 1e-6) p.actor.rotation.y = Math.atan2(dir.x, dir.z);
+      if (L.d >= L.len) { if (L.state === "go") arrive(p); else sitAtDesk(p); }
+      continue;
+    }
+    // Doing the activity.
+    L.t += dt;
+    if (L.cupAt && L.t > L.cupAt) { L.cupAt = 0; cupVisible(p, true); act(p, "holding-right"); }
+    for (const line of L.lines) if (!line.done && L.t >= line[2]) { line.done = true; say(line[0], line[1]); }
+    if (L.t >= L.dur) leave(p);
+  }
+  if (stage) stage.dataset.out = String(outCount());
+}
+function doingText(p) {
+  const a = p?.agent;
+  if (!a) return "-";
+  if (a.status === "offline") return "Masası boş, oturum kapalı";
+  if (a.status === "working") return "Masasında çalışıyor";
+  if (a.status === "waiting_owner") return "Masasının yanında, senden evet bekliyor";
+  if (a.status === "blocked") return "Takıldı, yardım bekliyor";
+  const L = p.life;
+  if (!L || L.state === "desk") return "Masasında, boşta";
+  if (L.state === "host") return "Masasında sohbet ediyor";
+  if (L.state === "back") return "Masasına dönüyor";
+  return DOING[L.kind] || "Molada";
+}
+
 
 // ---------- people, bubbles and labels ----------
 let people = []; // { agent, slot, actor, mixer, body, bubble }
 let peopleGroup = null;
 let deptTags = [];
-function makeActor(name) {
+function makeActor(name, agent) {
   const src = M[name];
   if (!src) return null;
   const body = cloneSkinned(src.scene);
   body.traverse((m) => { if (m.isMesh) { m.castShadow = true; m.frustumCulled = false; } });
+  const L = agent ? look(agent) : null;
+  if (L) recolor(body, L);
   const actor = fit(body, { h: 1.35 });
+  if (L) { try { accessories(body, name, L, agent); } catch { /* a missing bone only drops the extras */ } }
   const mixer = new THREE.AnimationMixer(body);
   const play = (n, wgt = 1, ts = 1) => { const c = THREE.AnimationClip.findByName(src.animations, n); if (!c) return null; const ac = mixer.clipAction(c); ac.setEffectiveWeight(wgt); ac.timeScale = ts; ac.reset().play(); return ac; };
   return { actor, body, mixer, play };
@@ -674,16 +1285,25 @@ function buildPeople() {
   peopleGroup = new THREE.Group();
   scene.add(peopleGroup);
   for (const p of people) p.bubble.remove();
+  for (const r of sayEls) r.e.remove();
+  sayEls.clear();
+  for (const x of SPOTS) x.used = null;
   people = [];
   for (const s of slots) {
+    // Empty desks and offline desks: chair pushed in, screen off.
+    if (s.chair) s.chair.position.z = s.z + (s.agent && s.agent.status !== "offline" ? 0.75 : 0.55);
+    if (s.screen) s.screen.material = SCREEN.off || s.screen.material;
     if (!s.agent) continue;
     const a = s.agent;
-    const made = makeActor(personName(a));
+    if (s.screen && SCREEN.code) s.screen.material = a.status === "working" ? SCREEN[workKind(a)] : a.status === "idle" ? SCREEN.idle : a.status === "waiting_owner" ? SCREEN.wait : a.status === "blocked" ? SCREEN.err : SCREEN.off;
+    // Offline: the desk stays empty (founder 2026-11-17), only the name and the click area remain.
+    const made = a.status === "offline" ? null : makeActor(personName(a), a);
     let rec = { agent: a, slot: s, actor: null, mixer: null };
     if (made) {
       const { actor, body, mixer, play } = made;
       if (a.status === "waiting_owner") {
         actor.position.set(s.x + 0.95, 0, s.z + 0.2);
+        actor.rotation.y = -0.6;
         play("idle");
       } else {
         actor.position.set(s.x, 0.02, s.z + 0.72);
@@ -693,16 +1313,15 @@ function buildPeople() {
         if (a.status === "idle") body.rotation.x = -0.22;
         if (a.status === "blocked") play("interact-left", 0.25, 0.4);
       }
-      if (a.status === "offline") {
-        body.traverse((m) => { if (m.isMesh) { m.material = m.material.clone(); m.material.transparent = true; m.material.opacity = 0.35; m.castShadow = false; } });
-      }
       actor.userData.agentId = a.id;
+      body.userData.agentId = a.id;
       peopleGroup.add(actor);
       // Performance with 52 people (founder 2026-11-13): only working, waiting and blocked people keep a running
-      // animation; idle and offline ones are posed once and then cost nothing per frame.
+      // animation; idle people are posed once and cost nothing per frame until they get up.
       const moving = !reduce && (a.status === "working" || a.status === "waiting_owner" || a.status === "blocked");
       mixer.update(0.5);
-      rec = { ...rec, actor, mixer: moving ? mixer : null };
+      rec = { ...rec, actor, body, mx: mixer, play, mixer: moving ? mixer : null };
+      if (a.status === "idle") rec.life = { state: "desk", t: 2 + Math.random() * 25 };
       if (a.status === "blocked") {
         const bulb = new THREE.Mesh(new THREE.SphereGeometry(0.09, 12, 8), new THREE.MeshBasicMaterial({ color: 0xff3b3b }));
         bulb.position.set(s.x - 0.55, 0.85, s.z); peopleGroup.add(bulb);
@@ -715,8 +1334,10 @@ function buildPeople() {
     peopleGroup.add(hit);
     const ss = st(a.status);
     const quiet = a.status === "idle" || a.status === "offline";
+    const model = agentModel(a);
     const bubble = el("div", { class: "of-name" + (a.status === "offline" ? " off" : "") + (quiet ? " quiet" : ""), style: `--c:${ss.dot}`, title: `${a.role}: ${ss.label}` },
       el("i"), el("span", {}, bubbleName(a.role, s.room.key)),
+      model ? el("small", { class: "of-mdl " + model.toLowerCase(), title: model }, model[0]) : null,
       a.status === "blocked" ? el("em", {}, "takıldı") : null,
       a.status === "waiting_owner" ? el("b", {}, "!") : null);
     bubble.addEventListener("click", () => openPanel(a.id));
@@ -806,7 +1427,7 @@ let tagsKey = "";
 const head = new THREE.Vector3();
 function placeTags() {
   const W0 = stage.clientWidth, H0 = stage.clientHeight;
-  const key = [W0, H0, camera.zoom, ...camera.position.toArray().map((v) => v.toFixed(3)), ...people.map((p) => (p.walking ? 1 : 0)), selected].join("|");
+  const key = [W0, H0, camera.zoom, ...camera.position.toArray().map((v) => v.toFixed(3)), ...people.map((p) => (p.walking ? 1 : 0) + (p.life ? p.life.state + (p.life.kind || "") : "")), selected].join("|");
   if (key === tagsKey) return;
   tagsKey = key;
   const visible = ([x, y]) => x > -60 && x < W0 + 60 && y > -40 && y < H0 + 40;
@@ -817,9 +1438,10 @@ function placeTags() {
     if (visible(xy)) depts.push({ elm: t.el, x: xy[0], y: xy[1], kind: "dept" });
   }
   for (const p of people) {
+    p.bubble.classList.toggle("walk", !!p.walking);
     if (p.walking) { p.bubble.style.display = "none"; continue; }
     const base = p.actor ? p.actor.position : new THREE.Vector3(p.slot.x, 0, p.slot.z + 0.72);
-    head.set(base.x, p.agent.status === "waiting_owner" ? 1.6 : 1.45, base.z);
+    head.set(base.x, (p.agent.status === "waiting_owner" || (p.life && p.life.state === "do" && p.life.kind !== "sofa" && p.life.kind !== "console") ? 1.6 : 1.45) + (base.y || 0), base.z);
     const xy = project(head);
     p.bubble.style.display = visible(xy) ? "" : "none";
     if (visible(xy)) names.push({ elm: p.bubble, x: xy[0], y: xy[1], kind: "name", rank: p.agent.id === selected ? -1 : p.rank });
@@ -888,7 +1510,7 @@ function startNextMail() {
   const from = slotOf(m.from_id), to = slotOf(m.to_id);
   if (!from || !to || from === to) return startNextMail();
   const fromRec = people.find((p) => p.agent.id === m.from_id);
-  const made = makeActor(personName(fromRec?.agent || { id: m.from_id }));
+  const made = makeActor(personName(fromRec?.agent || { id: m.from_id }), fromRec?.agent || null);
   if (!made) return startNextMail();
   const path = route(from, to);
   const segs = [];
@@ -901,9 +1523,11 @@ function startNextMail() {
   peopleGroup.add(made.actor);
   const env = envelopeSprite(String(m.label || ""));
   peopleGroup.add(env);
-  if (fromRec?.actor) fromRec.actor.visible = false;
-  if (fromRec) fromRec.walking = true;
-  current = { id: m.id, path, segs, len, oneWay, t: 0, made, env, fromRec, to, dropped: false, label: String(m.label || "") };
+  // The sender gets up for the walk; someone who is out on a break stays where they are.
+  const atDesk = fromRec && (!fromRec.life || fromRec.life.state === "desk");
+  if (atDesk && fromRec.actor) fromRec.actor.visible = false;
+  if (atDesk) fromRec.walking = true;
+  current = { id: m.id, path, segs, len, oneWay, t: 0, made, env, fromRec: atDesk ? fromRec : null, to, dropped: false, label: String(m.label || "") };
 }
 function pointAt(c, d) {
   let rest = d;
@@ -1014,9 +1638,17 @@ function animate() {
   const raw = clock.getDelta(), dt = Math.min(0.05, raw);
   if (!reduce) for (const p of people) p.mixer?.update(dt);
   stepMail(Math.min(0.25, raw)); // real time, so a mail takes 5 to 6 s even on a slow device
+  stepLife(Math.min(0.25, raw)); // real time too, so breaks last as long on a slow device
+  if (!reduce && SCREEN.code) {
+    // Code and designs scroll up, charts slide on, the game moves, and the server lights blink.
+    SCREEN.code.map.offset.y -= dt * 0.05; SCREEN.design.map.offset.y -= dt * 0.02; SCREEN.chart.map.offset.x += dt * 0.04; SCREEN.game.map.offset.x += dt * 0.08;
+    const blink = Math.sin(performance.now() / 260) > 0;
+    MAT.led.color.setHex(blink ? 0x4ade80 : 0x14532d); MAT.led2.color.setHex(blink ? 0x0c4a6e : 0x38bdf8);
+  }
   controls?.update();
   renderer.render(scene, camera);
   placeTags();
+  placeSay();
 }
 
 // Static office (floor, walls, corridors, lounge, rooms). Built again when the room plan changes.
@@ -1039,6 +1671,8 @@ function buildOffice() {
   corridors(office);
   lounge(office);
   for (const r of ROOMS) buildRoom(office, r);
+  deskKits(office);
+  applyDaylight();
 
   if (sunLight) {
     sunLight.position.set(W / 2 + 14, 30, D / 2 + 10);
@@ -1062,7 +1696,8 @@ async function start() {
   renderer.shadowMap.enabled = !small;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   scene.background = new THREE.Color(0xe9e4dc);
-  scene.add(new THREE.HemisphereLight(0xffffff, 0xd9c7a8, 1.5));
+  hemiLight = new THREE.HemisphereLight(0xffffff, 0xd9c7a8, 1.5);
+  scene.add(hemiLight);
   const sun = new THREE.DirectionalLight(0xffffff, 1.5);
   scene.add(sun.target);
   sun.castShadow = !small;
@@ -1074,6 +1709,10 @@ async function start() {
   const loader = new GLTFLoader();
   await Promise.all(MODEL_FILES.map((n) => loader.loadAsync(`/office/models/${n}.glb`).then((g) => { M[n] = g; }).catch(() => { /* a missing model only drops that item */ })));
   if (!M.table || !PEOPLE.some((p) => M[p])) throw new Error("models");
+  DESK_Y = new THREE.Box3().setFromObject(fit(M.table.scene.clone(true), { w: 1.5 })).max.y;
+  makeScreens();
+  clockEl = el("div", { class: "of-clock", "aria-live": "off" });
+  stage.append(clockEl);
 
   makePlan();
   buildOffice();
@@ -1100,6 +1739,7 @@ async function start() {
     down = null;
   });
   stage.dataset.ready = "1";
+  setInterval(applyDaylight, 60000);
   requestAnimationFrame(animate);
   enqueueMail(mail);
   startNextMail();

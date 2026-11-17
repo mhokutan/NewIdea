@@ -340,7 +340,8 @@ test("page renders list, 3D office, mail walk, panel and note; screenshots", { t
           if (a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom) bad.push(boxes[i].t + " / " + boxes[j].t);
         }
         const names = els.filter((e) => e.classList.contains("of-name"));
-        return { n: boxes.length, bad, names: names.length, mini: names.filter((e) => e.classList.contains("mini")).length,
+        // People walking to a break hide their name until they arrive (2026-11-17).
+        return { n: boxes.length, bad, names: names.length, walking: document.querySelectorAll("#of-tags .of-name.walk").length, mini: names.filter((e) => e.classList.contains("mini")).length,
           activeHidden: [...document.querySelectorAll("#of-tags .of-name:not(.quiet)")].filter((e) => getComputedStyle(e).display === "none" || e.classList.contains("mini")).map((e) => e.textContent) };
       });
       assert.ok(overlaps.n >= 8, `${name}: labels on screen (${overlaps.n})`);
@@ -349,7 +350,7 @@ test("page renders list, 3D office, mail walk, panel and note; screenshots", { t
       if (name === "desktop") {
         // At desktop every person in view gets a bubble (a name, or at least a status dot), none is dropped for space.
         assert.equal(await page.locator("#of-tags .of-name.nospot").count(), 0, "desktop: no bubble dropped for lack of space");
-        assert.ok(overlaps.names >= AGENTS.length - 2, `desktop: bubbles on screen (${overlaps.names})`);
+        assert.ok(overlaps.names + overlaps.walking >= AGENTS.length - 2, `desktop: bubbles on screen (${overlaps.names}, ${overlaps.walking} walking)`);
       }
       await page.screenshot({ path: join(SHOTS, `office-${name}.png`) });
       await page.locator('#of-list [data-id="hauling-dev"]').click();
@@ -511,6 +512,40 @@ test("full page: only the office and the board, whole window; screenshot at 1920
     assert.equal(await page.locator("#of-p-title").innerText(), "HAULING EMPIRE");
     assert.match(await page.locator("#of-p-body").innerText(), /Ana beceriler[\s\S]*unity[\s\S]*csharp/);
     await page.screenshot({ path: join(SHOTS, "office-full-1920.png") });
+    // A living office (founder 2026-11-17): every model has its letter in the name bubble, idle people go on breaks
+    // (at most 8 at once on a big screen), the panel says what a person does now, offline desks are empty, and the
+    // light follows New York time.
+    const withModel = AGENTS.filter((a) => /\((Opus|Sonnet|Haiku)\)/.test(a[1])).length;
+    assert.equal(await page.locator("#of-tags .of-name .of-mdl").count(), withModel, "model letter in every bubble with a model");
+    await page.waitForFunction(() => Number(document.getElementById("of-stage").dataset.out || 0) >= 1, null, { timeout: 90000 });
+    const outNow = Number(await page.locator("#of-stage").getAttribute("data-out"));
+    assert.ok(outNow >= 1 && outNow <= 8, `people on a break: ${outNow}`);
+    await page.waitForSelector("#of-tags .of-say", { state: "attached", timeout: 90000 });
+    await page.locator('#of-list [data-id="hauling-dev"]').evaluate((e) => e.click());
+    assert.match(await page.locator("#of-p-body").innerText(), /Şu an\s*Masasında çalışıyor/);
+    const off = AGENTS.find((a) => a[2] === "offline");
+    await page.locator(`#of-list [data-id="${off[0]}"]`).evaluate((e) => e.click());
+    assert.match(await page.locator("#of-p-body").innerText(), /Şu an\s*Masası boş, oturum kapalı/);
+    assert.match(await page.locator(".of-clock").innerText(), /^New York \d\d:\d\d · (Gündüz|Akşam|Gece)$/);
+    await page.screenshot({ path: join(SHOTS, "office-life.png") });
+    for (const [hour, word, light] of [["13", "Gündüz", "day"], ["22", "Gece", "night"]]) {
+      await page.goto(WEB + "/admin/office/full?saat=" + hour, { waitUntil: "domcontentloaded" });
+      await page.waitForSelector('#of-stage[data-ready="1"] canvas', { timeout: 60000 });
+      assert.equal(await page.locator("#of-stage").getAttribute("data-daylight"), light);
+      assert.equal(await page.locator(".of-clock").innerText(), `New York ${hour}:00 · ${word}`);
+      await page.waitForTimeout(1500);
+      await page.screenshot({ path: join(SHOTS, `office-${light}.png`) });
+    }
+    // With reduced motion nobody walks around.
+    const rctx = await browser.newContext({ viewport: { width: 1280, height: 800 }, reducedMotion: "reduce", httpCredentials: { username: "admin", password: PASS } });
+    const rpage = await rctx.newPage();
+    await rpage.goto(WEB + "/admin/office/full", { waitUntil: "domcontentloaded" });
+    await rpage.waitForSelector('#of-stage[data-ready="1"] canvas', { timeout: 60000 });
+    await rpage.waitForTimeout(8000);
+    assert.equal((await rpage.locator("#of-stage").getAttribute("data-out")) ?? "0", "0", "no breaks with reduced motion");
+    await rctx.close();
+    await page.goto(WEB + "/admin/office/full", { waitUntil: "domcontentloaded" });
+    await page.waitForSelector('#of-stage[data-ready="1"] canvas', { timeout: 60000 });
     // The board closes and opens again.
     await page.click("#of-board-toggle");
     assert.equal(await page.locator("#of-board").isVisible(), false);
