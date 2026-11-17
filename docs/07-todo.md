@@ -54,3 +54,8 @@ Fikir: reklam parasını doğrudan uygulama indirme reklamına değil promovote.
   `store/screenshots/aso-2026-11/iphone-6.9-1320x2868/` and `play-phone-1080x1920/` (01-call, 02-duel, 03-drop) go in as the
   first 3 images, the rest stay. No iPad. Store texts in en + new languages from `mhokutan/nakliye-patronu` branch
   `claude/aso-yeni-metinler`, `docs/aso/promovote/<lang>.md`. Staged release on both stores.
+* Store text check before submitting (CEO 2026-11-17, after Apple stopped Poleris): PromoVote v1 sells nothing (no
+  subscription, no in-app purchase), so the EULA rule for auto-renewing subscriptions does not apply to this release.
+  Still put a Privacy Policy link (https://promovote.com/privacy) and a Terms of Use link (https://promovote.com/terms)
+  at the end of the description in every language. When PromoVote Pro ships: add the Apple standard EULA link
+  (https://www.apple.com/legal/internet-services/itunes/dev/stdeula/) or our own Terms of Use to every language first.
