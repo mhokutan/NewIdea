@@ -6,10 +6,11 @@ import { useEffect, useRef, useState } from 'react';
 
 import { t } from './i18n';
 import { useMe } from './use-me';
+import { showGuestCalls, syncGuestCalls } from './guest-calls';
 import { clearViewerState, loadViewerState } from './viewer-state';
 import { Sheet } from '@/ui/Sheet';
 
-type Reason = 'guest' | 'onboarding' | 'creator';
+type Reason = 'guest' | 'onboarding' | 'creator' | 'keep';
 // Module state lives in plain objects: the React Compiler mishandles reassigned module level variables.
 const queue: { action: (() => void) | null; needsScout: boolean; from: string | null } = { action: null, needsScout: true, from: null };
 const host: { open: ((r: Reason | null) => void) | null } = { open: null };
@@ -22,6 +23,17 @@ export function asScout(action: () => void) {
   if (current.loading) { queue.action = action; queue.needsScout = true; return; }
   if (current.reason !== 'creator') { queue.action = action; queue.needsScout = true; }
   host.open?.(current.reason);
+}
+
+/** True for someone who is not signed in (calls without sign in, see guest-calls.ts). */
+export function isGuestNow() {
+  return !current.loading && current.reason === 'guest';
+}
+
+/** After the last free guest call: a soft sheet that says sign in keeps the calls. Nothing is queued. */
+export function askToKeepCalls() {
+  queue.action = null;
+  host.open?.('keep');
 }
 
 /** Same for actions any finished account can do (follow, report, block). */
@@ -61,7 +73,9 @@ export function GateHost() {
   }, [me, isScout, loading, hasProfile]);
   useEffect(() => {
     if (loading) return;
-    if (handle) loadViewerState(); else clearViewerState();
+    // Guests see the calls they made without signing in; a new scout gets them saved to the account.
+    if (handle) loadViewerState().then(() => { if (current.isScout) syncGuestCalls().catch(() => {}); });
+    else { clearViewerState(); showGuestCalls().catch(() => {}); }
   }, [handle, loading]);
   // Signed in and onboarded: go back to where the tap happened and run the call, save or follow.
   useEffect(() => {
@@ -94,6 +108,10 @@ export function GateHost() {
       { label: t('not_now'), onPress: () => close() },
     ] },
     creator: { title: t('gate_creator_t'), text: t('gate_creator_p'), actions: [{ label: t('ok'), onPress: () => close() }] },
+    keep: { title: t('gate_keep_t'), text: t('gate_keep_p'), actions: [
+      { label: t('sign_in'), tone: 'primary' as const, onPress: () => close(() => router.push('/sign-in')) },
+      { label: t('not_now'), onPress: () => close() },
+    ] },
   }[shown];
   return <Sheet visible={!!reason} title={content.title} text={content.text} actions={content.actions} onClose={() => close()} onDismissed={runNext} />;
 }

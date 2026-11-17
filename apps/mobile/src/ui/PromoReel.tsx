@@ -12,7 +12,8 @@ import { AccessibilityInfo, ActivityIndicator, Platform, Pressable, Share, Style
 
 import { openExternal } from '@/lib/links';
 import { api, ApiError, type Call, type Promo } from '@/lib/api';
-import { asMember, asScout } from '@/lib/gate';
+import { askToKeepCalls, asMember, asScout, isGuestNow } from '@/lib/gate';
+import { addGuestCall, guestCallCount, GUEST_FREE_CALLS } from '@/lib/guest-calls';
 import { compact } from '@/lib/format';
 import { lang, outcomeText, t } from '@/lib/i18n';
 import { useMe } from '@/lib/use-me';
@@ -118,8 +119,17 @@ export function PromoReel({ promo, active, height, muted, onSeen, bottomInset = 
   // deeper on the creator page, like a link in bio; the reel is for watching and calling.
   const reelLink = Platform.OS !== 'ios' && !!cta?.url && ctaVisible(cta.kind, Platform.OS);
 
+  // Guests get GUEST_FREE_CALLS calls without signing in; they are kept on the phone and saved at sign in.
+  const guestVote = async (choice: Call['choice']) => {
+    const n = await addGuestCall(promo.id, choice);
+    api.event(n === 1 ? 'guest_first_call' : 'guest_call');
+    if (Platform.OS !== 'web') Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+    AccessibilityInfo.announceForAccessibility(t('called'));
+    if (n >= GUEST_FREE_CALLS) setTimeout(askToKeepCalls, 900);
+  };
   const vote = (choice: Call['choice']) => {
     tap();
+    if (isGuestNow() && (call || guestCallCount() < GUEST_FREE_CALLS)) { guestVote(choice).catch(() => flash(t('error'))); return; }
     asScout(async () => {
       if (busy) return;
       setBusy(true);

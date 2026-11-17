@@ -1560,7 +1560,7 @@ async function trackEvent(c, table) {
 // Funnel steps (see docs/review: activation and D1/D7 come from these). Unknown names are ignored.
 // D7 example: select count(distinct a.viewer_key) from app_events a join app_events b on b.viewer_key = a.viewer_key
 //   and b.name = 'app_open' and b.day = date(a.day, '+7 day') where a.name = 'app_open' and a.day = ?;
-const APP_EVENTS = new Set(["app_open", "drop_view", "first_call", "call", "drop_complete", "sign_in_view", "sign_in_done", "onboarding_done", "reminder_on", "reveal_view", "share", "gift_claim"]);
+const APP_EVENTS = new Set(["app_open", "drop_view", "first_call", "call", "drop_complete", "sign_in_view", "sign_in_done", "onboarding_done", "reminder_on", "reveal_view", "share", "gift_claim", "guest_first_call", "guest_call", "guest_sync"]);
 app.post("/v1/events/app", async (c) => {
   const b = await c.req.json().catch(() => ({}));
   if (!APP_EVENTS.has(b.name)) return c.json({ ok: true, counted: false });
