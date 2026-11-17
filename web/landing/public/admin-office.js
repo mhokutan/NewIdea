@@ -206,7 +206,8 @@ function openPanel(id) {
   const row = (k, v) => [el("dt", {}, k), el("dd", {}, v || "-")];
   pBody.replaceChildren(...row("Birim", s ? roomLabel(s.room) : "-"), ...row("Durum", st(a.status).label),
     ...row("Model", agentModel(a) ? chips([], agentModel(a)) : null), ...row("Beceriler", chips(splitSkills(a.skills))),
-    ...row("Şu an", doingText(people.find((p) => p.agent.id === id))), ...row("Son iş", a.last_action),
+    ...row("Kim", personaLine(a)), ...row("Şu an", doingText(people.find((p) => p.agent.id === id))),
+    ...row("Son tartışma", lastTalk(people.find((p) => p.agent.id === id))), ...row("Son iş", a.last_action),
     ...row("Senden beklenen", a.needs_owner), ...row("Güncelleme", ny(a.updated_at)));
   panel.classList.add("on");
   renderList();
@@ -228,6 +229,18 @@ function openDeptPanel(room) {
     ...row("Ekip", people.length ? el("span", { class: "of-chips" }, ...people.map((a) => el("span", { class: "of-chip" }, shortName(a.role)))) : null));
   panel.classList.add("on");
   syncBubbles();
+}
+// Persona and last talk for the side panel.
+function personaLine(a) {
+  const ps = personaOf(a);
+  if (!ps) return null;
+  return el("span", { class: "of-persona" }, el("b", {}, ps.name), ps.style ? ` · ${ps.style}` : "", ps.bio ? el("small", {}, ps.bio) : null,
+    ps.likes || ps.dislikes ? el("small", {}, [ps.expertise ? `Uzmanlık: ${ps.expertise}.` : "", ps.likes ? ` Sever: ${ps.likes}.` : "", ps.dislikes ? ` Sevmez: ${ps.dislikes}.` : ""].join("").trim()) : null);
+}
+function lastTalk(p) {
+  const t = p?.lastTopic;
+  if (!t) return null;
+  return `${t.text}${t.with?.length ? " (" + t.with.join(", ") + " ile)" : ""}, ${ny(t.at)}`;
 }
 function closePanel() { selected = null; panel?.classList.remove("on"); renderList(); syncBubbles(); }
 document.getElementById("of-close")?.addEventListener("click", closePanel);
@@ -1101,7 +1114,8 @@ function pathTo(s, target) {
     const t = target.slot, back = deskExit(t).reverse(); // corridor ... chair
     const tz = corrZ(t.room);
     if (Math.abs(cz - tz) > 0.01) pts.push([CROSS_X, cz], [CROSS_X, tz]);
-    pts.push(...back.slice(0, 3), [t.x + 0.95, aisleZ(t)], [t.x + 0.95, t.z + 0.45]);
+    const [ex, ez] = target.end || [t.x + 0.95, t.z + 0.45];
+    pts.push(...back.slice(0, 3), [ex, aisleZ(t)], [ex, ez]);
   } else {
     // To the break area: the vertical corridor, then the spot's own lane.
     const first = target.via[0];
@@ -1129,7 +1143,8 @@ function sitAtDesk(p) {
   p.life.t = 8 + Math.random() * 35;
   p.life.doing = null;
 }
-function startOuting(p) {
+function startOuting(p, budget = 1) {
+  if (Math.random() < 0.55 && startMeeting(p, budget)) return;
   const options = [];
   const free = (k) => SPOTS.filter((x) => x.kind === k && !x.used);
   for (const k of ["coffee", "coffee", "water", "sofa", "sofa", "foosball", "console"]) if (free(k).length) options.push(k);
@@ -1149,8 +1164,12 @@ function startOuting(p) {
     target = list.find((x) => x.pair && SPOTS.some((y) => y.pair === x.pair && y.used)) || pickOne(list);
     target.used = p.agent.id;
   }
+  goTo(p, target, kind);
+}
+function goTo(p, target, kind) {
   const path = pathTo(p.slot, target);
   p.life = { ...p.life, state: "go", kind, target, path, ...lens(path), d: 0, t: 0 };
+  if (kind === "meeting") p.meeting = target.meeting;
   p.body.rotation.x = 0;
   act(p, "walk", 1.3);
   p.mixer = p.mx;
@@ -1171,7 +1190,12 @@ function arrive(p) {
   const L = p.life;
   L.state = "do"; L.t = 0;
   p.walking = false;
-  if (L.kind === "chat") {
+  if (L.kind === "meeting") {
+    p.actor.rotation.y = L.target.rot; // face the colleague at the desk
+    act(p, "idle");
+    L.dur = Infinity; // the meeting ends it
+    L.lines = [];
+  } else if (L.kind === "chat") {
     p.actor.rotation.y = -Math.PI / 2; // face the colleague
     act(p, "idle");
     L.dur = 7 + Math.random() * 3;
@@ -1192,7 +1216,8 @@ function arrive(p) {
 }
 function leave(p) {
   const L = p.life;
-  if (L.kind === "chat") { const host = L.target.host; if (host.life?.state === "host") { host.life.state = "desk"; host.life.t = 10 + Math.random() * 30; if (host.actor) host.actor.rotation.y = Math.PI; } }
+  if (L.kind === "meeting") p.meeting = null;
+  else if (L.kind === "chat") { const host = L.target.host; if (host.life?.state === "host") { host.life.state = "desk"; host.life.t = 10 + Math.random() * 30; if (host.actor) host.actor.rotation.y = Math.PI; } }
   else L.target.used = null;
   L.path = [...L.path].reverse();
   Object.assign(L, lens(L.path), { state: "back", d: 0, lines: [] });
@@ -1226,7 +1251,7 @@ function stepLife(dt) {
     if (!L || !p.actor) continue;
     if (L.state === "desk") {
       L.t -= dt;
-      if (L.t <= 0) { L.t = 6 + Math.random() * 20; if (out < outMax() && current?.fromRec !== p) { startOuting(p); if (p.life.state === "go") out++; } }
+      if (L.t <= 0) { L.t = 6 + Math.random() * 20; if (out < outMax() && current?.fromRec !== p) { startOuting(p, outMax() - out); out = outCount(); } }
       continue;
     }
     if (L.state === "host") continue;
@@ -1244,6 +1269,7 @@ function stepLife(dt) {
     for (const line of L.lines) if (!line.done && L.t >= line[2]) { line.done = true; say(line[0], line[1]); }
     if (L.t >= L.dur) leave(p);
   }
+  stepMeetings(dt);
   if (stage) stage.dataset.out = String(outCount());
 }
 function doingText(p) {
@@ -1255,11 +1281,140 @@ function doingText(p) {
   if (a.status === "blocked") return "Takıldı, yardım bekliyor";
   const L = p.life;
   if (!L || L.state === "desk") return "Masasında, boşta";
+  if (p.meeting) return `Toplantıda: ${p.meeting.topic.text}`;
   if (L.state === "host") return "Masasında sohbet ediyor";
   if (L.state === "back") return "Masasına dönüyor";
   return DOING[L.kind] || "Molada";
 }
 
+
+// ---------- personas and work talk (founder 2026-11-17) ----------
+// Every session has a lasting persona (public/office/personas.json: name, short bio, way of talking, expertise, likes
+// and dislikes). Now and then two to four people gather at one desk and talk about REAL work from the board: a task
+// card (title and stage), a session's last action or a mail label. The lines come from rule based templates in the
+// browser (no model call, no cost). Only those board titles go into the bubbles; anything that looks like a key, a
+// link, an email address or a long number is dropped and the talk says "bu iş" instead.
+let PERSONAS = {};
+const PERSONA_URL = "/office/personas.json";
+const KIND_RE = [
+  ["security", /güvenlik|security/i], ["lead", /lider|lead|architect|ceo|mimar/i], ["qa", /\bqa\b|test elemanı|kontrol/i],
+  ["tester", /test(çi| oyuncu| kullanıcı)|tester|oyuncu/i], ["design", /tasar|ui\b|design/i], ["store", /mağaza|store|aso|app store|google play|seo/i],
+  ["data", /analist|analiz|veri|data/i], ["social", /reklam|sosyal|shorts|içerik|yazar/i], ["pm", /owner|analyst|asistan|panel/i], ["dev", /./],
+];
+const NAMES_F = ["Aylin", "Beren", "Dilara", "Esra", "Hande", "Jale", "Leyla", "Nil", "Özge", "Tuğçe"];
+const NAMES_M = ["Alp", "Cenk", "Doruk", "Erdem", "Fırat", "Halil", "İlker", "Kutay", "Levent", "Sinan"];
+function personaOf(a) {
+  if (!a) return null;
+  if (PERSONAS[a.id]) return PERSONAS[a.id];
+  const h = hash("persona:" + a.id), f = h % 2 === 0;
+  const kind = KIND_RE.find(([, re]) => re.test(shortName(a.role)))[0];
+  return (PERSONAS[a.id] = { name: (f ? NAMES_F : NAMES_M)[(h >>> 3) % 10], body: f ? "f" : "m", kind, style: "", bio: shortName(a.role), expertise: "", likes: "", dislikes: "", made: true });
+}
+const kindOf = (a) => personaOf(a)?.kind || "dev";
+const SECRET_RE = /@|https?:\/\/|\b(key|token|secret|şifre|parola|password|apikey|api[_ -]key)\b|[A-Za-z0-9_-]{28,}|\d{7,}/i;
+function cleanTopic(s) {
+  const t = String(s || "").replace(/\s+/g, " ").trim();
+  if (!t || SECRET_RE.test(t) || /^hazır, iş gelince/i.test(t)) return "";
+  return t.length > 48 ? t.slice(0, 46).trimEnd() + "…" : t;
+}
+function topicsNow() {
+  const out = [];
+  for (const t of tasks || []) {
+    const text = cleanTopic(t.title);
+    if (text && t.status !== "done") out.push({ text, stage: cleanTopic(t.stage), status: t.status, owner: t.assignee_id, src: "task" });
+  }
+  for (const a of agents) {
+    const text = cleanTopic(a.last_action);
+    if (text && a.status !== "offline") out.push({ text, status: a.status === "working" ? "doing" : a.status, owner: a.id, src: "action" });
+  }
+  for (const m of mail) { const text = cleanTopic(m.label); if (text) out.push({ text, owner: m.to_id, from: m.from_id, src: "mail" }); }
+  return out;
+}
+// Lines per kind: the host opens, people answer in their own way (they may disagree), a lead closes with a decision.
+const OPEN = {
+  lead: (T) => `“${T}”: kısaca durum alalım.`, dev: (T) => `“${T}” üzerindeyim, bugün bitirmek istiyorum.`, qa: (T) => `“${T}” için test listesini çıkardım.`,
+  tester: (T) => `“${T}”: oyuncu olarak denedim, konuşalım.`, design: (T) => `“${T}” için ekranlara bakmamız lazım.`, store: (T) => `“${T}” mağaza tarafını da etkiliyor.`,
+  data: (T) => `“${T}”: rakamları getirdim.`, security: (T) => `“${T}” öncesi bir güvenlik turu atalım.`, pm: (T) => `“${T}”: sahibi ve tarihi netleştirelim.`,
+  social: (T) => `“${T}”: bunu paylaşımlara da taşıyalım mı?`,
+};
+const SAYK = {
+  qa: [(t) => (t.stage ? `${t.stage} tamam ama telefonda bir tur daha deneyelim.` : "Kapatmadan önce bir tur daha test edelim."), () => "Açık hata kaydı var mı? Onu kapatmadan çıkmayalım."],
+  dev: [() => "Bence yeterli, yarın çıkarabiliriz.", () => "Kod hazır, sadece derleme kaldı.", (t) => (t.stage ? `Şu an ${t.stage}, akşama biter.` : "Bugün bitiririm.")],
+  security: [() => "Bu iş kullanıcı verisine dokunuyor mu?", () => "Anahtarlar kodda değil, değil mi? Bir bakayım."],
+  store: [() => "Mağaza metnine de yansıtmalıyız.", () => "Karakter sınırını aşmasın, sayarak yazalım.", () => "İnceleme kurallarına uyuyor mu, kontrol edeyim."],
+  design: [() => "Ekranlar değişiyorsa bir taslak çizeyim.", () => "Bunu daha sade gösterebiliriz."],
+  data: [() => "Rakamlar bunu destekliyor.", () => "Önce son haftanın verisine bakalım."],
+  tester: [() => "Oyuncu gözüyle bu kısım biraz karışık.", () => "Ben denedim, akış güzel."],
+  pm: [() => "Sahibi ve tarihi panoya yazıyorum.", () => "Notu alıyorum, yarın hatırlatırım."],
+  social: [() => "Bunu kısa bir videoyla anlatabiliriz.", () => "Haftalık postlara ekleyelim."],
+  lead: [() => "Riskleri yazalım, sonra karar verelim."],
+};
+const STATUS_LINE = { blocked: "Takıldık, kim yardım edebilir?", waiting_owner: "Sahibin evetini bekliyoruz, o gelince başlarız." };
+function talkLines(topic, host, members) {
+  const T = topic.text;
+  const head = [[host, (OPEN[kindOf(host.agent)] || OPEN.dev)(T)]];
+  if (STATUS_LINE[topic.status]) head.push([members[0], STATUS_LINE[topic.status]]);
+  const answers = members.map((m) => [m, pickOne(SAYK[kindOf(m.agent)] || SAYK.dev)(topic)]);
+  // A short disagreement between a careful voice and a quick one, when both are in the room.
+  const careful = members.find((m) => ["qa", "security"].includes(kindOf(m.agent)));
+  const quick = [host, ...members].find((m) => kindOf(m.agent) === "dev" && m !== careful);
+  let argue = careful && quick ? [[quick, "Bir gün daha beklersek takvim kayar ama."], [careful, "Kayarsa kaysın, hatalı çıkmasın."]] : [];
+  const lead = [host, ...members].find((m) => kindOf(m.agent) === "lead");
+  const close = [lead ? [lead, pickOne(["Karar: önce son test, sonra yayın.", "Tamam, karar: yarın sabah son kontrol, sonra devam.", "Anlaştık. Notları panoya yazalım."])]
+    : [host, "Tamam, ona göre ilerliyorum. Teşekkürler!"]];
+  // At most 6 bubbles; the decision is always the last one.
+  if (head.length + 1 + argue.length + close.length > 6) argue = [];
+  return [...head, ...answers.slice(0, Math.max(1, 6 - head.length - argue.length - close.length)), ...argue, ...close];
+}
+let meetings = [];
+const SEATS = [[0.95, 0.45, -Math.PI / 2], [-0.95, 0.45, Math.PI / 2], [0.5, 1.4, Math.PI], [-0.5, 1.4, Math.PI]];
+function startMeeting(p, budget) {
+  const present = (q) => q.actor && !q.walking && !q.meeting && (!q.life || q.life.state === "desk") && q.agent.status !== "waiting_owner";
+  const byId = new Map(people.map((q) => [q.agent.id, q]));
+  const all = topicsNow().filter((t) => byId.get(t.owner) && byId.get(t.owner) !== p && present(byId.get(t.owner)));
+  if (!all.length) return false;
+  // Prefer work from the person's own department.
+  const mine = all.filter((t) => deptOf(t.owner) === deptOf(p.agent.id));
+  const topic = pickOne(mine.length && Math.random() < 0.75 ? mine : all);
+  const host = byId.get(topic.owner);
+  const free = people.filter((q) => q !== p && q !== host && q.life && present(q));
+  const rank = (q) => (deptOf(q.agent.id) === deptOf(host.agent.id) ? 0 : 2) + (["qa", "security", "lead", "store"].includes(kindOf(q.agent)) ? 0 : 1) + Math.random();
+  const fromMail = topic.from && byId.get(topic.from) && free.includes(byId.get(topic.from)) ? [byId.get(topic.from)] : [];
+  const extra = [...fromMail, ...free.filter((q) => !fromMail.includes(q)).sort((x, y) => rank(x) - rank(y))].slice(0, Math.max(0, Math.min(2, budget - 1, Math.floor(Math.random() * 3))));
+  const members = [p, ...extra];
+  const mt = { topic, host, members, t: 0, started: false, lines: talkLines(topic, host, members), at: Date.now() };
+  members.forEach((m, i) => {
+    const [dx, dz, rot] = SEATS[i];
+    goTo(m, { slot: host.slot, end: [host.slot.x + dx, host.slot.z + dz], rot, meeting: mt }, "meeting");
+  });
+  host.meeting = mt;
+  if (host.life) host.life.state = "host";
+  meetings.push(mt);
+  return true;
+}
+function stepMeetings(dt) {
+  for (const mt of [...meetings]) {
+    mt.t += dt;
+    const here = mt.members.every((m) => m.life?.state === "do");
+    if (!mt.started && (here || mt.t > 40)) {
+      mt.started = true; mt.t0 = mt.t;
+      if (mt.host.actor && mt.host.agent.status !== "working") mt.host.actor.rotation.y = Math.PI - 0.5;
+      const names = [mt.host, ...mt.members].map((m) => personaOf(m.agent).name);
+      for (const m of [mt.host, ...mt.members]) m.lastTopic = { text: mt.topic.text, with: names.filter((n) => n !== personaOf(m.agent).name), at: new Date().toISOString() };
+    }
+    if (!mt.started) continue;
+    const k = Math.floor((mt.t - mt.t0) / 2.6);
+    while ((mt.said || 0) <= k && (mt.said || 0) < mt.lines.length) { const [who, text] = mt.lines[mt.said || 0]; say(who, text); mt.said = (mt.said || 0) + 1; }
+    if (mt.t - mt.t0 > mt.lines.length * 2.6 + 1.5) {
+      for (const m of mt.members) if (m.life?.state === "do" || m.life?.state === "go") leave(m);
+      mt.host.meeting = null;
+      if (mt.host.life?.state === "host") { mt.host.life.state = "desk"; mt.host.life.t = 15 + Math.random() * 30; }
+      if (mt.host.actor && mt.host.agent.status !== "waiting_owner") mt.host.actor.rotation.y = Math.PI;
+      meetings = meetings.filter((x) => x !== mt);
+      if (stage) stage.dataset.talks = String((Number(stage.dataset.talks) || 0) + 1);
+    }
+  }
+}
 
 // ---------- people, bubbles and labels ----------
 let people = []; // { agent, slot, actor, mixer, body, bubble }
@@ -1278,7 +1433,8 @@ function makeActor(name, agent) {
   const play = (n, wgt = 1, ts = 1) => { const c = THREE.AnimationClip.findByName(src.animations, n); if (!c) return null; const ac = mixer.clipAction(c); ac.setEffectiveWeight(wgt); ac.timeScale = ts; ac.reset().play(); return ac; };
   return { actor, body, mixer, play };
 }
-const personName = (a) => PEOPLE[hash(a.id) % PEOPLE.length];
+// The model follows the persona (a woman or a man), the rest of the look comes from the id.
+const personName = (a) => { const b = personaOf(a)?.body; const list = b ? PEOPLE.filter((n) => n.includes(b === "f" ? "female" : "_male")) : PEOPLE; return list[hash(a.id) % list.length]; };
 
 function buildPeople() {
   if (peopleGroup) { scene.remove(peopleGroup); }
@@ -1288,6 +1444,8 @@ function buildPeople() {
   for (const r of sayEls) r.e.remove();
   sayEls.clear();
   for (const x of SPOTS) x.used = null;
+  meetings = [];
+  const lastTopics = new Map(people.filter((p) => p.lastTopic).map((p) => [p.agent.id, p.lastTopic]));
   people = [];
   for (const s of slots) {
     // Empty desks and offline desks: chair pushed in, screen off.
@@ -1335,7 +1493,7 @@ function buildPeople() {
     const ss = st(a.status);
     const quiet = a.status === "idle" || a.status === "offline";
     const model = agentModel(a);
-    const bubble = el("div", { class: "of-name" + (a.status === "offline" ? " off" : "") + (quiet ? " quiet" : ""), style: `--c:${ss.dot}`, title: `${a.role}: ${ss.label}` },
+    const bubble = el("div", { class: "of-name" + (a.status === "offline" ? " off" : "") + (quiet ? " quiet" : ""), style: `--c:${ss.dot}`, title: `${personaOf(a).name}, ${a.role}: ${ss.label}` },
       el("i"), el("span", {}, bubbleName(a.role, s.room.key)),
       model ? el("small", { class: "of-mdl " + model.toLowerCase(), title: model }, model[0]) : null,
       a.status === "blocked" ? el("em", {}, "takıldı") : null,
@@ -1343,6 +1501,7 @@ function buildPeople() {
     bubble.addEventListener("click", () => openPanel(a.id));
     tagsEl.append(bubble);
     rec.bubble = bubble;
+    rec.lastTopic = lastTopics.get(a.id) || null;
     rec.rank = quiet ? (a.status === "offline" ? 2 : 1) : 0;
     people.push(rec);
   }
@@ -1709,6 +1868,7 @@ async function start() {
   const loader = new GLTFLoader();
   await Promise.all(MODEL_FILES.map((n) => loader.loadAsync(`/office/models/${n}.glb`).then((g) => { M[n] = g; }).catch(() => { /* a missing model only drops that item */ })));
   if (!M.table || !PEOPLE.some((p) => M[p])) throw new Error("models");
+  try { const r = await fetch(PERSONA_URL, { cache: "no-store" }); if (r.ok) Object.assign(PERSONAS, (await r.json()).personas || {}); } catch { /* the page makes personas from the role */ }
   DESK_Y = new THREE.Box3().setFromObject(fit(M.table.scene.clone(true), { w: 1.5 })).max.y;
   makeScreens();
   clockEl = el("div", { class: "of-clock", "aria-live": "off" });

@@ -1208,6 +1208,7 @@ ${a.last_action ? `<p style="margin:0 0 6px">${esc(a.last_action)}</p>` : ""}${a
 @keyframes of-pop{0%{opacity:0;margin-top:6px}12%{opacity:1;margin-top:0}80%{opacity:1}100%{opacity:0}}
 .of-say{position:absolute;transform:translate(-50%,-100%);padding:5px 9px;border-radius:12px;background:#fff;color:#18181b;font:600 11px/1.2 system-ui,sans-serif;white-space:nowrap;max-width:170px;overflow:hidden;text-overflow:ellipsis;box-shadow:0 3px 10px rgba(0,0,0,.25);pointer-events:none;animation:of-pop 2.3s ease-out forwards;z-index:2}
 .of-clock{position:absolute;left:12px;bottom:12px;z-index:3;padding:5px 10px;border-radius:999px;background:rgba(24,24,27,.78);color:#fff;font:700 11px/1.2 system-ui,sans-serif;pointer-events:none}
+.of-persona small{display:block;margin-top:3px;color:var(--muted);font-size:12px;line-height:1.35}
 .of-mdl{flex:none;font:800 9px/1 system-ui,sans-serif;padding:2px 4px;border-radius:5px;background:#e4e4e7;color:#27272a}.of-mdl.opus{background:#fef3c7;color:#92400e}.of-mdl.sonnet{background:#dbeafe;color:#1e40af}.of-mdl.haiku{background:#dcfce7;color:#166534}.of-name.mini .of-mdl{display:none}
 @media (prefers-reduced-motion:reduce){.of-name b{animation:none}}
 .of-panel{position:absolute;top:12px;right:12px;width:min(320px,calc(100% - 24px));max-height:calc(100% - 24px);overflow:auto;padding:14px 16px;border-radius:14px;background:rgba(16,16,20,.95);border:1px solid var(--line);display:none;z-index:3}

@@ -1,0 +1,525 @@
+{
+ "_note": "Kişilikler (2026-11-17). Ofis sayfası konuşma balonlarında bu kişilikleri ve pano verisini kullanır. Yeni oturum için bir satır eklemek yeter; olmayan id için sayfa rolünden bir kişilik üretir.",
+ "personas": {
+  "analyst": {
+   "name": "Derya",
+   "body": "f",
+   "kind": "data",
+   "style": "rakamla konuşur",
+   "bio": "Oyuncu verisini haftalık rapora çeviren analist. Her kararı bir grafikle savunur.",
+   "expertise": "sql, dataviz, haftalık rapor",
+   "likes": "temiz bir grafik",
+   "dislikes": "kaynağı belli olmayan sayı"
+  },
+  "ceo": {
+   "name": "Selim",
+   "body": "m",
+   "kind": "lead",
+   "style": "sakin lider, sonunda karar verir",
+   "bio": "Ekibin CEO oturumu. Herkesi dinler, sonra kısa bir kararla toplantıyı bitirir.",
+   "expertise": "önceliklendirme, ekip planı",
+   "likes": "net bir karar",
+   "dislikes": "uzayan toplantı"
+  },
+  "dopazon-dev": {
+   "name": "Kaan",
+   "body": "m",
+   "kind": "dev",
+   "style": "aceleci geliştirici, hemen yapmak ister",
+   "bio": "Dopazon sitesini kuracak web geliştirici. Hızlı başlamayı sever.",
+   "expertise": "web, Cloudflare",
+   "likes": "ilk sürümü hemen çıkarmak",
+   "dislikes": "bekleyen depo"
+  },
+  "dopazon-qa": {
+   "name": "Selin",
+   "body": "f",
+   "kind": "qa",
+   "style": "titiz QA, bir tur daha test ister",
+   "bio": "Dopazon'un test sorumlusu. Her formu boş, uzun ve hatalı veriyle dener.",
+   "expertise": "form testleri",
+   "likes": "kontrol listesi",
+   "dislikes": "test edilmemiş buton"
+  },
+  "dopazon-seo": {
+   "name": "Burak",
+   "body": "m",
+   "kind": "store",
+   "style": "mağaza kurallarına dikkat eder",
+   "bio": "Dopazon'un SEO ve içerik uzmanı. Başlıkların uzunluğunu ezbere bilir.",
+   "expertise": "SEO, içerik",
+   "likes": "iyi bir başlık",
+   "dislikes": "yinelenen metin"
+  },
+  "dovelet-desktop": {
+   "name": "Onur",
+   "body": "m",
+   "kind": "dev",
+   "style": "aceleci geliştirici, hemen yapmak ister",
+   "bio": "Dovelet derlemelerini makinesinde alan derleme ustası.",
+   "expertise": "Xcode, Gradle",
+   "likes": "yeşil derleme",
+   "dislikes": "imza hatası"
+  },
+  "dovelet-dev": {
+   "name": "Elif",
+   "body": "f",
+   "kind": "lead",
+   "style": "sakin lider, sonunda karar verir",
+   "bio": "Dovelet'in lider geliştiricisi. Apple incelemelerini satır satır okur.",
+   "expertise": "React Native, App Review",
+   "likes": "sade kod",
+   "dislikes": "acele sürüm"
+  },
+  "dovelet-qa": {
+   "name": "Ece",
+   "body": "f",
+   "kind": "qa",
+   "style": "titiz QA, bir tur daha test ister",
+   "bio": "Dovelet'in QA'sı. Bir hatayı üç adımda yeniden üretmeden rahat etmez.",
+   "expertise": "manuel test",
+   "likes": "tekrar üretilebilen hata",
+   "dislikes": "\"bende çalışıyor\""
+  },
+  "dovelet-store": {
+   "name": "Zeynep",
+   "body": "f",
+   "kind": "store",
+   "style": "mağaza kurallarına dikkat eder",
+   "bio": "Dovelet'in mağaza sayfasını yazar. Apple kurallarını iyi bilir.",
+   "expertise": "mağaza metni, ekran görüntüsü",
+   "likes": "kısa ve net açıklama",
+   "dislikes": "kural dışı kelime"
+  },
+  "dovelet-tester": {
+   "name": "Can",
+   "body": "m",
+   "kind": "tester",
+   "style": "oyuncu gözüyle konuşur, doğrudan söyler",
+   "bio": "Dovelet'i gerçek bir çift gibi kullanan test kullanıcısı.",
+   "expertise": "kullanıcı akışı",
+   "likes": "akıcı ilk açılış",
+   "dislikes": "uzun kayıt formu"
+  },
+  "dovelet-ui": {
+   "name": "Defne",
+   "body": "f",
+   "kind": "design",
+   "style": "detaycı tasarımcı, ekranı sorar",
+   "bio": "Dovelet'in arayüz tasarımcısı. Pembe tonların her birinin adını bilir.",
+   "expertise": "UI, ikon",
+   "likes": "nefes alan ekran",
+   "dislikes": "sıkışık buton"
+  },
+  "dropolis-desktop": {
+   "name": "Mert",
+   "body": "m",
+   "kind": "dev",
+   "style": "aceleci geliştirici, hemen yapmak ister",
+   "bio": "Dropolis'in derleme ustası. Unity derlemelerini gece alır.",
+   "expertise": "Unity derleme, Android",
+   "likes": "hızlı derleme",
+   "dislikes": "büyüyen APK"
+  },
+  "dropolis-qa": {
+   "name": "Gizem",
+   "body": "f",
+   "kind": "qa",
+   "style": "titiz QA, bir tur daha test ister",
+   "bio": "Dropolis'in QA'sı. Mars bölümlerini her cihazda tek tek dener.",
+   "expertise": "cihaz testleri",
+   "likes": "cihaz listesi",
+   "dislikes": "atlanan test"
+  },
+  "dropolis-tester": {
+   "name": "Arda",
+   "body": "m",
+   "kind": "tester",
+   "style": "oyuncu gözüyle konuşur, doğrudan söyler",
+   "bio": "Dropolis'i saatlerce oynayan test oyuncusu. Dengesiz seviyeyi hemen fark eder.",
+   "expertise": "oynanış",
+   "likes": "zor ama adil seviye",
+   "dislikes": "sıkıcı tekrar"
+  },
+  "dropolis-ui": {
+   "name": "Nehir",
+   "body": "f",
+   "kind": "design",
+   "style": "detaycı tasarımcı, ekranı sorar",
+   "bio": "Dropolis'in arayüz tasarımcısı. Mars kırmızısına bayılır.",
+   "expertise": "oyun UI",
+   "likes": "okunur menü",
+   "dislikes": "küçük yazı"
+  },
+  "dropolis-unity": {
+   "name": "Tolga",
+   "body": "m",
+   "kind": "dev",
+   "style": "aceleci geliştirici, hemen yapmak ister",
+   "bio": "Unity ve 3D asset uzmanı. Poligon sayısını hep düşük tutar.",
+   "expertise": "Unity, 3D",
+   "likes": "hafif model",
+   "dislikes": "ağır doku"
+  },
+  "empire-desktop": {
+   "name": "Serkan",
+   "body": "m",
+   "kind": "dev",
+   "style": "aceleci geliştirici, hemen yapmak ister",
+   "bio": "Hauling Empire derlemelerini alan masaüstü ustası.",
+   "expertise": "Unity derleme, dil ayarları",
+   "likes": "temiz derleme günlüğü",
+   "dislikes": "son dakika değişiklik"
+  },
+  "hauling-design": {
+   "name": "Aslı",
+   "body": "f",
+   "kind": "design",
+   "style": "detaycı tasarımcı, ekranı sorar",
+   "bio": "Hauling Empire'ın oyun ve ekonomi tasarımcısı. Fiyat dengesini sever.",
+   "expertise": "oyun ekonomisi",
+   "likes": "dengeli ekonomi",
+   "dislikes": "bedava altın"
+  },
+  "hauling-dev": {
+   "name": "Emre",
+   "body": "m",
+   "kind": "lead",
+   "style": "sakin lider, sonunda karar verir",
+   "bio": "Hauling Empire'ın lider geliştiricisi. Plan yazmadan işe başlamaz.",
+   "expertise": "Unity, C#, mağaza yayını",
+   "likes": "yazılı plan",
+   "dislikes": "plansız sürüm"
+  },
+  "hauling-qa": {
+   "name": "Seda",
+   "body": "f",
+   "kind": "qa",
+   "style": "titiz QA, bir tur daha test ister",
+   "bio": "Hauling Empire'ın QA'sı. Her sürümden önce tam bir tur test ister.",
+   "expertise": "regresyon testi",
+   "likes": "tam test turu",
+   "dislikes": "\"küçük değişiklik\" sözü"
+  },
+  "hauling-store": {
+   "name": "Ozan",
+   "body": "m",
+   "kind": "store",
+   "style": "mağaza kurallarına dikkat eder",
+   "bio": "Hauling Empire'ın mağaza sayfası sorumlusu.",
+   "expertise": "mağaza metni, görseller",
+   "likes": "güçlü ilk görsel",
+   "dislikes": "eski ekran görüntüsü"
+  },
+  "hauling-tester-1": {
+   "name": "Berk",
+   "body": "m",
+   "kind": "tester",
+   "style": "oyuncu gözüyle konuşur, doğrudan söyler",
+   "bio": "Hauling Empire'ı yeni oyuncu gözüyle oynar.",
+   "expertise": "ilk oturum",
+   "likes": "açık rehber",
+   "dislikes": "kaybolmak"
+  },
+  "hauling-tester-2": {
+   "name": "İrem",
+   "body": "f",
+   "kind": "tester",
+   "style": "oyuncu gözüyle konuşur, doğrudan söyler",
+   "bio": "Hauling Empire'ın uzun oyun testçisi. Geç oyun dengesine bakar.",
+   "expertise": "geç oyun",
+   "likes": "uzun hedefler",
+   "dislikes": "boş bekleme"
+  },
+  "hauling-ui": {
+   "name": "Melis",
+   "body": "f",
+   "kind": "design",
+   "style": "detaycı tasarımcı, ekranı sorar",
+   "bio": "Hauling Empire'ın arayüz tasarımcısı.",
+   "expertise": "oyun UI, ikon",
+   "likes": "net ikon",
+   "dislikes": "kalabalık ekran"
+  },
+  "mac-mini-test": {
+   "name": "Barış",
+   "body": "m",
+   "kind": "dev",
+   "style": "aceleci geliştirici, hemen yapmak ister",
+   "bio": "Mac mini'de iOS derlemesi ve cihaz testi yapan oturum.",
+   "expertise": "iOS derleme, cihaz testi",
+   "likes": "temiz imza",
+   "dislikes": "süresi dolan sertifika"
+  },
+  "ortak-asistan": {
+   "name": "Pelin",
+   "body": "f",
+   "kind": "pm",
+   "style": "düzenleyici, notu ve sahibi sorar",
+   "bio": "Herkesin asistanı. Toplantı notlarını tutar, unutulanı hatırlatır.",
+   "expertise": "not, takip",
+   "likes": "düzenli liste",
+   "dislikes": "sahipsiz iş"
+  },
+  "ortak-guvenlik": {
+   "name": "Kerem",
+   "body": "m",
+   "kind": "security",
+   "style": "şüpheci güvenlikçi, önce veriyi sorar",
+   "bio": "Güvenlik kontrolcüsü. Her değişiklikte önce veriyi sorar.",
+   "expertise": "güvenlik incelemesi",
+   "likes": "en az yetki",
+   "dislikes": "açıkta anahtar"
+  },
+  "panel-casual": {
+   "name": "Duygu",
+   "body": "f",
+   "kind": "tester",
+   "style": "oyuncu gözüyle konuşur, doğrudan söyler",
+   "bio": "Arada bir oynayan sıradan oyuncu gözüyle test eder.",
+   "expertise": "kısa oturum",
+   "likes": "hızlı başlangıç",
+   "dislikes": "uzun eğitim"
+  },
+  "panel-lead": {
+   "name": "Cem",
+   "body": "m",
+   "kind": "pm",
+   "style": "düzenleyici, notu ve sahibi sorar",
+   "bio": "Test panelinin lideri. Oyuncu yorumlarını özetleyip ekiplere taşır.",
+   "expertise": "oyuncu testi yönetimi",
+   "likes": "net geri bildirim",
+   "dislikes": "belirsiz yorum"
+  },
+  "panel-new": {
+   "name": "Ada",
+   "body": "f",
+   "kind": "tester",
+   "style": "oyuncu gözüyle konuşur, doğrudan söyler",
+   "bio": "Oyunu ilk kez açan oyuncu gibi test eder.",
+   "expertise": "ilk izlenim",
+   "likes": "anlaşılır ekran",
+   "dislikes": "jargon"
+  },
+  "panel-pro": {
+   "name": "Efe",
+   "body": "m",
+   "kind": "tester",
+   "style": "oyuncu gözüyle konuşur, doğrudan söyler",
+   "bio": "Usta oyuncu testçisi. Her açığı bulur.",
+   "expertise": "ileri oynanış",
+   "likes": "zorluk",
+   "dislikes": "kolay hile"
+  },
+  "promovote-backend": {
+   "name": "Deniz",
+   "body": "m",
+   "kind": "dev",
+   "style": "aceleci geliştirici, hemen yapmak ister",
+   "bio": "PromoVote'un sunucu geliştiricisi. Workers ve D1 onun alanı.",
+   "expertise": "Cloudflare Workers, D1",
+   "likes": "hızlı sorgu",
+   "dislikes": "kilitlenen tablo"
+  },
+  "promovote-dev": {
+   "name": "Cansu",
+   "body": "f",
+   "kind": "lead",
+   "style": "sakin lider, sonunda karar verir",
+   "bio": "PromoVote'un lider geliştiricisi. Ofisi de o kurdu.",
+   "expertise": "Workers, Playwright, ofis",
+   "likes": "çalışan test",
+   "dislikes": "kırık ekran"
+  },
+  "promovote-qa": {
+   "name": "Batuhan",
+   "body": "m",
+   "kind": "qa",
+   "style": "titiz QA, bir tur daha test ister",
+   "bio": "PromoVote'un QA'sı. Her ekranı telefonda da dener.",
+   "expertise": "Playwright, mobil test",
+   "likes": "yeşil test raporu",
+   "dislikes": "yatay kaydırma"
+  },
+  "promovote-tester": {
+   "name": "Lale",
+   "body": "f",
+   "kind": "tester",
+   "style": "oyuncu gözüyle konuşur, doğrudan söyler",
+   "bio": "PromoVote'u gerçek bir izleyici gibi kullanır.",
+   "expertise": "akış testi",
+   "likes": "eğlenceli düello",
+   "dislikes": "yavaş video"
+  },
+  "promovote-ui": {
+   "name": "Ege",
+   "body": "m",
+   "kind": "design",
+   "style": "detaycı tasarımcı, ekranı sorar",
+   "bio": "PromoVote'un arayüz tasarımcısı. Sarıyı ölçülü kullanır.",
+   "expertise": "UI, marka",
+   "likes": "siyah, beyaz ve tek sarı",
+   "dislikes": "mor"
+  },
+  "robo-works": {
+   "name": "Ufuk",
+   "body": "m",
+   "kind": "lead",
+   "style": "sakin lider, sonunda karar verir",
+   "bio": "Dropolis'in lider geliştiricisi. Mağaza görsellerini altı dilde hazırladı.",
+   "expertise": "Unity, mağaza yayını",
+   "likes": "bitmiş iş",
+   "dislikes": "yarım çeviri"
+  },
+  "salesforce-ba": {
+   "name": "Nazlı",
+   "body": "f",
+   "kind": "pm",
+   "style": "düzenleyici, notu ve sahibi sorar",
+   "bio": "Salesforce iş analisti. İhtiyacı kullanıcı hikayesine çevirir.",
+   "expertise": "iş analizi",
+   "likes": "net kabul kriteri",
+   "dislikes": "belirsiz istek"
+  },
+  "salesforce-dev": {
+   "name": "Hakan",
+   "body": "m",
+   "kind": "lead",
+   "style": "sakin lider, sonunda karar verir",
+   "bio": "Salesforce mimarı. Veri modelini önce kağıda çizer.",
+   "expertise": "Salesforce mimarisi",
+   "likes": "sade veri modeli",
+   "dislikes": "limit aşımı"
+  },
+  "salesforce-developer": {
+   "name": "Oğuz",
+   "body": "m",
+   "kind": "dev",
+   "style": "aceleci geliştirici, hemen yapmak ister",
+   "bio": "Salesforce geliştiricisi. Apex ve Flow yazar.",
+   "expertise": "Apex, Flow, LWC",
+   "likes": "toplu işlem",
+   "dislikes": "döngüde sorgu"
+  },
+  "salesforce-po": {
+   "name": "Ebru",
+   "body": "f",
+   "kind": "pm",
+   "style": "düzenleyici, notu ve sahibi sorar",
+   "bio": "Salesforce ürün sahibi. Önceliği o belirler.",
+   "expertise": "ürün yönetimi",
+   "likes": "net öncelik",
+   "dislikes": "kapsam kayması"
+  },
+  "salesforce-qa": {
+   "name": "Tuba",
+   "body": "f",
+   "kind": "qa",
+   "style": "titiz QA, bir tur daha test ister",
+   "bio": "Salesforce QA. Her profil ve izinle ayrı dener.",
+   "expertise": "izin testleri",
+   "likes": "test planı",
+   "dislikes": "admin ile test"
+  },
+  "salesforce-tester": {
+   "name": "Yiğit",
+   "body": "m",
+   "kind": "tester",
+   "style": "oyuncu gözüyle konuşur, doğrudan söyler",
+   "bio": "Salesforce kullanıcısı gibi test eder.",
+   "expertise": "kullanıcı kabul testi",
+   "likes": "kısa form",
+   "dislikes": "çok tık"
+  },
+  "social-ads": {
+   "name": "Bora",
+   "body": "m",
+   "kind": "social",
+   "style": "enerjik, paylaşımı düşünür",
+   "bio": "Reklam kreatifçisi. İlk üç saniyeye takıntılı.",
+   "expertise": "reklam videosu",
+   "likes": "güçlü açılış",
+   "dislikes": "uzun intro"
+  },
+  "social-manager": {
+   "name": "Ceren",
+   "body": "f",
+   "kind": "social",
+   "style": "enerjik, paylaşımı düşünür",
+   "bio": "Sosyal medya yöneticisi. Takvimi her gün kontrol eder.",
+   "expertise": "X, TikTok takvimi",
+   "likes": "düzenli paylaşım",
+   "dislikes": "linkli post"
+  },
+  "social-shorts": {
+   "name": "Kaya",
+   "body": "m",
+   "kind": "social",
+   "style": "enerjik, paylaşımı düşünür",
+   "bio": "YouTube Shorts üreticisi. Dikey videoyu sever.",
+   "expertise": "kısa video, kurgu",
+   "likes": "ritimli kurgu",
+   "dislikes": "yatay video"
+  },
+  "social-writer": {
+   "name": "Sude",
+   "body": "f",
+   "kind": "social",
+   "style": "enerjik, paylaşımı düşünür",
+   "bio": "İçerik yazarı. Kısa ve samimi yazar.",
+   "expertise": "metin yazarlığı",
+   "likes": "kısa cümle",
+   "dislikes": "klişe"
+  },
+  "store-apple": {
+   "name": "Volkan",
+   "body": "m",
+   "kind": "store",
+   "style": "mağaza kurallarına dikkat eder",
+   "bio": "App Store yöneticisi. İnceleme kurallarını ezbere bilir.",
+   "expertise": "App Store Connect",
+   "likes": "temiz inceleme",
+   "dislikes": "3.2.2 reddi"
+  },
+  "store-aso": {
+   "name": "Ayça",
+   "body": "f",
+   "kind": "store",
+   "style": "mağaza kurallarına dikkat eder",
+   "bio": "ASO uzmanı. Karakter sınırlarını sayarak yaşar.",
+   "expertise": "anahtar kelime, ASO",
+   "likes": "sığan anahtar kelime",
+   "dislikes": "boşa giden karakter"
+  },
+  "store-google": {
+   "name": "Murat",
+   "body": "m",
+   "kind": "store",
+   "style": "mağaza kurallarına dikkat eder",
+   "bio": "Google Play yöneticisi. Play Console'un her köşesini bilir.",
+   "expertise": "Google Play Console",
+   "likes": "hızlı inceleme",
+   "dislikes": "politika uyarısı"
+  },
+  "store-rival-data": {
+   "name": "Gökhan",
+   "body": "m",
+   "kind": "data",
+   "style": "rakamla konuşur",
+   "bio": "Rakip uygulamaların verisini toplar.",
+   "expertise": "veri toplama",
+   "likes": "güncel tablo",
+   "dislikes": "eksik satır"
+  },
+  "store-rival-lead": {
+   "name": "Damla",
+   "body": "f",
+   "kind": "data",
+   "style": "rakamla konuşur",
+   "bio": "Rakip analizi lideri. Rakiplerden ders çıkarır.",
+   "expertise": "pazar analizi",
+   "likes": "net karşılaştırma",
+   "dislikes": "kopya fikir"
+  }
+ }
+}
