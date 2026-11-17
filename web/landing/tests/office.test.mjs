@@ -262,6 +262,18 @@ test("site read needs the admin login", async () => {
   assert.equal((await r.json()).agents.length, AGENTS.length);
 });
 
+test("personas: one per session, complete, no secrets", () => {
+  const { personas } = JSON.parse(readFileSync(join(WEB_DIR, "public/office/personas.json"), "utf8"));
+  for (const [id] of AGENTS) assert.ok(personas[id], `persona for ${id}`);
+  const kinds = new Set(["lead", "dev", "qa", "tester", "design", "store", "data", "security", "pm", "social"]);
+  for (const [id, p] of Object.entries(personas)) {
+    for (const k of ["name", "body", "kind", "style", "bio", "expertise", "likes", "dislikes"]) assert.ok(p[k], `${id}.${k}`);
+    assert.ok(kinds.has(p.kind), `${id}: kind ${p.kind}`);
+    assert.ok(["f", "m"].includes(p.body));
+    assert.doesNotMatch(JSON.stringify(p), /@|https?:|token|secret|şifre|[\u2013\u2014]/i, `${id}: no links, secrets or long dashes`);
+  }
+});
+
 test("page renders list, 3D office, mail walk, panel and note; screenshots", { timeout: 240000 }, async () => {
   const req = createRequire(import.meta.url);
   let pw;
@@ -435,7 +447,7 @@ test("page renders list, 3D office, mail walk, panel and note; screenshots", { t
   } finally { await browser.close(); }
 });
 
-test("full page: only the office and the board, whole window; screenshot at 1920x1080", { timeout: 240000 }, async () => {
+test("full page: only the office and the board, whole window; screenshot at 1920x1080", { timeout: 420000 }, async () => {
   assert.equal((await get(WEB + "/admin/office/full")).status, 401);
   const req = createRequire(import.meta.url);
   let pw;
@@ -521,8 +533,12 @@ test("full page: only the office and the board, whole window; screenshot at 1920
     const outNow = Number(await page.locator("#of-stage").getAttribute("data-out"));
     assert.ok(outNow >= 1 && outNow <= 8, `people on a break: ${outNow}`);
     await page.waitForSelector("#of-tags .of-say", { state: "attached", timeout: 90000 });
+    // Work talk: people gather at a desk and talk about a board item; afterwards the panel shows the last talk.
+    await page.waitForFunction(() => Number(document.getElementById("of-stage").dataset.talks || 0) >= 1, null, { timeout: 150000 });
     await page.locator('#of-list [data-id="hauling-dev"]').evaluate((e) => e.click());
-    assert.match(await page.locator("#of-p-body").innerText(), /Şu an\s*Masasında çalışıyor/);
+    const hd = await page.locator("#of-p-body").innerText();
+    assert.match(hd, /Kim\s*Emre · sakin lider/);
+    assert.match(hd, /Şu an\s*Masasında çalışıyor/);
     const off = AGENTS.find((a) => a[2] === "offline");
     await page.locator(`#of-list [data-id="${off[0]}"]`).evaluate((e) => e.click());
     assert.match(await page.locator("#of-p-body").innerText(), /Şu an\s*Masası boş, oturum kapalı/);
