@@ -16,10 +16,26 @@ const MAX_BYTES = 60 * 1024 * 1024;
 const PRIVACY_TR = { PUBLIC_TO_EVERYONE: "Herkese açık", MUTUAL_FOLLOW_FRIENDS: "Arkadaşlar", FOLLOWER_OF_CREATOR: "Takipçiler", SELF_ONLY: "Sadece ben" };
 const STATUS_TR = { PROCESSING_UPLOAD: "Yükleniyor", PROCESSING_DOWNLOAD: "İşleniyor", SEND_TO_USER_INBOX: "TikTok gelen kutusunda", PUBLISH_COMPLETE: "Paylaşıldı", FAILED: "Hata" };
 
+// Keys pasted in the dashboard often carry a stray newline or space; TikTok then rejects the client_key.
+const clean = (v) => (typeof v === "string" ? v.trim() : v);
 export function tiktokKeys(env, mode) {
   return mode === "sandbox"
-    ? { key: env.TIKTOK_SANDBOX_CLIENT_KEY, secret: env.TIKTOK_SANDBOX_CLIENT_SECRET }
-    : { key: env.TIKTOK_CLIENT_KEY, secret: env.TIKTOK_CLIENT_SECRET };
+    ? { key: clean(env.TIKTOK_SANDBOX_CLIENT_KEY), secret: clean(env.TIKTOK_SANDBOX_CLIENT_SECRET) }
+    : { key: clean(env.TIKTOK_CLIENT_KEY), secret: clean(env.TIKTOK_CLIENT_SECRET) };
+}
+
+// Plain warnings about mixed up keys (founder pasted the production key into the sandbox slot, 2026-11-16).
+// Compares keys only; never shows any part of a key or secret. TikTok sandbox client keys start with "sb".
+export function keyProblems(env) {
+  const sk = clean(env.TIKTOK_SANDBOX_CLIENT_KEY) || "", pk = clean(env.TIKTOK_CLIENT_KEY) || "";
+  const ss = clean(env.TIKTOK_SANDBOX_CLIENT_SECRET) || "", ps = clean(env.TIKTOK_CLIENT_SECRET) || "";
+  const where = 'Doğrusu TikTok geliştirici sayfasında, sol üstte "promovote-test" seçiliyken görünen anahtar.';
+  const out = [];
+  if (sk && pk && sk === pk) out.push("TIKTOK_SANDBOX_CLIENT_KEY yanlış: içinde Production anahtarı var. " + where);
+  else if (sk && !sk.startsWith("sb")) out.push('TIKTOK_SANDBOX_CLIENT_KEY yanlış: sandbox anahtarı "sb" ile başlar, bu başlamıyor. ' + where);
+  if (pk && pk.startsWith("sb")) out.push('TIKTOK_CLIENT_KEY yanlış: içinde sandbox anahtarı var ("sb" ile başlıyor). Production anahtarı "Production" sekmesinde.');
+  if (ss && ps && ss === ps) out.push("TIKTOK_SANDBOX_CLIENT_SECRET yanlış: Production secret ile aynı. " + where);
+  return out;
 }
 
 async function ensureTables(env) {
@@ -130,7 +146,8 @@ const escText = (v) => String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;
 
 async function mainPage(env, url) {
   const esc = escText;
-  const head = `<div class="top"><h1>TikTok</h1></div>${notice(url)}`;
+  const head = `<div class="top"><h1>TikTok</h1></div>${notice(url)}` +
+    keyProblems(env).map((m) => `<p class="warnbar" style="background:rgba(248,113,113,.12);border-color:rgba(248,113,113,.5);color:#fecaca">${esc(m)}</p>`).join("");
   const hasProd = !!(env.TIKTOK_CLIENT_KEY && env.TIKTOK_CLIENT_SECRET);
   const hasSand = !!(env.TIKTOK_SANDBOX_CLIENT_KEY && env.TIKTOK_SANDBOX_CLIENT_SECRET);
   if (!hasProd && !hasSand) return head + '<p class="empty">TikTok anahtarları Worker\'da yok.</p>';

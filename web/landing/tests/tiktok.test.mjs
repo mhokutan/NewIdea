@@ -2,7 +2,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { DatabaseSync } from "node:sqlite";
-import { handleTiktok, seal, unseal } from "../src/tiktok.js";
+import { handleTiktok, seal, unseal, tiktokKeys, keyProblems } from "../src/tiktok.js";
 
 function fakeD1(db) {
   const stmt = (sql, args = []) => ({
@@ -146,4 +146,24 @@ test("disconnect revokes and deletes", async () => {
   assert.match(r.headers.get("Location"), /ok=disconnected/);
   assert.ok(calls.some((c) => c.u.endsWith("/oauth/revoke/")));
   assert.equal(await env.DB.prepare("SELECT * FROM tiktok_auth").first(), null);
+});
+
+const NL = String.fromCharCode(10);
+test("tiktokKeys trims stray newlines and spaces", () => {
+  const k = tiktokKeys({ TIKTOK_SANDBOX_CLIENT_KEY: NL + "sbabc" + NL, TIKTOK_SANDBOX_CLIENT_SECRET: " s " + NL }, "sandbox");
+  assert.equal(k.key, "sbabc");
+  assert.equal(k.secret, "s");
+});
+
+test("keyProblems flags a production key in the sandbox slot and never echoes keys", () => {
+  const env = { TIKTOK_CLIENT_KEY: "awprodkey123", TIKTOK_CLIENT_SECRET: "ps", TIKTOK_SANDBOX_CLIENT_KEY: "awprodkey123" + NL, TIKTOK_SANDBOX_CLIENT_SECRET: "ps" };
+  const p = keyProblems(env);
+  assert.equal(p.length, 2, "sandbox key and sandbox secret both flagged");
+  assert.ok(p[0].includes("Production anahtarı"), "says production key");
+  assert.ok(!p.join(" ").includes("awprodkey123"), "no key text in messages");
+});
+
+test("keyProblems is quiet for correct keys and flags a non sb sandbox key", () => {
+  assert.deepEqual(keyProblems({ TIKTOK_CLIENT_KEY: "awx", TIKTOK_CLIENT_SECRET: "a", TIKTOK_SANDBOX_CLIENT_KEY: "sbx", TIKTOK_SANDBOX_CLIENT_SECRET: "b" }), []);
+  assert.equal(keyProblems({ TIKTOK_SANDBOX_CLIENT_KEY: "zz", TIKTOK_SANDBOX_CLIENT_SECRET: "b" }).length, 1, "non sb flagged");
 });
