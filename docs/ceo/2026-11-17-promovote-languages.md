@@ -12,3 +12,5 @@
    realistic: ready this week, live with the next approved version.
 3. When that version is approved: store texts (from `mhokutan/nakliye-patronu` branch `claude/aso-yeni-metinler`,
    `docs/aso/promovote/<lang>.md`) and screenshots go up in those languages.
+
+**Done 2026-11-17:** pt, de and fr are in the app (373 strings each), the iOS and Android language lists and the API. tsc and lint pass. Live with the next build after the founder's go.
