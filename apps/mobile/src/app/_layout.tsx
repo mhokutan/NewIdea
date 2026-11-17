@@ -6,6 +6,7 @@ import { useEffect, useState } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import { api } from '@/lib/api';
+import { reportInstallSource } from '@/lib/install-source';
 import { GateHost } from '@/lib/gate';
 import { C, onThemeChange, theme } from '@/lib/theme';
 
@@ -20,7 +21,7 @@ export default function RootLayout() {
   });
   const ready = fontsLoaded || !!fontError;
   useEffect(() => { if (ready) SplashScreen.hideAsync(); }, [ready]);
-  useEffect(() => { api.event('app_open'); }, []);
+  useEffect(() => { api.event('app_open'); reportInstallSource(); }, []);
   // Light or dark: the whole tree remounts with the new palette (styles are built per scheme in lib/theme.ts).
   const [scheme, setScheme] = useState(theme.scheme);
   useEffect(() => onThemeChange(() => setScheme(theme.scheme)), []);
