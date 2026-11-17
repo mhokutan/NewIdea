@@ -120,3 +120,8 @@ Veri değişmedi; ofis `office_agents.status` ile yaşar:
 * `waiting_owner`: masanın yanında ayakta, ekran sarı. `blocked`: kırmızı ışık, ekran kırmızı. `offline`: masa boş, ekran kapalı.
 * Model (`model` ya da roldeki parantez): göğüste renkli taş ve isim balonunda O/S/H harfi.
 * Işık New York saatine göre (gündüz, akşam, gece). Kişiye tıklayınca panelde "Şu an" satırı var.
+
+### Kişilikler ve iş konuşmaları (2026-11-17)
+* Kişilikler `web/landing/public/office/personas.json` içinde (id başına isim, beden f/m, tür, konuşma tarzı, biyografi, uzmanlık, sever, sevmez). Yeni oturum eklenince bir satır eklemek yeter; yoksa sayfa rolden üretir.
+* Konuşmalar senin yazdığın verilerden çıkar: `office_tasks` başlığı ve aşaması, `office_agents.last_action`, `office_mail` etiketi. Bu alanlara sır, anahtar, e-posta, link ya da oyuncu bilgisi YAZMA. Sayfa bunlara benzeyen metni zaten göstermez ama kaynak temiz kalsın.
+* LLM çağrısı yok, maliyet yok.
