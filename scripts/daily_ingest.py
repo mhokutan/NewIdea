@@ -105,7 +105,7 @@ def upload(token, key, path):
         code = r.stdout.strip()
         if code == "201":
             return f"https://api.promovote.com/media/{key}"
-        if code == "401" and attempt < 5:  # the new secret needs a few seconds to reach every edge
+        if code in ("401", "000", "502", "503", "504") and attempt < 5:  # new secret still spreading, or a network blip
             time.sleep(8)
             continue
         raise RuntimeError(f"upload {key}: {code} {r.stderr[-200:]}")
@@ -133,6 +133,9 @@ def main():
     d1("promovote-waitlist", "CREATE TABLE IF NOT EXISTS tiktok_queue (id INTEGER PRIMARY KEY AUTOINCREMENT, r2_key TEXT NOT NULL UNIQUE, caption TEXT NOT NULL, created_at TEXT NOT NULL DEFAULT (datetime('now')), sent_at TEXT)", LANDING_DIR)
     queued = d1("promovote-waitlist", f"SELECT r2_key AS slug FROM tiktok_queue WHERE r2_key LIKE 'daily/{day}/%'", LANDING_DIR, json_out=True)[0]["results"]
     done |= {Path(r["slug"]).stem for r in queued}
+    # TikTok is off, so PromoVote's own video (X only) counts as done once today's X video post exists.
+    if d1("promovote-db", f"SELECT id AS slug FROM social_posts WHERE id = '{day}-2200-daily'", API_DIR, json_out=True)[0]["results"]:
+        done.add("promovote")
     work = Path(tempfile.mkdtemp(prefix=f"daily-{day}-"))
     ok, report = [], []
     for app in apps:
