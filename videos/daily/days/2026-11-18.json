@@ -1,0 +1,149 @@
+{
+ "hauling-empire": {
+  "intro": [
+   "New in",
+   "2.5.2"
+  ],
+  "intro_acc": 1,
+  "slides": [
+   "s1",
+   "s5",
+   "s6",
+   "s7",
+   "s4"
+  ],
+  "notes": [
+   [
+    "Queue the next load",
+    "Reserve it for a truck already on the road"
+   ],
+   [
+    "Half the breakdowns",
+    "For well-kept owned trucks"
+   ],
+   [
+    "Now in Russian",
+    "Arabic texts are improved too"
+   ]
+  ]
+ },
+ "poleris": {
+  "intro": [
+   "Did you",
+   "know?"
+  ],
+  "intro_acc": 1,
+  "slides": [
+   "s2",
+   "s5",
+   "s4",
+   "s3",
+   "s6"
+  ],
+  "notes": [
+   [
+    "Home screen widget",
+    "Today's affirmation at a glance"
+   ],
+   [
+    "Lock screen wallpapers",
+    "Your words, always in sight"
+   ],
+   [
+    "Your own voice",
+    "Recordings stay on your device"
+   ]
+  ]
+ },
+ "dovelet": {
+  "intro": [
+   "Say it with",
+   "a drawing."
+  ],
+  "intro_acc": 1,
+  "slides": [
+   "s3",
+   "s4",
+   "s6",
+   "s5",
+   "s2"
+  ],
+  "notes": [
+   [
+    "Hand-drawn emoji",
+    "Send them in your chat"
+   ],
+   [
+    "Reminders for your partner",
+    "Their phone rings when you pick, if they allow it"
+   ],
+   [
+    "Mood",
+    "Visible for 24 hours"
+   ]
+  ]
+ },
+ "dropolis": {
+  "intro": [
+   "New in",
+   "1.0.1"
+  ],
+  "intro_acc": 1,
+  "slides": [
+   "s1",
+   "s2",
+   "s3",
+   "s4",
+   "s6"
+  ],
+  "notes": [
+   [
+    "Real streets",
+    "Sidewalks, trees and colourful roofs"
+   ],
+   [
+    "Building cards",
+    "See what each upgrade gives"
+   ],
+   [
+    "Smoother on older phones",
+    "Lighter couriers and drones"
+   ]
+  ]
+ },
+ "promovote": {
+  "intro": [
+   "Build your",
+   "Scout Score."
+  ],
+  "intro_acc": 1,
+  "slides": [
+   "s4",
+   "s3",
+   "s2",
+   "s1",
+   "s5"
+  ],
+  "caps": [
+   "Your Scout Score",
+   "Right calls earn points",
+   "One tap, your call",
+   "Short promos every day",
+   "Meet the makers"
+  ],
+  "notes": [
+   [
+    "Scout Score",
+    "A reputation score, no cash value"
+   ],
+   [
+    "Weekly streak",
+    "It keeps you coming back"
+   ],
+   [
+    "Fair by design",
+    "Paying never buys a chart spot"
+   ]
+  ]
+ }
+}

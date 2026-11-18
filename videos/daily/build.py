@@ -105,4 +105,7 @@ window.__timelines = window.__timelines || {{}}; window.__timelines["main"] = tl
     print(key, "total", total)
 
 if __name__ == "__main__":
+    if len(sys.argv) > 3:  # day override file: days/<date>.json
+        for k, v in json.load(open(sys.argv[3])).get(sys.argv[2], {}).items():
+            APPS[sys.argv[2]][k] = [tuple(x) for x in v] if k == "notes" else v
     build(sys.argv[1], sys.argv[2])
