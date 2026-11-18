@@ -123,3 +123,5 @@ The same 1080p files can also go to X (video posts) and, later, TikTok.
   to a fresh random value before the run and again after it; founder allowed this on 2026-11-17), adds the 4 product promos to promovote-db, queues all 5 for
   TikTok (`tiktok_queue`, sent by promovote-landing at 21:17 UTC) and one X video post at 22:00 UTC. Safe to run twice.
 * Media URLs: `https://api.promovote.com/media/daily/<date>/<app>.mp4` (1080), `<app>-720.mp4` (app feed), `<app>-poster.jpg`.
+
+**TikTok stopped (founder 2026-11-18: "tiktok'tan paylaşım falan yapmayın").** The connection is paused (tiktok_auth row renamed to `paused-2026-11-18`, queue emptied), `daily_ingest.py` has `TIKTOK_ON = False`, the landing cron finds no connection and sends nothing. Do not restart TikTok unless the founder asks.

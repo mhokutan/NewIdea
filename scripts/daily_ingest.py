@@ -30,6 +30,7 @@ APPS = {
     "promovote": None,  # TikTok and X only
 }
 ALIASES = {"hauling-empire": "haulingempire"}  # file names the video session uses
+TIKTOK_ON = False  # founder 2026-11-18: no TikTok posting; the connection is paused (tiktok_auth id paused-2026-11-18)
 GOOGLE_ONLY = {"dropolis"}  # not on the App Store (Dovelet is since 2026-11-16)
 X_ROTATION = ["haulingempire", "dropolis", "poleris", "dovelet", "promovote"]
 q = lambda v: "null" if v is None else "'" + str(v).replace("'", "''") + "'"
@@ -173,7 +174,7 @@ def main():
         caption = f"{title.rstrip('.!?')}. {desc} " + " ".join(f"#{t}" for t in tags)
         tt_sql.append(f"INSERT INTO tiktok_queue (r2_key, caption) VALUES ({q(f'daily/{day}/{app}.mp4')}, {q(caption.strip()[:2200])}) ON CONFLICT (r2_key) DO NOTHING;")
         if APPS[app] is None:
-            report.append(f"{app}: TikTok and X only")
+            report.append(f"{app}: X only")
             continue
         slug = f"{app}-daily-{day}"
         pid, vid = str(uuid.uuid5(NS, f"promo/{slug}")), str(uuid.uuid5(NS, f"video/{slug}"))
@@ -189,7 +190,7 @@ def main():
         if tags:
             app_sql.append("insert into hashtags (tag, use_count) values " + ", ".join(f"({q(t)}, 1)" for t in tags) + " on conflict (tag) do update set use_count = use_count + 1;")
             app_sql.append("insert into promo_hashtags (promo_id, tag, position) select id, t.tag, t.pos from promos, (" + " union all ".join(f"select {q(t)} as tag, {i} as pos" for i, t in enumerate(tags)) + f") t where promos.id = {q(pid)} on conflict do nothing;")
-        report.append(f"{app}: PromoVote + TikTok queue ({dur:.0f} s)")
+        report.append(f"{app}: PromoVote ({dur:.0f} s)")
 
     # One X video post at 22:00 UTC, product rotates by day of year (the first available one from that point).
     start = datetime.strptime(day, "%Y-%m-%d").timetuple().tm_yday % len(X_ROTATION)
@@ -211,7 +212,8 @@ def main():
     (work / "app.sql").write_text("\n".join(app_sql) + "\n")
     (work / "tiktok.sql").write_text("\n".join(tt_sql) + "\n")
     d1("promovote-db", str(work / "app.sql"), API_DIR)
-    d1("promovote-waitlist", str(work / "tiktok.sql"), LANDING_DIR)
+    if TIKTOK_ON:
+        d1("promovote-waitlist", str(work / "tiktok.sql"), LANDING_DIR)
     print("\n".join(report))
     return 0
 
