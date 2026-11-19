@@ -1,0 +1,149 @@
+{
+ "hauling-empire": {
+  "intro": [
+   "Did you",
+   "know?"
+  ],
+  "intro_acc": 1,
+  "slides": [
+   "s5",
+   "s6",
+   "s4",
+   "s3",
+   "s7"
+  ],
+  "notes": [
+   [
+    "Sea routes",
+    "Book deck space on Ro-Ro ferries"
+   ],
+   [
+    "Fair by design",
+    "No gems, no energy bars, no forced ads"
+   ],
+   [
+    "You run the business",
+    "Pick loads, plan routes, hire people"
+   ]
+  ]
+ },
+ "poleris": {
+  "intro": [
+   "Your 21-day",
+   "journey."
+  ],
+  "intro_acc": 1,
+  "slides": [
+   "s6",
+   "s1",
+   "s3",
+   "s4",
+   "s2"
+  ],
+  "notes": [
+   [
+    "21-Day Journey",
+    "Clarity, action, then trust and release"
+   ],
+   [
+    "One small step a day",
+    "One question and one step"
+   ],
+   [
+    "Watch your streak grow",
+    "A gentle end to every ritual"
+   ]
+  ]
+ },
+ "dovelet": {
+  "intro": [
+   "Grow a",
+   "heart flower."
+  ],
+  "intro_acc": 1,
+  "slides": [
+   "s5",
+   "s1",
+   "s2",
+   "s6",
+   "s4"
+  ],
+  "notes": [
+   [
+    "Heart flower",
+    "It grows as you both stop by"
+   ],
+   [
+    "Distance and weather",
+    "If you both turn it on"
+   ],
+   [
+    "No location tracking",
+    "End it in one tap"
+   ]
+  ]
+ },
+ "dropolis": {
+  "intro": [
+   "From parcel",
+   "to Mars."
+  ],
+  "intro_acc": 1,
+  "slides": [
+   "s2",
+   "s3",
+   "s4",
+   "s5",
+   "s6"
+  ],
+  "notes": [
+   [
+    "Pack orders",
+    "Deliver to every door"
+   ],
+   [
+    "Robots take over",
+    "Less tapping, more building"
+   ],
+   [
+    "Launch a rocket",
+    "Then build a colony on Mars"
+   ]
+  ]
+ },
+ "promovote": {
+  "intro": [
+   "7 promos.",
+   "Your call."
+  ],
+  "intro_acc": 1,
+  "slides": [
+   "s1",
+   "s2",
+   "s3",
+   "s5",
+   "s4"
+  ],
+  "caps": [
+   "7 short promos a day",
+   "One tap, your call",
+   "Right calls earn points",
+   "Meet the makers",
+   "Your Scout Score"
+  ],
+  "notes": [
+   [
+    "Today's Drop",
+    "7 short promo videos a day"
+   ],
+   [
+    "Seven days later",
+    "The crowd decides"
+   ],
+   [
+    "Play the Duel",
+    "Two promos, pick the one that blows up"
+   ]
+  ]
+ }
+}
