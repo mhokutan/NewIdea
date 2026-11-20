@@ -1,0 +1,150 @@
+{
+ "hauling-empire": {
+  "intro": [
+   "9 places",
+   "on your map."
+  ],
+  "intro_acc": 1,
+  "slides": [
+   "s2",
+   "s3",
+   "s7",
+   "s8",
+   "s1"
+  ],
+  "notes": [
+   [
+    "Weigh stations and truck washes",
+    "Run by the game, the same for everyone"
+   ],
+   [
+    "Customs brokers and leasing",
+    "Plus trailer rental and scrapyards"
+   ],
+   [
+    "Driving schools",
+    "And freight exchanges"
+   ]
+  ]
+ },
+ "poleris": {
+  "intro": [
+   "After 21 days,",
+   "pick your next."
+  ],
+  "intro_acc": 1,
+  "slides": [
+   "s6",
+   "s1",
+   "s3",
+   "s5",
+   "s4"
+  ],
+  "notes": [
+   [
+    "Peace with Money",
+    "A 7 day journey"
+   ],
+   [
+    "Kinder to Yourself",
+    "A 10 day journey"
+   ],
+   [
+    "A Step in Your Career",
+    "A 10 day journey"
+   ]
+  ]
+ },
+ "dovelet": {
+  "intro": [
+   "Their note,",
+   "on your",
+   "phone."
+  ],
+  "intro_acc": 0,
+  "slides": [
+   "s1",
+   "s2",
+   "s4",
+   "s3",
+   "s5"
+  ],
+  "notes": [
+   [
+    "Home screen widget",
+    "Their latest note, their mood, your days together"
+   ],
+   [
+    "Photo widget",
+    "The newest of your shared photos"
+   ],
+   [
+    "Touch",
+    "One tap and their phone buzzes"
+   ]
+  ]
+ },
+ "dropolis": {
+  "intro": [
+   "City Festival",
+   "is here."
+  ],
+  "intro_acc": 0,
+  "slides": [
+   "s1",
+   "s3",
+   "s5",
+   "s6",
+   "s4"
+  ],
+  "notes": [
+   [
+    "City Festival",
+    "Plus a season bonus crate"
+   ],
+   [
+    "Daily and Lab panels",
+    "Now with tabs"
+   ],
+   [
+    "Mars with craters",
+    "Rocky ground and hills"
+   ]
+  ]
+ },
+ "promovote": {
+  "intro": [
+   "Are you a",
+   "creator?"
+  ],
+  "intro_acc": 1,
+  "slides": [
+   "s5",
+   "s1",
+   "s2",
+   "s3",
+   "s4"
+  ],
+  "caps": [
+   "Meet the makers",
+   "Short promos",
+   "Scouts make their call",
+   "Results within a week",
+   "Build a Scout Score"
+  ],
+  "notes": [
+   [
+    "Your profile page",
+    "Logo, banner and links"
+   ],
+   [
+    "Free stats",
+    "For every promo"
+   ],
+   [
+    "Gifts for scouts",
+    "Offer one if you like"
+   ]
+  ]
+ }
+}
