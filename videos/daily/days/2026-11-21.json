@@ -1,0 +1,151 @@
+{
+ "hauling-empire": {
+  "intro": [
+   "New in",
+   "2.5.3"
+  ],
+  "intro_acc": 1,
+  "slides": [
+   "s5",
+   "s1",
+   "s6",
+   "s4",
+   "s3"
+  ],
+  "store": "Truck Tycoon on the App Store",
+  "notes": [
+   [
+    "Sea loads",
+    "Regular loads on Turkey and Europe Ro-Ro lines"
+   ],
+   [
+    "Map filter",
+    "Show or hide landmarks, players and ports"
+   ],
+   [
+    "Arrival reminder",
+    "It now names the time"
+   ]
+  ]
+ },
+ "poleris": {
+  "intro": [
+   "A 2 minute",
+   "morning ritual."
+  ],
+  "intro_acc": 1,
+  "slides": [
+   "s1",
+   "s3",
+   "s2",
+   "s5",
+   "s4"
+  ],
+  "notes": [
+   [
+    "Read your affirmation",
+    "Start the day with one line"
+   ],
+   [
+    "Give thanks",
+    "Take a calm moment"
+   ],
+   [
+    "See it",
+    "Then come back to it every day"
+   ]
+  ]
+ },
+ "dovelet": {
+  "intro": [
+   "New in",
+   "Dovelet 1.1"
+  ],
+  "intro_acc": 1,
+  "slides": [
+   "s1",
+   "s2",
+   "s3",
+   "s4",
+   "s5"
+  ],
+  "store": "Couple widget, on the App Store",
+  "notes": [
+   [
+    "Today's question",
+    "Answer it and your answers open together"
+   ],
+   [
+    "Shared lists",
+    "To do and shopping"
+   ],
+   [
+    "Countdown",
+    "To the next time you meet"
+   ]
+  ]
+ },
+ "dropolis": {
+  "intro": [
+   "Launch your",
+   "first rocket."
+  ],
+  "intro_acc": 1,
+  "slides": [
+   "s5",
+   "s6",
+   "s4",
+   "s3",
+   "s2"
+  ],
+  "notes": [
+   [
+    "Robots take over",
+    "The work in your city"
+   ],
+   [
+    "Build a colony",
+    "On Mars"
+   ],
+   [
+    "Grow a tiny town",
+    "Into a skyline"
+   ]
+  ]
+ },
+ "promovote": {
+  "intro": [
+   "Which one",
+   "blows up?"
+  ],
+  "intro_acc": 1,
+  "slides": [
+   "s2",
+   "s1",
+   "s3",
+   "s4",
+   "s5"
+  ],
+  "caps": [
+   "One tap, your call",
+   "Short promos",
+   "Right calls earn points",
+   "Your Scout Score",
+   "Meet the makers"
+  ],
+  "notes": [
+   [
+    "Play the Duel",
+    "Two promos side by side"
+   ],
+   [
+    "Pick the one",
+    "That blows up first"
+   ],
+   [
+    "Follow creators",
+    "Save promos and share them"
+   ]
+  ]
+ }
+}
