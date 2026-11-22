@@ -108,8 +108,9 @@ and tries later; also when a store secret is missing).
 
 Products (grant table lives in `PRODUCTS` in `src/purchases.js`): `dropolis.starter_pack` (one time, 150 gems and the
 `sky_rovi` skin), `dropolis.city_card` (one time, City Card), `dropolis.gems_s` 80, `gems_m` 450, `gems_l` 1000,
-`gems_xl` 2200 gems. Prices live only in the store consoles; `usd` in `PRODUCTS` is the list price for revenue
-reports and is `null` until the owner confirms it.
+`gems_xl` 2200 gems. The real prices are set in the store consoles; `usd` in `PRODUCTS` is the list price for
+revenue reports (owner approved 2026-11-21): starter_pack 1.99, city_card 4.99, gems_s 0.99, gems_m 4.99, gems_l 9.99,
+gems_xl 19.99 USD. Change it together with the consoles.
 
 How a purchase is checked:
 * iOS with `jws` (StoreKit 2): ES256, x5c chain of 3, root pinned to Apple Root CA G3 (SHA-256), each certificate
@@ -117,8 +118,12 @@ How a purchase is checked:
   bundle id `com.promovote.dropolis`, `productId` and `transactionId` match, no `revocationDate`, environment
   `Production` or `Sandbox`.
 * iOS with only `receipt`: App Store Server API `GET /inApps/v1/transactions/{transactionId}` (production, then
-  sandbox) with the owner's In-App Purchase key, and the returned JWS is checked as above. The receipt itself is not
-  parsed.
+  sandbox) with the owner's In-App Purchase key. The signed transaction Apple returns goes through the same checks as
+  above (chain, bundle id, productId, transactionId, revocation). Open note: the receipt itself is not parsed, so
+  this path trusts the `transactionId` the game sends. Someone who knows another player's Apple transaction id could
+  claim it first. Apple ids are long and not tied to our app, so guessing one of ours is not practical, and the game
+  sends `jws` (StoreKit 2) in normal use. To close it fully later: set `appAccountToken` in the game and compare it
+  here, or parse the PKCS#7 receipt.
 * Android: Google Play Developer API `purchases.products.get` for `com.promovote.dropolis` with the service account.
   `purchaseState` must be 0. `purchaseType` 0 (test) is stored with `sandbox = 1`, 1 (promo code) with price 0. The
   ledger key is `purchaseToken`; the order id is kept in `order_id`; the answer echoes the `transactionId` the game sent.

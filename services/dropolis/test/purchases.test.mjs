@@ -15,7 +15,7 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import {
   verifyPurchase, listPurchases, purchaseDeleteStatements, resetGoogleTokenCache, verifyAppleJWS,
-  BUNDLE_ID,
+  BUNDLE_ID, PRODUCTS,
 } from "../src/purchases.js";
 
 const SERVICE = resolve(import.meta.dirname, "..");
@@ -161,6 +161,7 @@ test("android: valid purchase grants gems and writes the ledger", async () => {
   assert.equal(all[0].user_id, me.id);
   assert.equal(all[0].gems, 450);
   assert.equal(all[0].sandbox, 0);
+  assert.equal(all[0].price_usd, 4.99); // catalog list price (owner approved 2026-11-21)
   // The Play API was called with the Bearer token from the token endpoint.
   const pc = playCalls();
   assert.equal(pc.length, 1);
@@ -460,7 +461,7 @@ test("account deletion: restored rows are not counted in totals, test accounts a
   assert.equal(t.length, 1);
   assert.equal(t[0].is_test, 1);
   assert.equal(t[0].purchases, 1);
-  assert.equal(t[0].usd, 0);
+  assert.equal(t[0].usd, 4.99); // list price kept; the is_test flag keeps it out of revenue
   // A player with no purchases deletes cleanly.
   const nobody = makeUser(db);
   await db.batch([...await purchaseDeleteStatements(db, nobody), db.prepare("delete from users where id = ?").bind(nobody.id)]);
@@ -646,4 +647,81 @@ test("ios: receipt only path without Apple secrets answers 503", async () => {
   assert.deepEqual(r.body, { error: "store_unreachable" });
   assert.equal(rows(db).length, 0);
   assert.equal(calls.length, 0);
+});
+
+// ---------- catalog ----------
+test("catalog: grants and list prices match the owner approved table (2026-11-21)", () => {
+  const want = {
+    "dropolis.starter_pack": [150, 1.99], "dropolis.city_card": [0, 4.99], "dropolis.gems_s": [80, 0.99],
+    "dropolis.gems_m": [450, 4.99], "dropolis.gems_l": [1000, 9.99], "dropolis.gems_xl": [2200, 19.99],
+  };
+  assert.deepEqual(Object.keys(PRODUCTS).sort(), Object.keys(want).sort());
+  for (const [id, [gems, usd]] of Object.entries(want)) {
+    assert.equal(PRODUCTS[id].gems, gems, id);
+    assert.equal(PRODUCTS[id].usd, usd, id);
+  }
+  assert.equal(PRODUCTS["dropolis.starter_pack"].oneTime, true);
+  assert.equal(PRODUCTS["dropolis.city_card"].cityCard, true);
+});
+
+// ---------- iOS receipt path (App Store Server API, stubbed) ----------
+// The signed transaction Apple returns must pass the same checks as a JWS from the phone: chain, bundle id, product.
+const APPLE_PROD = "https://api.storekit.itunes.apple.com/inApps/v1/transactions/";
+const APPLE_SANDBOX = "https://api.storekit-sandbox.itunes.apple.com/inApps/v1/transactions/";
+function appleEnv() {
+  const { privateKey } = crypto.generateKeyPairSync("ec", { namedCurve: "P-256" });
+  return {
+    ...env, APPLE_IAP_KEY_ID: "TESTKEYID", APPLE_IAP_ISSUER_ID: "test-issuer",
+    APPLE_IAP_PRIVATE_KEY: privateKey.export({ type: "pkcs8", format: "pem" }),
+  };
+}
+const receiptBody = (over = {}) => ({ platform: "ios", productId: "dropolis.gems_l", transactionId: "2000000123", receipt: "base64receipt", ...over });
+function appleApi(tx, { prodStatus = 200 } = {}) {
+  return (url) => {
+    if (url.startsWith(APPLE_PROD)) return prodStatus === 200 ? json({ signedTransactionInfo: makeJws(tx) }) : json({}, prodStatus);
+    if (url.startsWith(APPLE_SANDBOX)) return json({ signedTransactionInfo: makeJws(tx) });
+    throw new Error(`unexpected fetch ${url}`);
+  };
+}
+
+test("ios receipt path: valid signed transaction from Apple grants, with a signed ES256 bearer", async () => {
+  const e = appleEnv();
+  stubFetch(appleApi(goodTx()));
+  const r = await verify(e, makeUser(db), receiptBody(), appleOpts());
+  assert.equal(r.status, 200);
+  assert.equal(r.body.grant.gems, 1000);
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].url, APPLE_PROD + "2000000123");
+  const bearer = calls[0].init.headers.Authorization.replace("Bearer ", "").split(".");
+  const head = JSON.parse(Buffer.from(bearer[0], "base64url"));
+  const claims = JSON.parse(Buffer.from(bearer[1], "base64url"));
+  assert.deepEqual([head.alg, head.kid], ["ES256", "TESTKEYID"]);
+  assert.deepEqual([claims.iss, claims.aud, claims.bid], ["test-issuer", "appstoreconnect-v1", BUNDLE_ID]);
+});
+
+test("ios receipt path: wrong bundle id or product in Apple's answer answers 402", async () => {
+  const e = appleEnv();
+  stubFetch(appleApi(goodTx({ bundleId: "com.other.app" })));
+  let r = await verify(e, makeUser(db), receiptBody(), appleOpts());
+  assert.equal(r.status, 402);
+  assert.deepEqual(r.body, { error: "not_valid", reason: "bundle_id" });
+  stubFetch(appleApi(goodTx({ productId: "dropolis.gems_s" })));
+  r = await verify(e, makeUser(db), receiptBody(), appleOpts());
+  assert.equal(r.status, 402);
+  assert.deepEqual(r.body, { error: "not_valid", reason: "product_id" });
+  assert.equal(rows(db).length, 0);
+});
+
+test("ios receipt path: not in production, found in sandbox; not found anywhere answers 402; Apple down answers 503", async () => {
+  const e = appleEnv();
+  stubFetch(appleApi(goodTx({ environment: "Sandbox" }), { prodStatus: 404 }));
+  let r = await verify(e, makeUser(db), receiptBody(), appleOpts());
+  assert.equal(r.status, 200);
+  assert.equal(r.body.sandbox, true);
+  stubFetch(() => json({}, 404));
+  r = await verify(e, makeUser(db), receiptBody({ transactionId: "2000000777" }), appleOpts());
+  assert.equal(r.status, 402);
+  stubFetch(() => json({}, 500));
+  r = await verify(e, makeUser(db), receiptBody({ transactionId: "2000000778" }), appleOpts());
+  assert.equal(r.status, 503);
 });

@@ -15,15 +15,15 @@ const OID_APPLE_LEAF = "1.2.840.113635.100.6.11.1"; // Apple receipt signing lea
 const OID_APPLE_WWDR = "1.2.840.113635.100.6.2.1"; // Apple WWDR intermediate marker
 
 // Grant table (the server is the source of truth; the game shows the same table but applies what we return).
-// usd: catalog list price for revenue reports (before store fees). null until the owner confirms the prices that are
-// set in App Store Connect and Play Console; revenue then shows as unknown instead of a guessed number.
+// usd: catalog list price for revenue reports (before store fees), owner approved 2026-11-21. The real price is set in
+// App Store Connect and Play Console; change both places together.
 export const PRODUCTS = {
-  "dropolis.starter_pack": { oneTime: true, gems: 150, skin: "sky_rovi", cityCard: false, item: "starterPack", usd: null },
-  "dropolis.city_card": { oneTime: true, gems: 0, skin: null, cityCard: true, item: "cityCard", usd: null },
-  "dropolis.gems_s": { oneTime: false, gems: 80, skin: null, cityCard: false, item: null, usd: null },
-  "dropolis.gems_m": { oneTime: false, gems: 450, skin: null, cityCard: false, item: null, usd: null },
-  "dropolis.gems_l": { oneTime: false, gems: 1000, skin: null, cityCard: false, item: null, usd: null },
-  "dropolis.gems_xl": { oneTime: false, gems: 2200, skin: null, cityCard: false, item: null, usd: null },
+  "dropolis.starter_pack": { oneTime: true, gems: 150, skin: "sky_rovi", cityCard: false, item: "starterPack", usd: 1.99 },
+  "dropolis.city_card": { oneTime: true, gems: 0, skin: null, cityCard: true, item: "cityCard", usd: 4.99 },
+  "dropolis.gems_s": { oneTime: false, gems: 80, skin: null, cityCard: false, item: null, usd: 0.99 },
+  "dropolis.gems_m": { oneTime: false, gems: 450, skin: null, cityCard: false, item: null, usd: 4.99 },
+  "dropolis.gems_l": { oneTime: false, gems: 1000, skin: null, cityCard: false, item: null, usd: 9.99 },
+  "dropolis.gems_xl": { oneTime: false, gems: 2200, skin: null, cityCard: false, item: null, usd: 19.99 },
 };
 const grantOf = (p) => ({ gems: p.gems, skin: p.skin, cityCard: p.cityCard });
 const itemsOf = (p) => JSON.stringify({ ...(p.item ? { [p.item]: true } : {}), ...(p.skin ? { skin: p.skin } : {}) });
