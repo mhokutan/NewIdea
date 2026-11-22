@@ -1,5 +1,6 @@
 // Dropolis game API (Cloudflare Worker + D1 + one Durable Object). No framework, no dependencies.
 import APP_ADS from "./app-ads.txt"; // copied as is from mhokutan/NewRoboticGame docs/store/app-ads.txt
+import { verifyPurchase, listPurchases, purchaseDeleteStatements } from "./purchases.js";
 // Auth: every player starts as a guest (bearer token). Apple (iOS) and Google (Android) sign in verify the ID token
 // against the providers' public keys and link it to the guest account, so progress is never lost. No secrets needed:
 // audiences (bundle id, client ids) are public vars. Tokens are random and stored only as SHA-256 hashes.
@@ -244,8 +245,10 @@ async function route(req, env, url) {
     return json({ user: publicUser({ ...me, name, avatar, country }, await linkedOf(db, me.id)) });
   }
   // Account deletion (App Store rule 5.1.1(v)): the player, the save, scores, events and sessions are gone at once.
+  // Purchases: the anonymous total and a transaction hash are kept, the rows go (see purchases.js).
   if (p === "/v1/me" && m === "DELETE") {
     await db.batch([
+      ...await purchaseDeleteStatements(db, me),
       db.prepare("delete from event_batches where user_id = ?").bind(me.id),
       db.prepare("delete from scores where user_id = ?").bind(me.id),
       db.prepare("delete from saves where user_id = ?").bind(me.id),
@@ -402,6 +405,10 @@ async function route(req, env, url) {
     ]);
     return json({ coins: r.coins, gems: r.gems });
   }
+
+  // ---------- in-app purchases (Dropolis 1.1, see purchases.js) ----------
+  if (p === "/v1/purchases/verify" && m === "POST") return verifyPurchase(req, env, me, { json, readBody: body });
+  if (p === "/v1/purchases" && m === "GET") return listPurchases(env, me, { json });
 
   // Heartbeat every 5 minutes while the game is open: counted in the Durable Object, never written to D1.
   if (p === "/v1/presence" && m === "POST") {

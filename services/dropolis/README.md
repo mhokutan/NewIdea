@@ -90,3 +90,64 @@ sees its own value), the invite count, invite rewards (a test invitee finishing 
 `{ created: false, reason: "test_account" }`, and does not use up the 50 reward cap), and every number on the admin page
 `promovote.com/admin/dropolis/oyun` and the status card. Gems and coins already given stay in the ledger totals.
 Tests: `node --test services/dropolis/test/is-test.test.mjs` (local only).
+
+## In-app purchases (Dropolis 1.1, 2026-11-21)
+
+Code: `src/purchases.js`, schema: `migrations/0004_purchases.sql` (NOT applied on the live database yet). The store is
+the judge, D1 table `purchases` is the ledger. Both endpoints need the player's bearer token. These answers use the
+game's contract: errors are `{ "error": "<code>" }` (a string, not the object above), sometimes with a `reason`.
+
+| Method | Path | Body | Returns |
+|---|---|---|---|
+| POST | `/v1/purchases/verify` | `{ platform: "ios"\|"android", productId, transactionId, jws?, receipt?, purchaseToken?, installId? }` | `{ ok, transactionId, productId, again, grant: { gems, skin, cityCard }, sandbox }` |
+| GET | `/v1/purchases` | | `{ items: { starterPack, cityCard }, gemsBought, transactions: [...] }` (restore on a new phone) |
+
+Verify errors: 400 `bad_request`, 402 `not_valid` (store says no: the game drops it; `reason` says why, for example
+`revoked`, `pending`, `bundle_id`, `jws_signature`), 409 `owned_by_other`, 503 `store_unreachable` (the game keeps it
+and tries later; also when a store secret is missing).
+
+Products (grant table lives in `PRODUCTS` in `src/purchases.js`): `dropolis.starter_pack` (one time, 150 gems and the
+`sky_rovi` skin), `dropolis.city_card` (one time, City Card), `dropolis.gems_s` 80, `gems_m` 450, `gems_l` 1000,
+`gems_xl` 2200 gems. Prices live only in the store consoles; `usd` in `PRODUCTS` is the list price for revenue
+reports and is `null` until the owner confirms it.
+
+How a purchase is checked:
+* iOS with `jws` (StoreKit 2): ES256, x5c chain of 3, root pinned to Apple Root CA G3 (SHA-256), each certificate
+  signed by the next, Apple marker extensions on the leaf and intermediate, certificates valid at `signedDate`. Then
+  bundle id `com.promovote.dropolis`, `productId` and `transactionId` match, no `revocationDate`, environment
+  `Production` or `Sandbox`.
+* iOS with only `receipt`: App Store Server API `GET /inApps/v1/transactions/{transactionId}` (production, then
+  sandbox) with the owner's In-App Purchase key, and the returned JWS is checked as above. The receipt itself is not
+  parsed.
+* Android: Google Play Developer API `purchases.products.get` for `com.promovote.dropolis` with the service account.
+  `purchaseState` must be 0. `purchaseType` 0 (test) is stored with `sandbox = 1`, 1 (promo code) with price 0. The
+  ledger key is `purchaseToken`; the order id is kept in `order_id`; the answer echoes the `transactionId` the game sent.
+
+Ledger rules:
+* One row per store transaction (`unique (platform, transaction_id)`). The same transaction again returns the same
+  answer with `again: true`, without calling the store, and never grants twice (two calls at the same moment also
+  give one row).
+* A transaction that belongs to another player: 409 `owned_by_other`. On iOS this also covers another transaction of
+  the same original purchase.
+* A one time item the player already owns, or a transaction whose first owner deleted the account, is stored with
+  `gems = 0`, `restored = 1` and answered `again: true`.
+* Sandbox: accepted for everyone by default and stored with `sandbox = 1` (App Review buys in sandbox on the
+  production build, and TestFlight can not be told apart on the server). Var `IAP_SANDBOX = "testers"` accepts it only
+  for players with `is_test = 1`.
+* Account deletion: an anonymous total per day, platform and product goes to `purchase_deleted_totals`, a SHA-256 of
+  each transaction key to `purchase_tombstones`, then the rows are deleted.
+* Revenue: from `purchases` (`price_usd`, list price before store fees) where `status = 'granted'`, `sandbox = 0`,
+  `restored = 0` and the player is not `is_test`, plus `purchase_deleted_totals` with `sandbox = 0` and `is_test = 0`.
+  The `purchase` event from the game is for funnels only.
+
+Secrets (the owner sets them with `npx wrangler secret put <NAME>` in this folder; never in the repo):
+`GOOGLE_PLAY_SERVICE_ACCOUNT` (the whole JSON key file), `APPLE_IAP_KEY_ID`, `APPLE_IAP_ISSUER_ID`,
+`APPLE_IAP_PRIVATE_KEY` (the `.p8` file contents; only for the receipt fallback, StoreKit 2 JWS needs no secret).
+
+Next steps (not in 1.1): refunds. App Store Server Notifications V2 and Google Real-time developer notifications
+(voided purchases) can set `status = 'refunded'` and `refunded_at`; the game does not take gems back in 1.1. Also an
+online check of the Apple certificates (OCSP) and binding purchases to the player with `appAccountToken` /
+`obfuscatedAccountId`.
+
+Tests: `node --test services/dropolis/test/purchases.test.mjs` (local only, fake D1 over `node:sqlite`, store calls
+stubbed, a fake Apple certificate chain made with openssl).
