@@ -1,0 +1,151 @@
+{
+ "hauling-empire": {
+  "intro": [
+   "Did you",
+   "know?"
+  ],
+  "intro_acc": 1,
+  "slides": [
+   "s5",
+   "s7",
+   "s8",
+   "s6",
+   "s3"
+  ],
+  "store": "Truck Tycoon on the App Store",
+  "notes": [
+   [
+    "Cannot buy a ship?",
+    "The game tells you why: tier, port or money"
+   ],
+   [
+    "Progress to CEO mode",
+    "Your Company page counts owned semis, like 10/12"
+   ],
+   [
+    "No drivers to hire?",
+    "The list says when new ones apply"
+   ]
+  ]
+ },
+ "poleris": {
+  "intro": [
+   "A fresh start,",
+   "in 7 days."
+  ],
+  "intro_acc": 1,
+  "slides": [
+   "s6",
+   "s1",
+   "s3",
+   "s2",
+   "s5"
+  ],
+  "notes": [
+   [
+    "Write what you want",
+    "Your intentions, in one place"
+   ],
+   [
+    "Come back every day",
+    "One small step becomes a habit"
+   ],
+   [
+    "Seven calm days",
+    "For a fresh start"
+   ]
+  ]
+ },
+ "dovelet": {
+  "intro": [
+   "Did you",
+   "know?"
+  ],
+  "intro_acc": 1,
+  "slides": [
+   "s5",
+   "s1",
+   "s2",
+   "s3",
+   "s4"
+  ],
+  "store": "Couple widget, on the App Store",
+  "notes": [
+   [
+    "Name your heart flower",
+    "New in 1.1"
+   ],
+   [
+    "Memories",
+    "Your photos from this day"
+   ],
+   [
+    "Special days",
+    "With a countdown"
+   ]
+  ]
+ },
+ "dropolis": {
+  "intro": [
+   "Tap a building,",
+   "see the upgrade."
+  ],
+  "intro_acc": 1,
+  "slides": [
+   "s2",
+   "s4",
+   "s3",
+   "s1",
+   "s6"
+  ],
+  "notes": [
+   [
+    "Building cards",
+    "See what each upgrade gives"
+   ],
+   [
+    "Lighter couriers and drones",
+    "Smoother on older phones"
+   ],
+   [
+    "Season bonus crate",
+    "Plus a longer login streak"
+   ]
+  ]
+ },
+ "promovote": {
+  "intro": [
+   "Wrong calls",
+   "lose nothing."
+  ],
+  "intro_acc": 1,
+  "slides": [
+   "s3",
+   "s2",
+   "s1",
+   "s4",
+   "s5"
+  ],
+  "caps": [
+   "Right calls earn points",
+   "One tap, your call",
+   "Short promos",
+   "Your Scout Score",
+   "Meet the makers"
+  ],
+  "notes": [
+   [
+    "Right call",
+    "Grow your Scout Score"
+   ],
+   [
+    "Wrong call",
+    "It loses nothing"
+   ],
+   [
+    "Results within a week",
+    "The crowd decides"
+   ]
+  ]
+ }
+}
