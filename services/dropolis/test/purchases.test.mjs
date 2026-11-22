@@ -371,7 +371,7 @@ test("one time item: a second token for starter_pack is stored without gems and 
   const r1 = await verify(env, me, body("sp-1"));
   assert.equal(r1.status, 200);
   assert.equal(r1.body.again, false);
-  assert.deepEqual(r1.body.grant, { gems: 150, skin: "sky_rovi", cityCard: false });
+  assert.deepEqual(r1.body.grant, { gems: 150, skin: "sky", cityCard: false });
   const r2 = await verify(env, me, body("sp-2"));
   assert.equal(r2.status, 200);
   assert.equal(r2.body.again, true);
@@ -661,6 +661,8 @@ test("catalog: grants and list prices match the owner approved table (2026-11-21
     assert.equal(PRODUCTS[id].usd, usd, id);
   }
   assert.equal(PRODUCTS["dropolis.starter_pack"].oneTime, true);
+  // Skin keys must match the game's roviSkins catalog: only the Starter Pack has one ("sky").
+  for (const [id, p] of Object.entries(PRODUCTS)) assert.equal(p.skin, id === "dropolis.starter_pack" ? "sky" : null, id);
   assert.equal(PRODUCTS["dropolis.city_card"].cityCard, true);
 });
 

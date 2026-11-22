@@ -18,7 +18,7 @@ const OID_APPLE_WWDR = "1.2.840.113635.100.6.2.1"; // Apple WWDR intermediate ma
 // usd: catalog list price for revenue reports (before store fees), owner approved 2026-11-21. The real price is set in
 // App Store Connect and Play Console; change both places together.
 export const PRODUCTS = {
-  "dropolis.starter_pack": { oneTime: true, gems: 150, skin: "sky_rovi", cityCard: false, item: "starterPack", usd: 1.99 },
+  "dropolis.starter_pack": { oneTime: true, gems: 150, skin: "sky", cityCard: false, item: "starterPack", usd: 1.99 },
   "dropolis.city_card": { oneTime: true, gems: 0, skin: null, cityCard: true, item: "cityCard", usd: 4.99 },
   "dropolis.gems_s": { oneTime: false, gems: 80, skin: null, cityCard: false, item: null, usd: 0.99 },
   "dropolis.gems_m": { oneTime: false, gems: 450, skin: null, cityCard: false, item: null, usd: 4.99 },

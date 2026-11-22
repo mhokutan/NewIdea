@@ -107,7 +107,7 @@ Verify errors: 400 `bad_request`, 402 `not_valid` (store says no: the game drops
 and tries later; also when a store secret is missing).
 
 Products (grant table lives in `PRODUCTS` in `src/purchases.js`): `dropolis.starter_pack` (one time, 150 gems and the
-`sky_rovi` skin), `dropolis.city_card` (one time, City Card), `dropolis.gems_s` 80, `gems_m` 450, `gems_l` 1000,
+`sky` skin, the key in the game's roviSkins catalog), `dropolis.city_card` (one time, City Card), `dropolis.gems_s` 80, `gems_m` 450, `gems_l` 1000,
 `gems_xl` 2200 gems. The real prices are set in the store consoles; `usd` in `PRODUCTS` is the list price for
 revenue reports (owner approved 2026-11-21): starter_pack 1.99, city_card 4.99, gems_s 0.99, gems_m 4.99, gems_l 9.99,
 gems_xl 19.99 USD. Change it together with the consoles.
