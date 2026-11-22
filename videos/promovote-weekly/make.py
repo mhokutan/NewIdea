@@ -46,10 +46,10 @@ P = {
         beat=0, chord=(196.0, 246.94, 293.66)),
     "nicheable": dict(
         ground="#16181c", ink="#f5f5f7", muted="#a3a8b1", accent="#c8f560", pill_ink="#16181c", font="geist", mode="card",
-        hook=["Plan it.", "Track it.", "<b>Done.</b>"],
-        items=[("E-Ink planners", "Built for E-Ink tablets"),
-               ("College grade tracker", "See where you actually stand"),
-               ("Rental tax tracker", "Every trip counts")],
+        hook=["Simple pages.", "Your plans.", "<b>One place.</b>"],
+        items=[("Undated pages", "Start any week you want"),
+               ("Paper or E-Ink", "Print it or write on a tablet"),
+               ("Rental tax tracker", "Income and costs on one page")],
         name="Nicheable", sub="Digital planners and trackers on Etsy", pill="Find Nicheable on Etsy",
         beat=70, chord=(220, 277.18, 329.63)),
 }

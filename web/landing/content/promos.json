@@ -218,6 +218,12 @@
      "title": {"en": "Plan it. Track it. Done.", "es": "Planéalo. Contrólalo. Listo.", "tr": "Planla. Takip et. Bitti."},
      "desc": {"en": "Digital planners and trackers: E-Ink planners, a college grade tracker and a rental tax tracker.",
               "es": "Planificadores y controles digitales: planificadores E-Ink, control de notas universitarias y control de impuestos de alquiler.",
-              "tr": "Dijital planlayıcılar ve takip tabloları: E-Ink planlayıcılar, üniversite not takibi ve kiralama vergi takibi."}}
+              "tr": "Dijital planlayıcılar ve takip tabloları: E-Ink planlayıcılar, üniversite not takibi ve kiralama vergi takibi."}},
+    {"id": "nicheable-simple-pages", "creator": "nicheable", "lang": "en", "video": "nicheable-simple-pages", "dur": 22, "tags": ["planner", "productivity", "digitalplanner"],
+     "link": "https://nicheable.etsy.com", "linkKind": "shop",
+     "title": {"en": "Simple pages. Your plans. One place.", "es": "Páginas simples. Tus planes. Un solo lugar.", "tr": "Sade sayfalar. Senin planların. Tek yerde."},
+     "desc": {"en": "Undated planners you can print or use on an E-Ink tablet, plus a rental tax tracker with income and costs on one page.",
+              "es": "Planificadores sin fecha para imprimir o usar en una tableta E-Ink, y un control de impuestos de alquiler con ingresos y gastos en una sola página.",
+              "tr": "Yazdırabileceğin ya da E-Ink tablette kullanabileceğin tarihsiz planlayıcılar ve gelir giderini tek sayfada tutan kiralama vergi takibi."}}
   ]
 }
