@@ -107,6 +107,9 @@ The same 1080p files can also go to X (video posts) and, later, TikTok.
    15 minutes). Merge the remote branch first and deploy from a base that contains everything already live.
 6. Check: `https://promovote.com/media/<slug>.mp4` answers 200, `https://api.promovote.com/v1/creators/<handle>` lists the
    promo, then tell the founder in short Turkish.
+7. Since week 48 (2026-11-22) the weekly batch is only Nicheable: HE, Poleris, Dropolis and Dovelet already get a new
+   promo every day from section 9. Week 48: `nicheable-simple-pages` (migration 0026, promovote-landing ba8693c6), X queue
+   to 2026-11-30, video posts Nov 25, 27, 29 at 15 UTC.
 
 ## 8. TikTok (account "promovote", connected 2026-11-17, sandbox until TikTok approves the app)
 * promovote-landing runs `tiktokCron` every day at 15:17 UTC (`src/tiktok.js`): it sends up to 2 founder promos that were
