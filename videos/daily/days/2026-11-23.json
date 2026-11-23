@@ -1,0 +1,151 @@
+{
+ "hauling-empire": {
+  "intro": [
+   "Play solo",
+   "or online."
+  ],
+  "intro_acc": 1,
+  "slides": [
+   "s4",
+   "s3",
+   "s1",
+   "s2",
+   "s8"
+  ],
+  "notes": [
+   [
+    "Online is free",
+    "With Apple or Google sign-in"
+   ],
+   [
+    "Start small",
+    "Your first loads are nearby"
+   ],
+   [
+    "The map grows with you",
+    "Deliveries and reputation open new lanes"
+   ]
+  ]
+ },
+ "poleris": {
+  "intro": [
+   "Poleris now",
+   "works with Siri."
+  ],
+  "intro_acc": 1,
+  "slides": [
+   "s1",
+   "s2",
+   "s3",
+   "s4",
+   "s5"
+  ],
+  "store": "Manifestation Journal, on the App Store",
+  "notes": [
+   [
+    "Ask Siri",
+    "Start my ritual in Poleris"
+   ],
+   [
+    "Reminder buttons",
+    "Start your ritual from the notification"
+   ],
+   [
+    "Gentle haptics",
+    "As you move through your ritual"
+   ]
+  ]
+ },
+ "dovelet": {
+  "intro": [
+   "Free to",
+   "start."
+  ],
+  "intro_acc": 1,
+  "slides": [
+   "s1",
+   "s2",
+   "s3",
+   "s5",
+   "s6"
+  ],
+  "store": "Couple widget, on the App Store",
+  "notes": [
+   [
+    "Free to connect",
+    "Widget, touch, chat and reminders"
+   ],
+   [
+    "100 shared photos",
+    "Free"
+   ],
+   [
+    "No location tracking",
+    "End it in one tap"
+   ]
+  ]
+ },
+ "dropolis": {
+  "intro": [
+   "Mars has",
+   "craters."
+  ],
+  "intro_acc": 1,
+  "slides": [
+   "s6",
+   "s5",
+   "s4",
+   "s3",
+   "s2"
+  ],
+  "notes": [
+   [
+    "Rocky ground and hills",
+    "New on Mars in 1.0.1"
+   ],
+   [
+    "Build a colony",
+    "On the red planet"
+   ],
+   [
+    "Launch your first rocket",
+    "Then grow your skyline"
+   ]
+  ]
+ },
+ "promovote": {
+  "intro": [
+   "Fair by",
+   "design."
+  ],
+  "intro_acc": 1,
+  "slides": [
+   "s4",
+   "s3",
+   "s5",
+   "s2",
+   "s1"
+  ],
+  "caps": [
+   "Your Scout Score",
+   "Right calls earn points",
+   "Meet the makers",
+   "One tap, your call",
+   "Short promos"
+  ],
+  "notes": [
+   [
+    "No paid chart spots",
+    "Paying never buys a place"
+   ],
+   [
+    "Team picks",
+    "Never paid"
+   ],
+   [
+    "Scout Score",
+    "A reputation score, no cash value"
+   ]
+  ]
+ }
+}
