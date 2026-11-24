@@ -1704,14 +1704,14 @@ ${tilesHtml([["Paylaşılan", sum.posted?.n || 0], ["Sırada", sum.queued?.n || 
 <noscript><p class="empty">Bu sayfa için JavaScript gerekir.</p></noscript><script src="/admin-he-report.js?v=3" defer></script>`);
   }
   if (path === "/admin/hauling-empire/oyun") {
-    // 2026-11-07: the HE database fell over from heavy jobs; 90 days is computed live there and is too heavy.
-    // Until HE ships its 90 day cache (migration 20261107180100), the panel asks for at most 30 days.
-    const asked = rangeOf(url);
-    const range = Math.min(asked, 30);
-    const capNote = asked > range ? `<p class="countries">90 gün geçici olarak kapalı (Hauling Empire veritabanını korumak için). 30 gün gösteriliyor.</p>` : "";
+    // 2026-11-07 the HE database fell over from heavy live 90 day builds, so this page was capped at 30 days.
+    // 2026-11-24 the HE session confirmed analytics.ops_feed_cache holds 7, 30 and 90 day rows (pg_cron ops-feed-cache,
+    // about hourly), so the cap is gone. Only ask for days in RANGES (7, 30, 90): any other number skips the cache
+    // and runs the heavy live build on the HE database.
+    const range = rangeOf(url);
     const r = await heOps(env, range);
     if (!r.ok) return adminPage(path, "Hauling Empire: oyun", `<div class="top"><h1>Hauling Empire: oyun</h1></div><p class="empty">${esc(feedWhy(r, "Hauling Empire", "HE_STATS_KEY"))}</p>`);
-    return adminPage(path, "Hauling Empire: oyun", capNote + heOpsPage(path, { ...r.data, _fx: await fxRates(), _totals: await storeTotals(env, "haulingempire") }, range));
+    return adminPage(path, "Hauling Empire: oyun", heOpsPage(path, { ...r.data, _fx: await fxRates(), _totals: await storeTotals(env, "haulingempire") }, range));
   }
 
   if (path === "/admin/app-store" || path === "/admin/google-play") {
