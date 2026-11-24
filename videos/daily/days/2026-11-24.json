@@ -1,0 +1,152 @@
+{
+ "hauling-empire": {
+  "intro": [
+   "New in",
+   "2.5.4"
+  ],
+  "intro_acc": 1,
+  "slides": [
+   "s5",
+   "s7",
+   "s1",
+   "s2",
+   "s8"
+  ],
+  "store": "Truck Tycoon on the App Store",
+  "notes": [
+   [
+    "First sea delivery",
+    "One button reserves deck space and sends a truck"
+   ],
+   [
+    "Big fleets",
+    "The list scrolls smoothly and keeps its place"
+   ],
+   [
+    "Fuel stations",
+    "After 10, each new one lowers all sales"
+   ]
+  ]
+ },
+ "poleris": {
+  "intro": [
+   "A letter to",
+   "your future self."
+  ],
+  "intro_acc": 1,
+  "slides": [
+   "s1",
+   "s2",
+   "s3",
+   "s4",
+   "s5"
+  ],
+  "store": "Manifestation Journal, on the App Store",
+  "notes": [
+   [
+    "Letter to yourself",
+    "It opens in 21 days"
+   ],
+   [
+    "Proof notebook",
+    "Plus a scripting journal"
+   ],
+   [
+    "Rain or ocean sound",
+    "Optional, during your ritual"
+   ]
+  ]
+ },
+ "dovelet": {
+  "intro": [
+   "Join with",
+   "a link."
+  ],
+  "intro_acc": 1,
+  "slides": [
+   "s1",
+   "s2",
+   "s3",
+   "s4",
+   "s5"
+  ],
+  "store": "Couple widget, on the App Store",
+  "notes": [
+   [
+    "Invite link",
+    "Joining is quicker in 1.1"
+   ],
+   [
+    "On your widget",
+    "Today's question and the countdown"
+   ],
+   [
+    "Memories",
+    "Your photos from this day"
+   ]
+  ]
+ },
+ "dropolis": {
+  "intro": [
+   "Now fits",
+   "foldables."
+  ],
+  "intro_acc": 1,
+  "slides": [
+   "s1",
+   "s2",
+   "s4",
+   "s5",
+   "s3"
+  ],
+  "notes": [
+   [
+    "Foldable phones",
+    "The view adjusts when you open or close the screen"
+   ],
+   [
+    "Reward videos",
+    "An ad system update for more reliable ones"
+   ],
+   [
+    "Parcel Depot",
+    "New warehouse props"
+   ]
+  ]
+ },
+ "promovote": {
+  "intro": [
+   "Follow the",
+   "creators."
+  ],
+  "intro_acc": 1,
+  "slides": [
+   "s5",
+   "s1",
+   "s2",
+   "s3",
+   "s4"
+  ],
+  "caps": [
+   "Meet the makers",
+   "Short promos",
+   "One tap, your call",
+   "Right calls earn points",
+   "Your Scout Score"
+  ],
+  "notes": [
+   [
+    "Follow creators",
+    "Keep up with the ones you like"
+   ],
+   [
+    "Save promos",
+    "Come back to them later"
+   ],
+   [
+    "Share with friends",
+    "Send the ones you love"
+   ]
+  ]
+ }
+}
