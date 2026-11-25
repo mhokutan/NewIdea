@@ -1,0 +1,152 @@
+{
+ "hauling-empire": {
+  "intro": [
+   "Tap a truck,",
+   "stay in the list."
+  ],
+  "intro_acc": 1,
+  "slides": [
+   "s7",
+   "s8",
+   "s3",
+   "s1",
+   "s6"
+  ],
+  "store": "Truck Tycoon on the App Store",
+  "notes": [
+   [
+    "Show on map button",
+    "Tapping a truck card no longer jumps to the map"
+   ],
+   [
+    "Ship price",
+    "The message says how much is missing"
+   ],
+   [
+    "Clearer texts",
+    "Office staff and licence penalty points"
+   ]
+  ]
+ },
+ "poleris": {
+  "intro": [
+   "Tomorrow",
+   "starts here."
+  ],
+  "intro_acc": 1,
+  "slides": [
+   "s3",
+   "s1",
+   "s5",
+   "s2",
+   "s4"
+  ],
+  "store": "Manifestation Journal, on the App Store",
+  "notes": [
+   [
+    "Tomorrow starts here",
+    "See your next affirmation as soon as you finish"
+   ],
+   [
+    "One quiet reminder",
+    "Pick your ritual time"
+   ],
+   [
+    "1, 3 or 5 affirmations",
+    "And export your journal"
+   ]
+  ]
+ },
+ "dovelet": {
+  "intro": [
+   "Your photos,",
+   "on both widgets."
+  ],
+  "intro_acc": 1,
+  "slides": [
+   "s1",
+   "s5",
+   "s2",
+   "s3",
+   "s4"
+  ],
+  "store": "Couple widget, on the App Store",
+  "notes": [
+   [
+    "Shared photos",
+    "They show up on both widgets"
+   ],
+   [
+    "Photo widget",
+    "The newest of your shared photos"
+   ],
+   [
+    "Memories",
+    "Your photos from this day"
+   ]
+  ]
+ },
+ "dropolis": {
+  "intro": [
+   "Your city,",
+   "your way."
+  ],
+  "intro_acc": 1,
+  "slides": [
+   "s2",
+   "s1",
+   "s3",
+   "s4",
+   "s6"
+  ],
+  "notes": [
+   [
+    "Build your city your way",
+    "Houses, shops, parks and more"
+   ],
+   [
+    "Robots, drones and Mars",
+    "Grow beyond the city"
+   ],
+   [
+    "Pack orders, deliver fast",
+    "Every door counts"
+   ]
+  ]
+ },
+ "promovote": {
+  "intro": [
+   "Spot hits",
+   "early."
+  ],
+  "intro_acc": 1,
+  "slides": [
+   "s1",
+   "s2",
+   "s3",
+   "s5",
+   "s4"
+  ],
+  "caps": [
+   "Short promos",
+   "One tap, your call",
+   "Right calls earn points",
+   "Meet the makers",
+   "Your Scout Score"
+  ],
+  "notes": [
+   [
+    "A prediction game",
+    "Short promos from creators"
+   ],
+   [
+    "Will blow up, or Not for me",
+    "Make your call"
+   ],
+   [
+    "Seven days later",
+    "The crowd decides"
+   ]
+  ]
+ }
+}
