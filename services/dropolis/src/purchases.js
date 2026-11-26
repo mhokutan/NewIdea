@@ -233,6 +233,7 @@ export async function checkApple(env, b, opts = {}) {
     key: String(tx.transactionId), orderId: null,
     originalTransactionId: tx.originalTransactionId ? String(tx.originalTransactionId) : null,
     sandbox: tx.environment === "Sandbox", promo: false,
+    accountToken: tx.appAccountToken ? String(tx.appAccountToken) : null, viaReceipt: !b.jws,
   };
 }
 
@@ -273,7 +274,10 @@ export async function checkGoogle(env, b) {
   const orderId = p.orderId ? String(p.orderId) : null;
   // The game sends the order id, or the token itself when Google gave no order id.
   if (b.transactionId !== (orderId || b.purchaseToken) && b.transactionId !== b.purchaseToken) throw invalid("transaction_id");
-  return { key: b.purchaseToken, orderId, originalTransactionId: null, sandbox: p.purchaseType === 0, promo: p.purchaseType === 1 };
+  return {
+    key: b.purchaseToken, orderId, originalTransactionId: null, sandbox: p.purchaseType === 0, promo: p.purchaseType === 1,
+    accountToken: p.obfuscatedExternalAccountId ? String(p.obfuscatedExternalAccountId) : null, viaReceipt: false,
+  };
 }
 
 // ---------- ledger ----------
@@ -321,6 +325,16 @@ export async function verifyPurchase(req, env, me, { json, readBody, appleOpts }
     return ERR(json, 503, "store_unreachable");
   }
   if (v.sandbox && !sandboxAllowed(env, me)) return ERR(json, 402, "not_valid", "sandbox_not_allowed");
+  const tomb = await tombstoneHash(platform, v.key);
+  const tombstoned = !!await db.prepare("select 1 as x from purchase_tombstones where tx_hash = ?").bind(tomb).first();
+
+  // Account binding: the game passes the player id (user.id, a UUID) as appAccountToken (StoreKit) or
+  // obfuscatedAccountId (Play Billing), so the store signs who bought it. A token for another player means the
+  // purchase is that player's: 409. The receipt path (no JWS from the phone) only trusts a transactionId, so there the
+  // token is required. A transaction whose first owner deleted the account can still be restored, without gems.
+  const bound = v.accountToken ? v.accountToken.toLowerCase() === String(me.id).toLowerCase() : null;
+  if (bound === false && !tombstoned) return ERR(json, 409, "owned_by_other");
+  if (bound === null && v.viaReceipt && !tombstoned && env.IAP_RECEIPT_TOKEN !== "optional") return ERR(json, 402, "not_valid", "account_token_required");
 
   // 3. Write once. A one time item this player already owns (or an Apple transaction of the same original purchase,
   //    or a transaction whose owner deleted the account) is stored without gems and answered as "again".
@@ -333,8 +347,7 @@ export async function verifyPurchase(req, env, me, { json, readBody, appleOpts }
   if (product.oneTime && !restored) {
     if (await db.prepare("select 1 as x from purchases where user_id = ? and product_id = ? and status = 'granted' limit 1").bind(me.id, b.productId).first()) restored = 1;
   }
-  const tomb = await tombstoneHash(platform, v.key);
-  if (!restored && await db.prepare("select 1 as x from purchase_tombstones where tx_hash = ?").bind(tomb).first()) restored = 1;
+  if (tombstoned) restored = 1;
 
   const price = v.sandbox || v.promo ? 0 : product.usd;
   const ins = await db.prepare(`insert into purchases (platform, transaction_id, client_transaction_id, order_id, original_transaction_id, user_id, product_id,
@@ -365,7 +378,8 @@ export async function listPurchases(env, me, { json }) {
     if (p && p.item) items[p.item] = true;
     gemsBought += r.gems;
   }
-  return json({ items, gemsBought, transactions: results.map((r) => r.client_transaction_id) });
+  // accountToken: what the game passes to the store as appAccountToken / obfuscatedAccountId (the player id).
+  return json({ items, gemsBought, transactions: results.map((r) => r.client_transaction_id), accountToken: me.id });
 }
 
 const tombstoneHash = (platform, key) => sha256hex(enc.encode(`dropolis-purchase:${platform}:${key}`));

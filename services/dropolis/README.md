@@ -119,14 +119,21 @@ How a purchase is checked:
   `Production` or `Sandbox`.
 * iOS with only `receipt`: App Store Server API `GET /inApps/v1/transactions/{transactionId}` (production, then
   sandbox) with the owner's In-App Purchase key. The signed transaction Apple returns goes through the same checks as
-  above (chain, bundle id, productId, transactionId, revocation). Open note: the receipt itself is not parsed, so
-  this path trusts the `transactionId` the game sends. Someone who knows another player's Apple transaction id could
-  claim it first. Apple ids are long and not tied to our app, so guessing one of ours is not practical, and the game
-  sends `jws` (StoreKit 2) in normal use. To close it fully later: set `appAccountToken` in the game and compare it
-  here, or parse the PKCS#7 receipt.
+  above (chain, bundle id, productId, transactionId, revocation). The receipt itself is not parsed, so this path
+  only knows the `transactionId` the game sends; that is why it needs the account binding below (without
+  `appAccountToken` it answers 402 `account_token_required`; var `IAP_RECEIPT_TOKEN = "optional"` turns that off).
 * Android: Google Play Developer API `purchases.products.get` for `com.promovote.dropolis` with the service account.
   `purchaseState` must be 0. `purchaseType` 0 (test) is stored with `sandbox = 1`, 1 (promo code) with price 0. The
   ledger key is `purchaseToken`; the order id is kept in `order_id`; the answer echoes the `transactionId` the game sent.
+
+Account binding (2026-11-26): the game passes the player id (`user.id` from `/v1/me`, also `accountToken` in
+`GET /v1/purchases`, a UUID) to the store at purchase time: StoreKit 2 `Product.PurchaseOption.appAccountToken(UUID)`,
+Play Billing `BillingFlowParams.setObfuscatedAccountId(id)`. The store signs it into the transaction (`appAccountToken`
+in the JWS, `obfuscatedExternalAccountId` from Google). A token for another player answers 409 `owned_by_other`
+(the purchase is that player's; signing in to that account restores it). A missing token is accepted on the JWS and
+Google paths (the phone holds the signed purchase), required on the receipt path. A transaction whose first owner
+deleted the account restores for the new account without gems, whatever the token says. This closes the "someone
+claims another player's Apple transaction id first" gap of the receipt path.
 
 Ledger rules:
 * One row per store transaction (`unique (platform, transaction_id)`). The same transaction again returns the same
@@ -149,10 +156,13 @@ Secrets (the owner sets them with `npx wrangler secret put <NAME>` in this folde
 `GOOGLE_PLAY_SERVICE_ACCOUNT` (the whole JSON key file), `APPLE_IAP_KEY_ID`, `APPLE_IAP_ISSUER_ID`,
 `APPLE_IAP_PRIVATE_KEY` (the `.p8` file contents; only for the receipt fallback, StoreKit 2 JWS needs no secret).
 
-Next steps (not in 1.1): refunds. App Store Server Notifications V2 and Google Real-time developer notifications
-(voided purchases) can set `status = 'refunded'` and `refunded_at`; the game does not take gems back in 1.1. Also an
-online check of the Apple certificates (OCSP) and binding purchases to the player with `appAccountToken` /
-`obfuscatedAccountId`.
+Certificate revocation (OCSP), assessment 2026-11-26: not built, on purpose. Apple's own server library checks the
+intermediate certificate with OCSP only in its optional online mode. For us the chain is pinned to Apple Root CA G3,
+needs Apple's marker extensions, and a stolen Apple intermediate or leaf key is very unlikely; if Apple revokes one,
+it rotates certificates and the pin still holds. OCSP in a Worker would mean building DER requests by hand, one more
+network call per purchase (and a choice between failing open or blocking sales when ocsp.apple.com is slow).
+Refund and revoke notifications (below) cover the real risk, money coming back. Revisit if Apple announces a key
+compromise.
 
 Tests: `node --test services/dropolis/test/purchases.test.mjs` (local only, fake D1 over `node:sqlite`, store calls
 stubbed, a fake Apple certificate chain made with openssl).

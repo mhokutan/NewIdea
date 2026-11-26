@@ -407,9 +407,11 @@ test("listPurchases: items, gemsBought and transaction ids", async () => {
     items: { starterPack: false, cityCard: true },
     gemsBought: 530,
     transactions: ["GPA.t1", "GPA.t2", "GPA.t3"],
+    accountToken: me.id,
   });
-  const empty = await list(env, makeUser(db));
-  assert.deepEqual(empty.body, { items: { starterPack: false, cityCard: false }, gemsBought: 0, transactions: [] });
+  const fresh = makeUser(db);
+  const empty = await list(env, fresh);
+  assert.deepEqual(empty.body, { items: { starterPack: false, cityCard: false }, gemsBought: 0, transactions: [], accountToken: fresh.id });
 });
 
 // ---------- account deletion ----------
@@ -688,8 +690,9 @@ function appleApi(tx, { prodStatus = 200 } = {}) {
 
 test("ios receipt path: valid signed transaction from Apple grants, with a signed ES256 bearer", async () => {
   const e = appleEnv();
-  stubFetch(appleApi(goodTx()));
-  const r = await verify(e, makeUser(db), receiptBody(), appleOpts());
+  const me = makeUser(db);
+  stubFetch(appleApi(goodTx({ appAccountToken: me.id })));
+  const r = await verify(e, me, receiptBody(), appleOpts());
   assert.equal(r.status, 200);
   assert.equal(r.body.grant.gems, 1000);
   assert.equal(calls.length, 1);
@@ -716,8 +719,9 @@ test("ios receipt path: wrong bundle id or product in Apple's answer answers 402
 
 test("ios receipt path: not in production, found in sandbox; not found anywhere answers 402; Apple down answers 503", async () => {
   const e = appleEnv();
-  stubFetch(appleApi(goodTx({ environment: "Sandbox" }), { prodStatus: 404 }));
-  let r = await verify(e, makeUser(db), receiptBody(), appleOpts());
+  const me = makeUser(db);
+  stubFetch(appleApi(goodTx({ environment: "Sandbox", appAccountToken: me.id }), { prodStatus: 404 }));
+  let r = await verify(e, me, receiptBody(), appleOpts());
   assert.equal(r.status, 200);
   assert.equal(r.body.sandbox, true);
   stubFetch(() => json({}, 404));
@@ -726,4 +730,65 @@ test("ios receipt path: not in production, found in sandbox; not found anywhere 
   stubFetch(() => json({}, 500));
   r = await verify(e, makeUser(db), receiptBody({ transactionId: "2000000778" }), appleOpts());
   assert.equal(r.status, 503);
+});
+
+// ---------- account binding (appAccountToken / obfuscatedAccountId) ----------
+test("binding: receipt path without appAccountToken answers 402 account_token_required (unless optional)", async () => {
+  const e = appleEnv();
+  stubFetch(appleApi(goodTx()));
+  let r = await verify(e, makeUser(db), receiptBody(), appleOpts());
+  assert.equal(r.status, 402);
+  assert.deepEqual(r.body, { error: "not_valid", reason: "account_token_required" });
+  assert.equal(rows(db).length, 0);
+  r = await verify({ ...e, IAP_RECEIPT_TOKEN: "optional" }, makeUser(db), receiptBody(), appleOpts());
+  assert.equal(r.status, 200);
+});
+
+test("binding: receipt path with another player's appAccountToken answers 409 (guessed transaction id)", async () => {
+  const e = appleEnv();
+  const victim = makeUser(db), attacker = makeUser(db);
+  stubFetch(appleApi(goodTx({ appAccountToken: victim.id })));
+  const r = await verify(e, attacker, receiptBody(), appleOpts());
+  assert.equal(r.status, 409);
+  assert.deepEqual(r.body, { error: "owned_by_other" });
+  assert.equal(rows(db).length, 0);
+  // The real owner can still claim it afterwards.
+  const ok = await verify(e, victim, receiptBody(), appleOpts());
+  assert.equal(ok.status, 200);
+  assert.equal(ok.body.again, false);
+});
+
+test("binding: JWS path checks the token when present (case insensitive), allows it absent", async () => {
+  const me = makeUser(db), other = makeUser(db);
+  let r = await verify(env, me, ios(makeJws(goodTx({ appAccountToken: me.id.toUpperCase() }))), appleOpts());
+  assert.equal(r.status, 200);
+  r = await verify(env, me, ios(makeJws(goodTx({ transactionId: "2000000201", originalTransactionId: "2000000201", appAccountToken: other.id })), { transactionId: "2000000201" }), appleOpts());
+  assert.equal(r.status, 409);
+  r = await verify(env, me, ios(makeJws(goodTx({ transactionId: "2000000202", originalTransactionId: "2000000202" })), { transactionId: "2000000202" }), appleOpts());
+  assert.equal(r.status, 200);
+});
+
+test("binding: Android obfuscatedExternalAccountId must match the player", async () => {
+  const me = makeUser(db), other = makeUser(db);
+  stubFetch(googleHandler(goodPurchase({ obfuscatedExternalAccountId: other.id })));
+  let r = await verify(env, me, android());
+  assert.equal(r.status, 409);
+  assert.deepEqual(r.body, { error: "owned_by_other" });
+  stubFetch(googleHandler(goodPurchase({ obfuscatedExternalAccountId: me.id })));
+  r = await verify(env, me, android());
+  assert.equal(r.status, 200);
+  assert.equal(r.body.again, false);
+});
+
+test("binding: after the first owner deletes the account, a new account restores the item without gems", async () => {
+  const first = makeUser(db);
+  stubFetch(googleHandler(goodPurchase({ obfuscatedExternalAccountId: first.id })));
+  const body = android({ productId: "dropolis.starter_pack", purchaseToken: "sp-del", transactionId: "GPA.1234-5678" });
+  assert.equal((await verify(env, first, body)).status, 200);
+  await db.batch([...await purchaseDeleteStatements(db, first), db.prepare("delete from users where id = ?").bind(first.id)]);
+  const next = makeUser(db);
+  const r = await verify(env, next, body);
+  assert.equal(r.status, 200);
+  assert.equal(r.body.again, true);
+  assert.equal(rows(db, "select gems, restored from purchases where user_id = ?", next.id)[0].gems, 0);
 });
