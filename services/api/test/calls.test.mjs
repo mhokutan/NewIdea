@@ -1,5 +1,5 @@
 // Run: node --test test/calls.test.mjs
-// POST /v1/calls against an in-memory SQLite copy of the real schema (migrations 0001 and 0002), signed in through
+// POST /v1/calls against an in-memory SQLite copy of the real schema (migrations 0001, 0002 and 0007), signed in through
 // a real Better Auth session cookie. No wrangler, no network, no live data.
 import { test } from "node:test";
 import assert from "node:assert/strict";
@@ -17,7 +17,7 @@ async function cookieFor(token) {
 }
 
 function world() {
-  const DB = d1(["0001_auth.sql", "0002_core.sql"].map((f) => M + f));
+  const DB = d1(["0001_auth.sql", "0002_core.sql", "0007_jobs_and_logs.sql"].map((f) => M + f));
   const q = (sql) => DB.sqlite.exec(sql);
   const person = (id, type, handle, status = "active") => {
     q(`insert into user (id, name, email, emailVerified, createdAt, updatedAt) values ('${id}', '${id}', '${id}@x.test', 1, '${later}', '${later}')`);
@@ -101,4 +101,34 @@ test("only the first 7 calls of a UTC day are score eligible; yesterday's calls 
   const today = w.rows("select promo_id, score_eligible from calls where promo_id like 'bulk%' order by created_at, promo_id");
   assert.equal(today.filter((r) => r.score_eligible === 1).length, 7);
   assert.deepEqual(today.slice(7).map((r) => r.score_eligible), [0, 0]);
+});
+
+// The hourly resolver must be idempotent (2026-11-26): two overlapping runs over the same due calls add the points,
+// the counters and the score event once, never twice.
+test("two overlapping resolver runs never add the same points twice", async () => {
+  const w = world();
+  const old = new Date(Date.now() - 30 * 864e5).toISOString();
+  const at = (days) => new Date(Date.now() - days * 864e5).toISOString();
+  w.q(`update profiles set created_at = '${old}'`);
+  // The scout called first, 9 days ago; 6 other scouts called later and mostly agreed.
+  w.q(`insert into calls (id, scout_profile_id, promo_id, choice, voter_ordinal, score_eligible, created_at) values ('c-first', 'p-scout', 'live1', 'will_blow_up', 1, 1, '${at(9)}')`);
+  for (let i = 0; i < 6; i++) {
+    w.person("late" + i, "scout", "late" + i);
+    w.q(`update profiles set created_at = '${old}' where id = 'p-late${i}'`);
+    w.q(`insert into calls (id, scout_profile_id, promo_id, choice, voter_ordinal, score_eligible, created_at) values ('c-late${i}', 'p-late${i}', 'live1', '${i < 5 ? "will_blow_up" : "not_for_me"}', ${i + 2}, 1, '${at(8 - i * 0.1)}')`);
+  }
+  const worker = (await import("../src/index.js")).default;
+  const run = () => new Promise((done) => worker.scheduled({ cron: "7 * * * *" }, { DB: w.DB }, { waitUntil: (p) => p.then(done, done) }));
+  await Promise.all([run(), run()]);
+  const [first] = w.rows("select outcome, score_delta from calls where id = 'c-first'");
+  assert.equal(first.outcome, "correct");
+  assert.ok(first.score_delta > 0);
+  const [stats] = w.rows("select scout_score, calls_resolved_wbu, calls_correct_wbu from scout_stats where profile_id = 'p-scout'");
+  assert.equal(stats.scout_score, first.score_delta, "points added once");
+  assert.equal(stats.calls_resolved_wbu, 1);
+  assert.equal(stats.calls_correct_wbu, 1);
+  assert.equal(w.rows("select * from score_events where call_id = 'c-first'").length, 1, "one score event");
+  // A third run later finds nothing new.
+  await run();
+  assert.equal(w.rows("select scout_score from scout_stats where profile_id = 'p-scout'")[0].scout_score, first.score_delta);
 });

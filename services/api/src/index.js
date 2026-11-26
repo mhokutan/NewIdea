@@ -1737,6 +1737,16 @@ async function resolveCalls(db) {
   const need = await minLater(db);
   const bar = await crowdBar(db, need);
   const t = now();
+  // Lock (2026-11-26): only one run at a time. A run takes the lock unless another run took it in the last 15
+  // minutes; a run that cannot take it does nothing. The lock is given back at the end, and a crashed run frees it
+  // after 15 minutes.
+  const stale = new Date(Date.now() - 15 * 60e3).toISOString();
+  const lock = await db.prepare(
+    `insert into job_runs (name, ran_at, info) values ('resolve_calls_lock', ?, 'running')
+     on conflict (name) do update set ran_at = excluded.ran_at, info = 'running' where job_runs.info <> 'running' or job_runs.ran_at < ?`,
+  ).bind(t, stale).run();
+  if (!lock?.meta?.changes) return 0;
+  try {
   const { results: batch } = await db.prepare(
     `select id, scout_profile_id, promo_id, choice, voter_ordinal, score_eligible, created_at from calls
      where outcome = 'pending' and is_valid = 1 and created_at < ? and (resolved_at is null or resolved_at < ?) order by created_at limit ?`,
@@ -1780,21 +1790,30 @@ async function resolveCalls(db) {
     const R = JSON.stringify(resolved), S = JSON.stringify([...perScout.values()]);
     const stmts = [];
     if (recheck.length) stmts.push(db.prepare("update calls set resolved_at = ? where id in (select value from json_each(?))").bind(t, JSON.stringify(recheck)));
+    // Idempotent (2026-11-26): a call is resolved only while still pending, and scores, levels and score events are
+    // counted from the calls THIS run resolved (resolved_at = t), not from the list it planned. Two overlapping runs
+    // therefore never add the same points twice: the second run's update finds no pending call and adds nothing.
     if (resolved.length) stmts.push(db.prepare(
       `update calls set outcome = j.value ->> 'o', score_delta = j.value ->> 'd', multiplier = j.value ->> 'm', is_called_it = j.value ->> 'ci', resolved_at = ?
-       from json_each(?) j where calls.id = j.value ->> 'id'`,
+       from json_each(?) j where calls.id = j.value ->> 'id' and calls.outcome = 'pending'`,
     ).bind(t, R));
     if (perScout.size) {
+      const mine = "select id from calls where id in (select value ->> 'id' from json_each(?)) and resolved_at = ? and outcome in ('correct', 'incorrect')";
       stmts.push(db.prepare("insert or ignore into scout_stats (profile_id) select value ->> 'p' from json_each(?)").bind(S));
       stmts.push(db.prepare(
-        `update scout_stats set scout_score = scout_score + (j.value ->> 'd'), calls_resolved_wbu = calls_resolved_wbu + (j.value ->> 'wbu'),
-           calls_correct_wbu = calls_correct_wbu + (j.value ->> 'ok'), called_it_count = called_it_count + (j.value ->> 'ci'), updated_at = ?
-         from json_each(?) j where scout_stats.profile_id = j.value ->> 'p'`,
-      ).bind(t, S));
+        `with r as (
+           select scout_profile_id as p, sum(coalesce(score_delta, 0)) as d, sum(choice = 'will_blow_up') as wbu,
+             sum(choice = 'will_blow_up' and outcome = 'correct') as ok, sum(is_called_it) as ci
+           from calls where id in (${mine}) group by scout_profile_id)
+         update scout_stats set scout_score = scout_score + r.d, calls_resolved_wbu = calls_resolved_wbu + r.wbu,
+           calls_correct_wbu = calls_correct_wbu + r.ok, called_it_count = called_it_count + r.ci, updated_at = ?
+         from r where scout_stats.profile_id = r.p`,
+      ).bind(R, t, t));
       stmts.push(db.prepare(`update scout_stats set level = ${LEVEL_SQL} where profile_id in (select value ->> 'p' from json_each(?))`).bind(S));
       stmts.push(db.prepare(
-        "insert into score_events (profile_id, delta, reason, call_id) select value ->> 'p', value ->> 'd', 'call_correct', value ->> 'id' from json_each(?) where (value ->> 'd') > 0",
-      ).bind(R));
+        `insert into score_events (profile_id, delta, reason, call_id)
+         select scout_profile_id, score_delta, 'call_correct', id from calls where id in (${mine}) and score_delta > 0`,
+      ).bind(R, t));
     }
     if (stmts.length) await db.batch(stmts);
     done = resolved.length;
@@ -1802,6 +1821,9 @@ async function resolveCalls(db) {
   await db.prepare("insert into job_runs (name, ran_at, info) values ('resolve_calls', ?, ?) on conflict (name) do update set ran_at = excluded.ran_at, info = excluded.info")
     .bind(t, JSON.stringify({ resolved: done, due: batch.length, bar, need })).run().catch(() => {});
   return done;
+  } finally {
+    await db.prepare("update job_runs set info = 'free' where name = 'resolve_calls_lock' and ran_at = ?").bind(t).run().catch(() => {});
+  }
 }
 
 // Forgiving weekly streak: a week counts when a scout makes calls on at least STREAK_DAYS different days
