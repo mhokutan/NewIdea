@@ -1,6 +1,7 @@
 // Dropolis game API (Cloudflare Worker + D1 + one Durable Object). No framework, no dependencies.
 import APP_ADS from "./app-ads.txt"; // copied as is from mhokutan/NewRoboticGame docs/store/app-ads.txt
 import { verifyPurchase, listPurchases, purchaseDeleteStatements } from "./purchases.js";
+import { appleNotification, googleNotification } from "./notifications.js";
 // Auth: every player starts as a guest (bearer token). Apple (iOS) and Google (Android) sign in verify the ID token
 // against the providers' public keys and link it to the guest account, so progress is never lost. No secrets needed:
 // audiences (bundle id, client ids) are public vars. Tokens are random and stored only as SHA-256 hashes.
@@ -227,6 +228,11 @@ async function route(req, env, url) {
     if (!user) user = await createUser(db, deviceId, countryOf(req));
     user = await markTest(db, req, user);
     return json({ token: await newSession(db, user.id), user: publicUser(user, []) });
+  }
+  // Store refund notifications (see notifications.js): signed by Apple / Pub/Sub, not by a player token.
+  if (p === "/v1/store/apple/notifications" && m === "POST") return appleNotification(req, env, { json });
+  if (p === "/v1/store/google/rtdn" && m === "POST") {
+    return googleNotification(req, env, { json, verifyGoogleToken: (token, audiences) => verifyIdToken("google", token, audiences) });
   }
   if (p === "/v1/auth/apple" && m === "POST") return signIn(req, env, "apple");
   if (p === "/v1/auth/google" && m === "POST") return signIn(req, env, "google");

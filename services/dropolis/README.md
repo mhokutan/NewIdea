@@ -156,6 +156,30 @@ Secrets (the owner sets them with `npx wrangler secret put <NAME>` in this folde
 `GOOGLE_PLAY_SERVICE_ACCOUNT` (the whole JSON key file), `APPLE_IAP_KEY_ID`, `APPLE_IAP_ISSUER_ID`,
 `APPLE_IAP_PRIVATE_KEY` (the `.p8` file contents; only for the receipt fallback, StoreKit 2 JWS needs no secret).
 
+Refunds (code ready 2026-11-26, not live): `src/notifications.js`. Both routes skip the player token; the store
+signature is the auth. The game does not take gems back in 1.1; a refunded row leaves `GET /v1/purchases` and
+revenue, and verifying it again answers 402 `not_valid` reason `refunded`.
+
+| Method | Path | Sender | What it does |
+|---|---|---|---|
+| POST | `/v1/store/apple/notifications` | App Store Server Notifications V2, body `{ signedPayload }` | `REFUND`, `REVOKE`: row `refunded`; `REFUND_REVERSED`: back to `granted`; other types answered 200 and ignored |
+| POST | `/v1/store/google/rtdn` | Pub/Sub push of Google Real-time developer notifications | `voidedPurchaseNotification`: the row with that `purchaseToken` becomes `refunded`; test and other messages 200 ignored |
+
+Apple: the notification and the transaction inside it are both checked with the same pinned JWS chain as purchases,
+and must be for `com.promovote.dropolis`. Google: the push carries an OIDC token from Google; it is checked with
+Google's keys, audience var `GOOGLE_RTDN_AUDIENCE`, and the email must be var `GOOGLE_RTDN_SA_EMAIL`. Bodies over
+64 KB are refused. A refund for a deleted account finds no row (answers `refunded: 0`).
+
+Owner steps to turn refunds on (after deploy, values never in the repo):
+1. App Store Connect, the app, App Information, App Store Server Notifications: Version 2, production and sandbox URL
+   `https://dropolis-api.promovote.com/v1/store/apple/notifications`.
+2. Google Cloud project of the app: a Pub/Sub topic, give `google-play-developer-notifications@system.gserviceaccount.com`
+   the Publisher role on it, and set the topic in Play Console (Monetization setup, Real-time developer notifications).
+3. A push subscription on that topic to `https://dropolis-api.promovote.com/v1/store/google/rtdn` with authentication
+   on: pick a service account and an audience (for example the same URL).
+4. Put those two public values in `wrangler.jsonc` vars `GOOGLE_RTDN_SA_EMAIL` and `GOOGLE_RTDN_AUDIENCE` (they are
+   not secrets) and deploy. Until then the Google route answers 503 `not_configured` and Pub/Sub keeps retrying.
+
 Certificate revocation (OCSP), assessment 2026-11-26: not built, on purpose. Apple's own server library checks the
 intermediate certificate with OCSP only in its optional online mode. For us the chain is pinned to Apple Root CA G3,
 needs Apple's marker extensions, and a stolen Apple intermediate or leaf key is very unlikely; if Apple revokes one,
@@ -164,5 +188,5 @@ network call per purchase (and a choice between failing open or blocking sales w
 Refund and revoke notifications (below) cover the real risk, money coming back. Revisit if Apple announces a key
 compromise.
 
-Tests: `node --test services/dropolis/test/purchases.test.mjs` (local only, fake D1 over `node:sqlite`, store calls
+Tests: `node --test services/dropolis/test/purchases.test.mjs services/dropolis/test/notifications.test.mjs` (local only, fake D1 over `node:sqlite`, store calls
 stubbed, a fake Apple certificate chain made with openssl).
