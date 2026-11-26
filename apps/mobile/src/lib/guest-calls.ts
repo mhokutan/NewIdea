@@ -6,6 +6,7 @@
 import * as SecureStore from 'expo-secure-store';
 
 import { api, ApiError, type Call } from './api';
+import { retryLater, sendAll, singleFlight } from './guest-sync';
 import { setCall } from './viewer-state';
 
 export const GUEST_FREE_CALLS = 3;
@@ -54,21 +55,25 @@ export async function showGuestCalls() {
   for (const g of await load()) setCall(g.promoId, asCall(g));
 }
 
-/** After sign in as a scout: sends the kept calls to the account, then forgets them. Returns how many were saved. */
-export async function syncGuestCalls() {
+/** After sign in as a scout: sends the kept calls to the account, then forgets them. Returns how many were saved.
+ * A call that could not be sent (no connection, server error) stays kept and is tried again at the next sign in
+ * check or app start, until it is 24 hours old. Overlapping runs (sign in plus a session refresh) share one run, so
+ * a call is never sent twice at the same time. */
+export const syncGuestCalls = singleFlight(async () => {
   const list = await load();
-  let saved = 0;
-  for (const g of list) {
+  const { saved, kept } = await sendAll(list, async (g) => {
     try {
       const r = await api.vote(g.promoId, g.choice);
       setCall(g.promoId, r.call);
-      saved++;
+      return 'saved';
     } catch (e) {
       if (e instanceof ApiError && e.code === 'already_voted' && e.body?.call) setCall(g.promoId, e.body.call);
+      return retryLater(e instanceof ApiError ? e.status : null) ? 'retry' : 'settled';
     }
-  }
-  mem.list = [];
-  try { await SecureStore.deleteItemAsync(KEY); } catch { /* nothing kept */ }
+  });
+  mem.list = kept;
+  if (kept.length) await save();
+  else { try { await SecureStore.deleteItemAsync(KEY); } catch { /* nothing kept */ } }
   if (saved) api.event('guest_sync');
   return saved;
-}
+});
