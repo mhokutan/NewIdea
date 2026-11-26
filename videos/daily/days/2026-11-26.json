@@ -1,0 +1,152 @@
+{
+ "hauling-empire": {
+  "intro": [
+   "One tap,",
+   "all trucks."
+  ],
+  "intro_acc": 1,
+  "slides": [
+   "s7",
+   "s8",
+   "s6",
+   "s3",
+   "s1"
+  ],
+  "store": "Truck Tycoon on the App Store",
+  "notes": [
+   [
+    "Finish all drives in one tap",
+    "With Hauling Pro or the skip-the-video pass"
+   ],
+   [
+    "Fleet list keeps its place",
+    "When you come back to it"
+   ],
+   [
+    "A tap lands on the driver",
+    "The one you touched"
+   ]
+  ]
+ },
+ "poleris": {
+  "intro": [
+   "Affirmations",
+   "for every day."
+  ],
+  "intro_acc": 1,
+  "slides": [
+   "s5",
+   "s4",
+   "s1",
+   "s3",
+   "s2"
+  ],
+  "store": "Manifestation Journal, on the App Store",
+  "notes": [
+   [
+    "Affirmation decks",
+    "Love, career, abundance, health, confidence or calm"
+   ],
+   [
+    "Or write your own",
+    "Your words, your voice"
+   ],
+   [
+    "Evening gratitude note",
+    "And one step for tomorrow"
+   ]
+  ]
+ },
+ "dovelet": {
+  "intro": [
+   "You stay",
+   "in control."
+  ],
+  "intro_acc": 1,
+  "slides": [
+   "s6",
+   "s1",
+   "s2",
+   "s3",
+   "s5"
+  ],
+  "store": "Couple widget, on the App Store",
+  "notes": [
+   [
+    "End it in one tap",
+    "Disconnect any time"
+   ],
+   [
+    "Block or report",
+    "If something is not right"
+   ],
+   [
+    "Delete your account",
+    "Whenever you want"
+   ]
+  ]
+ },
+ "dropolis": {
+  "intro": [
+   "Every rocket",
+   "brings colonists."
+  ],
+  "intro_acc": 1,
+  "slides": [
+   "s3",
+   "s6",
+   "s5",
+   "s4",
+   "s2"
+  ],
+  "notes": [
+   [
+    "Tap a + to build",
+    "Grow your colony on Mars"
+   ],
+   [
+    "Robots do the work",
+    "You plan, they build"
+   ],
+   [
+    "Every rocket",
+    "Brings new colonists"
+   ]
+  ]
+ },
+ "promovote": {
+  "intro": [
+   "Find gifts",
+   "from creators."
+  ],
+  "intro_acc": 1,
+  "slides": [
+   "s5",
+   "s1",
+   "s2",
+   "s3",
+   "s4"
+  ],
+  "caps": [
+   "Meet the makers",
+   "Short promos",
+   "One tap, your call",
+   "Right calls earn points",
+   "Your Scout Score"
+  ],
+  "notes": [
+   [
+    "Gifts from creators",
+    "Real perks"
+   ],
+   [
+    "Never tied to calls",
+    "Or follows"
+   ],
+   [
+    "Meet the makers",
+    "Follow the ones you like"
+   ]
+  ]
+ }
+}
