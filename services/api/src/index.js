@@ -1437,9 +1437,11 @@ app.delete("/v1/follows/:handle", async (c) => {
   return c.json({ ok: true, following: false, followers: n?.follower_count ?? null });
 });
 
+// A promo people can act on: live, and its creator's account is active (the feed hides the others too).
 async function livePromo(db, id) {
+  if (typeof id !== "string" || !id) return null;
   return db.prepare(
-    "select pr.id, pr.creator_profile_id, (select max(duration_ms) from promo_videos v where v.promo_id = pr.id) as duration_ms from promos pr where pr.id = ? and pr.status = 'live'",
+    "select pr.id, pr.creator_profile_id, (select max(duration_ms) from promo_videos v where v.promo_id = pr.id) as duration_ms from promos pr join profiles p on p.id = pr.creator_profile_id where pr.id = ? and pr.status = 'live' and p.status = 'active'",
   ).bind(id).first();
 }
 
