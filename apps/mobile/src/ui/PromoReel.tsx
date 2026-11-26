@@ -347,7 +347,7 @@ function RailButton({ icon, label, a11y, onPress, on }: { icon: IconName; label:
       <View style={styles.railIcon}>
         <Icon name={icon} size={28} color={on ? D.lime : '#fff'} />
       </View>
-      <View style={styles.railLabelPill}><Text maxFontSizeMultiplier={1.35} style={styles.railLabel} numberOfLines={1}>{label}</Text></View>
+      <View style={styles.railLabelPill}><Text maxFontSizeMultiplier={1.35} style={styles.railLabel} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75}>{label}</Text></View>
     </Pressable>
   );
 }
@@ -384,7 +384,8 @@ const styles = StyleSheet.create({
   rail: { position: 'absolute', right: 8, gap: 12, alignItems: 'center' },
   railBtn: { width: 56, alignItems: 'center', gap: 2 },
   railIcon: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center', shadowColor: '#000', shadowOpacity: 0.45, shadowRadius: 6, shadowOffset: { width: 0, height: 1 } },
-  railLabelPill: { paddingHorizontal: 2 },
+  // Long words in de, es, fr, pt shrink to fit instead of being cut (Mac test 2026-11-17).
+  railLabelPill: { paddingHorizontal: 2, maxWidth: 64 },
   railLabel: { color: '#fff', fontSize: 11, fontWeight: '600', textAlign: 'center', textShadowColor: 'rgba(0,0,0,0.6)', textShadowRadius: 4 },
   callBar: { position: 'absolute', left: 12, right: 12, flexDirection: 'row', gap: 10, minHeight: 44 },
   callBtn: { flex: 1, minHeight: 44, borderRadius: 12, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 6 },
