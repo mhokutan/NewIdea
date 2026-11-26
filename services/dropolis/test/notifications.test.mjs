@@ -53,9 +53,9 @@ beforeEach(() => {
 });
 
 function addPurchase(platform, transactionId, over = {}) {
-  db.raw.prepare(`insert into purchases (platform, transaction_id, client_transaction_id, user_id, product_id, gems, items, sandbox, status, created_at)
-    values (?, ?, ?, ?, 'dropolis.gems_m', 450, '{}', 0, ?, ?)`)
-    .run(platform, transactionId, transactionId, over.userId || userId, over.status || "granted", new Date().toISOString());
+  db.raw.prepare(`insert into purchases (platform, transaction_id, client_transaction_id, user_id, product_id, gems, items, sandbox, status, created_at, tx_hash)
+    values (?, ?, ?, ?, 'dropolis.gems_m', 450, '{}', 0, ?, ?, ?)`)
+    .run(platform, transactionId, transactionId, over.userId || userId, over.status || "granted", new Date().toISOString(), `h-${platform}-${transactionId}`);
 }
 const row = (platform, id) => db.raw.prepare("select * from purchases where platform = ? and transaction_id = ?").get(platform, id);
 
@@ -147,6 +147,11 @@ test("apple: unknown transaction answers 200 with refunded 0", async () => {
   const r = await apple({ signedPayload: notif("REFUND", tx("9999999999")) });
   assert.equal(r.status, 200);
   assert.deepEqual(r.body, { ok: true, refunded: 0 });
+  // Remembered, so a later verify of this transaction is refused.
+  assert.equal(db.raw.prepare("select count(*) as n from purchase_store_refunds where platform = 'ios' and transaction_id = '9999999999'").get().n, 1);
+  // A reversal forgets it again.
+  await apple({ signedPayload: notif("REFUND_REVERSED", tx("9999999999")) });
+  assert.equal(db.raw.prepare("select count(*) as n from purchase_store_refunds where transaction_id = '9999999999'").get().n, 0);
 });
 
 test("apple: wrong bundle id is ignored with 200 and touches nothing", async () => {

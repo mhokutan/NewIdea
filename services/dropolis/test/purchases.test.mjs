@@ -792,3 +792,48 @@ test("binding: after the first owner deletes the account, a new account restores
   assert.equal(r.body.again, true);
   assert.equal(rows(db, "select gems, restored from purchases where user_id = ?", next.id)[0].gems, 0);
 });
+
+// ---------- fixes from the security review (2026-11-26) ----------
+test("review: malformed JWS (null header or payload, bad signature base64) answers 402, never 503", async () => {
+  const me = makeUser(db);
+  const nullHead = `${b64u("null")}.${b64u("{}")}.x`;
+  const nullBody = `${b64u(JSON.stringify({ alg: "ES256", x5c: [] }))}.${b64u("null")}.x`;
+  for (const jws of [nullHead, nullBody]) {
+    const r = await verify(env, me, ios(jws), appleOpts());
+    assert.equal(r.status, 402, jws);
+    assert.equal(r.body.error, "not_valid");
+  }
+  const good = makeJws(goodTx()).split(".");
+  const r = await verify(env, me, ios(`${good[0]}.${good[1]}.%%%`), appleOpts());
+  assert.equal(r.status, 402);
+  assert.equal(rows(db).length, 0);
+});
+
+test("review: a transaction the store already reported as refunded is never granted", async () => {
+  db.raw.prepare("insert into purchase_store_refunds (platform, transaction_id, at) values ('ios', '2000000123', ?)").run(new Date().toISOString());
+  const r = await verify(env, makeUser(db), ios(makeJws(goodTx())), appleOpts());
+  assert.equal(r.status, 402);
+  assert.deepEqual(r.body, { error: "not_valid", reason: "refunded" });
+  assert.equal(rows(db).length, 0);
+});
+
+test("review: Family Sharing gives the item without gems", async () => {
+  const tx = goodTx({ productId: "dropolis.starter_pack", inAppOwnershipType: "FAMILY_SHARED" });
+  const r = await verify(env, makeUser(db), ios(makeJws(tx), { productId: "dropolis.starter_pack" }), appleOpts());
+  assert.equal(r.status, 200);
+  assert.equal(r.body.again, true);
+  assert.equal(rows(db)[0].gems, 0);
+});
+
+test("review: iOS one time item restored with a new id after deletion gets no gems (original id tombstone)", async () => {
+  const first = makeUser(db);
+  const sp = (id) => ios(makeJws(goodTx({ productId: "dropolis.starter_pack", transactionId: id, originalTransactionId: "2000000500" })), { productId: "dropolis.starter_pack", transactionId: id });
+  assert.equal((await verify(env, first, sp("2000000500"), appleOpts())).status, 200);
+  await db.batch([...await purchaseDeleteStatements(db, first), db.prepare("delete from users where id = ?").bind(first.id)]);
+  assert.equal(rows(db, "select * from purchase_tombstones").length, 2); // transaction id and original id
+  const next = makeUser(db);
+  const r = await verify(env, next, sp("2000000501"), appleOpts());
+  assert.equal(r.status, 200);
+  assert.equal(r.body.again, true);
+  assert.equal(rows(db, "select gems from purchases where user_id = ?", next.id)[0].gems, 0);
+});

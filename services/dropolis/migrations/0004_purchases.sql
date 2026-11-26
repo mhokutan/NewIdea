@@ -24,6 +24,10 @@ create table purchases (
   install_id text,
   created_at text not null,
   refunded_at text,
+  -- SHA-256 of the transaction key, and on iOS of the original transaction id: copied to purchase_tombstones in the
+  -- same batch that deletes an account, so no verify running at that moment can slip past the tombstone.
+  tx_hash text not null,
+  orig_hash text,
   unique (platform, transaction_id)
 );
 create index purchases_user on purchases(user_id, status);
@@ -41,6 +45,15 @@ create table purchase_deleted_totals (
   gems integer not null,
   usd real not null,
   primary key (day, platform, product_id, sandbox, is_test)
+);
+
+-- Refunds the store reported for a transaction that is not in the ledger yet (bought while our API was not reached).
+-- A later verify of that transaction answers 402 refunded instead of granting.
+create table purchase_store_refunds (
+  platform text not null,
+  transaction_id text not null,
+  at text not null,
+  primary key (platform, transaction_id)
 );
 
 -- Deleted accounts: SHA-256 of each transaction key, so a recreated account can restore the item but gets no gems.

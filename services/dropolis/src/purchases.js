@@ -171,6 +171,8 @@ export async function verifyAppleJWS(jws, { rootSha256 = APPLE_ROOT_G3_SHA256, n
     header = JSON.parse(dec.decode(fromB64(parts[0], true)));
     payload = JSON.parse(dec.decode(fromB64(parts[1], true)));
   } catch { throw invalid("jws_shape"); }
+  const isObj = (o) => o !== null && typeof o === "object" && !Array.isArray(o);
+  if (!isObj(header) || !isObj(payload)) throw invalid("jws_shape");
   if (header.alg !== "ES256" || !Array.isArray(header.x5c) || header.x5c.length !== 3) throw invalid("jws_header");
   let leaf, mid, root, rootDer;
   try {
@@ -189,7 +191,8 @@ export async function verifyAppleJWS(jws, { rootSha256 = APPLE_ROOT_G3_SHA256, n
   for (const c of [leaf, mid, root]) if (at < c.notBefore || at > c.notAfter) throw invalid("jws_cert_expired");
   if (leaf.curve.name !== "P-256") throw invalid("jws_chain");
   const key = await crypto.subtle.importKey("spki", leaf.spki, { name: "ECDSA", namedCurve: "P-256" }, false, ["verify"]);
-  const sig = fromB64(parts[2], true);
+  let sig;
+  try { sig = fromB64(parts[2], true); } catch { throw invalid("jws_signature"); }
   if (sig.length !== 64) throw invalid("jws_signature");
   const ok = await crypto.subtle.verify({ name: "ECDSA", hash: "SHA-256" }, key, sig, enc.encode(`${parts[0]}.${parts[1]}`));
   if (!ok) throw invalid("jws_signature");
@@ -234,6 +237,7 @@ export async function checkApple(env, b, opts = {}) {
     originalTransactionId: tx.originalTransactionId ? String(tx.originalTransactionId) : null,
     sandbox: tx.environment === "Sandbox", promo: false,
     accountToken: tx.appAccountToken ? String(tx.appAccountToken) : null, viaReceipt: !b.jws,
+    familyShared: tx.inAppOwnershipType === "FAMILY_SHARED",
   };
 }
 
@@ -325,8 +329,15 @@ export async function verifyPurchase(req, env, me, { json, readBody, appleOpts }
     return ERR(json, 503, "store_unreachable");
   }
   if (v.sandbox && !sandboxAllowed(env, me)) return ERR(json, 402, "not_valid", "sandbox_not_allowed");
+  // The store already told us (refund notification) that this transaction was refunded: never grant it.
+  if (await db.prepare("select 1 as x from purchase_store_refunds where platform = ? and transaction_id = ?").bind(platform, v.key).first()) {
+    return ERR(json, 402, "not_valid", "refunded");
+  }
   const tomb = await tombstoneHash(platform, v.key);
-  const tombstoned = !!await db.prepare("select 1 as x from purchase_tombstones where tx_hash = ?").bind(tomb).first();
+  // iOS one time items are also tombstoned by original transaction id (a StoreKit 1 style restore makes a new id).
+  const orig = platform === "ios" && v.originalTransactionId ? await tombstoneHash("ios-orig", v.originalTransactionId) : null;
+  const tombstoned = !!await db.prepare("select 1 as x from purchase_tombstones where tx_hash = ? or (? is not null and tx_hash = ?)")
+    .bind(tomb, product.oneTime ? orig : null, orig).first();
 
   // Account binding: the game passes the player id (user.id, a UUID) as appAccountToken (StoreKit) or
   // obfuscatedAccountId (Play Billing), so the store signs who bought it. A token for another player means the
@@ -348,13 +359,15 @@ export async function verifyPurchase(req, env, me, { json, readBody, appleOpts }
     if (await db.prepare("select 1 as x from purchases where user_id = ? and product_id = ? and status = 'granted' limit 1").bind(me.id, b.productId).first()) restored = 1;
   }
   if (tombstoned) restored = 1;
+  // Family Sharing: a family member gets the item, never the gems.
+  if (v.familyShared) restored = 1;
 
   const price = v.sandbox || v.promo ? 0 : product.usd;
   const ins = await db.prepare(`insert into purchases (platform, transaction_id, client_transaction_id, order_id, original_transaction_id, user_id, product_id,
-      gems, items, sandbox, status, price_usd, restored, install_id, created_at)
-    values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'granted', ?, ?, ?, ?) on conflict (platform, transaction_id) do nothing`)
+      gems, items, sandbox, status, price_usd, restored, install_id, created_at, tx_hash, orig_hash)
+    values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'granted', ?, ?, ?, ?, ?, ?) on conflict (platform, transaction_id) do nothing`)
     .bind(platform, v.key, transactionId, v.orderId, v.originalTransactionId, me.id, b.productId,
-      restored ? 0 : product.gems, itemsOf(product), v.sandbox ? 1 : 0, price ?? null, restored, installId, new Date().toISOString()).run();
+      restored ? 0 : product.gems, itemsOf(product), v.sandbox ? 1 : 0, price ?? null, restored, installId, new Date().toISOString(), tomb, orig).run();
   // Read back: when two requests race, only one insert wins and both answer from the stored row.
   const row = await db.prepare("select * from purchases where platform = ? and transaction_id = ?").bind(platform, v.key).first();
   if (row.user_id !== me.id) return ERR(json, 409, "owned_by_other");
@@ -388,7 +401,6 @@ const tombstoneHash = (platform, key) => sha256hex(enc.encode(`dropolis-purchase
 // transaction (so a deleted and recreated account can restore the item but never refill the gems), then delete the
 // rows. Returns D1 statements for the deletion batch (one transaction).
 export async function purchaseDeleteStatements(db, me) {
-  const { results } = await db.prepare("select platform, transaction_id from purchases where user_id = ?").bind(me.id).all();
   const t = new Date().toISOString();
   const stmts = [
     db.prepare(`insert into purchase_deleted_totals (day, platform, product_id, sandbox, is_test, purchases, gems, usd)
@@ -397,9 +409,10 @@ export async function purchaseDeleteStatements(db, me) {
       on conflict (day, platform, product_id, sandbox, is_test) do update set purchases = purchases + excluded.purchases,
         gems = gems + excluded.gems, usd = usd + excluded.usd`).bind(me.is_test === 1 ? 1 : 0, me.id),
   ];
-  for (const r of results) {
-    stmts.push(db.prepare("insert or ignore into purchase_tombstones (tx_hash, created_at) values (?, ?)").bind(await tombstoneHash(r.platform, r.transaction_id), t));
-  }
+  // Hashes come from the rows themselves inside this one batch (one transaction), so a purchase verified while the
+  // account is being deleted is either tombstoned and deleted together, or not deleted at all.
+  stmts.push(db.prepare("insert or ignore into purchase_tombstones (tx_hash, created_at) select tx_hash, ? from purchases where user_id = ?").bind(t, me.id));
+  stmts.push(db.prepare("insert or ignore into purchase_tombstones (tx_hash, created_at) select orig_hash, ? from purchases where user_id = ? and orig_hash is not null").bind(t, me.id));
   stmts.push(db.prepare("delete from purchases where user_id = ?").bind(me.id));
   return stmts;
 }

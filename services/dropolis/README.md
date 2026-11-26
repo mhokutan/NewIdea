@@ -93,7 +93,9 @@ Tests: `node --test services/dropolis/test/is-test.test.mjs` (local only).
 
 ## In-app purchases (Dropolis 1.1, 2026-11-21)
 
-Code: `src/purchases.js`, schema: `migrations/0004_purchases.sql` (NOT applied on the live database yet). The store is
+Code: `src/purchases.js`, schema: `migrations/0004_purchases.sql` (NOT applied on the live database yet).
+**Deploy order: apply 0004 first, then deploy.** The new Worker reads `purchases` when an account is deleted, so a
+Worker without the tables would answer 500 to `DELETE /v1/me` (App Store rule 5.1.1(v)). The store is
 the judge, D1 table `purchases` is the ledger. Both endpoints need the player's bearer token. These answers use the
 game's contract: errors are `{ "error": "<code>" }` (a string, not the object above), sometimes with a `reason`.
 
@@ -141,13 +143,17 @@ Ledger rules:
   give one row).
 * A transaction that belongs to another player: 409 `owned_by_other`. On iOS this also covers another transaction of
   the same original purchase.
-* A one time item the player already owns, or a transaction whose first owner deleted the account, is stored with
-  `gems = 0`, `restored = 1` and answered `again: true`.
+* A one time item the player already owns, a transaction whose first owner deleted the account (on iOS one time
+  items also by original transaction id), or an Apple Family Sharing copy (`inAppOwnershipType = FAMILY_SHARED`) is
+  stored with `gems = 0`, `restored = 1` and answered `again: true`.
+* A transaction the store already reported as refunded (`purchase_store_refunds`, filled by the refund
+  notifications even when the purchase was never verified) answers 402 `not_valid` reason `refunded`.
 * Sandbox: accepted for everyone by default and stored with `sandbox = 1` (App Review buys in sandbox on the
   production build, and TestFlight can not be told apart on the server). Var `IAP_SANDBOX = "testers"` accepts it only
   for players with `is_test = 1`.
-* Account deletion: an anonymous total per day, platform and product goes to `purchase_deleted_totals`, a SHA-256 of
-  each transaction key to `purchase_tombstones`, then the rows are deleted.
+* Account deletion: an anonymous total per day, platform and product goes to `purchase_deleted_totals`, the SHA-256
+  hashes stored on each row (`tx_hash`, `orig_hash`) go to `purchase_tombstones`, then the rows are deleted, all in
+  one batch, so a verify running at the same moment can not slip past the tombstone.
 * Revenue: from `purchases` (`price_usd`, list price before store fees) where `status = 'granted'`, `sandbox = 0`,
   `restored = 0` and the player is not `is_test`, plus `purchase_deleted_totals` with `sandbox = 0` and `is_test = 0`.
   The `purchase` event from the game is for funnels only.
@@ -179,6 +185,16 @@ Owner steps to turn refunds on (after deploy, values never in the repo):
    on: pick a service account and an audience (for example the same URL).
 4. Put those two public values in `wrangler.jsonc` vars `GOOGLE_RTDN_SA_EMAIL` and `GOOGLE_RTDN_AUDIENCE` (they are
    not secrets) and deploy. Until then the Google route answers 503 `not_configured` and Pub/Sub keeps retrying.
+
+Security review 2026-11-26 (independent reviewer; fixed: malformed JWS answered 503 instead of 402, the delete and
+verify race on tombstones, refunds that arrive before the verify, StoreKit 1 style restores after deletion, Family
+Sharing gems). Open, owner decisions:
+* Sandbox for everyone (default `IAP_SANDBOX = "all"`): a TestFlight tester can buy gems for free in sandbox, and the
+  gems are real in the game (the rows say `sandbox = 1`). Needed while App Review tests purchases; switch to
+  `"testers"` after approval if TestFlight is opened to the public.
+* Small: two different real purchases of one one time item at the same moment both give gems (needs two payments);
+  Google `quantity > 1` gives one unit; `purchaseType` 2 (rewarded) counts at list price; `receipt` up to 200 KB is
+  accepted but not used; a body without Content-Length is read fully before the size check.
 
 Certificate revocation (OCSP), assessment 2026-11-26: not built, on purpose. Apple's own server library checks the
 intermediate certificate with OCSP only in its optional online mode. For us the chain is pinned to Apple Root CA G3,

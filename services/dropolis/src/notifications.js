@@ -25,6 +25,11 @@ async function readJson(req) {
 }
 const isObject = (v) => v !== null && typeof v === "object" && !Array.isArray(v);
 
+// Every refund is also remembered by transaction, so a purchase that reaches /v1/purchases/verify only after its
+// refund (an old signed JWS from the phone) is refused there.
+const rememberRefund = (db, platform, id, at) =>
+  db.prepare("insert or ignore into purchase_store_refunds (platform, transaction_id, at) values (?, ?, ?)").bind(platform, id, at).run();
+
 // ---------- Apple ----------
 const APPLE_REFUND_TYPES = new Set(["REFUND", "REVOKE"]);
 
@@ -57,8 +62,10 @@ export async function appleNotification(req, env, { json, appleOpts } = {}) {
   const now = new Date().toISOString();
   if (isRefund) {
     const r = await env.DB.prepare("update purchases set status = 'refunded', refunded_at = ? where platform = 'ios' and transaction_id = ? and status = 'granted'").bind(now, id).run();
+    await rememberRefund(env.DB, "ios", id, now);
     return json({ ok: true, refunded: r.meta?.changes ?? 0 });
   }
+  await env.DB.prepare("delete from purchase_store_refunds where platform = 'ios' and transaction_id = ?").bind(id).run();
   const r = await env.DB.prepare("update purchases set status = 'granted', refunded_at = null where platform = 'ios' and transaction_id = ? and status = 'refunded'").bind(id).run();
   return json({ ok: true, restored: r.meta?.changes ?? 0 });
 }
@@ -97,6 +104,8 @@ export async function googleNotification(req, env, { json, verifyGoogleToken } =
   const token = typeof v.purchaseToken === "string" ? v.purchaseToken : "";
   if (!token) return ERR(json, 400, "bad_request");
 
-  const r = await env.DB.prepare("update purchases set status = 'refunded', refunded_at = ? where platform = 'android' and transaction_id = ? and status = 'granted'").bind(new Date().toISOString(), token).run();
+  const now = new Date().toISOString();
+  const r = await env.DB.prepare("update purchases set status = 'refunded', refunded_at = ? where platform = 'android' and transaction_id = ? and status = 'granted'").bind(now, token).run();
+  await rememberRefund(env.DB, "android", token, now);
   return json({ ok: true, refunded: r.meta?.changes ?? 0 });
 }
