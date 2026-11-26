@@ -106,7 +106,7 @@
     "cat_games": "Oyunlar", "cat_apps": "Uygulamalar", "cat_shops": "Mağazalar",
     "x_tags": "Hashtagler", "x_charts": "Sıralamalar", "x_today": "Bugün",
     "x_week": "Bu hafta", "x_month": "Bu ay", "x_charts_t": "Sıralamalar oylama başlayınca açılacak",
-    "x_charts_p": "Sıralamada gerçek ve botlardan temizlenmiş izlenme, tıklama ve oylar kullanılacak. Ücretli öne çıkarma sıralamada yer satın alamaz. Uydurma sayı göstermeyiz.", "x_creators": "Firmalar", "x_promos": "Videolar",
+    "x_charts_p": "Sıralamada gerçek ve botlardan temizlenmiş izlenme, tıklama ve oylar kullanılacak. Ücretli öne çıkarma sıralamada yer satın alamaz. Uydurma sayı göstermeyiz.", "x_creators": "Üreticiler", "x_promos": "Tanıtımlar",
     "x_empty": "Henüz eşleşen yok. Başka bir kelime veya hashtag dene.", "x_clear": "Filtreleri temizle", "x_more": "Nasıl çalışır",
     "x_view": "Profili gör"
   }
