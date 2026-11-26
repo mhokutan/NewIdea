@@ -16,6 +16,7 @@ import { nextRound } from '@/lib/fair-queue';
 import { lang, t } from '@/lib/i18n';
 import { D, theme, F } from '@/lib/theme';
 import { reminderOn, turnOnReminder } from '@/lib/reminder';
+import { guestCallCount } from '@/lib/guest-calls';
 import { useMe } from '@/lib/use-me';
 import { useViewerState, useViewerStateLoaded } from '@/lib/viewer-state';
 import { Button } from '@/ui/Pill';
@@ -286,7 +287,9 @@ function EndCard({ height, calls, size, guest, onMore, onExplore }: {
     reminderOn().then((on) => { if (alive && !on) setRemind('offer'); });
     return () => { alive = false; };
   }, [guest]);
-  const line = guest ? t('drop_done_guest') : calls ? t('drop_done_calls').replace('{n}', String(calls)).replace('{size}', String(size)) : t('drop_done_zero');
+  // A guest who already made free calls is asked to keep them, not "to make calls" (review 2026-11-26).
+  const kept = guest ? guestCallCount() : 0;
+  const line = guest ? (kept ? t('drop_done_guest_kept').replace('{n}', String(kept)) : t('drop_done_guest')) : calls ? t('drop_done_calls').replace('{n}', String(calls)).replace('{size}', String(size)) : t('drop_done_zero');
   return (
     <View style={[styles.end, { height }]}>
       <Icon name="chevrons" size={44} color={D.lime} />
