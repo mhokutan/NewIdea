@@ -1,0 +1,152 @@
+{
+ "hauling-empire": {
+  "intro": [
+   "New in",
+   "2.5.5"
+  ],
+  "intro_acc": 1,
+  "slides": [
+   "s5",
+   "s1",
+   "s2",
+   "s3",
+   "s7"
+  ],
+  "store": "Truck Tycoon on the App Store",
+  "notes": [
+   [
+    "Sea trip card",
+    "Shows where the truck is, the time left and what is next"
+   ],
+   [
+    "Buy tickets for all",
+    "Books the next sailing for every waiting truck"
+   ],
+   [
+    "Big companies",
+    "Documents and licences open at once"
+   ]
+  ]
+ },
+ "poleris": {
+  "intro": [
+   "Now in",
+   "Korean."
+  ],
+  "intro_acc": 1,
+  "slides": [
+   "s2",
+   "s1",
+   "s5",
+   "s3",
+   "s4"
+  ],
+  "store": "Manifestation Journal, on the App Store",
+  "notes": [
+   [
+    "Korean",
+    "A new language for Poleris"
+   ],
+   [
+    "One-tap mood check-in",
+    "Start from how you feel"
+   ],
+   [
+    "Wide and foldable screens",
+    "More columns on your vision board"
+   ]
+  ]
+ },
+ "dovelet": {
+  "intro": [
+   "I set your",
+   "alarm."
+  ],
+  "intro_acc": 1,
+  "slides": [
+   "s4",
+   "s3",
+   "s1",
+   "s2",
+   "s5"
+  ],
+  "store": "Couple widget, on the App Store",
+  "notes": [
+   [
+    "Reminders for your partner",
+    "If they allow it, their phone rings"
+   ],
+   [
+    "At the time you pick",
+    "In 20 minutes, 1 hour, 3 hours or tomorrow"
+   ],
+   [
+    "Chat with hand-drawn emoji",
+    "Say it your way"
+   ]
+  ]
+ },
+ "dropolis": {
+  "intro": [
+   "Pack orders.",
+   "Deliver fast."
+  ],
+  "intro_acc": 1,
+  "slides": [
+   "s1",
+   "s4",
+   "s2",
+   "s3",
+   "s5"
+  ],
+  "notes": [
+   [
+    "Parcel Shop",
+    "Pack orders for every door"
+   ],
+   [
+    "Lighter couriers and drones",
+    "Smoother on older phones"
+   ],
+   [
+    "New warehouse props",
+    "In the Parcel Depot"
+   ]
+  ]
+ },
+ "promovote": {
+  "intro": [
+   "Watch. Call.",
+   "Wait."
+  ],
+  "intro_acc": 1,
+  "slides": [
+   "s1",
+   "s2",
+   "s3",
+   "s4",
+   "s5"
+  ],
+  "caps": [
+   "Short promos",
+   "One tap, your call",
+   "Right calls earn points",
+   "Your Scout Score",
+   "Meet the makers"
+  ],
+  "notes": [
+   [
+    "Watch",
+    "Today's Drop: 7 short promos"
+   ],
+   [
+    "Call",
+    "Will blow up, or Not for me"
+   ],
+   [
+    "Wait",
+    "Seven days, then the crowd decides"
+   ]
+  ]
+ }
+}
