@@ -1,0 +1,152 @@
+{
+ "hauling-empire": {
+  "intro": [
+   "Bigger company,",
+   "safer saves."
+  ],
+  "intro_acc": 1,
+  "slides": [
+   "s7",
+   "s8",
+   "s3",
+   "s6",
+   "s1"
+  ],
+  "store": "Truck Tycoon on the App Store",
+  "notes": [
+   [
+    "No false save warning",
+    "It no longer shows when the game is saved"
+   ],
+   [
+    "Bigger cloud saves",
+    "The limit was raised for very large companies"
+   ],
+   [
+    "Taps land right",
+    "Even while a screen is still opening"
+   ]
+  ]
+ },
+ "poleris": {
+  "intro": [
+   "Breathe in,",
+   "breathe out."
+  ],
+  "intro_acc": 1,
+  "slides": [
+   "s3",
+   "s1",
+   "s5",
+   "s2",
+   "s4"
+  ],
+  "store": "Manifestation Journal, on the App Store",
+  "notes": [
+   [
+    "Box breathing",
+    "A calm way to start"
+   ],
+   [
+    "4-7-8 breathing",
+    "Slow your breath"
+   ],
+   [
+    "Sleep sounds",
+    "Wind down at night"
+   ]
+  ]
+ },
+ "dovelet": {
+  "intro": [
+   "Share your",
+   "mood."
+  ],
+  "intro_acc": 1,
+  "slides": [
+   "s1",
+   "s2",
+   "s5",
+   "s3",
+   "s4"
+  ],
+  "store": "Couple widget, on the App Store",
+  "notes": [
+   [
+    "Mood",
+    "Visible for 24 hours"
+   ],
+   [
+    "Their mood",
+    "Sits on your home screen"
+   ],
+   [
+    "Heart flower",
+    "Grows as you both stop by"
+   ]
+  ]
+ },
+ "dropolis": {
+  "intro": [
+   "Grow a tiny",
+   "town."
+  ],
+  "intro_acc": 1,
+  "slides": [
+   "s2",
+   "s1",
+   "s3",
+   "s4",
+   "s6"
+  ],
+  "notes": [
+   [
+    "Start with a tiny town",
+    "Pack orders, deliver fast"
+   ],
+   [
+    "Build your way",
+    "Houses, shops and parks"
+   ],
+   [
+    "Grow into a skyline",
+    "Then reach for Mars"
+   ]
+  ]
+ },
+ "promovote": {
+  "intro": [
+   "Track your",
+   "early hits."
+  ],
+  "intro_acc": 1,
+  "slides": [
+   "s4",
+   "s3",
+   "s2",
+   "s1",
+   "s5"
+  ],
+  "caps": [
+   "Your Scout Score",
+   "Right calls earn points",
+   "One tap, your call",
+   "Short promos",
+   "Meet the makers"
+  ],
+  "notes": [
+   [
+    "Your accuracy",
+    "See it in your Scout Score"
+   ],
+   [
+    "Your streak",
+    "Keep it going every week"
+   ],
+   [
+    "Your early hits",
+    "Spot them first"
+   ]
+  ]
+ }
+}
